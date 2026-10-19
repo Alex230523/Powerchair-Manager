@@ -31,13 +31,14 @@ Les rapports de recette (`recette/`) décrivent ce qui a été testé et comment
 
 Changements livrés hors du découpage en lots, par ordre chronologique.
 
-| Date       | Sujet                                                                                                          |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| 19/10/2026 | [Annuaire des joueurs et des coachs](evolutions/2026-10-19-a-annuaire-joueurs-coachs.md)                       |
-| 19/10/2026 | [Calendrier, documents et messagerie](evolutions/2026-10-19-b-calendrier-messagerie.md)                        |
-| 19/10/2026 | [Calendrier simplifié et statistiques de présences](evolutions/2026-10-19-c-statistiques-calendrier.md)        |
-| 19/10/2026 | [Charte orange, navigation, tableau de bord et PWA](evolutions/2026-10-19-d-charte-orange-tableau-de-bord.md)  |
-| 19/10/2026 | [Menu par thèmes, matériel (fauteuils) et fiche joueur](evolutions/2026-10-19-e-menu-materiel-fiche-joueur.md) |
+| Date       | Sujet                                                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 19/10/2026 | [Annuaire des joueurs et des coachs](evolutions/2026-10-19-a-annuaire-joueurs-coachs.md)                                                |
+| 19/10/2026 | [Calendrier, documents et messagerie](evolutions/2026-10-19-b-calendrier-messagerie.md)                                                 |
+| 19/10/2026 | [Calendrier simplifié et statistiques de présences](evolutions/2026-10-19-c-statistiques-calendrier.md)                                 |
+| 19/10/2026 | [Charte orange, navigation, tableau de bord et PWA](evolutions/2026-10-19-d-charte-orange-tableau-de-bord.md)                           |
+| 19/10/2026 | [Menu par thèmes, matériel (fauteuils) et fiche joueur](evolutions/2026-10-19-e-menu-materiel-fiche-joueur.md)                          |
+| 19/10/2026 | [Inscriptions, coachs et formations, réglages, finances du club, import Excel](evolutions/2026-10-19-f-inscriptions-coachs-finances.md) |
 
 ## Convention
 

@@ -14,7 +14,11 @@ import {
   statusLabels,
   typeLabels,
   registrationErrors,
+  registrationExtras,
 } from "./registrations-copy";
+import { tigerstormTemplate } from "@/domains/registrations/templates";
+import { ageOn } from "@/domains/people/schema";
+import { Modal } from "./modal";
 type Form = {
   id: string;
   organization_id: string;
@@ -45,6 +49,7 @@ type Application = {
   applicant_email: string;
   organization_name: string;
   decided_at: string | null;
+  submitted_at?: string | null;
   history: {
     id: string;
     status: Status | "attachment" | "note" | "saved";
@@ -158,6 +163,82 @@ function Questions({
     </>
   );
 }
+/** Popup for one form: preview, public link and copy-ready embed codes. */
+function ShareDialog({
+  locale,
+  form,
+  close,
+}: {
+  locale: Locale;
+  form: Form;
+  close: () => void;
+}) {
+  const x = registrationExtras[locale];
+  const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
+  const [copied, setCopied] = useState("");
+  const site = typeof window === "undefined" ? "" : window.location.origin;
+  const url = `${site}/${locale}/inscription/${form.id}`;
+  const codes = [
+    { key: "link", label: x.publicLink, code: url },
+    {
+      key: "iframe",
+      label: x.iframe,
+      code: `<iframe title="${form.title.replace(/"/g, "&quot;")}" src="${site}/${locale}/registration-widget/${form.id}" width="100%" height="260" style="border:0"></iframe>`,
+    },
+    {
+      key: "popup",
+      label: x.popup,
+      code: `<button type="button" onclick="window.open('${url}','inscription','width=720,height=860')">${x.button}</button>`,
+    },
+  ];
+  return (
+    <Modal title={`${x.shareTitle} : ${form.title}`} close={close}>
+      {form.description && <p className="message-text">{form.description}</p>}
+      <section aria-labelledby="share-codes">
+        <h3 id="share-codes">{x.share}</h3>
+        <p>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            {x.open} ↗
+          </a>
+        </p>
+        {codes.map((c) => (
+          <div key={c.key} className="embed-block">
+            <label htmlFor={"code-" + c.key}>{c.label}</label>
+            <textarea
+              id={"code-" + c.key}
+              readOnly
+              value={c.code}
+              rows={c.key === "link" ? 1 : 3}
+            />
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() =>
+                void navigator.clipboard
+                  ?.writeText(c.code)
+                  .then(() => setCopied(c.key))
+                  .catch(() => setCopied(""))
+              }
+            >
+              {x.copy}
+              <span className="sr-only"> : {c.label}</span>
+            </button>
+            {copied === c.key && <span role="status">{x.copied}</span>}
+          </div>
+        ))}
+      </section>
+      <section aria-labelledby="share-questions">
+        <h3 id="share-questions">{x.questions}</h3>
+        <Questions
+          fields={form.fields}
+          locale={locale}
+          answers={answers}
+          setAnswers={setAnswers}
+        />
+      </section>
+    </Modal>
+  );
+}
 function FormEditor({
   locale,
   form,
@@ -168,7 +249,7 @@ function FormEditor({
 }: {
   locale: Locale;
   form?: Form;
-  template?: Form;
+  template?: Pick<Form, "title" | "description" | "capacity" | "fields">;
   seasons: { id: string; name: string }[];
   save: (body: Record<string, unknown>) => Promise<void>;
   busy: boolean;
@@ -305,7 +386,6 @@ function FormEditor({
               <input
                 id={"label-en-" + i}
                 value={f.label.en ?? ""}
-
                 minLength={2}
                 maxLength={160}
                 onChange={(e) =>
@@ -513,6 +593,7 @@ export function Registrations({
     [loading, setLoading] = useState(true),
     [selected, setSelected] = useState(""),
     [editing, setEditing] = useState("new"),
+    [sharing, setSharing] = useState(""),
     [filter, setFilter] = useState("pending"),
     [answerDraft, setAnswerDraft] = useState<{
       key: string;
@@ -520,6 +601,19 @@ export function Registrations({
     }>({ key: "", values: {} });
   const router = useRouter();
   const [recentSince] = useState(() => Date.now() - 14 * 86400000);
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Brussels",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const formatDay = (d: string) =>
+    new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(d.slice(0, 10) + "T12:00:00Z"));
   const errorText = useCallback(
     (code: string) =>
       registrationErrors[code]?.[
@@ -740,7 +834,15 @@ export function Registrations({
               <ul className="records">
                 {data.forms?.map((f) => (
                   <li key={f.id}>
-                    <h3>{f.title}</h3>
+                    <h3>
+                      <button
+                        type="button"
+                        className="text-button form-open"
+                        onClick={() => setSharing(f.id)}
+                      >
+                        {f.title}
+                      </button>
+                    </h3>
                     <p>
                       {f.published
                         ? t.formOpen
@@ -764,26 +866,37 @@ export function Registrations({
                             {t.public}
                           </Link>
                         </p>
-                        <details>
-                          <summary>{t.integration}</summary>
-                          <p>
-                            <a
-                              href={"/" + locale + "/inscription/" + f.id}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {t.public} ↗
-                            </a>
-                          </p>
-                          <code className="embed-code">{`<iframe title="${t.title}" src="${typeof window === "undefined" ? "" : window.location.origin}/${locale}/registration-widget/${f.id}" width="100%" height="260"></iframe>`}</code>
-                        </details>
+                        <Button onClick={() => setSharing(f.id)}>
+                          {registrationExtras[locale].share}
+                        </Button>
                       </>
                     )}
                   </li>
                 ))}
               </ul>
-              <Button onClick={() => setEditing("new")}>{t.newForm}</Button>
+              <div className="actions">
+                <Button onClick={() => setEditing("new")}>{t.newForm}</Button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setEditing("tigerstorm")}
+                >
+                  {registrationExtras[locale].tigerstorm}
+                </button>
+              </div>
+              {editing === "tigerstorm" && (
+                <p className="notice">
+                  {registrationExtras[locale].tigerstormHint}
+                </p>
+              )}
             </Panel>
+            {sharing && data.forms?.some((f) => f.id === sharing) && (
+              <ShareDialog
+                locale={locale}
+                form={data.forms.find((f) => f.id === sharing)!}
+                close={() => setSharing("")}
+              />
+            )}
             <FormEditor
               key={
                 editing +
@@ -792,7 +905,11 @@ export function Registrations({
               }
               locale={locale}
               form={data.forms?.find((f) => f.id === editing)}
-              template={data.forms?.find((f) => "clone:" + f.id === editing)}
+              template={
+                editing === "tigerstorm"
+                  ? tigerstormTemplate(locale)
+                  : data.forms?.find((f) => "clone:" + f.id === editing)
+              }
               seasons={data.seasons ?? []}
               busy={busy}
               save={(body) =>
@@ -852,18 +969,42 @@ export function Registrations({
         )}
         {application && mode !== "public" && (
           <Panel title={application.subject_name}>
-            <p>
-              {application.birth_date} · {sl[application.status]} ·{" "}
-              {application.form_snapshot.title}
-            </p>
-            {mode === "admin" && (
-              <p>
-                {application.applicant_name} · {application.applicant_email}
-              </p>
-            )}
-            <p>
-              {application.subject_kind === "self" ? t.self : t.represented}
-            </p>
+            <h3>{registrationExtras[locale].summary}</h3>
+            <dl className="facts application-summary">
+              <dt>{registrationExtras[locale].subject}</dt>
+              <dd>{application.subject_name}</dd>
+              <dt>{registrationExtras[locale].born}</dt>
+              <dd>
+                {formatDay(application.birth_date)} ·{" "}
+                {ageOn(application.birth_date, today)}{" "}
+                {registrationExtras[locale].years}
+              </dd>
+              <dt>{registrationExtras[locale].status}</dt>
+              <dd>{sl[application.status]}</dd>
+              <dt>{registrationExtras[locale].form}</dt>
+              <dd>{application.form_snapshot.title}</dd>
+              <dt>{registrationExtras[locale].kind}</dt>
+              <dd>
+                {application.subject_kind === "self" ? t.self : t.represented}
+              </dd>
+              {application.submitted_at && (
+                <>
+                  <dt>{registrationExtras[locale].submitted}</dt>
+                  <dd>{formatDay(application.submitted_at)}</dd>
+                </>
+              )}
+              {mode === "admin" && (
+                <>
+                  <dt>{registrationExtras[locale].applicant}</dt>
+                  <dd>
+                    {application.applicant_name} ·{" "}
+                    <a href={"mailto:" + application.applicant_email}>
+                      {application.applicant_email}
+                    </a>
+                  </dd>
+                </>
+              )}
+            </dl>
             <h3>{t.answers}</h3>
             {mode === "mine" ? (
               <>
@@ -937,24 +1078,37 @@ export function Registrations({
                 </form>
               </>
             ) : (
-              <dl>
+              <dl className="answer-list">
                 {application.form_snapshot.fields
-                  .filter(
-                    (f) =>
-                      f.type !== "file" && fieldVisible(f, application.answers),
-                  )
-                  .map((f) => (
-                    <div key={f.key}>
-                      <dt>{f.label[locale] || f.label.fr}</dt>
-                      <dd>
-                        {typeof application.answers[f.key] === "boolean"
-                          ? application.answers[f.key]
-                            ? t.yes
-                            : t.no
-                          : String(application.answers[f.key] ?? "—")}
-                      </dd>
-                    </div>
-                  ))}
+                  .filter((f) => fieldVisible(f, application.answers))
+                  .map((f) => {
+                    const value = application.answers[f.key];
+                    const files = application.attachments.filter(
+                      (a) => a.field_key === f.key,
+                    );
+                    const empty =
+                      f.type === "file"
+                        ? !files.length
+                        : value === undefined || value === "";
+                    return (
+                      <div key={f.key} data-empty={empty || undefined}>
+                        <dt>{f.label[locale] || f.label.fr}</dt>
+                        <dd>
+                          {f.type === "file"
+                            ? files.length
+                              ? `${registrationExtras[locale].fileGiven} : ${files.map((a) => a.filename).join(", ")}`
+                              : registrationExtras[locale].fileMissing
+                            : typeof value === "boolean"
+                              ? value
+                                ? t.yes
+                                : t.no
+                              : empty
+                                ? registrationExtras[locale].empty
+                                : String(value)}
+                        </dd>
+                      </div>
+                    );
+                  })}
               </dl>
             )}
             <h3>{t.attachments}</h3>

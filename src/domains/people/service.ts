@@ -441,6 +441,7 @@ async function readPeople(s: Scope, filters: Filters) {
       name: s.context.organization_name,
       role: s.context.role,
     },
+    ownProfileId: v.own?.id ?? null,
     capabilities: {
       peopleManage: managers,
       registrationsManage: s.rights.includes("registrations.manage"),
@@ -567,6 +568,38 @@ function validateProfile(command: {
   if (command.birthDate && command.joinedOn < command.birthDate)
     throw new AccessError("INVALID_DATE", 400);
 }
+/**
+ * Adds a profile to a team from today (or the season start when it has not
+ * begun yet). Already being on the team is not an error.
+ */
+async function joinTeam(
+  s: Scope,
+  teamId: string,
+  profileId: string,
+  role: "player" | "coach",
+  position: string,
+  day: string,
+) {
+  const org = s.context.organization_id;
+  const season = (
+    await s.client.query(
+      "SELECT s.starts_on::text,s.ends_on::text FROM team t JOIN season s ON s.id=t.season_id WHERE t.id=$1 AND t.organization_id=$2 AND NOT t.archived AND NOT s.archived",
+      [teamId, org],
+    )
+  ).rows[0];
+  if (!season) throw new AccessError("NOT_FOUND", 404);
+  if (season.ends_on < day) throw new AccessError("SEASON_DATES", 400);
+  const startsOn = season.starts_on > day ? season.starts_on : day;
+  const current = await s.client.query(
+    "SELECT 1 FROM team_membership WHERE organization_id=$1 AND team_id=$2 AND profile_id=$3 AND role=$4 AND NOT cancelled AND closed_at IS NULL AND (ends_on IS NULL OR ends_on>=$5::date)",
+    [org, teamId, profileId, role, startsOn],
+  );
+  if (current.rowCount) return;
+  await s.client.query(
+    "INSERT INTO team_membership(organization_id,team_id,profile_id,role,position,starts_on) VALUES($1,$2,$3,$4,$5,$6)",
+    [org, teamId, profileId, role, position, startsOn],
+  );
+}
 async function linkedPerson(s: Scope, userId: string) {
   const result = await s.client.query(
     'SELECT p.id FROM person p JOIN organization_membership m ON m.user_id=p.user_id JOIN "user" u ON u.id=p.user_id WHERE p.user_id=$1 AND m.organization_id=$2 AND m.active AND u.active',
@@ -580,7 +613,13 @@ export async function peopleExecute(
   p: Principal,
   command: PeopleCommand,
   expectedOrganizationId?: string,
-): Promise<{ ok: true; id?: string; token?: string }> {
+): Promise<{
+  ok: true;
+  id?: string;
+  token?: string;
+  created?: number;
+  skipped?: number;
+}> {
   return transaction(
     db,
     p,
@@ -877,6 +916,107 @@ export async function peopleExecute(
         );
         if (!result.rowCount) throw new AccessError("INVALID_DATE", 400);
         target = command.id;
+      } else if (command.action === "selfCoach") {
+        // Reuse the actor's own club profile when it exists, so a president who
+        // also coaches appears once in every list and statistic.
+        const day = today();
+        const personId = (
+          await c.query(
+            "INSERT INTO person(user_id) VALUES($1) ON CONFLICT(user_id) DO UPDATE SET user_id=EXCLUDED.user_id RETURNING id",
+            [p.userId],
+          )
+        ).rows[0].id as string;
+        const existing = await c.query(
+          "SELECT id,status FROM club_person WHERE organization_id=$1 AND person_id=$2 FOR UPDATE",
+          [org, personId],
+        );
+        if (existing.rowCount) {
+          if (existing.rows[0].status !== "active")
+            throw new AccessError("PROFILE_INACTIVE", 409);
+          target = existing.rows[0].id;
+          await c.query(
+            "UPDATE club_person SET directory_roles=CASE WHEN 'coach'=ANY(directory_roles) THEN directory_roles ELSE array_append(directory_roles,'coach') END,former_roles=array_remove(former_roles,'coach'),version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
+            [target, org],
+          );
+        } else {
+          // A profile with the same name but no account must be linked first
+          // (people "linkAccount"), never silently duplicated.
+          if (
+            (
+              await c.query(
+                "SELECT 1 FROM club_person WHERE organization_id=$1 AND lower(trim(full_name))=lower(trim($2)) AND birth_date IS NULL",
+                [org, s.user.name],
+              )
+            ).rowCount
+          )
+            throw new AccessError("DUPLICATE", 409);
+          target = (
+            await c.query(
+              "INSERT INTO club_person(organization_id,person_id,full_name,email,joined_on,directory_roles) VALUES($1,$2,$3,$4,$5,ARRAY['coach']) RETURNING id",
+              [org, personId, s.user.name, s.user.email ?? null, day],
+            )
+          ).rows[0].id;
+        }
+        if (command.teamId) {
+          right(s, "teams.manage");
+          await joinTeam(s, command.teamId, target, "coach", "", day);
+        }
+      } else if (command.action === "importPlayers") {
+        if (command.teamId) right(s, "teams.manage");
+        const day = today();
+        let created = 0,
+          skipped = 0;
+        for (const row of command.rows) {
+          validateProfile({
+            birthDate: row.birthDate,
+            joinedOn: row.joinedOn ?? day,
+          });
+          const duplicate = await c.query(
+            "SELECT 1 FROM club_person WHERE organization_id=$1 AND lower(trim(full_name))=lower(trim($2)) AND birth_date IS NOT DISTINCT FROM $3::date",
+            [org, row.fullName, row.birthDate],
+          );
+          if (duplicate.rowCount) {
+            skipped++;
+            continue;
+          }
+          const personId = (
+            await c.query("INSERT INTO person DEFAULT VALUES RETURNING id")
+          ).rows[0].id;
+          const profileId = (
+            await c.query(
+              "INSERT INTO club_person(organization_id,person_id,full_name,birth_date,email,phone,joined_on,directory_roles,playing_position,jersey_number) VALUES($1,$2,$3,$4,$5,$6,$7,ARRAY['player'],$8,$9) RETURNING id",
+              [
+                org,
+                personId,
+                row.fullName,
+                row.birthDate,
+                row.email || null,
+                row.phone,
+                row.joinedOn ?? day,
+                row.position,
+                row.jerseyNumber,
+              ],
+            )
+          ).rows[0].id;
+          if (command.teamId)
+            await joinTeam(
+              s,
+              command.teamId,
+              profileId,
+              "player",
+              row.position,
+              day,
+            );
+          created++;
+        }
+        await audit(
+          c,
+          org,
+          p.userId,
+          "people.importPlayers",
+          command.teamId ?? org,
+        );
+        return { ok: true, created, skipped };
       } else if (command.action === "coachScope") {
         if (
           command.teamId &&

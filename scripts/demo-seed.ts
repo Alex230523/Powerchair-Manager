@@ -23,6 +23,11 @@ import {
 import { duesExecute } from "../src/domains/dues/service";
 import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
+import { peopleExecute } from "../src/domains/people/service";
+import { financeExecute } from "../src/domains/finance/service";
+import type { categories, methods } from "../src/domains/finance/schema";
+import { coachExecute, coursesExecute } from "../src/domains/coaches/service";
+import { tigerstormTemplate } from "../src/domains/registrations/templates";
 
 const CLUB = "Club démo Powerchair";
 export const DEMO_PASSWORD = "Demo-Powerchair-2026";
@@ -57,6 +62,12 @@ const accounts = [
   },
 ] as const;
 type Key = (typeof accounts)[number]["key"];
+const FEDERATION = "Fédération démo Powerchair";
+const federationAccount = {
+  email: "federation@demo.pfm",
+  name: "Marie Dupont",
+  profile: "Présidence · Fédération démo",
+};
 
 if (process.env.NODE_ENV === "production" && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
@@ -146,6 +157,13 @@ try {
   const team = (
     await db.query(
       "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc') RETURNING id",
+      [org, season],
+    )
+  ).rows[0].id as string;
+  // A second team: one club can run several teams in the same season.
+  const teamB = (
+    await db.query(
+      "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,'Équipe B','Powerchair','Loisir','Hall sportif du Parc') RETURNING id",
       [org, season],
     )
   ).rows[0].id as string;
@@ -764,27 +782,218 @@ try {
   }
 
   // 9. A submitted application waiting for the club's decision.
+  const template = tigerstormTemplate("fr");
   const form = (
     await db.query(
-      "INSERT INTO registration_form(organization_id,season_id,title,description,published) VALUES($1,$2,'Inscription saison','Formulaire de démonstration.',true) RETURNING id",
-      [org, season],
+      "INSERT INTO registration_form(organization_id,season_id,title,description,fields,published) VALUES($1,$2,$3,$4,$5,true) RETURNING id",
+      [
+        org,
+        season,
+        template.title,
+        template.description,
+        JSON.stringify(template.fields),
+      ],
     )
   ).rows[0].id;
   const application = (
     await db.query(
-      "INSERT INTO registration_application(organization_id,form_id,applicant_user_id,season_id,subject_kind,subject_name,birth_date,locale,form_snapshot,status,submitted_at) VALUES($1,$2,$3,$4,'represented','Inès Peeters','2015-08-12','fr',$5,'submitted',now()) RETURNING id",
+      "INSERT INTO registration_application(organization_id,form_id,applicant_user_id,season_id,subject_kind,subject_name,birth_date,locale,form_snapshot,answers,status,submitted_at) VALUES($1,$2,$3,$4,'represented','Inès Peeters','2015-08-12','fr',$5,$6,'submitted',now()) RETURNING id",
       [
         org,
         form,
         users.parent,
         season,
-        JSON.stringify({ title: "Inscription saison", fields: [] }),
+        JSON.stringify({ title: template.title, fields: template.fields }),
+        JSON.stringify({
+          address: "Rue de la Démo 12, 1030 Schaerbeek",
+          phone: "+32 470 12 34 56",
+          guardian_name: "Nadia Peeters",
+          guardian_phone: "+32 470 65 43 21",
+          own_chair: "Oui",
+          chair_model: "Permobil F5 (exemple)",
+          control: "Joystick main droite",
+          experience: "Jamais joué",
+          transfer_help: "Oui",
+          support_needs: "Prévoir un peu plus de temps pour les transferts.",
+          trial: "Oui",
+          saturday: "Oui",
+          heard_about: "École, centre ou kiné",
+          photo_consent: true,
+          privacy_consent: true,
+          rules_consent: true,
+        }),
       ],
     )
   ).rows[0].id;
   await db.query(
     "INSERT INTO registration_history(application_id,actor_id,status) VALUES($1,$2,'submitted')",
     [application, users.parent],
+  );
+
+  // 10. The president also coaches Équipe B: same profile, no duplicate.
+  await peopleExecute(
+    db,
+    president,
+    { action: "selfCoach", teamId: teamB },
+    org,
+  );
+
+  // 11. Club ledger: a season of income and expenses.
+  type Category = (typeof categories)[number];
+  type Method = (typeof methods)[number];
+  const ledger: [number, string, "in" | "out", Category, number, Method][] = [
+    [-80, "Subside communal sport adapté", "in", "subsidy", 150000, "transfer"],
+    [-65, "Sponsor maillots", "in", "sponsor", 80000, "transfer"],
+    [-50, "Location salle (trimestre)", "out", "venue", 45000, "transfer"],
+    [-42, "Pneus et batteries", "out", "equipment", 32000, "card"],
+    [
+      -30,
+      "Cotisations reçues (lot septembre)",
+      "in",
+      "dues",
+      125000,
+      "transfer",
+    ],
+    [-21, "Déplacement tournoi Gand", "out", "travel", 18500, "card"],
+    [-14, "Inscription championnat", "out", "competition", 25000, "transfer"],
+    [-7, "Tombola fête du club", "in", "event", 42000, "cash"],
+    [-3, "Assurance saison", "out", "insurance", 38000, "transfer"],
+  ];
+  for (const [
+    offset,
+    label,
+    direction,
+    category,
+    amountCents,
+    method,
+  ] of ledger)
+    await financeExecute(
+      db,
+      president,
+      {
+        action: "record",
+        occurredOn: day(offset),
+        label,
+        direction,
+        category,
+        amountCents,
+        method,
+        counterparty: "",
+        reference: "",
+        notes: "Donnée de démonstration.",
+      },
+      org,
+    );
+
+  // 12. Federation: course catalogue, a club request and a decision.
+  const fedUser =
+    (
+      await db.query('SELECT id FROM "user" WHERE lower(email)=$1', [
+        federationAccount.email,
+      ])
+    ).rows[0]?.id ??
+    (
+      await auth.api.signUpEmail({
+        body: {
+          email: federationAccount.email,
+          name: federationAccount.name,
+          password: DEMO_PASSWORD,
+        },
+      })
+    ).user.id;
+  const federation = (
+    await db.query(
+      "INSERT INTO organization(name,kind,contact_email) VALUES($1,'federation','federation@demo.pfm') RETURNING id",
+      [FEDERATION],
+    )
+  ).rows[0].id as string;
+  await db.query(
+    "INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)",
+    [federation, fedUser],
+  );
+  const fedMandate = (
+    await db.query(
+      "INSERT INTO role_assignment(organization_id,user_id,role,created_by) VALUES($1,$2,'federation_president',$2) RETURNING id",
+      [federation, fedUser],
+    )
+  ).rows[0].id;
+  await db.query(
+    "INSERT INTO user_profile(user_id,mandate_id,name,is_default) VALUES($1,$2,$3,true)",
+    [fedUser, fedMandate, federationAccount.profile],
+  );
+  const fed = await principal(fedUser, fedMandate);
+  const courses: Record<string, string> = {};
+  for (const [title, level, hours, validity, description] of [
+    [
+      "Initiateur powerchair football",
+      "Niveau 1",
+      16,
+      null,
+      "Bases de l'encadrement, sécurité et règles du jeu.",
+    ],
+    [
+      "Coach powerchair football",
+      "Niveau 2",
+      40,
+      5,
+      "Tactique, planification de saison et gestion d'équipe.",
+    ],
+    [
+      "Premiers secours sport adapté",
+      "Recyclage",
+      8,
+      3,
+      "Gestes de premiers secours et transferts en sécurité.",
+    ],
+  ] as const)
+    courses[title] = (
+      await coursesExecute(
+        db,
+        fed,
+        {
+          action: "createCourse",
+          title,
+          level,
+          description,
+          hours,
+          validityYears: validity,
+        },
+        federation,
+      )
+    ).id;
+  const firstRequest = await coachExecute(
+    db,
+    president,
+    {
+      action: "requestCourse",
+      profileId: people.coach,
+      courseId: courses["Initiateur powerchair football"],
+      note: "Formation suivie en mars (attestation disponible).",
+    },
+    org,
+  );
+  await coursesExecute(
+    db,
+    fed,
+    {
+      action: "decide",
+      id: firstRequest.id,
+      decision: "approved",
+      note: "",
+      completedOn: day(-200),
+    },
+    federation,
+  );
+  await coachExecute(
+    db,
+    president,
+    {
+      action: "requestCourse",
+      profileId: people.coach,
+      courseId: courses["Premiers secours sport adapté"],
+      note: "",
+    },
+    org,
   );
 
   console.log(`« ${CLUB} » est prêt.`);
@@ -799,6 +1008,7 @@ try {
 
 function printAccounts() {
   console.log(`\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`);
-  for (const a of accounts) console.log(`  ${a.email.padEnd(22)} ${a.profile}`);
+  for (const a of [...accounts, federationAccount])
+    console.log(`  ${a.email.padEnd(22)} ${a.profile}`);
   console.log("\nConnexion : /fr/access\n");
 }

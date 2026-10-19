@@ -46,10 +46,12 @@ export async function POST(request: Request) {
   try {
     if (request.headers.get("origin") !== process.env.BETTER_AUTH_URL)
       throw new AccessError("INVALID_ORIGIN");
-    if (Number(request.headers.get("content-length")) > 12000)
+    // Large enough for a spreadsheet import of 300 players.
+    const limit = 200000;
+    if (Number(request.headers.get("content-length")) > limit)
       throw new AccessError("INVALID_INPUT", 400);
     const text = await request.text();
-    if (text.length > 12000) throw new AccessError("INVALID_INPUT", 400);
+    if (text.length > limit) throw new AccessError("INVALID_INPUT", 400);
     let input;
     try {
       input = JSON.parse(text);

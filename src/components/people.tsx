@@ -27,9 +27,12 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export function People({
   locale,
   management = false,
+  children,
 }: {
   locale: Locale;
   management?: boolean;
+  /** Extra sections shown under the title (club identity on the management page). */
+  children?: React.ReactNode;
 }) {
   const t = peopleCopy[locale],
     day = new Intl.DateTimeFormat("en-CA", {
@@ -230,6 +233,7 @@ export function People({
             {failure}
           </p>
         )}
+        {children}
         {!data && !loading && (
           <p>
             <Link href={`/${locale}/access`}>{t.missing}</Link>
@@ -514,7 +518,10 @@ export function People({
                       {
                         t[
                           a.role as
-                            "player" | "coach" | "assistant" | "volunteer"
+                            | "player"
+                            | "coach"
+                            | "assistant"
+                            | "volunteer"
                         ]
                       }{" "}
                       · {a.position}
