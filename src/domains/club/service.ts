@@ -175,3 +175,13 @@ export async function clubLogo(db: Pool, organizationId: string) {
     )
   ).rows[0] as { media_type: string; content: Buffer } | undefined;
 }
+/** Logo shown on a published registration form, found through the form itself. */
+export async function clubLogoForForm(db: Pool, formId: string) {
+  z.uuid().parse(formId);
+  return (
+    await db.query(
+      "SELECT l.media_type,l.content FROM registration_form f JOIN organization_logo l ON l.organization_id=f.organization_id WHERE f.id=$1 AND f.published",
+      [formId],
+    )
+  ).rows[0] as { media_type: string; content: Buffer } | undefined;
+}

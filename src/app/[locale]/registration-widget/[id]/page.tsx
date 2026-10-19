@@ -23,7 +23,7 @@ export default async function Page({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className="club-banner-logo"
-            src={`/api/club/logo?org=${form.organization_id}&v=${form.logo_version}`}
+            src={`/api/club/logo?form=${form.id}&v=${form.logo_version}`}
             alt={form.organization_name}
           />
         )}

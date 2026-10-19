@@ -296,7 +296,7 @@ export async function publicForm(db: Pool, formId: string) {
   id.parse(formId);
   const row = (
     await db.query(
-      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,o.id AS organization_id,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND f.published AND NOT s.archived",
+      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND f.published AND NOT s.archived",
       [formId],
     )
   ).rows[0];
@@ -308,7 +308,6 @@ export async function publicForm(db: Pool, formId: string) {
     fields: Field[];
     version: number;
     capacity: number | null;
-    organization_id: string;
     organization_name: string;
     season_name: string;
     logo_version: string | null;

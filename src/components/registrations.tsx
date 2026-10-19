@@ -892,7 +892,7 @@ export function Registrations({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   className="club-banner-logo"
-                  src={`/api/club/logo?org=${publicData.organization_id}&v=${publicData.logo_version}`}
+                  src={`/api/club/logo?form=${publicData.id}&v=${publicData.logo_version}`}
                   alt={publicData.organization_name ?? ""}
                 />
               )}
