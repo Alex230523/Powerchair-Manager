@@ -2923,3 +2923,135 @@ th.num {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Finance: budget, receipts, printable report. */
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.panel-head h2 {
+  margin: 0;
+}
+.budget-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+}
+.budget-form fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.budget-form label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+.budget-form > .button {
+  grid-column: 1 / -1;
+}
+.receipt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.82rem;
+}
+.receipt-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+}
+.receipt-list a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.finance-report {
+  max-width: 960px;
+}
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.report-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 0 0 20px;
+}
+.report-totals div {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.report-totals dt {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.report-totals dd {
+  margin: 2px 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media print {
+  .sidebar,
+  .topbar,
+  .no-print,
+  .preview-strip {
+    display: none !important;
+  }
+  .app-content {
+    margin: 0 !important;
+  }
+  .app-content main,
+  main {
+    padding: 0 !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .panel,
+  .report-totals div {
+    box-shadow: none;
+    border-color: #999;
+    break-inside: avoid;
+  }
+  .table-scroll {
+    overflow: visible !important;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* Personal data: duplicate pairs. */
+.duplicate-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+}
+.button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.button.danger:hover {
+  background: var(--danger-ink);
+  border-color: var(--danger-ink);
+}

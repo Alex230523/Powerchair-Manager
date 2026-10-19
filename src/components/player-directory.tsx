@@ -365,9 +365,10 @@ export function PlayerDirectory({
                 ? t.activeCoach
                 : t.formerCoach}
           </Link>
-          {manager && !former && role === "player" && data && (
+          {manager && !former && data && (
             <PlayerImport
               locale={locale}
+              role={role}
               organizationId={data.context.id}
               teams={data.teams.filter(
                 (x) => !x.archived && !x.season_archived,

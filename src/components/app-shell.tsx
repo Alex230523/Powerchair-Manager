@@ -130,6 +130,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                       label: "reminders",
                       icon: "message",
                     },
+                    { route: "/privacy", label: "privacy", icon: "lock" },
                   ] satisfies NavItem[])
                 : []),
               { route: "/settings", label: "settings", icon: "settings" },
