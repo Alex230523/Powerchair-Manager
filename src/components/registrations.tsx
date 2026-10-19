@@ -1,0 +1,1203 @@
+"use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import type { Locale } from "@/lib/locale";
+import { Panel, Button } from "./ui";
+import {
+  fieldVisible,
+  type Field,
+  type Status,
+} from "@/domains/registrations/schema";
+import {
+  registrationCopy,
+  statusLabels,
+  typeLabels,
+  registrationErrors,
+} from "./registrations-copy";
+type Form = {
+  id: string;
+  organization_id: string;
+  season_id: string;
+  title: string;
+  description: string;
+  fields: Field[];
+  published: boolean;
+  capacity: number | null;
+  version: number;
+  organization_name?: string;
+  season_name?: string;
+};
+type Application = {
+  id: string;
+  organization_id: string;
+  form_id: string;
+  season_id: string;
+  subject_kind: "self" | "represented";
+  subject_name: string;
+  birth_date: string;
+  locale: Locale;
+  status: Status;
+  version: number;
+  answers: Record<string, string | boolean>;
+  form_snapshot: { title: string; fields: Field[] };
+  applicant_name: string;
+  applicant_email: string;
+  organization_name: string;
+  decided_at: string | null;
+  history: {
+    id: string;
+    status: Status | "attachment" | "note" | "saved";
+    message: string;
+    internal: boolean;
+    created_at: string;
+    actor: string;
+  }[];
+  attachments: { id: string; field_key: string; filename: string }[];
+};
+type View = {
+  context?: { organization_id: string; organization_name: string };
+  forms?: Form[];
+  seasons?: { id: string; name: string }[];
+  teams?: { id: string; name: string; season_id: string }[];
+  profiles?: { id: string; full_name: string; birth_date: string | null }[];
+  applications: Application[];
+};
+function FieldLabel({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id}>{label}</label>
+      {children}
+    </div>
+  );
+}
+function Questions({
+  fields,
+  locale,
+  answers,
+  setAnswers,
+  disabled = false,
+}: {
+  fields: Field[];
+  locale: Locale;
+  answers: Record<string, string | boolean>;
+  setAnswers: (a: Record<string, string | boolean>) => void;
+  disabled?: boolean;
+}) {
+  const t = registrationCopy[locale];
+  return (
+    <>
+      {fields
+        .filter((f) => fieldVisible(f, answers))
+        .map((f) => {
+          const fid = "answer-" + f.key;
+          const label =
+            (f.label[locale] || f.label.fr) + (f.required ? " *" : "");
+          if (f.type === "file")
+            return (
+              <p key={f.key}>
+                {label} · {t.fileHint}
+              </p>
+            );
+          return (
+            <FieldLabel key={f.key} id={fid} label={label}>
+              {f.type === "consent" ? (
+                <input
+                  id={fid}
+                  type="checkbox"
+                  checked={answers[f.key] === true}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    setAnswers({ ...answers, [f.key]: e.target.checked })
+                  }
+                />
+              ) : f.type === "choice" ? (
+                <select
+                  id={fid}
+                  value={String(answers[f.key] ?? "")}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    setAnswers({ ...answers, [f.key]: e.target.value })
+                  }
+                >
+                  <option value="">—</option>
+                  {f.options.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id={fid}
+                  type={
+                    f.type === "date"
+                      ? "date"
+                      : f.type === "phone"
+                        ? "tel"
+                        : "text"
+                  }
+                  maxLength={f.type === "phone" ? 35 : 5000}
+                  value={String(answers[f.key] ?? "")}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    setAnswers({ ...answers, [f.key]: e.target.value })
+                  }
+                />
+              )}
+              {f.type === "signature" && <p className="muted">{t.signature}</p>}
+            </FieldLabel>
+          );
+        })}
+    </>
+  );
+}
+function FormEditor({
+  locale,
+  form,
+  template,
+  seasons,
+  save,
+  busy,
+}: {
+  locale: Locale;
+  form?: Form;
+  template?: Form;
+  seasons: { id: string; name: string }[];
+  save: (body: Record<string, unknown>) => Promise<void>;
+  busy: boolean;
+}) {
+  const t = registrationCopy[locale];
+  const [fields, setFields] = useState<Field[]>(
+      form?.fields ?? template?.fields ?? [],
+    ),
+    [preview, setPreview] = useState(false),
+    [mobile, setMobile] = useState(false),
+    [answers, setAnswers] = useState<Record<string, string | boolean>>({});
+  return (
+    <Panel title={form?.title ?? t.newForm}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const d = new FormData(e.currentTarget);
+          void save({
+            action: "form",
+            id: form?.id,
+            expectedVersion: form?.version,
+            seasonId: d.get("season"),
+            title: d.get("title"),
+            description: d.get("description"),
+            capacity: d.get("capacity") ? Number(d.get("capacity")) : null,
+            published: d.has("published"),
+            fields,
+          });
+        }}
+      >
+        <FieldLabel id="form-season" label={t.season}>
+          <select
+            id="form-season"
+            name="season"
+            required
+            disabled={!!form}
+            defaultValue={form?.season_id}
+          >
+            {seasons.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {form && <input type="hidden" name="season" value={form.season_id} />}
+        </FieldLabel>
+        <FieldLabel id="form-title" label={t.formTitle}>
+          <input
+            id="form-title"
+            name="title"
+            required
+            minLength={2}
+            maxLength={120}
+            defaultValue={form?.title ?? template?.title}
+          />
+        </FieldLabel>
+        <FieldLabel id="form-description" label={t.description}>
+          <textarea
+            id="form-description"
+            name="description"
+            maxLength={2000}
+            defaultValue={form?.description ?? template?.description}
+          />
+        </FieldLabel>
+        <FieldLabel id="form-capacity" label={t.capacity}>
+          <input
+            id="form-capacity"
+            name="capacity"
+            type="number"
+            min={1}
+            max={10000}
+            defaultValue={form?.capacity ?? template?.capacity ?? ""}
+          />
+        </FieldLabel>
+        <label className="check">
+          <input
+            type="checkbox"
+            name="published"
+            defaultChecked={form?.published}
+          />
+          {t.published}
+        </label>
+        {fields.map((f, i) => (
+          <fieldset key={f.key}>
+            <legend>
+              {t.field} {i + 1}
+            </legend>
+            <FieldLabel id={"label-fr-" + i} label={t.labelFr}>
+              <input
+                id={"label-fr-" + i}
+                value={f.label.fr}
+                required
+                minLength={2}
+                maxLength={160}
+                onChange={(e) =>
+                  setFields(
+                    fields.map((v, n) =>
+                      n === i
+                        ? { ...v, label: { ...v.label, fr: e.target.value } }
+                        : v,
+                    ),
+                  )
+                }
+              />
+            </FieldLabel>
+            <FieldLabel id={"label-nl-" + i} label={t.labelNl}>
+              <input
+                id={"label-nl-" + i}
+                value={f.label.nl}
+                required
+                minLength={2}
+                maxLength={160}
+                onChange={(e) =>
+                  setFields(
+                    fields.map((v, n) =>
+                      n === i
+                        ? { ...v, label: { ...v.label, nl: e.target.value } }
+                        : v,
+                    ),
+                  )
+                }
+              />
+            </FieldLabel>
+            <FieldLabel
+              id={"label-en-" + i}
+              label={
+                locale === "en"
+                  ? "English label (optional)"
+                  : locale === "fr"
+                    ? "Libellé anglais (facultatif)"
+                    : "Engels label (optioneel)"
+              }
+            >
+              <input
+                id={"label-en-" + i}
+                value={f.label.en ?? ""}
+
+                minLength={2}
+                maxLength={160}
+                onChange={(e) =>
+                  setFields(
+                    fields.map((v, n) =>
+                      n === i
+                        ? { ...v, label: { ...v.label, en: e.target.value } }
+                        : v,
+                    ),
+                  )
+                }
+              />
+            </FieldLabel>
+            <FieldLabel id={"type-" + i} label={t.type}>
+              <select
+                id={"type-" + i}
+                value={f.type}
+                onChange={(e) =>
+                  setFields(
+                    fields.map((v, n) =>
+                      n === i
+                        ? { ...v, type: e.target.value as Field["type"] }
+                        : v,
+                    ),
+                  )
+                }
+              >
+                {Object.entries(typeLabels[locale]).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </FieldLabel>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={f.required}
+                onChange={(e) =>
+                  setFields(
+                    fields.map((v, n) =>
+                      n === i ? { ...v, required: e.target.checked } : v,
+                    ),
+                  )
+                }
+              />
+              {t.required}
+            </label>
+            {f.type === "choice" && (
+              <FieldLabel id={"options-" + i} label={t.options}>
+                <textarea
+                  id={"options-" + i}
+                  value={f.options.join("\n")}
+                  onChange={(e) =>
+                    setFields(
+                      fields.map((v, n) =>
+                        n === i
+                          ? { ...v, options: e.target.value.split("\n") }
+                          : v,
+                      ),
+                    )
+                  }
+                />
+              </FieldLabel>
+            )}
+            <FieldLabel id={"condition-" + i} label={t.condition}>
+              <select
+                id={"condition-" + i}
+                value={f.condition?.key ?? ""}
+                onChange={(e) =>
+                  setFields(
+                    fields.map((v, n) =>
+                      n === i
+                        ? {
+                            ...v,
+                            condition: e.target.value
+                              ? { key: e.target.value, equals: "" }
+                              : undefined,
+                          }
+                        : v,
+                    ),
+                  )
+                }
+              >
+                <option value="">{t.noCondition}</option>
+                {fields
+                  .slice(0, i)
+                  .filter((v) => v.type === "choice" || v.type === "text")
+                  .map((v) => (
+                    <option key={v.key} value={v.key}>
+                      {v.label[locale] || v.label.fr}
+                    </option>
+                  ))}
+              </select>
+            </FieldLabel>
+            {f.condition && (
+              <FieldLabel id={"equals-" + i} label={t.conditionValue}>
+                <input
+                  id={"equals-" + i}
+                  maxLength={100}
+                  value={f.condition.equals}
+                  onChange={(e) =>
+                    setFields(
+                      fields.map((v, n) =>
+                        n === i
+                          ? {
+                              ...v,
+                              condition: {
+                                key: v.condition!.key,
+                                equals: e.target.value,
+                              },
+                            }
+                          : v,
+                      ),
+                    )
+                  }
+                />
+              </FieldLabel>
+            )}
+            <Button
+              type="button"
+              onClick={() =>
+                setFields(
+                  fields
+                    .filter((_, n) => n !== i)
+                    .map((v) =>
+                      v.condition?.key === f.key
+                        ? { ...v, condition: undefined }
+                        : v,
+                    ),
+                )
+              }
+            >
+              {t.remove}
+            </Button>
+          </fieldset>
+        ))}
+        <div className="actions">
+          <Button
+            type="button"
+            disabled={fields.length >= 20}
+            onClick={() =>
+              setFields([
+                ...fields,
+                {
+                  key: "q" + Date.now(),
+                  type: "text",
+                  label: { fr: "", nl: "" },
+                  required: false,
+                  options: [],
+                },
+              ])
+            }
+          >
+            {t.add}
+          </Button>
+          <Button disabled={busy || !seasons.length}>{t.save}</Button>
+          <Button type="button" onClick={() => setPreview(!preview)}>
+            {t.preview}
+          </Button>
+        </div>
+      </form>
+      {preview && (
+        <section
+          className={
+            mobile ? "registration-preview mobile" : "registration-preview"
+          }
+        >
+          <h3>{t.preview}</h3>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={mobile}
+              onChange={(e) => setMobile(e.target.checked)}
+            />
+            {t.mobile}
+          </label>
+          <Questions
+            locale={locale}
+            fields={fields}
+            answers={answers}
+            setAnswers={setAnswers}
+          />
+        </section>
+      )}
+    </Panel>
+  );
+}
+export function Registrations({
+  locale,
+  mode = "admin",
+  formId,
+}: {
+  locale: Locale;
+  mode?: "admin" | "mine" | "public";
+  formId?: string;
+}) {
+  const t = registrationCopy[locale],
+    sl = statusLabels[locale];
+  const [data, setData] = useState<View | null>(null),
+    [publicData, setPublic] = useState<Form | null>(null),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(true),
+    [selected, setSelected] = useState(""),
+    [editing, setEditing] = useState("new"),
+    [filter, setFilter] = useState("pending"),
+    [answerDraft, setAnswerDraft] = useState<{
+      key: string;
+      values: Record<string, string | boolean>;
+    }>({ key: "", values: {} });
+  const router = useRouter();
+  const [recentSince] = useState(() => Date.now() - 14 * 86400000);
+  const errorText = useCallback(
+    (code: string) =>
+      registrationErrors[code]?.[
+        locale === "en" ? 2 : locale === "fr" ? 0 : 1
+      ] ??
+      (locale === "en"
+        ? "Service unavailable. Refresh and try again."
+        : locale === "fr"
+          ? "Service indisponible. Actualisez puis réessayez."
+          : "Dienst niet beschikbaar. Vernieuw en probeer opnieuw."),
+    [locale],
+  );
+  const load = useCallback(async () => {
+    if (mode === "public") {
+      const r = await fetch("/api/registrations/public/" + formId, {
+          cache: "no-store",
+        }),
+        body = await r.json();
+      if (!r.ok) throw new Error(body.error);
+      setPublic(body);
+      const own = await fetch("/api/registrations", { cache: "no-store" });
+      if (own.ok) setData(await own.json());
+      return;
+    }
+    const r = await fetch(
+        "/api/registrations" + (mode === "admin" ? "?mode=admin" : ""),
+        { cache: "no-store" },
+      ),
+      body = await r.json();
+    if (!r.ok) throw new Error(body.error);
+    setData(body);
+  }, [mode, formId]);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve()
+      .then(load)
+      .catch((e) => {
+        if (!cancelled) setError(errorText(e.message));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [load, errorText]);
+  const application =
+    data?.applications.find((a) => a.id === selected) ??
+    (mode === "mine" ? data?.applications[0] : undefined);
+  const answerKey = application
+    ? application.id + ":" + application.version
+    : "preview";
+  const answers =
+    answerDraft.key === answerKey
+      ? answerDraft.values
+      : (application?.answers ?? {});
+  function setAnswers(values: Record<string, string | boolean>) {
+    setAnswerDraft({ key: answerKey, values });
+  }
+  async function task(work: () => Promise<void>) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await work();
+      await load();
+      setMessage(t.saved);
+    } catch (e) {
+      setError(errorText(e instanceof Error ? e.message : ""));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function send(body: Record<string, unknown>) {
+    const r = await fetch("/api/registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...body,
+          organizationId: data?.context?.organization_id,
+        }),
+      }),
+      value = await r.json();
+    if (!r.ok) throw new Error(value.error);
+    return value as { id: string };
+  }
+  return (
+    <>
+      <main id="main" className="access registrations">
+        <h1>{mode === "mine" ? t.mine : t.title}</h1>
+        <div role="status">{loading ? t.loading : message}</div>
+        {error && (
+          <p className="error-message" role="alert">
+            {error}
+          </p>
+        )}
+        {!loading && !data && mode !== "public" && (
+          <Link href={"/" + locale + "/access"}>{t.access}</Link>
+        )}
+        {mode === "public" && publicData && (
+          <Panel title={publicData.title}>
+            <p>
+              {publicData.organization_name} · {publicData.season_name}
+            </p>
+            <p>{publicData.description}</p>
+            <p>{t.account}</p>
+            {!data ? (
+              <Link href={"/" + locale + "/access"}>{t.access}</Link>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const d = new FormData(e.currentTarget);
+                  void task(async () => {
+                    const result = await send({
+                      action: "draft",
+                      formId,
+                      subjectName: d.get("name"),
+                      subjectKind: d.has("self") ? "self" : "represented",
+                      birthDate: d.get("birth"),
+                      locale,
+                      answers: {},
+                      priorId: d.get("prior") || undefined,
+                      website: d.get("website") ?? "",
+                    });
+                    setSelected(result.id);
+                    router.push("/" + locale + "/registrations/mine");
+                  });
+                }}
+              >
+                <label className="check">
+                  <input type="checkbox" name="self" />
+                  {t.self}
+                </label>
+                <FieldLabel id="candidate-name" label={t.name}>
+                  <input
+                    id="candidate-name"
+                    name="name"
+                    required
+                    minLength={2}
+                    maxLength={120}
+                  />
+                </FieldLabel>
+                <FieldLabel id="candidate-birth" label={t.birth}>
+                  <input
+                    id="candidate-birth"
+                    name="birth"
+                    type="date"
+                    required
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
+                </FieldLabel>
+                <FieldLabel id="prior" label={t.renew}>
+                  <select
+                    id="prior"
+                    name="prior"
+                    onChange={(e) => {
+                      const prior = data.applications.find(
+                        (a) => a.id === e.target.value,
+                      );
+                      if (prior) {
+                        const form = e.target.form!;
+                        (
+                          form.elements.namedItem("self") as HTMLInputElement
+                        ).checked = prior.subject_kind === "self";
+                        (
+                          form.elements.namedItem("name") as HTMLInputElement
+                        ).value = prior.subject_name;
+                        (
+                          form.elements.namedItem("birth") as HTMLInputElement
+                        ).value = prior.birth_date;
+                      }
+                    }}
+                  >
+                    <option value="">{t.none}</option>
+                    {data.applications
+                      .filter((a) => a.status === "accepted")
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.subject_name} · {a.form_snapshot.title}
+                        </option>
+                      ))}
+                  </select>
+                </FieldLabel>
+                <p className="muted">{t.renewHint}</p>
+                <label className="check">
+                  <input type="checkbox" required />
+                  {t.confirmCoordinates}
+                </label>
+                <div className="honeypot" aria-hidden="true">
+                  <label htmlFor="website">Website</label>
+                  <input
+                    id="website"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
+                <Button disabled={busy}>{t.create}</Button>
+              </form>
+            )}
+            <details>
+              <summary>{t.preview}</summary>
+              <Questions
+                fields={publicData.fields}
+                locale={locale}
+                answers={answers}
+                setAnswers={setAnswers}
+              />
+            </details>
+          </Panel>
+        )}
+        {mode === "admin" && data?.context && (
+          <>
+            <p className="notice">{data.context.organization_name}</p>
+            <Panel title={t.forms}>
+              {!data.seasons?.length && <p>{t.closed}</p>}
+              <ul className="records">
+                {data.forms?.map((f) => (
+                  <li key={f.id}>
+                    <h3>{f.title}</h3>
+                    <p>
+                      {f.published
+                        ? t.formOpen
+                        : locale === "en"
+                          ? "Closed"
+                          : locale === "fr"
+                            ? "Fermé"
+                            : "Gesloten"}{" "}
+                      · {f.version}
+                    </p>
+                    <div className="actions">
+                      <Button onClick={() => setEditing("clone:" + f.id)}>
+                        {t.clone}
+                      </Button>
+                      <Button onClick={() => setEditing(f.id)}>{t.edit}</Button>
+                    </div>
+                    {f.published && (
+                      <>
+                        <p>
+                          <Link href={"/" + locale + "/inscription/" + f.id}>
+                            {t.public}
+                          </Link>
+                        </p>
+                        <details>
+                          <summary>{t.integration}</summary>
+                          <p>
+                            <a
+                              href={"/" + locale + "/inscription/" + f.id}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {t.public} ↗
+                            </a>
+                          </p>
+                          <code className="embed-code">{`<iframe title="${t.title}" src="${typeof window === "undefined" ? "" : window.location.origin}/${locale}/registration-widget/${f.id}" width="100%" height="260"></iframe>`}</code>
+                        </details>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <Button onClick={() => setEditing("new")}>{t.newForm}</Button>
+            </Panel>
+            <FormEditor
+              key={
+                editing +
+                "-" +
+                (data.forms?.find((f) => f.id === editing)?.version ?? 0)
+              }
+              locale={locale}
+              form={data.forms?.find((f) => f.id === editing)}
+              template={data.forms?.find((f) => "clone:" + f.id === editing)}
+              seasons={data.seasons ?? []}
+              busy={busy}
+              save={(body) =>
+                task(async () => {
+                  const result = await send(body);
+                  setEditing(result.id);
+                })
+              }
+            />
+          </>
+        )}
+        {data && mode !== "public" && (
+          <Panel title={mode === "admin" ? t.review : t.mine}>
+            <p className="muted">{t.limits}</p>
+            {mode === "admin" && (
+              <FieldLabel id="registration-filter" label={t.filter}>
+                <select
+                  id="registration-filter"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                >
+                  <option value="pending">{t.pending}</option>
+                  <option value="recent">{t.recent}</option>
+                  <option value="waiting">{sl.waiting}</option>
+                  <option value="refused">{sl.refused}</option>
+                  <option value="all">{t.all}</option>
+                </select>
+              </FieldLabel>
+            )}
+            <ul className="records">
+              {data.applications
+                .filter(
+                  (a) =>
+                    mode !== "admin" ||
+                    filter === "all" ||
+                    (filter === "pending"
+                      ? ["submitted", "incomplete", "review"].includes(a.status)
+                      : filter === "recent"
+                        ? a.status === "accepted" &&
+                          !!a.decided_at &&
+                          new Date(a.decided_at).getTime() > recentSince
+                        : a.status === filter),
+                )
+                .map((a) => (
+                  <li key={a.id}>
+                    <Button onClick={() => setSelected(a.id)}>
+                      {a.subject_name} · {sl[a.status]}
+                    </Button>
+                    <p>
+                      {a.organization_name} · {a.form_snapshot.title}
+                    </p>
+                  </li>
+                ))}
+            </ul>
+            {!data.applications.length && <p>{t.empty}</p>}
+          </Panel>
+        )}
+        {application && mode !== "public" && (
+          <Panel title={application.subject_name}>
+            <p>
+              {application.birth_date} · {sl[application.status]} ·{" "}
+              {application.form_snapshot.title}
+            </p>
+            {mode === "admin" && (
+              <p>
+                {application.applicant_name} · {application.applicant_email}
+              </p>
+            )}
+            <p>
+              {application.subject_kind === "self" ? t.self : t.represented}
+            </p>
+            <h3>{t.answers}</h3>
+            {mode === "mine" ? (
+              <>
+                <p>{t.draftHint}</p>
+                <form
+                  key={application.id + ":" + application.version}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const d = new FormData(e.currentTarget);
+                    void task(async () => {
+                      await send({
+                        action: "save",
+                        subjectName: d.get("subjectName"),
+                        birthDate: d.get("birthDate"),
+                        subjectKind: d.has("self") ? "self" : "represented",
+                        id: application.id,
+                        expectedVersion: application.version,
+                        answers,
+                      });
+                    });
+                  }}
+                >
+                  <FieldLabel id="edit-subject-name" label={t.name}>
+                    <input
+                      id="edit-subject-name"
+                      name="subjectName"
+                      defaultValue={application.subject_name}
+                      required
+                      minLength={2}
+                      maxLength={120}
+                      readOnly={
+                        !["draft", "incomplete"].includes(application.status)
+                      }
+                    />
+                  </FieldLabel>
+                  <FieldLabel id="edit-subject-birth" label={t.birth}>
+                    <input
+                      id="edit-subject-birth"
+                      name="birthDate"
+                      type="date"
+                      defaultValue={application.birth_date}
+                      required
+                      readOnly={
+                        !["draft", "incomplete"].includes(application.status)
+                      }
+                    />
+                  </FieldLabel>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      name="self"
+                      defaultChecked={application.subject_kind === "self"}
+                      disabled={
+                        !["draft", "incomplete"].includes(application.status)
+                      }
+                    />
+                    {t.self}
+                  </label>
+                  <Questions
+                    locale={locale}
+                    fields={application.form_snapshot.fields}
+                    answers={answers}
+                    setAnswers={setAnswers}
+                    disabled={
+                      !["draft", "incomplete"].includes(application.status)
+                    }
+                  />
+                  {["draft", "incomplete"].includes(application.status) && (
+                    <Button disabled={busy}>{t.save}</Button>
+                  )}
+                </form>
+              </>
+            ) : (
+              <dl>
+                {application.form_snapshot.fields
+                  .filter(
+                    (f) =>
+                      f.type !== "file" && fieldVisible(f, application.answers),
+                  )
+                  .map((f) => (
+                    <div key={f.key}>
+                      <dt>{f.label[locale] || f.label.fr}</dt>
+                      <dd>
+                        {typeof application.answers[f.key] === "boolean"
+                          ? application.answers[f.key]
+                            ? t.yes
+                            : t.no
+                          : String(application.answers[f.key] ?? "—")}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+            )}
+            <h3>{t.attachments}</h3>
+            <p>{t.fileHint}</p>
+            <ul>
+              {application.attachments.map((f) => (
+                <li key={f.id}>
+                  <a
+                    href={
+                      "/api/registrations/file/" +
+                      f.id +
+                      (mode === "admin"
+                        ? "?organizationId=" + application.organization_id
+                        : "")
+                    }
+                  >
+                    {f.filename}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            {!application.attachments.length && <p>{t.noFiles}</p>}
+            {mode === "mine" &&
+              ["draft", "incomplete"].includes(application.status) &&
+              application.form_snapshot.fields
+                .filter(
+                  (f) =>
+                    f.type === "file" && fieldVisible(f, application.answers),
+                )
+                .map((f) => (
+                  <form
+                    key={f.key}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const d = new FormData(e.currentTarget);
+                      d.set("key", f.key);
+                      d.set("version", String(application.version));
+                      void task(async () => {
+                        const r = await fetch(
+                          "/api/registrations/file/" + application.id,
+                          { method: "POST", body: d },
+                        );
+                        if (!r.ok) throw new Error((await r.json()).error);
+                      });
+                    }}
+                  >
+                    <FieldLabel
+                      id={"file-" + f.key}
+                      label={f.label[locale] || f.label.fr}
+                    >
+                      <input
+                        id={"file-" + f.key}
+                        name="file"
+                        type="file"
+                        accept="application/pdf,image/png,image/jpeg"
+                        required
+                      />
+                    </FieldLabel>
+                    <Button disabled={busy}>{t.upload}</Button>
+                  </form>
+                ))}
+            {mode === "mine" && (
+              <div className="actions">
+                {["draft", "incomplete"].includes(application.status) && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void task(async () => {
+                        await send({
+                          action: "submit",
+                          id: application.id,
+                          expectedVersion: application.version,
+                        });
+                      })
+                    }
+                  >
+                    {t.submit}
+                  </Button>
+                )}
+                {[
+                  "draft",
+                  "submitted",
+                  "incomplete",
+                  "review",
+                  "waiting",
+                ].includes(application.status) && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void task(async () => {
+                        await send({
+                          action: "withdraw",
+                          id: application.id,
+                          expectedVersion: application.version,
+                        });
+                      })
+                    }
+                  >
+                    {t.withdraw}
+                  </Button>
+                )}
+              </div>
+            )}
+            {mode === "admin" && (
+              <>
+                <p>{t.matchHint}</p>
+                {["submitted", "incomplete", "review", "waiting"].includes(
+                  application.status,
+                ) && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const d = new FormData(e.currentTarget);
+                      void task(async () => {
+                        await send({
+                          action: "decision",
+                          id: application.id,
+                          expectedVersion: application.version,
+                          status: d.get("status"),
+                          message: d.get("message"),
+                          profileId: d.get("profile") || undefined,
+                          teamId: d.get("team") || undefined,
+                          confirmDuplicate: d.has("confirm"),
+                        });
+                      });
+                    }}
+                  >
+                    <FieldLabel id="decision-status" label={t.status}>
+                      <select
+                        id="decision-status"
+                        name="status"
+                        defaultValue="review"
+                      >
+                        {(
+                          [
+                            "review",
+                            "incomplete",
+                            "waiting",
+                            "accepted",
+                            "refused",
+                          ] as const
+                        ).map((v) => (
+                          <option key={v} value={v}>
+                            {sl[v]}
+                          </option>
+                        ))}
+                      </select>
+                    </FieldLabel>
+                    <FieldLabel id="decision-message" label={t.message}>
+                      <textarea
+                        id="decision-message"
+                        name="message"
+                        maxLength={3000}
+                      />
+                    </FieldLabel>
+                    <FieldLabel id="decision-profile" label={t.profile}>
+                      <select id="decision-profile" name="profile">
+                        <option value="">{t.newProfile}</option>
+                        {data?.profiles?.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.full_name} · {p.birth_date}
+                          </option>
+                        ))}
+                      </select>
+                    </FieldLabel>
+                    <label className="check">
+                      <input type="checkbox" name="confirm" />
+                      {t.confirm}
+                    </label>
+                    <FieldLabel id="decision-team" label={t.team}>
+                      <select id="decision-team" name="team">
+                        <option value="">{t.noTeam}</option>
+                        {data?.teams
+                          ?.filter(
+                            (team) => team.season_id === application.season_id,
+                          )
+                          .map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                            </option>
+                          ))}
+                      </select>
+                    </FieldLabel>
+                    <Button disabled={busy}>{t.decide}</Button>
+                  </form>
+                )}
+                <h3>{t.notes}</h3>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const d = new FormData(form);
+                    void task(async () => {
+                      await send({
+                        action: "note",
+                        id: application.id,
+                        message: d.get("note"),
+                      });
+                      form.reset();
+                    });
+                  }}
+                >
+                  <FieldLabel id="internal-note" label={t.note}>
+                    <textarea
+                      id="internal-note"
+                      name="note"
+                      required
+                      minLength={2}
+                      maxLength={3000}
+                    />
+                  </FieldLabel>
+                  <Button disabled={busy}>{t.addNote}</Button>
+                </form>
+              </>
+            )}
+            {application.status === "accepted" && (
+              <p className="notice">{t.followup}</p>
+            )}
+            <h3>{t.history}</h3>
+            <ol>
+              {application.history.map((h) => (
+                <li key={h.id}>
+                  <strong>{sl[h.status]}</strong> ·{" "}
+                  {new Intl.DateTimeFormat(
+                    locale === "en"
+                      ? "en-GB"
+                      : locale === "fr"
+                        ? "fr-BE"
+                        : "nl-BE",
+                    { dateStyle: "short", timeStyle: "short" },
+                  ).format(new Date(h.created_at))}{" "}
+                  · {t.by} {h.actor}
+                  {h.internal && " · " + t.internal}
+                  {h.message && <p>{h.message}</p>}
+                </li>
+              ))}
+            </ol>
+          </Panel>
+        )}
+        <Button disabled={busy} onClick={() => void task(load)}>
+          {t.refresh}
+        </Button>
+      </main>
+    </>
+  );
+}

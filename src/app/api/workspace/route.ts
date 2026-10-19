@@ -1,0 +1,62 @@
+import { getAuth } from "@/lib/auth-server";
+import { getDb } from "@/lib/db";
+import {
+  workspace,
+  execute,
+  commandSchema,
+  AccessError,
+} from "@/domains/access/service";
+import { ZodError } from "zod";
+export const dynamic = "force-dynamic";
+const headers = { "Cache-Control": "no-store" };
+async function principal(request: Request) {
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  if (!session) throw new AccessError("UNAUTHENTICATED", 401);
+  return { userId: session.user.id, sessionId: session.session.id };
+}
+function failure(e: unknown) {
+  if (e instanceof AccessError)
+    return Response.json({ error: e.code }, { status: e.status, headers });
+  if (e instanceof ZodError)
+    return Response.json({ error: "INVALID_INPUT" }, { status: 400, headers });
+  console.error(
+    "Workspace request failed",
+    e instanceof Error ? e.name : "unknown",
+  );
+  return Response.json({ error: "UNAVAILABLE" }, { status: 503, headers });
+}
+export async function GET(request: Request) {
+  try {
+    return Response.json(await workspace(getDb(), await principal(request)), {
+      headers,
+    });
+  } catch (e) {
+    return failure(e);
+  }
+}
+export async function POST(request: Request) {
+  try {
+    if (request.headers.get("origin") !== process.env.BETTER_AUTH_URL)
+      throw new AccessError("INVALID_ORIGIN");
+    if (Number(request.headers.get("content-length")) > 10000)
+      throw new AccessError("INVALID_INPUT", 400);
+    const text = await request.text();
+    if (text.length > 10000) throw new AccessError("INVALID_INPUT", 400);
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new AccessError("INVALID_INPUT", 400);
+    }
+    return Response.json(
+      await execute(
+        getDb(),
+        await principal(request),
+        commandSchema.parse(body),
+      ),
+      { headers },
+    );
+  } catch (e) {
+    return failure(e);
+  }
+}
