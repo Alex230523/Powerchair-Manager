@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type {
   clubLicensesView,
@@ -9,79 +9,9 @@ import type {
 } from "@/domains/federation/service";
 import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
+import { useData, usePost } from "./use-api";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
-const deniedCodes = [
-  "FORBIDDEN",
-  "FEDERATION_ONLY",
-  "CLUB_ONLY",
-  "CONTEXT_REQUIRED",
-  "MFA_REQUIRED",
-];
-
-/** First load inline in the effect (React rule), reload after each command. */
-function useData<T>(url: string, failure: (c: string) => string) {
-  const [data, setData] = useState<T | null>(null),
-    [error, setError] = useState(""),
-    [denied, setDenied] = useState(false);
-  const reload = useCallback(async () => {
-    const r = await fetch(url, { cache: "no-store" });
-    const v = await r.json();
-    if (!r.ok) throw new Error(v.error);
-    setData(v);
-  }, [url]);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(url, { cache: "no-store" })
-      .then(async (r) => {
-        const v = await r.json();
-        if (!r.ok) throw new Error(v.error);
-        if (!cancelled) setData(v);
-      })
-      .catch((e: Error) => {
-        if (cancelled) return;
-        if (deniedCodes.includes(e.message)) setDenied(true);
-        else setError(failure(e.message));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [url, failure]);
-  return { data, error, setError, denied, reload };
-}
-function usePost(
-  url: string,
-  reload: () => Promise<void>,
-  setError: (s: string) => void,
-  failure: (c: string) => string,
-) {
-  const [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
-  async function post(body: Record<string, unknown>, done: string) {
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const v = await r.json();
-      if (!r.ok) throw new Error(v.error);
-      await reload();
-      setMessage(done);
-      return true;
-    } catch (e) {
-      setError(failure(e instanceof Error ? e.message : ""));
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-  return { busy, message, post };
-}
-
 export function ClubLicenses({ locale }: { locale: Locale }) {
   const t = licensesCopy[locale];
   const failure = useCallback(

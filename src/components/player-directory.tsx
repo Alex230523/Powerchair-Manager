@@ -9,6 +9,7 @@ import { errors } from "./access-copy";
 import { Button } from "./ui";
 import { Modal } from "./modal";
 import { PlayerImport } from "./player-import";
+import { ShowMore, useShowMore } from "./use-api";
 const copy = {
   fr: {
     players: "Joueurs",
@@ -254,6 +255,7 @@ export function PlayerDirectory({
         (!minimum ||
           (r.birth_date && ageOn(r.birth_date, today) >= Number(minimum))),
     ) ?? [];
+  const { visible: shownRoster, more: moreRoster } = useShowMore(roster);
   const person = data?.profiles.find((r) => r.id === selected),
     manager = !!data?.capabilities.peopleManage,
     teamsManage = !!data?.capabilities.teamsManage;
@@ -509,7 +511,7 @@ export function PlayerDirectory({
                 </tr>
               </thead>
               <tbody>
-                {roster.map((r) => (
+                {shownRoster.map((r) => (
                   <tr key={r.id}>
                     <th scope="row">
                       <button
@@ -593,6 +595,7 @@ export function PlayerDirectory({
                 ))}
               </tbody>
             </table>
+            <ShowMore locale={locale} {...moreRoster} />
             {!roster.length && <p className="empty-directory">{p.empty}</p>}
           </div>
           {manager && !former && (

@@ -60,6 +60,7 @@ export function FinanceReport({
           {x.back}
         </Link>
       </p>
+      {!report && <h1>{x.report}</h1>}
       {error && <p role="alert">{error}</p>}
       {!report && !error && <p role="status">…</p>}
       {report && (

@@ -8,7 +8,34 @@ import { actuals, responses } from "@/domains/attendance/schema";
 import { kindLabels } from "./calendar-copy";
 import { localAt, shiftLocal, toInstant } from "@/domains/calendar/time";
 import type { attendanceView } from "@/domains/attendance/service";
+import {
+  flushMarks,
+  loadSnapshot,
+  pendingMarks,
+  queueMark,
+  saveSnapshot,
+} from "@/lib/offline-queue";
 type View = Awaited<ReturnType<typeof attendanceView>>;
+const offlineCopy = {
+  fr: {
+    queued: "Hors ligne : pointage gardé sur cet appareil, il sera envoyé au retour du réseau.",
+    pending: "{n} pointage(s) en attente d'envoi.",
+    synced: "Réseau retrouvé : {sent} pointage(s) envoyé(s), {refused} refusé(s) car le registre a changé.",
+    snapshot: "Hors ligne : données du {date}. Les pointages seront envoyés au retour du réseau.",
+  },
+  nl: {
+    queued: "Offline: aanwezigheid op dit toestel bewaard, ze wordt verstuurd zodra er weer netwerk is.",
+    pending: "{n} aanwezigheid/aanwezigheden wachten op verzending.",
+    synced: "Netwerk terug: {sent} verstuurd, {refused} geweigerd omdat het register veranderde.",
+    snapshot: "Offline: gegevens van {date}. De aanwezigheden worden verstuurd zodra er weer netwerk is.",
+  },
+  en: {
+    queued: "Offline: attendance kept on this device, it will be sent when the network is back.",
+    pending: "{n} mark(s) waiting to be sent.",
+    synced: "Network back: {sent} mark(s) sent, {refused} refused because the register changed.",
+    snapshot: "Offline: data from {date}. Marks will be sent when the network is back.",
+  },
+};
 export function Attendance({ locale }: { locale: Locale }) {
   const t = attendanceCopy[locale],
     today = localAt(new Date(), "Europe/Brussels");
@@ -21,7 +48,9 @@ export function Attendance({ locale }: { locale: Locale }) {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
-    [revision, setRevision] = useState(0);
+    [revision, setRevision] = useState(0),
+    [pending, setPending] = useState(0),
+    [offlineView, setOfflineView] = useState<number | null>(null);
   const explain = useCallback(
     (code: string) => t.errors[code as keyof typeof t.errors] ?? t.error,
     [t],
@@ -40,20 +69,76 @@ export function Attendance({ locale }: { locale: Locale }) {
         if (!r.ok) throw new Error(body.error);
         setData(body);
         setError("");
+        setOfflineView(null);
+        // Kept 24 hours on this device to take attendance without network.
+        saveSnapshot([from, to, team].join("|"), body);
       })
       .catch((e) => {
-        if (!abort.signal.aborted) {
+        if (abort.signal.aborted) return;
+        const snapshot =
+          e instanceof TypeError
+            ? loadSnapshot<View>([from, to, team].join("|"))
+            : null;
+        if (snapshot) {
+          setData(snapshot.data);
+          setOfflineView(snapshot.savedAt);
+          setError("");
+        } else {
           setData(null);
-          setError(explain(e.message));
+          setError(e instanceof TypeError ? t.offline : explain(e.message));
         }
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
       });
     return () => abort.abort();
+    // t.offline is static copy.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, team, revision, explain]);
+  // Marks taken offline are sent as soon as the connection comes back.
+  useEffect(() => {
+    const flush = () =>
+      flushMarks((body) =>
+        fetch("/api/attendance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      ).then((result) => {
+        setPending(result.left);
+        if (result.sent || result.refused) {
+          setRevision((v) => v + 1);
+          setMessage(
+            offlineCopy[locale].synced
+              .replace("{sent}", String(result.sent))
+              .replace("{refused}", String(result.refused)),
+          );
+        }
+      });
+    queueMicrotask(() => setPending(pendingMarks().length));
+    if (navigator.onLine) void flush();
+    window.addEventListener("online", flush);
+    return () => window.removeEventListener("online", flush);
+  }, [locale]);
+  /** Offline mark: kept on the device and shown at once. */
+  function markOffline(body: Record<string, unknown>) {
+    if (!data) return;
+    const id = String(body.id);
+    setPending(queueMark(id, { ...body, organizationId: data.context.organization_id }));
+    setData({
+      ...data,
+      events: data.events.map((ev) => ({
+        ...ev,
+        invitations: ev.invitations.map((i) =>
+          i.id === id ? { ...i, actual: String(body.actual) } : i,
+        ),
+      })),
+    } as View);
+    setMessage(offlineCopy[locale].queued);
+  }
   async function command(body: Record<string, unknown>) {
     if (!data || busy) return;
+    if (body.action === "mark" && !navigator.onLine) return markOffline(body);
     setBusy(true);
     setError("");
     setMessage("");
@@ -71,11 +156,13 @@ export function Attendance({ locale }: { locale: Locale }) {
       setRevision((v) => v + 1);
       setMessage(t.saved);
     } catch (e) {
-      setError(
-        e instanceof TypeError
-          ? t.offline
-          : explain(e instanceof Error ? e.message : ""),
-      );
+      if (e instanceof TypeError && body.action === "mark") markOffline(body);
+      else
+        setError(
+          e instanceof TypeError
+            ? t.offline
+            : explain(e instanceof Error ? e.message : ""),
+        );
     } finally {
       setBusy(false);
     }
@@ -114,6 +201,22 @@ export function Attendance({ locale }: { locale: Locale }) {
           </p>
         )}
         {message && <p role="status">{message}</p>}
+        {offlineView && (
+          <p className="notice">
+            {offlineCopy[locale].snapshot.replace(
+              "{date}",
+              new Date(offlineView).toLocaleString(
+                locale === "en" ? "en-GB" : `${locale}-BE`,
+                { timeZone: "Europe/Brussels" },
+              ),
+            )}
+          </p>
+        )}
+        {pending > 0 && (
+          <p className="notice">
+            {offlineCopy[locale].pending.replace("{n}", String(pending))}
+          </p>
+        )}
         <Panel title={t.calendar}>
           <div className="form-grid">
             <label>
