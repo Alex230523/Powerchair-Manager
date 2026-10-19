@@ -113,7 +113,8 @@ async function duesRows(s: Scope, today: string) {
   const rows = (
     await s.c.query(
       `SELECT d.id,d.profile_id,cp.full_name,d.category,d.net_cents,
-              COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments
+              COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments,
+              (SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents
          FROM dues_receivable d JOIN club_person cp ON cp.id=d.profile_id
         WHERE d.organization_id=$1 AND d.status='open' AND cp.status='active' ORDER BY cp.full_name`,
       [s.org],
@@ -125,9 +126,13 @@ async function duesRows(s: Scope, today: string) {
     category: string;
     net_cents: number;
     installments: Installment[];
+    paid_cents: number;
   }[];
   return rows
-    .map((r) => ({ ...r, ...duesStatus(r.installments, today) }))
+    .map((r) => ({
+      ...r,
+      ...duesStatus(r.installments, today, 14, r.paid_cents),
+    }))
     .filter((r) => r.concerned);
 }
 async function documentRows(s: Scope) {

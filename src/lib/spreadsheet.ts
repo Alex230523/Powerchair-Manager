@@ -249,6 +249,39 @@ const aliases: Record<string, string[]> = {
     "rugnummer",
     "nummer",
   ],
+  team: ["equipe", "team", "ploeg"],
+  guardianName: [
+    "parent",
+    "nomduparent",
+    "representant",
+    "nomdurepresentant",
+    "parentourepresentant",
+    "responsable",
+    "guardian",
+    "parentname",
+    "ouder",
+    "naamouder",
+    "vertegenwoordiger",
+  ],
+  guardianEmail: [
+    "emailparent",
+    "emailduparent",
+    "emailrepresentant",
+    "parentemail",
+    "guardianemail",
+    "emailouder",
+  ],
+  guardianPhone: [
+    "telephoneparent",
+    "telephoneduparent",
+    "telparent",
+    "gsmparent",
+    "telephonerepresentant",
+    "parentphone",
+    "guardianphone",
+    "telefoonouder",
+    "gsmouder",
+  ],
 };
 export const templateHeaders = [
   "Nom complet",
@@ -258,6 +291,10 @@ export const templateHeaders = [
   "Date d'arrivée",
   "Poste",
   "Numéro",
+  "Équipe",
+  "Parent",
+  "Email parent",
+  "Téléphone parent",
 ];
 
 /** Excel serial day (1900 system) or a written date to YYYY-MM-DD. */
@@ -335,6 +372,9 @@ export function rowsFromGrid(grid: Grid, today: string) {
       )
     )
       return issues.push({ line, field: "jerseyNumber" });
+    const guardianEmail = get("guardianEmail").toLowerCase();
+    if (guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail))
+      return issues.push({ line, field: "guardianEmail" });
     rows.push({
       fullName,
       birthDate,
@@ -343,6 +383,10 @@ export function rowsFromGrid(grid: Grid, today: string) {
       joinedOn: joined,
       position: get("position").slice(0, 80),
       jerseyNumber,
+      team: get("team").slice(0, 100),
+      guardianName: get("guardianName").replace(/\s+/g, " ").slice(0, 120),
+      guardianEmail,
+      guardianPhone: get("guardianPhone").slice(0, 40),
     });
   });
   return { rows, issues, recognised };

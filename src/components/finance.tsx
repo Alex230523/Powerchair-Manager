@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { financeView } from "@/domains/finance/service";
 import { categories, methods } from "@/domains/finance/schema";
-import { financeCopy } from "./finance-copy";
+import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 
@@ -12,7 +12,8 @@ type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 export function Finance({ locale }: { locale: Locale }) {
-  const t = financeCopy[locale];
+  const t = financeCopy[locale],
+    x = financeExtras[locale];
   const [view, setView] = useState<View | null>(null),
     [denied, setDenied] = useState(false),
     [error, setError] = useState(""),
@@ -22,7 +23,9 @@ export function Finance({ locale }: { locale: Locale }) {
     [cancelling, setCancelling] = useState(""),
     [q, setQ] = useState(""),
     [direction, setDirection] = useState(""),
-    [category, setCategory] = useState("");
+    [category, setCategory] = useState(""),
+    [editingBudget, setEditingBudget] = useState(false),
+    [reportSeason, setReportSeason] = useState("");
   const money = (cents: number) =>
     new Intl.NumberFormat(tag(locale), {
       style: "currency",
@@ -99,12 +102,15 @@ export function Finance({ locale }: { locale: Locale }) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const value = (k: string) => String(f.get(k) ?? "").trim();
+    const receivableId = value("receivable") || null;
     void send({
       action: "record",
       occurredOn: value("date"),
       label: value("label"),
-      direction: value("direction"),
-      category: value("category"),
+      // A dues payment is always an income of the "dues" category.
+      direction: receivableId ? "in" : value("direction"),
+      category: receivableId ? "dues" : value("category"),
+      receivableId,
       amountCents: Math.round(Number(value("amount").replace(",", ".")) * 100),
       method: value("method"),
       counterparty: value("counterparty"),
@@ -113,6 +119,52 @@ export function Finance({ locale }: { locale: Locale }) {
     }).then((ok) => ok && setAdding(false));
   }
 
+  async function attach(transactionId: string, file: File) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const d = new FormData();
+      d.set("file", file);
+      d.set("organizationId", view?.organization_id ?? "");
+      const r = await fetch("/api/finance/receipt/" + transactionId, {
+        method: "POST",
+        body: d,
+      });
+      const v = await r.json();
+      if (!r.ok) throw new Error(v.error);
+      await load();
+      setMessage(x.attached);
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      setError(errors[code]?.[locale] ?? code);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function saveBudget(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const lines = (["in", "out"] as const).flatMap((direction) =>
+      categories.map((c) => ({
+        direction,
+        category: c,
+        amountCents: Math.round(
+          Number(
+            String(f.get(`${direction}-${c}`) ?? "0").replace(",", ".") || 0,
+          ) * 100,
+        ),
+      })),
+    );
+    void send({ action: "budget", season: view?.season.label, lines }).then(
+      (ok) => {
+        if (ok) {
+          setEditingBudget(false);
+          setMessage(x.budgetSaved);
+        }
+      },
+    );
+  }
   const entries =
     view?.entries.filter(
       (e) =>
@@ -234,6 +286,8 @@ export function Finance({ locale }: { locale: Locale }) {
               <span className="metric-value">{money(view.dues.season)}</span>
               <span className="metric-hint">
                 {t.duesHint.replace("{amount}", money(view.dues.next30))}
+                {view.dues.collected > 0 &&
+                  ` · ${x.collected.replace("{amount}", money(view.dues.collected))}`}
               </span>
             </li>
           </ul>
@@ -337,6 +391,28 @@ export function Finance({ locale }: { locale: Locale }) {
                     />
                   </label>
                 </div>
+                {view.receivables.length > 0 && (
+                  <label htmlFor="fin-receivable">
+                    {x.payment}
+                    <select
+                      id="fin-receivable"
+                      name="receivable"
+                      defaultValue=""
+                      aria-describedby="fin-receivable-hint"
+                    >
+                      <option value="">{x.paymentNone}</option>
+                      {view.receivables.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.full_name} · {r.category} · {x.left}{" "}
+                          {money(Math.max(0, r.net_cents - r.paid_cents))}
+                        </option>
+                      ))}
+                    </select>
+                    <span id="fin-receivable-hint" className="muted">
+                      {x.paymentHint}
+                    </span>
+                  </label>
+                )}
                 <label htmlFor="fin-notes">
                   {t.notes}
                   <textarea id="fin-notes" name="notes" maxLength={2000} />
@@ -380,6 +456,110 @@ export function Finance({ locale }: { locale: Locale }) {
               </ul>
             </section>
           )}
+
+          <section className="panel" aria-labelledby="finance-budget">
+            <div className="panel-head">
+              <h2 id="finance-budget">
+                {x.budget} · {view.season.label}
+              </h2>
+              <button
+                type="button"
+                className="button secondary"
+                aria-expanded={editingBudget}
+                onClick={() => setEditingBudget(!editingBudget)}
+              >
+                {editingBudget ? t.close : x.editBudget}
+              </button>
+            </div>
+            <p className="muted">{x.budgetIntro}</p>
+            {editingBudget ? (
+              <form className="budget-form" onSubmit={saveBudget}>
+                {(["in", "out"] as const).map((direction) => (
+                  <fieldset key={direction}>
+                    <legend>{direction === "in" ? t.in : t.out}</legend>
+                    {categories.map((c) => (
+                      <label key={c} htmlFor={`budget-${direction}-${c}`}>
+                        {t.categories[c]}
+                        <input
+                          id={`budget-${direction}-${c}`}
+                          name={`${direction}-${c}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputMode="decimal"
+                          defaultValue={
+                            (view.budget.find(
+                              (l) =>
+                                l.direction === direction && l.category === c,
+                            )?.amount_cents ?? 0) / 100 || ""
+                          }
+                        />
+                      </label>
+                    ))}
+                  </fieldset>
+                ))}
+                <button className="button" disabled={busy}>
+                  {x.saveBudget}
+                </button>
+              </form>
+            ) : view.comparison.length ? (
+              <div
+                className="table-scroll"
+                role="region"
+                aria-label={x.budget}
+                tabIndex={0}
+              >
+                <table className="ledger budget-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t.category}</th>
+                      <th scope="col">{t.direction}</th>
+                      <th scope="col" className="num">
+                        {x.planned}
+                      </th>
+                      <th scope="col" className="num">
+                        {x.actual}
+                      </th>
+                      <th scope="col" className="num">
+                        {x.gap}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {view.comparison.map((r) => (
+                      <tr key={r.direction + r.category}>
+                        <td>{t.categories[r.category] ?? r.category}</td>
+                        <td>{r.direction === "in" ? t.in : t.out}</td>
+                        <td className="num">
+                          {r.planned ? money(r.planned) : ""}
+                        </td>
+                        <td className="num">
+                          {money(r.actual)}
+                          {r.ratio !== null && (
+                            <span className="muted">
+                              {" "}
+                              · {r.ratio} % {x.used}
+                            </span>
+                          )}
+                        </td>
+                        <td
+                          className={
+                            "num " + (r.gap >= 0 ? "amount-in" : "amount-out")
+                          }
+                        >
+                          {r.planned
+                            ? (r.gap >= 0 ? "+" : "−") + money(Math.abs(r.gap))
+                            : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="muted">{x.noBudget}</p>
+            )}
+          </section>
 
           <section aria-labelledby="finance-history">
             <h2 id="finance-history">{t.history}</h2>
@@ -438,6 +618,7 @@ export function Finance({ locale }: { locale: Locale }) {
                       <th scope="col" className="num">
                         {t.amount}
                       </th>
+                      <th scope="col">{x.receipts}</th>
                       <th scope="col">
                         <span className="sr-only">{t.cancel}</span>
                       </th>
@@ -477,6 +658,54 @@ export function Finance({ locale }: { locale: Locale }) {
                         >
                           {e.direction === "in" ? "+" : "−"}
                           {money(e.amount_cents)}
+                        </td>
+                        <td>
+                          <ul className="receipt-list">
+                            {e.receipts.map((r) => (
+                              <li key={r.id}>
+                                <a
+                                  href={`/api/finance/receipt/${r.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {r.filename}
+                                </a>
+                                <button
+                                  type="button"
+                                  className="text-button"
+                                  disabled={busy}
+                                  aria-label={`${x.removeReceipt} : ${r.filename}`}
+                                  onClick={() =>
+                                    void send({
+                                      action: "removeReceipt",
+                                      id: r.id,
+                                    })
+                                  }
+                                >
+                                  ×
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                          {!e.cancelled_at && (
+                            <label className="text-button file-button">
+                              {x.attach}
+                              <span className="sr-only">
+                                {" "}
+                                : {x.attachLabel}, {e.label}
+                              </span>
+                              <input
+                                type="file"
+                                accept="application/pdf,image/png,image/jpeg,image/webp"
+                                disabled={busy}
+                                onChange={(ev) => {
+                                  const file = ev.target.files?.[0];
+                                  if (file) void attach(e.id, file);
+                                  ev.target.value = "";
+                                }}
+                              />
+                            </label>
+                          )}
                         </td>
                         <td>
                           {!e.cancelled_at &&
@@ -537,6 +766,41 @@ export function Finance({ locale }: { locale: Locale }) {
             )}
           </section>
         </>
+      )}
+
+      {view && (
+        <section className="panel" aria-labelledby="finance-report">
+          <h2 id="finance-report">{x.report}</h2>
+          <p className="muted">{x.reportIntro}</p>
+          <div className="inline-form">
+            <label htmlFor="report-season">
+              {x.reportSeason}
+              <select
+                id="report-season"
+                value={reportSeason || view.season.label}
+                onChange={(e) => setReportSeason(e.target.value)}
+              >
+                {view.seasons.map((season) => (
+                  <option key={season} value={season}>
+                    {season}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Link
+              className="button"
+              href={`/${locale}/funding/report?season=${reportSeason || view.season.label}`}
+            >
+              {x.openReport}
+            </Link>
+            <a
+              className="button secondary"
+              href={`/api/finance/report?format=csv&season=${reportSeason || view.season.label}`}
+            >
+              {x.csv}
+            </a>
+          </div>
+        </section>
       )}
 
       <section className="panel" aria-labelledby="finance-dues">

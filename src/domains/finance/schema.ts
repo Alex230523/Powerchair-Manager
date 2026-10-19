@@ -26,7 +26,23 @@ export const commandSchema = z.discriminatedUnion("action", [
     counterparty: text(160),
     reference: text(160),
     notes: text(2000),
+    /** Dues receivable paid by this income line (category "dues" only). */
+    receivableId: z.uuid().nullable().optional(),
   }),
+  z.object({
+    action: z.literal("budget"),
+    season: z.string().regex(/^\d{4}-\d{2}$/),
+    lines: z
+      .array(
+        z.object({
+          direction: z.enum(["in", "out"]),
+          category: z.enum(categories),
+          amountCents: z.number().int().min(0).max(100000000),
+        }),
+      )
+      .max(categories.length * 2),
+  }),
+  z.object({ action: z.literal("removeReceipt"), id: z.uuid() }),
   z.object({
     action: z.literal("cancel"),
     id: z.uuid(),
@@ -72,3 +88,72 @@ export function seasonOf(day: string) {
     label: `${start}-${String(start + 1).slice(2)}`,
   };
 }
+
+/** Bounds of a season label such as "2026-27". */
+export function seasonBounds(label: string) {
+  const start = Number(label.slice(0, 4));
+  return { from: `${start}-07-01`, to: `${start + 1}-06-30`, label };
+}
+
+export type BudgetLine = {
+  direction: "in" | "out";
+  category: string;
+  amount_cents: number;
+};
+/**
+ * Planned against actual per category and direction. The gap is positive when
+ * the club does better than planned (more income, or less spending).
+ */
+export function budgetComparison(
+  lines: BudgetLine[],
+  actual: Record<string, { in: number; out: number }>,
+) {
+  const keys = new Set<string>();
+  for (const l of lines) keys.add(l.direction + ":" + l.category);
+  for (const [category, v] of Object.entries(actual)) {
+    if (v.in) keys.add("in:" + category);
+    if (v.out) keys.add("out:" + category);
+  }
+  return [...keys]
+    .map((key) => {
+      const [direction, category] = key.split(":") as ["in" | "out", string];
+      const planned =
+        lines.find((l) => l.direction === direction && l.category === category)
+          ?.amount_cents ?? 0;
+      const real = actual[category]?.[direction] ?? 0;
+      return {
+        direction,
+        category,
+        planned,
+        actual: real,
+        gap: direction === "in" ? real - planned : planned - real,
+        /** Share of the plan already used, null without a plan. */
+        ratio: planned ? Math.round((real / planned) * 100) : null,
+      };
+    })
+    .sort((a, b) =>
+      a.direction === b.direction
+        ? a.category.localeCompare(b.category)
+        : a.direction === "in"
+          ? -1
+          : 1,
+    );
+}
+
+/** Checks the file signature of a receipt, not only its declared type. */
+export function receiptType(bytes: Uint8Array) {
+  const hex = (n: number) =>
+    Array.from(bytes.subarray(0, n), (b) =>
+      b.toString(16).padStart(2, "0"),
+    ).join("");
+  if (hex(4) === "25504446") return "application/pdf";
+  if (hex(8) === "89504e470d0a1a0a") return "image/png";
+  if (hex(3) === "ffd8ff") return "image/jpeg";
+  if (
+    String.fromCharCode(...bytes.subarray(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.subarray(8, 12)) === "WEBP"
+  )
+    return "image/webp";
+  return null;
+}
+export const receiptMaxBytes = 5 * 1024 * 1024;

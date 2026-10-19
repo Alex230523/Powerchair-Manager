@@ -32,6 +32,7 @@ const copy = {
       joinedOn: "date d'arrivée invalide",
       email: "e-mail invalide",
       jerseyNumber: "numéro invalide (0 à 99)",
+      guardianEmail: "e-mail du parent invalide",
     } as Record<string, string>,
     preview: "Aperçu",
     more: "et {n} autres",
@@ -42,6 +43,15 @@ const copy = {
     number: "N°",
     submit: "Importer {n} joueurs",
     done: "{created} joueurs ajoutés, {skipped} déjà présents ignorés.",
+    coachTitle: "Importer des coachs",
+    coachSubmit: "Importer {n} coachs",
+    coachDone: "{created} coachs ajoutés, {skipped} déjà présents ignorés.",
+    extra:
+      " {guardians} parents ou représentants enregistrés (à vérifier dans Gestion du club).",
+    unknownTeams:
+      " {unknown} équipes du fichier introuvables : ces lignes ont reçu l'équipe choisie ci-dessus.",
+    team2: "Équipe",
+    guardian: "Parent",
     tooMany: "Maximum {n} joueurs par import : découpez le fichier.",
     unreadable:
       "Ce fichier n'a pas pu être lu. Enregistrez-le en .xlsx ou .csv.",
@@ -66,6 +76,7 @@ const copy = {
       joinedOn: "ongeldige aansluitingsdatum",
       email: "ongeldig e-mailadres",
       jerseyNumber: "ongeldig nummer (0 tot 99)",
+      guardianEmail: "ongeldig e-mailadres van de ouder",
     } as Record<string, string>,
     preview: "Voorbeeld",
     more: "en {n} andere",
@@ -76,6 +87,16 @@ const copy = {
     number: "Nr.",
     submit: "{n} spelers importeren",
     done: "{created} spelers toegevoegd, {skipped} reeds aanwezig overgeslagen.",
+    coachTitle: "Coaches importeren",
+    coachSubmit: "{n} coaches importeren",
+    coachDone:
+      "{created} coaches toegevoegd, {skipped} reeds aanwezig overgeslagen.",
+    extra:
+      " {guardians} ouders of vertegenwoordigers geregistreerd (na te kijken in Clubbeheer).",
+    unknownTeams:
+      " {unknown} teams uit het bestand niet gevonden: die rijen kregen het hierboven gekozen team.",
+    team2: "Team",
+    guardian: "Ouder",
     tooMany: "Maximaal {n} spelers per import: splits het bestand.",
     unreadable:
       "Dit bestand kon niet gelezen worden. Bewaar het als .xlsx of .csv.",
@@ -100,6 +121,7 @@ const copy = {
       joinedOn: "invalid joining date",
       email: "invalid email",
       jerseyNumber: "invalid number (0 to 99)",
+      guardianEmail: "invalid parent email",
     } as Record<string, string>,
     preview: "Preview",
     more: "and {n} more",
@@ -110,6 +132,15 @@ const copy = {
     number: "No.",
     submit: "Import {n} players",
     done: "{created} players added, {skipped} already listed skipped.",
+    coachTitle: "Import coaches",
+    coachSubmit: "Import {n} coaches",
+    coachDone: "{created} coaches added, {skipped} already listed skipped.",
+    extra:
+      " {guardians} parents or representatives recorded (to check in Club management).",
+    unknownTeams:
+      " {unknown} teams of the file were not found: those lines got the team chosen above.",
+    team2: "Team",
+    guardian: "Parent",
     tooMany: "At most {n} players per import: split the file.",
     unreadable: "This file could not be read. Save it as .xlsx or .csv.",
     failed: "The import failed; no player was added.",
@@ -124,8 +155,10 @@ export function PlayerImport({
   organizationId,
   teams,
   done,
+  role = "player",
 }: {
   locale: Locale;
+  role?: "player" | "coach";
   organizationId: string;
   teams: { id: string; name: string }[];
   done: (message: string) => void;
@@ -154,6 +187,10 @@ export function PlayerImport({
       today,
       "Attaquant",
       "9",
+      teams[0]?.name ?? "",
+      "Dominique Exemple",
+      "dominique@example.org",
+      "+32 470 11 11 11",
     ];
     const csv =
       "﻿" + [templateHeaders, sample].map((r) => r.join(";")).join("\r\n");
@@ -193,6 +230,7 @@ export function PlayerImport({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "importPlayers",
+          role,
           teamId: team || null,
           rows,
           organizationId,
@@ -202,7 +240,16 @@ export function PlayerImport({
       if (!r.ok) throw new Error(v.error);
       setOpen(false);
       setRows([]);
-      done(fill(t.done, { created: v.created ?? 0, skipped: v.skipped ?? 0 }));
+      done(
+        fill(role === "coach" ? t.coachDone : t.done, {
+          created: v.created ?? 0,
+          skipped: v.skipped ?? 0,
+        }) +
+          (v.guardians ? fill(t.extra, { guardians: v.guardians }) : "") +
+          (v.unknownTeams
+            ? fill(t.unknownTeams, { unknown: v.unknownTeams })
+            : ""),
+      );
     } catch {
       setError(t.failed);
     } finally {
@@ -220,7 +267,10 @@ export function PlayerImport({
         {t.open}
       </button>
       {open && (
-        <Modal title={t.title} close={() => setOpen(false)}>
+        <Modal
+          title={role === "coach" ? t.coachTitle : t.title}
+          close={() => setOpen(false)}
+        >
           <p className="muted">{t.intro}</p>
           <p>
             <button
@@ -286,6 +336,8 @@ export function PlayerImport({
                         <th scope="col">{t.contact}</th>
                         <th scope="col">{t.position}</th>
                         <th scope="col">{t.number}</th>
+                        <th scope="col">{t.team2}</th>
+                        <th scope="col">{t.guardian}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -298,6 +350,12 @@ export function PlayerImport({
                           </td>
                           <td>{r.position}</td>
                           <td>{r.jerseyNumber ?? ""}</td>
+                          <td>{r.team}</td>
+                          <td>
+                            {[r.guardianName, r.guardianEmail, r.guardianPhone]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -327,7 +385,9 @@ export function PlayerImport({
                 disabled={busy || !rows.length || rows.length > importLimit}
                 onClick={() => void submit()}
               >
-                {fill(t.submit, { n: rows.length })}
+                {fill(role === "coach" ? t.coachSubmit : t.submit, {
+                  n: rows.length,
+                })}
               </button>
             </section>
           )}

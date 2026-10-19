@@ -25,7 +25,11 @@ import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
 import { peopleExecute } from "../src/domains/people/service";
 import { financeExecute } from "../src/domains/finance/service";
-import type { categories, methods } from "../src/domains/finance/schema";
+import {
+  seasonOf,
+  type categories,
+  type methods,
+} from "../src/domains/finance/schema";
 import { coachExecute, coursesExecute } from "../src/domains/coaches/service";
 import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
@@ -896,6 +900,63 @@ try {
       },
       org,
     );
+
+  // Camille paid her first instalment: the ledger line is linked to her dues,
+  // so she is no longer reminded for that amount.
+  const camilleDues = (
+    await db.query(
+      "SELECT id FROM dues_receivable WHERE organization_id=$1 AND profile_id=$2 AND status='open'",
+      [org, people.camille],
+    )
+  ).rows[0].id as string;
+  await financeExecute(
+    db,
+    president,
+    {
+      action: "record",
+      occurredOn: day(-2),
+      label: "Cotisation Camille Dubois (1/4)",
+      direction: "in",
+      category: "dues",
+      amountCents: 6250,
+      method: "transfer",
+      counterparty: "Camille Dubois",
+      reference: "",
+      notes: "",
+      receivableId: camilleDues,
+    },
+    org,
+  );
+  // Season budget, compared with actuals on the funding page.
+  const season0 = seasonOf(day(0)).label;
+  await financeExecute(
+    db,
+    president,
+    {
+      action: "budget",
+      season: season0,
+      lines: [
+        { direction: "in", category: "dues", amountCents: 250000 },
+        { direction: "in", category: "subsidy", amountCents: 150000 },
+        { direction: "in", category: "sponsor", amountCents: 100000 },
+        { direction: "in", category: "event", amountCents: 60000 },
+        { direction: "out", category: "venue", amountCents: 180000 },
+        { direction: "out", category: "equipment", amountCents: 80000 },
+        { direction: "out", category: "travel", amountCents: 60000 },
+        { direction: "out", category: "competition", amountCents: 50000 },
+        { direction: "out", category: "insurance", amountCents: 40000 },
+      ],
+    },
+    org,
+  );
+  // A probable duplicate (created by hand without birth date) to try the merge.
+  const spare = (
+    await db.query("INSERT INTO person(user_id) VALUES(NULL) RETURNING id")
+  ).rows[0].id;
+  await db.query(
+    "INSERT INTO club_person(organization_id,person_id,full_name,phone,directory_roles) VALUES($1,$2,'Yanis El Amrani','+32 470 22 33 44','{player}')",
+    [org, spare],
+  );
 
   // 12. Federation: course catalogue, a club request and a decision.
   const fedUser =

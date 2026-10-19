@@ -328,6 +328,10 @@ describe("player spreadsheet import", () => {
         joinedOn: null,
         position: "Verdediger",
         jerseyNumber: 7,
+        team: "",
+        guardianName: "",
+        guardianEmail: "",
+        guardianPhone: "",
       },
     ]);
     expect(issues.map((i) => i.field)).toEqual([

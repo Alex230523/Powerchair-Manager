@@ -1,0 +1,197 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { Locale } from "@/lib/locale";
+import type { financeReport } from "@/domains/finance/service";
+import { financeCopy, financeExtras } from "./finance-copy";
+import { errors } from "./access-copy";
+import { Icon } from "./icons";
+
+type Report = Awaited<ReturnType<typeof financeReport>>;
+const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
+
+/** Printable season report: the browser's "Save as PDF" produces the PDF. */
+export function FinanceReport({
+  locale,
+  season,
+}: {
+  locale: Locale;
+  season: string;
+}) {
+  const t = financeCopy[locale],
+    x = financeExtras[locale];
+  const [report, setReport] = useState<Report | null>(null),
+    [error, setError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/finance/report?season=" + encodeURIComponent(season), {
+      cache: "no-store",
+    })
+      .then(async (r) => {
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error);
+        if (!cancelled) setReport(v);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setError(errors[e.message]?.[locale] ?? t.restricted);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [season, locale, t.restricted]);
+  const money = (cents: number) =>
+    new Intl.NumberFormat(tag(locale), {
+      style: "currency",
+      currency: "EUR",
+    }).format(cents / 100);
+  const day = (d: string) =>
+    new Intl.DateTimeFormat(tag(locale), {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(d + "T12:00:00Z"));
+
+  return (
+    <main id="main" className="access finance finance-report">
+      <p className="back-link no-print">
+        <Link href={`/${locale}/funding`}>
+          <Icon name="back" size={16} />
+          {x.back}
+        </Link>
+      </p>
+      {error && <p role="alert">{error}</p>}
+      {!report && !error && <p role="status">…</p>}
+      {report && (
+        <>
+          <div className="report-head">
+            <div>
+              <h1>
+                {x.report} {report.season.label}
+              </h1>
+              <p>
+                {report.club} · {day(report.season.from)} →{" "}
+                {day(report.season.to)} · {x.generated}{" "}
+                {day(report.generated_on)}
+              </p>
+            </div>
+            <div className="directory-actions no-print">
+              <a
+                className="button secondary"
+                href={`/api/finance/report?format=csv&season=${report.season.label}`}
+              >
+                {x.csv}
+              </a>
+              <button
+                type="button"
+                className="button"
+                onClick={() => window.print()}
+              >
+                {x.print}
+              </button>
+            </div>
+          </div>
+          <dl className="report-totals">
+            <div>
+              <dt>{x.opening}</dt>
+              <dd>{money(report.opening)}</dd>
+            </div>
+            <div>
+              <dt>{t.income}</dt>
+              <dd className="amount-in">{money(report.summary.income)}</dd>
+            </div>
+            <div>
+              <dt>{t.expenses}</dt>
+              <dd className="amount-out">{money(report.summary.expenses)}</dd>
+            </div>
+            <div>
+              <dt>{x.closing}</dt>
+              <dd>{money(report.closing)}</dd>
+            </div>
+          </dl>
+          <section className="panel" aria-labelledby="report-budget">
+            <h2 id="report-budget">{t.byCategory}</h2>
+            <div className="table-scroll">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">{t.category}</th>
+                    <th scope="col">{t.direction}</th>
+                    <th scope="col" className="num">
+                      {x.planned}
+                    </th>
+                    <th scope="col" className="num">
+                      {x.actual}
+                    </th>
+                    <th scope="col" className="num">
+                      {x.gap}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.comparison.map((r) => (
+                    <tr key={r.direction + r.category}>
+                      <td>{t.categories[r.category] ?? r.category}</td>
+                      <td>{r.direction === "in" ? t.in : t.out}</td>
+                      <td className="num">
+                        {r.planned ? money(r.planned) : ""}
+                      </td>
+                      <td className="num">{money(r.actual)}</td>
+                      <td className="num">
+                        {r.planned
+                          ? (r.gap >= 0 ? "+" : "−") + money(Math.abs(r.gap))
+                          : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section className="panel" aria-labelledby="report-lines">
+            <h2 id="report-lines">{x.lines}</h2>
+            <div className="table-scroll">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">{t.date}</th>
+                    <th scope="col">{t.label}</th>
+                    <th scope="col">{t.category}</th>
+                    <th scope="col">{x.receipts}</th>
+                    <th scope="col" className="num">
+                      {t.amount}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.entries.map((e) => (
+                    <tr key={e.id}>
+                      <td>{day(e.occurred_on)}</td>
+                      <td>
+                        {e.label}
+                        {e.counterparty && (
+                          <span className="muted"> · {e.counterparty}</span>
+                        )}
+                      </td>
+                      <td>{t.categories[e.category] ?? e.category}</td>
+                      <td>{e.receipts ? x.yes : ""}</td>
+                      <td
+                        className={
+                          "num " +
+                          (e.direction === "in" ? "amount-in" : "amount-out")
+                        }
+                      >
+                        {e.direction === "in" ? "+" : "−"}
+                        {money(e.amount_cents)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+    </main>
+  );
+}

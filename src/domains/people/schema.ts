@@ -32,6 +32,12 @@ export const importRow = z.object({
   joinedOn: date.nullable(),
   position: text(80),
   jerseyNumber: z.number().int().min(0).max(99).nullable(),
+  /** Team name of the line, matched with the club's active teams. */
+  team: text(100).default(""),
+  /** Parent or representative to record next to a player. */
+  guardianName: text(120).default(""),
+  guardianEmail: email.default(""),
+  guardianPhone: text(40).default(""),
 });
 export type ImportRow = z.infer<typeof importRow>;
 export const peopleCommand = z.discriminatedUnion("action", [
@@ -130,6 +136,7 @@ export const peopleCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("importPlayers"),
     teamId: id.nullable(),
+    role: z.enum(["player", "coach"]).default("player"),
     rows: z.array(importRow).min(1).max(importLimit),
   }),
   z.object({
