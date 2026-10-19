@@ -56,7 +56,8 @@ export function Settings({ locale }: { locale: Locale }) {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [draft, setDraft] = useState<Record<string, string[]>>({});
+    [draft, setDraft] = useState<Record<string, string[]>>({}),
+    [now] = useState(() => Date.now());
   const failure = useCallback(
     (code: string) => errors[code]?.[locale] ?? t.unavailable,
     [locale, t.unavailable],
@@ -121,7 +122,6 @@ export function Settings({ locale }: { locale: Locale }) {
     .filter((a) => a.role === "coach" && !a.closed_at && !a.cancelled)
     .map((a) => teams.find((x) => x.id === a.team_id)?.name)
     .filter(Boolean);
-  const now = Date.now();
   const members = ws.members.filter(
     (m) =>
       !isAdmin(m.role) &&
