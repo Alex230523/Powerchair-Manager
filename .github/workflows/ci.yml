@@ -30,8 +30,8 @@ jobs:
           --health-cmd "pg_isready -U pfm -d pfm"
           --health-interval 3s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -72,8 +72,8 @@ jobs:
           --health-cmd "pg_isready -U pfm -d pfm"
           --health-interval 3s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm

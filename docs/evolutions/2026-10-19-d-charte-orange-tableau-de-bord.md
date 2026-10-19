@@ -56,16 +56,9 @@ Principes :
 
 ## Vérification
 
-Les dépendances npm n'étaient pas installables dans l'environnement de développement utilisé (registre bloqué). Ont été vérifiés : syntaxe TypeScript de tous les fichiers modifiés, un contrôle de types approché sur les nouveaux fichiers, les tests unitaires purs, les contrastes et le rendu (clair, sombre, 375 px et 320 px sans défilement horizontal) sur des maquettes statiques utilisant la feuille de style réelle.
+La CI GitHub (`.github/workflows/ci.yml`) exécute sur PostgreSQL 18 : lint, typecheck, tests unitaires, migrations appliquées deux fois, tests d'intégration (dont `dashboard.integration.ts`), création des données de démo deux fois (idempotence), build de production, puis les parcours Playwright avec contrôles d'accessibilité axe.
 
-À lancer avant validation :
-
-```sh
-npm run check
-npm run db:migrate
-npm run test:integration
-npm run test:e2e:db
-```
+Contrastes calculés pour chaque couple de couleurs principal (clair et sombre) ; rendu contrôlé à 1360, 375 et 320 px.
 
 ## Pistes suivantes
 
