@@ -55,12 +55,21 @@ test("new club, federation and referee pages load and pass axe", async ({
     await page
       .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
       .fill("Browser-test-passphrase-2026!");
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
-    await expect(
-      page.getByRole("button", { name: "Se déconnecter" }),
-    ).toBeVisible();
+    // Sign-up is rate limited (3 per 10 s per address) and the previous spec
+    // has just created accounts: wait for the window once if refused.
+    const signOut = page.getByRole("button", { name: "Se déconnecter" });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await page
+        .getByRole("button", { name: "Créer mon compte", exact: true })
+        .click();
+      try {
+        await expect(signOut).toBeVisible({ timeout: 8000 });
+        break;
+      } catch (e) {
+        if (attempt) throw e;
+        await page.waitForTimeout(11000);
+      }
+    }
     const user = (
       await db.query('SELECT id FROM "user" WHERE email=$1', [email])
     ).rows[0].id;
