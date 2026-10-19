@@ -54,8 +54,22 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
     setView(v);
   }, [id]);
   useEffect(() => {
-    load().catch((e: Error) => setError(failure(e.message)));
-  }, [load, failure]);
+    let cancelled = false;
+    fetch("/api/coach-profile?id=" + encodeURIComponent(id), {
+      cache: "no-store",
+    })
+      .then(async (r) => {
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error);
+        if (!cancelled) setView(v);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setError(failure(e.message));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, failure]);
 
   async function send(body: Record<string, unknown>, done: string) {
     setBusy(true);

@@ -38,11 +38,23 @@ export function Courses({ locale }: { locale: Locale }) {
     setView(v);
   }, []);
   useEffect(() => {
-    load().catch((e: Error) => {
-      if (["FEDERATION_ONLY", "FORBIDDEN"].includes(e.message)) setDenied(true);
-      else setError(failure(e.message));
-    });
-  }, [load, failure]);
+    let cancelled = false;
+    fetch("/api/courses", { cache: "no-store" })
+      .then(async (r) => {
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error);
+        if (!cancelled) setView(v);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        if (["FEDERATION_ONLY", "FORBIDDEN"].includes(e.message))
+          setDenied(true);
+        else setError(failure(e.message));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [failure]);
 
   async function send(body: Record<string, unknown>, done: string) {
     setBusy(true);

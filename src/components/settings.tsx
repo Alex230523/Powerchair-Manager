@@ -74,8 +74,27 @@ export function Settings({ locale }: { locale: Locale }) {
     setPeople(p.ok ? await p.json() : null);
   }, []);
   useEffect(() => {
-    load().catch((e: Error) => setError(failure(e.message)));
-  }, [load, failure]);
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/workspace", { cache: "no-store" }),
+      fetch("/api/people", { cache: "no-store" }),
+    ])
+      .then(async ([w, p]) => {
+        if (!w.ok) throw new Error("UNAVAILABLE");
+        const wv = (await w.json()) as WorkspaceState;
+        const pv = p.ok ? ((await p.json()) as PeopleState) : null;
+        if (cancelled) return;
+        setWs(wv);
+        setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));
+        setPeople(pv);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setError(failure(e.message));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [failure]);
 
   async function post(
     url: string,
