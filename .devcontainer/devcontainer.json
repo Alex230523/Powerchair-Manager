@@ -1,0 +1,23 @@
+{
+  // Ready-to-test environment: GitHub Codespaces or VS Code "Dev Containers".
+  // On creation: dependencies, PostgreSQL 18, migrations, demo club and build.
+  // On opening: the application starts on port 3000 and opens in the browser.
+  "name": "Powerchair Football Manager",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Application", "onAutoForward": "openBrowser" },
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": { "application": "npm run demo:start" },
+  "hostRequirements": { "cpus": 2, "memory": "4gb" },
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] },
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
+}

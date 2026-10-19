@@ -1,0 +1,543 @@
+"use client";
+import Link from "next/link";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import type { Locale } from "@/lib/locale";
+import { Button, Panel } from "./ui";
+import { attendanceCopy } from "./attendance-copy";
+import { actuals, responses } from "@/domains/attendance/schema";
+import { kindLabels } from "./calendar-copy";
+import { localAt, shiftLocal, toInstant } from "@/domains/calendar/time";
+import type { attendanceView } from "@/domains/attendance/service";
+type View = Awaited<ReturnType<typeof attendanceView>>;
+export function Attendance({ locale }: { locale: Locale }) {
+  const t = attendanceCopy[locale],
+    today = localAt(new Date(), "Europe/Brussels");
+  const [from, setFrom] = useState(shiftLocal(today, -30).slice(0, 10)),
+    [to, setTo] = useState(shiftLocal(today, 60).slice(0, 10)),
+    [team, setTeam] = useState(""),
+    [data, setData] = useState<View | null>(null),
+    [selected, setSelected] = useState(""),
+    [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState(""),
+    [revision, setRevision] = useState(0);
+  const explain = useCallback(
+    (code: string) => t.errors[code as keyof typeof t.errors] ?? t.error,
+    [t],
+  );
+  useEffect(() => {
+    const abort = new AbortController();
+    queueMicrotask(() => {
+      if (!abort.signal.aborted) setLoading(true);
+    });
+    fetch(
+      "/api/attendance?" + new URLSearchParams({ from, to, team, place: "" }),
+      { signal: abort.signal },
+    )
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error);
+        setData(body);
+        setError("");
+      })
+      .catch((e) => {
+        if (!abort.signal.aborted) {
+          setData(null);
+          setError(explain(e.message));
+        }
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setLoading(false);
+      });
+    return () => abort.abort();
+  }, [from, to, team, revision, explain]);
+  async function command(body: Record<string, unknown>) {
+    if (!data || busy) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...body,
+          organizationId: data.context.organization_id,
+        }),
+      });
+      const out = await r.json();
+      if (!r.ok) throw new Error(out.error);
+      setRevision((v) => v + 1);
+      setMessage(t.saved);
+    } catch (e) {
+      setError(
+        e instanceof TypeError
+          ? t.offline
+          : explain(e instanceof Error ? e.message : ""),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  function form(
+    e: FormEvent<HTMLFormElement>,
+    fn: (f: FormData) => Record<string, unknown>,
+  ) {
+    e.preventDefault();
+    try {
+      void command(fn(new FormData(e.currentTarget)));
+    } catch {
+      setError(t.errors.INVALID_INPUT);
+    }
+  }
+  const e = data?.events.find((e) => e.id === selected),
+    r = e?.register;
+  const date = (value: string | Date) =>
+    new Date(value).toLocaleString(
+      locale === "en" ? "en-GB" : locale === "fr" ? "fr-BE" : "nl-BE",
+      {
+        timeZone: "Europe/Brussels",
+        dateStyle: "medium",
+        timeStyle: "short",
+      },
+    );
+  return (
+    <>
+      <main id="main" className="access attendance">
+        <p className="eyebrow">LOT 07</p>
+        <h1>{t.title}</h1>
+        <p>{t.intro}</p>
+        {error && (
+          <p role="alert">
+            {error} <Link href={`/${locale}/access`}>{t.access}</Link>
+          </p>
+        )}
+        {message && <p role="status">{message}</p>}
+        <Panel title={t.calendar}>
+          <div className="form-grid">
+            <label>
+              {t.from}
+              <input
+                type="date"
+                min="2000-01-01"
+                max="2099-12-31"
+                value={from}
+                onChange={(v) => setFrom(v.target.value)}
+              />
+            </label>
+            <label>
+              {t.to}
+              <input
+                type="date"
+                min="2000-01-01"
+                max="2099-12-31"
+                value={to}
+                onChange={(v) => setTo(v.target.value)}
+              />
+            </label>
+            <label>
+              {t.team}
+              <select value={team} onChange={(v) => setTeam(v.target.value)}>
+                <option value="">{t.all}</option>
+                {data?.teams.map((t) => (
+                  <option value={t.id} key={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t.season}
+              <select
+                value=""
+                onChange={(v) => {
+                  const s = data?.seasons.find((s) => s.id === v.target.value);
+                  if (s) {
+                    setFrom(s.starts_on);
+                    setTo(s.ends_on);
+                  }
+                }}
+              >
+                <option value="">{t.custom}</option>
+                {data?.seasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <Button disabled={busy} onClick={() => setRevision((v) => v + 1)}>
+            {t.load}
+          </Button>
+          {loading ? (
+            <p role="status">{t.loading}</p>
+          ) : !data?.events.length ? (
+            <p>{t.empty}</p>
+          ) : (
+            <ul className="plain-list">
+              {data.events.map((v) => (
+                <li key={v.id}>
+                  <Button
+                    onClick={() => {
+                      setSelected(v.id);
+                      setMessage("");
+                    }}
+                  >
+                    {v.title} · {date(v.starts_at)}
+                  </Button>
+                  <p>
+                    {v.team_name} ·{" "}
+                    {v.status === "cancelled"
+                      ? t.cancelled
+                      : v.register?.closed_at
+                        ? t.closed
+                        : v.register
+                          ? t.pending
+                          : t.noRegister}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+        {e && (
+          <Panel title={e.title}>
+            <p>
+              {date(e.starts_at)} — {date(e.ends_at)}
+            </p>
+            {e.status === "cancelled" && <p>{t.cancelled}</p>}
+            {r && (
+              <p>
+                {r.closed_at ? t.closed : t.pending} · {t.deadline} :{" "}
+                {date(r.deadline)} · {t.minimum} : {r.minimum}
+              </p>
+            )}
+            {e.manage &&
+              e.status === "scheduled" &&
+              !r?.closed_at &&
+              new Date(e.starts_at) > new Date() && (
+                <form
+                  key={e.id + ":" + (r?.version ?? 0)}
+                  onSubmit={(v) =>
+                    form(v, (f) => ({
+                      action: "invite",
+                      eventId: e.id,
+                      expectedVersion: r?.version ?? null,
+                      profiles: f.getAll("profile"),
+                      deadline: toInstant(
+                        String(f.get("deadline")),
+                        "Europe/Brussels",
+                        "reject",
+                      ).toISOString(),
+                      minimum: Number(f.get("minimum")),
+                    }))
+                  }
+                >
+                  <fieldset disabled={busy}>
+                    <legend>{t.candidates}</legend>
+                    {!e.candidates.length && <p>{t.nocandidates}</p>}
+                    {e.candidates.map((p) => (
+                      <label className="check" key={p.id}>
+                        <input
+                          type="checkbox"
+                          name="profile"
+                          value={p.id}
+                          defaultChecked={
+                            r
+                              ? e.invitations.some(
+                                  (i) =>
+                                    i.profile_id === p.id && !i.withdrawn_at,
+                                )
+                              : true
+                          }
+                        />
+                        {p.full_name}
+                      </label>
+                    ))}
+                  </fieldset>
+                  <label>
+                    {t.deadline}
+                    <input
+                      name="deadline"
+                      type="datetime-local"
+                      required
+                      defaultValue={localAt(
+                        new Date(
+                          r?.deadline ??
+                            new Date(
+                              new Date(e.starts_at).getTime() - 86400000,
+                            ),
+                        ),
+                        "Europe/Brussels",
+                      )}
+                    />
+                  </label>
+                  <label>
+                    {t.minimum}
+                    <input
+                      name="minimum"
+                      type="number"
+                      min="0"
+                      max="300"
+                      defaultValue={r?.minimum ?? 0}
+                      required
+                    />
+                  </label>
+                  <Button disabled={busy || !e.candidates.length}>
+                    {t.invite}
+                  </Button>
+                </form>
+              )}
+            <p>{t.notice}</p>
+            {e.invitations.map((i) => (
+              <section
+                className="attendance-person"
+                key={i.id + ":" + i.version}
+              >
+                <h3>
+                  {i.full_name}
+                  {i.withdrawn_at ? " · " + t.withdrawn : ""}
+                </h3>
+                <p>
+                  {t.response} :{" "}
+                  {t.responses[i.response as keyof typeof t.responses]} ·{" "}
+                  {t.actual} : {t.actuals[i.actual as keyof typeof t.actuals]}
+                </p>
+                {i.comment && <p>{i.comment}</p>}
+                {i.canRespond &&
+                  r &&
+                  !r.closed_at &&
+                  e.status === "scheduled" &&
+                  new Date(r.deadline) > new Date() &&
+                  new Date(e.starts_at) > new Date() && (
+                    <form
+                      onSubmit={(v) =>
+                        form(v, (f) => ({
+                          action: "respond",
+                          id: i.id,
+                          expectedVersion: i.version,
+                          response: f.get("response"),
+                          comment: f.get("comment"),
+                        }))
+                      }
+                    >
+                      <label>
+                        {t.response}
+                        <select
+                          aria-label={t.response}
+                          name="response"
+                          defaultValue={i.response}
+                        >
+                          {responses.map((v) => (
+                            <option key={v} value={v}>
+                              {t.responses[v]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        {t.comment}
+                        <textarea
+                          name="comment"
+                          maxLength={1000}
+                          defaultValue={i.comment}
+                        />
+                      </label>
+                      <Button disabled={busy}>{t.respond}</Button>
+                    </form>
+                  )}
+                {e.manage &&
+                  !i.withdrawn_at &&
+                  e.status === "scheduled" &&
+                  new Date(e.starts_at) <= new Date() && (
+                    <form
+                      onSubmit={(v) =>
+                        form(v, (f) => ({
+                          action: "mark",
+                          id: i.id,
+                          expectedVersion: i.version,
+                          actual: f.get("actual"),
+                          reason: f.get("reason"),
+                        }))
+                      }
+                    >
+                      <label>
+                        {t.actual}
+                        <select
+                          aria-label={t.actual}
+                          name="actual"
+                          defaultValue={i.actual}
+                        >
+                          {actuals.map((v) => (
+                            <option key={v} value={v}>
+                              {t.actuals[v]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        {t.reason}
+                        <textarea
+                          name="reason"
+                          maxLength={1000}
+                          required={!!r?.closed_at}
+                        />
+                      </label>
+                      <Button disabled={busy}>{t.mark}</Button>
+                    </form>
+                  )}
+              </section>
+            ))}
+            {e.manage && r && !r.closed_at && e.status === "scheduled" && (
+              <>
+                <p>{t.closeHint}</p>
+                {new Date(r.deadline) > new Date() &&
+                  new Date(e.starts_at) > new Date() && (
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        void command({
+                          action: "remind",
+                          id: r.id,
+                          expectedVersion: r.version,
+                        })
+                      }
+                    >
+                      {t.remind}
+                    </Button>
+                  )}
+                {new Date(e.starts_at) <= new Date() && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void command({
+                        action: "close",
+                        id: r.id,
+                        expectedVersion: r.version,
+                      })
+                    }
+                  >
+                    {t.close}
+                  </Button>
+                )}
+              </>
+            )}
+            <h3>{t.history}</h3>
+            <ol>
+              {e.history.map((h) => (
+                <li key={h.id}>
+                  {date(h.created_at)} ·{" "}
+                  {t.actions[h.action as keyof typeof t.actions] ?? h.action} ·{" "}
+                  {h.actor}
+                  {h.reason ? " · " + h.reason : ""}
+                  {h.action === "respond" && (
+                    <p>
+                      {
+                        t.responses[
+                          String(
+                            h.before_data?.response ?? "none",
+                          ) as keyof typeof t.responses
+                        ]
+                      }{" "}
+                      →{" "}
+                      {
+                        t.responses[
+                          String(
+                            h.after_data?.response ?? "none",
+                          ) as keyof typeof t.responses
+                        ]
+                      }
+                    </p>
+                  )}
+                  {h.action === "mark" && (
+                    <p>
+                      {
+                        t.actuals[
+                          String(
+                            h.before_data?.actual ?? "unchecked",
+                          ) as keyof typeof t.actuals
+                        ]
+                      }{" "}
+                      →{" "}
+                      {
+                        t.actuals[
+                          String(
+                            h.after_data?.actual ?? "unchecked",
+                          ) as keyof typeof t.actuals
+                        ]
+                      }
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </Panel>
+        )}
+        <Panel title={t.stats}>
+          <p>{t.statHint}</p>
+          {data?.limited && (
+            <p role="status">
+              {locale === "en"
+                ? "500-event limit reached: shorten the period for complete statistics."
+                : locale === "fr"
+                  ? "Limite de 500 événements atteinte : réduisez la période pour des statistiques complètes."
+                  : "Limiet van 500 evenementen bereikt: verklein de periode voor volledige statistieken."}
+            </p>
+          )}
+          <h3>
+            {locale === "en"
+              ? "By team — within your access scope"
+              : locale === "fr"
+                ? "Par équipe — votre périmètre autorisé"
+                : "Per team — uw toegestane bereik"}
+          </h3>
+          <ul className="plain-list">
+            {data?.teamStats.map((s, index) => (
+              <li key={index}>
+                {s.team} ·{" "}
+                {data.seasons.find((v) => v.id === s.seasonId)?.name ?? "—"} ·{" "}
+                {kindLabels[locale][s.kind as keyof typeof kindLabels.fr] ??
+                  s.kind}
+                <p>
+                  {t.answered} : {s.answered}/{s.invited} · {t.attended} :{" "}
+                  {s.attended}/{s.closed} · {t.rate} :{" "}
+                  {s.closed
+                    ? Math.round((s.attended / s.closed) * 100) + " %"
+                    : "—"}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <h3>
+            {locale === "en"
+              ? "By person"
+              : locale === "fr"
+                ? "Par personne"
+                : "Per persoon"}
+          </h3>
+
+          <ul className="plain-list">
+            {data?.stats.map((s) => (
+              <li key={[s.profileId, s.seasonId, s.teamId, s.kind].join(":")}>
+                <strong>{s.name}</strong> · {s.team} ·{" "}
+                {data.seasons.find((v) => v.id === s.seasonId)?.name ?? "—"} ·{" "}
+                {kindLabels[locale][s.kind as keyof typeof kindLabels.fr] ??
+                  s.kind}
+                <p>
+                  {t.answered} : {s.answered}/{s.invited} (
+                  {s.invited ? Math.round((s.answered / s.invited) * 100) : 0}{" "}
+                  %) · {t.attended} : {s.attended}/{s.closed} · {t.rate} :{" "}
+                  {s.closed
+                    ? Math.round((s.attended / s.closed) * 100) + " %"
+                    : "—"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </main>
+    </>
+  );
+}

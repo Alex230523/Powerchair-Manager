@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://pfm:pfm_ci@localhost:5432/pfm
+
+jobs:
+  verify:
+    name: Lint, types, tests, migrations, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: pfm
+          POSTGRES_USER: pfm
+          POSTGRES_PASSWORD: pfm_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pfm -d pfm"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Write .env.local
+        run: |
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "BETTER_AUTH_URL=http://127.0.0.1:3000"
+            echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
+            echo "PFM_LOCAL_MAIL=true"
+            echo "MAIL_TRANSPORT=local"
+            echo "PFM_MFA_SUSPENDED=false"
+          } > .env.local
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Migrations (twice, must be idempotent)
+        run: npm run db:migrate && npm run db:migrate && npm run db:test
+      - run: npm run test:integration
+      - name: Demo data
+        run: npm run demo:seed && npm run demo:seed
+      - run: npm run build
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: pfm
+          POSTGRES_USER: pfm
+          POSTGRES_PASSWORD: pfm_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pfm -d pfm"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Write .env.local
+        run: |
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "BETTER_AUTH_URL=http://127.0.0.1:3100"
+            echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
+          } > .env.local
+      - run: npm run test:e2e:db
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

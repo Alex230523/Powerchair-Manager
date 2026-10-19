@@ -1,0 +1,367 @@
+import type { Pool, PoolClient } from "pg";
+import {
+  active,
+  account,
+  audit,
+  AccessError,
+  type Principal,
+} from "../access/service";
+import { permissions } from "../access/policy";
+import { mfaSatisfied } from "../../lib/security-policy";
+import { ownProfiles, today, type Actor } from "../calendar/access";
+import { commandSchema, schedule, type Command } from "./schema";
+export { commandSchema };
+type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean };
+async function scope<T>(
+  db: Pool,
+  p: Principal,
+  fn: (s: Scope) => Promise<T>,
+  expected?: string,
+) {
+  const c = await db.connect();
+  try {
+    await c.query("BEGIN");
+    await c.query("SET LOCAL TIME ZONE 'Europe/Brussels'");
+    const initial = await active(c, p);
+    await c.query("SELECT id FROM organization WHERE id=$1 FOR UPDATE", [
+      initial.organization_id,
+    ]);
+    await c.query(
+      "SELECT session_id FROM active_context WHERE session_id=$1 FOR SHARE",
+      [p.sessionId],
+    );
+    const a = {
+      ...(await active(c, p)),
+      twoFactorEnabled: !!(await account(c, p)).twoFactorEnabled,
+    };
+    if (
+      a.organization_id !== initial.organization_id ||
+      (expected && expected !== a.organization_id)
+    )
+      throw new AccessError("CONTEXT_CHANGED", 409);
+    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+    const out = await fn({
+      c,
+      p,
+      a,
+      manage:
+        mfaSatisfied(a.twoFactorEnabled) &&
+        permissions(a.role, a.grants).includes("dues.manage"),
+    });
+    await c.query("COMMIT");
+    return out;
+  } catch (e) {
+    await c.query("ROLLBACK");
+    if ((e as { code?: string }).code === "23505")
+      throw new AccessError("DUPLICATE", 409);
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+async function log(
+  s: Scope,
+  action: string,
+  planId: string,
+  receivableId: string | null,
+  before: unknown,
+  after: unknown,
+  reason = "",
+) {
+  await s.c.query(
+    "INSERT INTO dues_history(organization_id,plan_id,receivable_id,actor_id,action,before_data,after_data,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+    [
+      s.a.organization_id,
+      planId,
+      receivableId,
+      s.p.userId,
+      action,
+      JSON.stringify(before),
+      JSON.stringify(after),
+      reason,
+    ],
+  );
+  await audit(
+    s.c,
+    s.a.organization_id,
+    s.p.userId,
+    "dues." + action,
+    receivableId ?? planId,
+  );
+}
+async function writeSchedule(
+  s: Scope,
+  id: string,
+  cents: number,
+  count: number,
+  first: string,
+) {
+  const rows = schedule(cents, count, first);
+  await s.c.query("DELETE FROM dues_installment WHERE receivable_id=$1", [id]);
+  for (const r of rows)
+    await s.c.query(
+      "INSERT INTO dues_installment(receivable_id,ordinal,due_on,amount_cents) VALUES($1,$2,$3,$4)",
+      [id, r.ordinal, r.due_on, r.amount_cents],
+    );
+  return rows;
+}
+export async function duesView(db: Pool, p: Principal) {
+  return scope(db, p, async (s) => {
+    const own = s.manage ? [] : [...(await ownProfiles(s.c, s.a))],
+      o = s.a.organization_id;
+    const debts = (
+      await s.c.query(
+        "SELECT d.*,c.full_name,se.name AS season_name FROM dues_receivable d JOIN club_person c ON c.id=d.profile_id JOIN season se ON se.id=d.season_id WHERE d.organization_id=$1 AND ($2 OR d.profile_id=ANY($3::uuid[])) ORDER BY d.created_at DESC",
+        [o, s.manage, own],
+      )
+    ).rows;
+    for (const d of debts) {
+      d.installments = (
+        await s.c.query(
+          "SELECT ordinal,due_on::text,amount_cents FROM dues_installment WHERE receivable_id=$1 ORDER BY ordinal",
+          [d.id],
+        )
+      ).rows;
+      d.history = (
+        await s.c.query(
+          "SELECT action,reason,created_at FROM dues_history WHERE receivable_id=$1 ORDER BY created_at DESC",
+          [d.id],
+        )
+      ).rows;
+      d.overdue_cents =
+        d.status === "open"
+          ? d.installments
+              .filter((i: { due_on: string }) => i.due_on < today())
+              .reduce(
+                (sum: number, i: { amount_cents: number }) =>
+                  sum + i.amount_cents,
+                0,
+              )
+          : 0;
+    }
+    return {
+      organizationId: o,
+      manage: s.manage,
+      debts,
+      plans: s.manage
+        ? (
+            await s.c.query(
+              "SELECT *,first_due::text AS first_due FROM dues_plan WHERE organization_id=$1 ORDER BY created_at DESC",
+              [o],
+            )
+          ).rows
+        : [],
+      seasons: s.manage
+        ? (
+            await s.c.query(
+              "SELECT id,name FROM season WHERE organization_id=$1 AND NOT archived ORDER BY starts_on DESC",
+              [o],
+            )
+          ).rows
+        : [],
+      profiles: s.manage
+        ? (
+            await s.c.query(
+              "SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' ORDER BY full_name",
+              [o],
+            )
+          ).rows
+        : [],
+      followups: s.manage
+        ? (
+            await s.c.query(
+              "SELECT a.id,a.profile_id,a.season_id,a.subject_name FROM registration_application a JOIN registration_followup f ON f.application_id=a.id WHERE a.organization_id=$1 AND a.status='accepted' AND f.kind='dues' AND f.state='awaiting_module' ORDER BY a.decided_at",
+              [o],
+            )
+          ).rows
+        : [],
+    };
+  });
+}
+export async function duesExecute(
+  db: Pool,
+  p: Principal,
+  input: Command,
+  expected: string,
+) {
+  return scope(
+    db,
+    p,
+    async (s) => {
+      const cmd = commandSchema.parse(input),
+        o = s.a.organization_id;
+      if (!s.manage)
+        throw new AccessError(
+          mfaSatisfied(s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
+        );
+      if (cmd.action === "plan") {
+        if (
+          !(
+            await s.c.query(
+              "SELECT 1 FROM season WHERE id=$1 AND organization_id=$2 AND NOT archived",
+              [cmd.seasonId, o],
+            )
+          ).rowCount
+        )
+          throw new AccessError("NOT_FOUND", 404);
+        const row = (
+          await s.c.query(
+            "INSERT INTO dues_plan(organization_id,season_id,category,amount_cents,max_installments,first_due) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
+            [
+              o,
+              cmd.seasonId,
+              cmd.category,
+              cmd.amountCents,
+              cmd.maxInstallments,
+              cmd.firstDue,
+            ],
+          )
+        ).rows[0];
+        await log(s, "plan", row.id, null, null, row);
+        return { id: row.id };
+      }
+      if (cmd.action === "archivePlan") {
+        const row = (
+          await s.c.query(
+            "UPDATE dues_plan SET archived=true,version=version+1 WHERE id=$1 AND organization_id=$2 AND NOT archived RETURNING *",
+            [cmd.id, o],
+          )
+        ).rows[0];
+        if (!row) throw new AccessError("NOT_FOUND", 404);
+        await log(s, "archivePlan", row.id, null, null, row);
+        return { id: row.id };
+      }
+      if (cmd.action === "issue") {
+        const plan = (
+          await s.c.query(
+            "SELECT p.*,p.first_due::text FROM dues_plan p JOIN season se ON se.id=p.season_id WHERE p.id=$1 AND p.organization_id=$2 AND NOT p.archived AND NOT se.archived",
+            [cmd.planId, o],
+          )
+        ).rows[0];
+        if (
+          !plan ||
+          !(
+            await s.c.query(
+              "SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2 AND status='active'",
+              [cmd.profileId, o],
+            )
+          ).rowCount
+        )
+          throw new AccessError("NOT_FOUND", 404);
+        if (
+          cmd.discountCents > plan.amount_cents ||
+          cmd.installments > plan.max_installments ||
+          (cmd.discountCents > 0 && cmd.reason.length < 5)
+        )
+          throw new AccessError("INVALID_INPUT", 400);
+        if (
+          cmd.applicationId &&
+          !(
+            await s.c.query(
+              "SELECT 1 FROM registration_application a JOIN registration_followup f ON f.application_id=a.id WHERE a.id=$1 AND a.organization_id=$2 AND a.profile_id=$3 AND a.season_id=$4 AND a.status='accepted' AND f.kind='dues' AND f.state='awaiting_module'",
+              [cmd.applicationId, o, cmd.profileId, plan.season_id],
+            )
+          ).rowCount
+        )
+          throw new AccessError("NOT_FOUND", 404);
+        const d = (
+          await s.c.query(
+            "INSERT INTO dues_receivable(organization_id,profile_id,season_id,plan_id,category,plan_snapshot,gross_cents,discount_cents,reason,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *",
+            [
+              o,
+              cmd.profileId,
+              plan.season_id,
+              plan.id,
+              plan.category,
+              JSON.stringify(plan),
+              plan.amount_cents,
+              cmd.discountCents,
+              cmd.reason,
+              p.userId,
+            ],
+          )
+        ).rows[0];
+        const installments = await writeSchedule(
+          s,
+          d.id,
+          d.net_cents,
+          cmd.installments,
+          cmd.firstDue,
+        );
+        if (cmd.applicationId)
+          await s.c.query(
+            "UPDATE registration_followup SET state='processed' WHERE application_id=$1 AND kind='dues'",
+            [cmd.applicationId],
+          );
+        await log(
+          s,
+          "issue",
+          plan.id,
+          d.id,
+          null,
+          { ...d, installments },
+          cmd.reason,
+        );
+        return { id: d.id };
+      }
+      const d = (
+        await s.c.query(
+          "SELECT * FROM dues_receivable WHERE id=$1 AND organization_id=$2 AND status='open' FOR UPDATE",
+          [cmd.id, o],
+        )
+      ).rows[0];
+      if (!d) throw new AccessError("NOT_FOUND", 404);
+      if (d.version !== cmd.version)
+        throw new AccessError("STALE_VERSION", 409);
+      const before = {
+        ...d,
+        installments: (
+          await s.c.query(
+            "SELECT * FROM dues_installment WHERE receivable_id=$1 ORDER BY ordinal",
+            [d.id],
+          )
+        ).rows,
+      };
+      if (cmd.action === "cancel") {
+        await s.c.query(
+          "UPDATE dues_receivable SET status='cancelled',cancelled_at=now(),version=version+1 WHERE id=$1",
+          [d.id],
+        );
+        await log(
+          s,
+          "cancel",
+          d.plan_id,
+          d.id,
+          before,
+          { status: "cancelled" },
+          cmd.reason,
+        );
+      } else {
+        if (cmd.installments > d.plan_snapshot.max_installments)
+          throw new AccessError("INVALID_INPUT", 400);
+        const installments = await writeSchedule(
+          s,
+          d.id,
+          d.net_cents,
+          cmd.installments,
+          cmd.firstDue,
+        );
+        await s.c.query(
+          "UPDATE dues_receivable SET version=version+1 WHERE id=$1",
+          [d.id],
+        );
+        await log(
+          s,
+          "schedule",
+          d.plan_id,
+          d.id,
+          before,
+          { installments },
+          cmd.reason,
+        );
+      }
+      return { id: d.id };
+    },
+    expected,
+  );
+}
