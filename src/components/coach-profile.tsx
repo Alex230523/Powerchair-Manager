@@ -12,6 +12,20 @@ import { initials } from "./app-shell";
 import { Card, Stat } from "./player-profile";
 
 type View = Awaited<ReturnType<typeof coachProfileView>>;
+const record = {
+  fr: {
+    title: "Bilan des matchs :",
+    line: "{p} joués, {w} victoires, {d} nuls, {l} défaites, buts {gf}-{ga}",
+  },
+  nl: {
+    title: "Wedstrijdbalans:",
+    line: "{p} gespeeld, {w} gewonnen, {d} gelijk, {l} verloren, doelpunten {gf}-{ga}",
+  },
+  en: {
+    title: "Match record:",
+    line: "{p} played, {w} won, {d} drawn, {l} lost, goals {gf}-{ga}",
+  },
+};
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** Coach profile: details, teams, upcoming sessions, attendance and courses. */
@@ -202,6 +216,18 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
             </ol>
           ) : (
             <p className="muted">{t.noTeam}</p>
+          )}
+          {view.results.played > 0 && (
+            <p className="team-record">
+              <strong>{record[locale].title}</strong>{" "}
+              {record[locale].line
+                .replace("{p}", String(view.results.played))
+                .replace("{w}", String(view.results.won))
+                .replace("{d}", String(view.results.drawn))
+                .replace("{l}", String(view.results.lost))
+                .replace("{gf}", String(view.results.goalsFor))
+                .replace("{ga}", String(view.results.goalsAgainst))}
+            </p>
           )}
         </Card>
 

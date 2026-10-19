@@ -41,6 +41,7 @@ type NavGroup = {
 export function menuGroups(state: Workspace | null): NavGroup[] {
   const manager = !!state?.permissions.includes("registrations.manage");
   const kind = state?.selected?.kind;
+  const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
   const registrations: NavItem = {
     route: manager ? "/registrations" : "/registrations/mine",
     label: manager ? "registrations" : "mine",
@@ -65,6 +66,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             icon: "calendar",
             items: [
               { route: "/calendar", label: "calendar", icon: "calendar" },
+              { route: "/matches", label: "matches", icon: "whistle" },
               { route: "/documents", label: "documents", icon: "document" },
               { route: "/messages", label: "messages", icon: "message" },
             ],
@@ -96,16 +98,31 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupFederation",
               icon: "club",
               items: [
-                {
-                  route: "/federation/clubs",
-                  label: "federationClubs",
-                  icon: "club",
-                },
-                {
-                  route: "/federation/courses",
-                  label: "courses",
-                  icon: "team",
-                },
+                ...((role === "referee"
+                  ? [
+                      {
+                        route: "/referee",
+                        label: "refereeSpace",
+                        icon: "whistle",
+                      },
+                    ]
+                  : [
+                      {
+                        route: "/federation/clubs",
+                        label: "federationClubs",
+                        icon: "club",
+                      },
+                      {
+                        route: "/federation/courses",
+                        label: "courses",
+                        icon: "team",
+                      },
+                      {
+                        route: "/federation/referees",
+                        label: "designations",
+                        icon: "whistle",
+                      },
+                    ]) satisfies NavItem[]),
                 { route: "/calendar", label: "calendar", icon: "calendar" },
                 { route: "/documents", label: "documents", icon: "document" },
                 { route: "/messages", label: "messages", icon: "message" },

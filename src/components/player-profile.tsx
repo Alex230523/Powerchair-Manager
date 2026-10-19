@@ -9,7 +9,7 @@ import {
   rate,
 } from "@/domains/player-profile/schema";
 import { overMatchSpeed } from "@/domains/equipment/schema";
-import { playerProfileCopy } from "./player-profile-copy";
+import { playerProfileCopy, matchCopy } from "./player-profile-copy";
 import { kindLabels } from "./calendar-copy";
 import { documentStatuses } from "./documents-copy";
 import { errors } from "./access-copy";
@@ -699,7 +699,65 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               hint={`${total.closed} ${t.closedSessions}`}
             />
           </div>
-          <p className="notice">{t.matchStatsSoon}</p>
+        </Card>
+
+        <Card title={matchCopy[locale].title} icon="chart" wide>
+          {view.matches.totals.matches ? (
+            <>
+              <dl className="report-totals match-totals">
+                <div>
+                  <dt>{matchCopy[locale].played}</dt>
+                  <dd>
+                    {view.matches.totals.matches}
+                    <span className="muted">
+                      {" "}
+                      · {view.matches.totals.starts} {matchCopy[locale].starts}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{matchCopy[locale].minutes}</dt>
+                  <dd>{view.matches.totals.minutes}</dd>
+                </div>
+                <div>
+                  <dt>{matchCopy[locale].goals}</dt>
+                  <dd>{view.matches.totals.goals}</dd>
+                </div>
+                <div>
+                  <dt>{matchCopy[locale].assists}</dt>
+                  <dd>{view.matches.totals.assists}</dd>
+                </div>
+                <div>
+                  <dt>{matchCopy[locale].cards}</dt>
+                  <dd>
+                    {view.matches.totals.yellow} / {view.matches.totals.red}
+                  </dd>
+                </div>
+              </dl>
+              <h3>{matchCopy[locale].recent}</h3>
+              <ul className="records">
+                {view.matches.recent.map((m) => (
+                  <li key={m.id}>
+                    <strong>
+                      {m.team} {m.our_score}-{m.their_score}{" "}
+                      {m.home ? matchCopy[locale].vs : matchCopy[locale].at}{" "}
+                      {m.opponent}
+                    </strong>
+                    <span className="muted">
+                      {" "}
+                      · {day(String(m.starts_at))} · {m.minutes} min
+                      {m.goals
+                        ? ` · ${m.goals} ${matchCopy[locale].goals.toLowerCase()}`
+                        : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="muted">{matchCopy[locale].none}</p>
+          )}
+          <Link href={`/${locale}/matches`}>{matchCopy[locale].link} →</Link>
         </Card>
       </section>
     </main>

@@ -31,6 +31,11 @@ import {
   type methods,
 } from "../src/domains/finance/schema";
 import { coachExecute, coursesExecute } from "../src/domains/coaches/service";
+import {
+  matchExecute,
+  designationExecute,
+  refereeExecute,
+} from "../src/domains/competitions/service";
 import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
@@ -72,6 +77,11 @@ const federationAccount = {
   email: "federation@demo.pfm",
   name: "Marie Dupont",
   profile: "Présidence · BPCF (démo)",
+};
+const refereeAccount = {
+  email: "arbitre@demo.pfm",
+  name: "Jules Verhaegen",
+  profile: "Arbitre · BPCF (démo)",
 };
 
 if (process.env.NODE_ENV === "production" && !process.argv.includes("--force"))
@@ -1074,6 +1084,149 @@ try {
     org,
   );
 
+  // 13. Matches: a league game played two weeks ago (line-up, statistics,
+  // referee report) and the next league game with a referee to confirm.
+  const refUser =
+    (
+      await db.query('SELECT id FROM "user" WHERE lower(email)=$1', [
+        refereeAccount.email,
+      ])
+    ).rows[0]?.id ??
+    (
+      await auth.api.signUpEmail({
+        body: {
+          email: refereeAccount.email,
+          name: refereeAccount.name,
+          password: DEMO_PASSWORD,
+        },
+      })
+    ).user.id;
+  await db.query(
+    "INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)",
+    [federation, refUser],
+  );
+  const refMandate = (
+    await db.query(
+      "INSERT INTO role_assignment(organization_id,user_id,role,created_by) VALUES($1,$2,'referee',$3) RETURNING id",
+      [federation, refUser, fedUser],
+    )
+  ).rows[0].id;
+  await db.query(
+    "INSERT INTO user_profile(user_id,mandate_id,name,is_default) VALUES($1,$2,$3,true)",
+    [refUser, refMandate, refereeAccount.profile],
+  );
+  const referee = await principal(refUser, refMandate);
+  const fixture = async (offset: number, opponent: string, home: boolean) =>
+    (
+      await matchExecute(
+        db,
+        president,
+        {
+          action: "create",
+          teamId: team,
+          opponent,
+          home,
+          kind: "league",
+          competition: "Championnat BPCF D1",
+          startsAt: `${day(offset)}T14:00`,
+          venue: home ? "Hall sportif du Parc" : "",
+          calendarEventId: null,
+          notes: "",
+        },
+        org,
+      )
+    ).id;
+  const played = await fixture(-14, "Liège Lions", true);
+  const lineup = [
+    [people.yanis, true, "Gardien", 1],
+    [people.camille, true, "Attaquante", 7],
+    [people.lucas, true, "Défenseur", 4],
+    [people.emma, true, "Défenseuse", 9],
+    [people.thomas, false, "Attaquant", 11],
+  ] as const;
+  await matchExecute(
+    db,
+    president,
+    {
+      action: "lineup",
+      id: played,
+      players: lineup.map(([profileId, starter, position, jerseyNumber]) => ({
+        profileId,
+        starter,
+        position,
+        jerseyNumber,
+      })),
+    },
+    org,
+  );
+  const minutes = [40, 40, 40, 32, 8];
+  const goals = [0, 2, 0, 0, 1];
+  await matchExecute(
+    db,
+    president,
+    {
+      action: "result",
+      id: played,
+      version: 1,
+      ourScore: 3,
+      theirScore: 1,
+      stats: lineup.map(([profileId], i) => ({
+        profileId,
+        minutes: minutes[i],
+        goals: goals[i],
+        assists: i === 3 ? 2 : 0,
+        yellowCards: i === 2 ? 1 : 0,
+        redCard: false,
+      })),
+    },
+    org,
+  );
+  const upcomingMatch = await fixture(5, "Gand Wheels", false);
+  for (const [matchId, accept] of [
+    [played, true],
+    [upcomingMatch, null],
+  ] as const) {
+    await designationExecute(
+      db,
+      fed,
+      { action: "assign", matchId, refereeId: refUser, role: "main" },
+      federation,
+    );
+    if (accept)
+      await refereeExecute(
+        db,
+        referee,
+        { action: "answer", matchId, accept: true },
+        federation,
+      );
+  }
+  await refereeExecute(
+    db,
+    referee,
+    {
+      action: "report",
+      matchId: played,
+      homeScore: 3,
+      awayScore: 1,
+      incidents:
+        "Rencontre correcte. Un avertissement pour Lucas Peeters (contact).",
+    },
+    federation,
+  );
+  await refereeExecute(
+    db,
+    referee,
+    {
+      action: "availability",
+      days: [day(5), day(6), day(12), day(13)].map((d, i) => ({
+        day: d,
+        available: i !== 2,
+        note: "",
+      })),
+    },
+    federation,
+  );
+
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();
 } finally {
@@ -1086,7 +1239,7 @@ try {
 
 function printAccounts() {
   console.log(`\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`);
-  for (const a of [...accounts, federationAccount])
+  for (const a of [...accounts, federationAccount, refereeAccount])
     console.log(`  ${a.email.padEnd(22)} ${a.profile}`);
   console.log("\nConnexion : /fr/access\n");
 }
