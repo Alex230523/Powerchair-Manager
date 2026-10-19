@@ -263,9 +263,9 @@ async function application(
     throw new AccessError("NOT_FOUND", 404);
   return row;
 }
-async function details(
+async function details<R extends Record<string, unknown>>(
   c: PoolClient,
-  row: Record<string, unknown>,
+  row: R,
   internal: boolean,
   sensitive = true,
 ) {
