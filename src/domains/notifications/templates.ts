@@ -12,6 +12,7 @@ export const editableKinds = [
   "dues_reminder",
   "document_reminder",
   "training_update",
+  "match_update",
 ] as const;
 export const allKinds = [
   "auth_verify",
@@ -33,6 +34,8 @@ export type Variables = {
   /** Coach courses. */
   course?: string;
   status?: string;
+  /** Matches and referee designations. */
+  match?: string;
 };
 export type Template = { subject: string; body: string };
 export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
@@ -62,6 +65,20 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     en: {
       subject: "Documents to provide · {person}",
       body: "Hello {name},\nSome documents are still missing for {person}:\n{details}\nYou can upload them directly in your space.\nThank you,\n{organization}\n{url}",
+    },
+  },
+  match_update: {
+    fr: {
+      subject: "Match · {match}",
+      body: "Bonjour {name},\n{match} : {status}.\n{url}",
+    },
+    nl: {
+      subject: "Wedstrijd · {match}",
+      body: "Hallo {name},\n{match}: {status}.\n{url}",
+    },
+    en: {
+      subject: "Match · {match}",
+      body: "Hello {name},\n{match}: {status}.\n{url}",
     },
   },
   training_update: {
@@ -253,6 +270,7 @@ const allowed: Record<Kind, string[]> = {
     "course",
     "status",
   ],
+  match_update: ["name", "organization", "url", "match", "status"],
   calendar_update: ["name", "organization", "url"],
   document_update: ["name", "organization", "url"],
   registration_update: ["name", "organization", "url"],

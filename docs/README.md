@@ -41,6 +41,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 19/10/2026 | [Inscriptions, coachs et formations, réglages, finances du club, import Excel](evolutions/2026-10-19-f-inscriptions-coachs-finances.md)                 |
 | 19/10/2026 | [Vague 1 : design plus fin, formulaire Tigerstorm, BPCF, relances](evolutions/2026-10-19-g-vague-1-design-inscriptions-rappels.md)                      |
 | 19/10/2026 | [Vague 2 : finances (budget, justificatifs, rapport annuel), import enrichi, doublons et RGPD](evolutions/2026-10-19-h-vague-2-finances-import-rgpd.md) |
+| 19/10/2026 | [Vague 3 : compétitions (matchs, compositions, statistiques) et arbitres](evolutions/2026-10-19-i-vague-3-competitions-arbitres.md)                     |
 
 ## Convention
 

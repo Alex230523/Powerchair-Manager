@@ -16,6 +16,7 @@ import {
   brusselsToday,
 } from "../people/service";
 import { ageOn } from "../people/schema";
+import { teamResults } from "../competitions/service";
 import {
   clubCommand,
   federationCommand,
@@ -211,6 +212,7 @@ export async function coachProfileView(db: Pool, p: Principal, id: string) {
       details,
       teams,
       upcoming,
+      results: await teamResults(c, org, currentTeams),
       attendance: coachAttendance(rows),
       formations,
       courses,

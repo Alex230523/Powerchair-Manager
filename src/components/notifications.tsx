@@ -38,6 +38,7 @@ const variables: Record<string, string[]> = {
     "organization",
     "url",
   ],
+  match_update: ["name", "match", "status", "organization", "url"],
 };
 export function Notifications({ locale }: { locale: Locale }) {
   const t = notificationCopy[locale];

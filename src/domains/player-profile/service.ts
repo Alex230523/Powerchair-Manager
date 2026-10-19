@@ -13,6 +13,7 @@ import {
 import { ageOn } from "../people/schema";
 import { docAccess, type Doc } from "../documents/access";
 import { chairsFor } from "../equipment/service";
+import { playerMatchStats } from "../competitions/service";
 import { seal, unseal } from "../notifications/crypto";
 import {
   attendanceSummary,
@@ -253,6 +254,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
       },
       teams,
       guardians,
+      matches: await playerMatchStats(c, org, id),
       attendance: {
         total: attendanceSummary(attendance),
         byKind,

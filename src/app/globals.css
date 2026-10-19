@@ -3055,3 +3055,39 @@ th.num {
   background: var(--danger-ink);
   border-color: var(--danger-ink);
 }
+
+/* Matches and referees. */
+.ledger input.narrow,
+input.narrow {
+  width: 72px;
+  min-width: 0;
+}
+.report-details {
+  margin-top: 6px;
+  font-size: 0.85rem;
+}
+.report-details summary {
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.team-record {
+  margin: 10px 0 0;
+}
+.availability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 2px 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+.assigned-referees {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  font-size: 0.88rem;
+}
+.match-totals {
+  margin-bottom: 12px;
+}

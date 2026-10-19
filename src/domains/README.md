@@ -26,6 +26,7 @@ Un dossier par module. Les routes API appellent ces fonctions ; l'interface n'y 
 | `finance/`        | Grand livre du club : recettes, dépenses, annulations, synthèse de saison                                |
 | `coaches/`        | Fiche coach, formations fédérales, demandes des clubs, clubs affiliés                                    |
 | `privacy/`        | Doublons et fusion, export RGPD, anonymisation, règles de conservation                                   |
+| `competitions/`   | Matchs, compositions, statistiques, désignations et rapports d'arbitres                                  |
 | `reminders/`      | Relances cotisations et documents : personnes concernées, destinataires, envoi                           |
 | `dashboard/`      | Tableau de bord en lecture seule, construit avec les règles d'accès des autres modules                   |
 

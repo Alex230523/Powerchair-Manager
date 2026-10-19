@@ -595,6 +595,7 @@ export const english = {
     dues_reminder: "Membership fee reminder",
     document_reminder: "Document reminder",
     training_update: "Coach education",
+    match_update: "Matches and refereeing",
     calendar_update: "Calendar",
     intro: "Notifications belong to the active organisation.",
     access: "My space",
