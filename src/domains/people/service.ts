@@ -964,9 +964,9 @@ export async function peopleExecute(
           await joinTeam(s, command.teamId, target, "coach", "", day);
         }
       } else if (command.action === "importPlayers") {
-        const role = command.role;
+        const role = command.role ?? "player";
         const usesTeams =
-          !!command.teamId || command.rows.some((r) => r.team.trim());
+          !!command.teamId || command.rows.some((r) => r.team?.trim());
         if (usesTeams) right(s, "teams.manage");
         const day = today();
         // Team names of the file, matched case-insensitively with active teams.
@@ -1013,10 +1013,11 @@ export async function peopleExecute(
               ],
             )
           ).rows[0].id as string;
-          const lineTeam = row.team.trim()
-            ? teams.find((t) => t.name === row.team.trim().toLowerCase())?.id
+          const teamName = (row.team ?? "").trim().toLowerCase();
+          const lineTeam = teamName
+            ? teams.find((t) => t.name === teamName)?.id
             : undefined;
-          if (row.team.trim() && !lineTeam) unknownTeams++;
+          if (teamName && !lineTeam) unknownTeams++;
           const teamId = lineTeam ?? command.teamId;
           if (teamId)
             await joinTeam(
@@ -1027,13 +1028,14 @@ export async function peopleExecute(
               role === "player" ? row.position : "",
               day,
             );
-          if (role === "player" && row.guardianName.trim().length >= 2) {
+          const guardianName = (row.guardianName ?? "").trim();
+          if (role === "player" && guardianName.length >= 2) {
             // Recorded as a declared contact: it gives no access until the club
             // verifies the relationship in the people module.
             const existing = (
               await c.query(
                 "SELECT id FROM club_person WHERE organization_id=$1 AND lower(trim(full_name))=lower(trim($2)) AND birth_date IS NULL AND status='active' LIMIT 1",
-                [org, row.guardianName],
+                [org, guardianName],
               )
             ).rows[0]?.id as string | undefined;
             let guardianId = existing;
@@ -1047,9 +1049,9 @@ export async function peopleExecute(
                   [
                     org,
                     guardianPerson,
-                    row.guardianName.trim(),
+                    guardianName,
                     row.guardianEmail || null,
-                    row.guardianPhone,
+                    row.guardianPhone ?? "",
                     day,
                   ],
                 )
