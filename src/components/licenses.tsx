@@ -1,0 +1,723 @@
+"use client";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import type { Locale } from "@/lib/locale";
+import type {
+  clubLicensesView,
+  federationLicensesView,
+  federalCalendarView,
+} from "@/domains/federation/service";
+import { licensesCopy } from "./licenses-copy";
+import { errors } from "./access-copy";
+
+const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
+const deniedCodes = [
+  "FORBIDDEN",
+  "FEDERATION_ONLY",
+  "CLUB_ONLY",
+  "CONTEXT_REQUIRED",
+  "MFA_REQUIRED",
+];
+
+/** First load inline in the effect (React rule), reload after each command. */
+function useData<T>(url: string, failure: (c: string) => string) {
+  const [data, setData] = useState<T | null>(null),
+    [error, setError] = useState(""),
+    [denied, setDenied] = useState(false);
+  const reload = useCallback(async () => {
+    const r = await fetch(url, { cache: "no-store" });
+    const v = await r.json();
+    if (!r.ok) throw new Error(v.error);
+    setData(v);
+  }, [url]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(url, { cache: "no-store" })
+      .then(async (r) => {
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error);
+        if (!cancelled) setData(v);
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        if (deniedCodes.includes(e.message)) setDenied(true);
+        else setError(failure(e.message));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url, failure]);
+  return { data, error, setError, denied, reload };
+}
+function usePost(
+  url: string,
+  reload: () => Promise<void>,
+  setError: (s: string) => void,
+  failure: (c: string) => string,
+) {
+  const [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  async function post(body: Record<string, unknown>, done: string) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const v = await r.json();
+      if (!r.ok) throw new Error(v.error);
+      await reload();
+      setMessage(done);
+      return true;
+    } catch (e) {
+      setError(failure(e instanceof Error ? e.message : ""));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+  return { busy, message, post };
+}
+
+export function ClubLicenses({ locale }: { locale: Locale }) {
+  const t = licensesCopy[locale];
+  const failure = useCallback(
+    (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
+    [t, locale],
+  );
+  const { data, error, setError, denied, reload } = useData<
+    Awaited<ReturnType<typeof clubLicensesView>>
+  >("/api/licenses", failure);
+  const { busy, message, post } = usePost(
+    "/api/licenses",
+    reload,
+    setError,
+    failure,
+  );
+  const [chosen, setChosen] = useState<string[]>([]);
+  const send = (body: Record<string, unknown>, done: string) =>
+    post({ ...body, organizationId: data?.organization_id }, done);
+  const candidates =
+    data?.players.filter(
+      (x) => !x.license_status || x.license_status === "refused",
+    ) ?? [];
+
+  return (
+    <main id="main" className="access licenses">
+      <h1>{t.clubTitle}</h1>
+      <p className="muted">{t.clubIntro}</p>
+      {error && <p role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      {denied && <p className="notice">{t.denied}</p>}
+      {!data && !denied && !error && <p role="status">{t.loading}</p>}
+      {data && !data.federation && <p className="notice">{t.noFederation}</p>}
+      {data && (
+        <>
+          <p>
+            <strong>
+              {data.federation?.name} · {t.season} {data.season}
+            </strong>
+          </p>
+          {data.players.length ? (
+            <div
+              className="table-scroll"
+              role="region"
+              aria-label={t.clubTitle}
+              tabIndex={0}
+            >
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    {data.can.manage && (
+                      <th scope="col">
+                        <label className="check">
+                          <input
+                            type="checkbox"
+                            checked={
+                              chosen.length > 0 &&
+                              chosen.length === candidates.length
+                            }
+                            onChange={(e) =>
+                              setChosen(
+                                e.target.checked
+                                  ? candidates.map((x) => x.id)
+                                  : [],
+                              )
+                            }
+                          />
+                          <span className="sr-only">{t.selectAll}</span>
+                        </label>
+                      </th>
+                    )}
+                    <th scope="col">{t.player}</th>
+                    <th scope="col">{t.born}</th>
+                    <th scope="col">{t.license}</th>
+                    <th scope="col">{t.classification}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.players.map((x) => {
+                    const selectable =
+                      !x.license_status || x.license_status === "refused";
+                    return (
+                      <tr key={x.id}>
+                        {data.can.manage && (
+                          <td>
+                            {selectable && (
+                              <input
+                                type="checkbox"
+                                aria-label={`${t.select} : ${x.full_name}`}
+                                checked={chosen.includes(x.id)}
+                                onChange={(e) =>
+                                  setChosen(
+                                    e.target.checked
+                                      ? [...chosen, x.id]
+                                      : chosen.filter((c) => c !== x.id),
+                                  )
+                                }
+                              />
+                            )}
+                          </td>
+                        )}
+                        <td>
+                          <Link href={`/${locale}/players/${x.id}`}>
+                            {x.full_name}
+                          </Link>
+                        </td>
+                        <td>{x.birth_year ?? ""}</td>
+                        <td>
+                          <span
+                            className="status-tag"
+                            data-tone={
+                              x.license_status === "active"
+                                ? "success"
+                                : x.license_status === "requested"
+                                  ? "warning"
+                                  : x.license_status
+                                    ? "danger"
+                                    : ""
+                            }
+                          >
+                            {t.licenseStatus[x.license_status ?? "none"]}
+                          </span>
+                          {x.license_number && (
+                            <span className="muted"> · {x.license_number}</span>
+                          )}
+                          {x.license_status === "requested" &&
+                            data.can.manage && (
+                              <button
+                                type="button"
+                                className="text-button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void send(
+                                    {
+                                      action: "cancelLicense",
+                                      id: x.license_id,
+                                    },
+                                    t.done,
+                                  )
+                                }
+                              >
+                                {t.cancel}
+                                <span className="sr-only">
+                                  {" "}
+                                  : {x.full_name}
+                                </span>
+                              </button>
+                            )}
+                        </td>
+                        <td>
+                          {t.classes[x.classification] ?? x.classification}
+                          {x.classification_valid_until && (
+                            <span className="muted">
+                              {" "}
+                              · {t.until} {x.classification_valid_until}
+                            </span>
+                          )}{" "}
+                          <span
+                            className="status-tag"
+                            data-tone={
+                              x.classification_status === "validated"
+                                ? "success"
+                                : x.classification_status === "requested"
+                                  ? "warning"
+                                  : x.classification_status === "refused"
+                                    ? "danger"
+                                    : ""
+                            }
+                          >
+                            {t.classStatus[x.classification_status]}
+                          </span>
+                          {x.classification_note && (
+                            <span className="muted">
+                              {" "}
+                              · {x.classification_note}
+                            </span>
+                          )}
+                          {data.can.manage &&
+                            data.federation &&
+                            ["PF1", "PF2", "pending"].includes(
+                              x.classification,
+                            ) &&
+                            ["unverified", "refused"].includes(
+                              x.classification_status,
+                            ) && (
+                              <button
+                                type="button"
+                                className="text-button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void send(
+                                    {
+                                      action: "requestClassification",
+                                      profileId: x.id,
+                                    },
+                                    t.requested,
+                                  )
+                                }
+                              >
+                                {t.askCheck}
+                                <span className="sr-only">
+                                  {" "}
+                                  : {x.full_name}
+                                </span>
+                              </button>
+                            )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="muted">{t.noPlayer}</p>
+          )}
+          {data.can.manage && data.federation && (
+            <p>
+              <button
+                type="button"
+                className="button"
+                disabled={busy || !chosen.length}
+                onClick={() =>
+                  void send(
+                    {
+                      action: "requestLicenses",
+                      season: data.season,
+                      profileIds: chosen,
+                    },
+                    t.requested,
+                  ).then((ok) => ok && setChosen([]))
+                }
+              >
+                {t.request} ({chosen.length})
+              </button>
+            </p>
+          )}
+        </>
+      )}
+    </main>
+  );
+}
+
+export function FederationLicenses({ locale }: { locale: Locale }) {
+  const t = licensesCopy[locale];
+  const failure = useCallback(
+    (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
+    [t, locale],
+  );
+  const { data, error, setError, denied, reload } = useData<
+    Awaited<ReturnType<typeof federationLicensesView>>
+  >("/api/federation/licenses", failure);
+  const { busy, message, post } = usePost(
+    "/api/federation/licenses",
+    reload,
+    setError,
+    failure,
+  );
+  const [chosen, setChosen] = useState<string[]>([]);
+  const send = (body: Record<string, unknown>) =>
+    post({ ...body, organizationId: data?.organization_id }, t.done);
+  const day = (d: string | null) =>
+    d
+      ? new Intl.DateTimeFormat(tag(locale), {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }).format(new Date(d))
+      : "";
+  const pending = data?.licenses.filter((l) => l.status === "requested") ?? [];
+  const decided = data?.licenses.filter((l) => l.status !== "requested") ?? [];
+
+  return (
+    <main id="main" className="access licenses">
+      <h1>{t.fedTitle}</h1>
+      <p className="muted">{t.fedIntro}</p>
+      {error && <p role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      {denied && <p className="notice">{t.denied}</p>}
+      {!data && !denied && !error && <p role="status">{t.loading}</p>}
+      {data && (
+        <>
+          <section className="panel" aria-labelledby="fed-licenses">
+            <h2 id="fed-licenses">
+              {t.licenses} · {t.pending} ({pending.length})
+            </h2>
+            {pending.length ? (
+              <>
+                <ul className="records">
+                  {pending.map((l) => (
+                    <li key={l.id}>
+                      <label className="check">
+                        {data.can.manage && (
+                          <input
+                            type="checkbox"
+                            checked={chosen.includes(l.id)}
+                            onChange={(e) =>
+                              setChosen(
+                                e.target.checked
+                                  ? [...chosen, l.id]
+                                  : chosen.filter((c) => c !== l.id),
+                              )
+                            }
+                          />
+                        )}
+                        <span>
+                          <strong>{l.full_name}</strong>
+                          <span className="muted">
+                            {" "}
+                            · {l.birth_year ?? ""} · {l.club} · {t.season}{" "}
+                            {l.season} · {day(l.requested_at)}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                {data.can.manage && (
+                  <form
+                    className="inline-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const f = new FormData(e.currentTarget);
+                      const decision =
+                        (
+                          (e.nativeEvent as SubmitEvent)
+                            .submitter as HTMLButtonElement | null
+                        )?.value ?? "active";
+                      void send({
+                        action: "decideLicenses",
+                        ids: chosen,
+                        decision,
+                        note: String(f.get("note") ?? ""),
+                      }).then((ok) => ok && setChosen([]));
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setChosen(pending.map((l) => l.id))}
+                    >
+                      {t.selectAll}
+                    </button>
+                    <label>
+                      <span className="sr-only">{t.note}</span>
+                      <input name="note" maxLength={500} placeholder={t.note} />
+                    </label>
+                    <button
+                      className="button"
+                      value="active"
+                      disabled={busy || !chosen.length}
+                    >
+                      {t.approve} ({chosen.length})
+                    </button>
+                    <button
+                      className="button secondary"
+                      value="refused"
+                      disabled={busy || !chosen.length}
+                    >
+                      {t.refuse}
+                    </button>
+                  </form>
+                )}
+              </>
+            ) : (
+              <p className="muted">{t.none}</p>
+            )}
+            {decided.length > 0 && (
+              <details>
+                <summary>
+                  {t.licenses} ({decided.length})
+                </summary>
+                <div className="table-scroll">
+                  <table className="ledger">
+                    <thead>
+                      <tr>
+                        <th scope="col">{t.player}</th>
+                        <th scope="col">{t.club}</th>
+                        <th scope="col">{t.season}</th>
+                        <th scope="col">{t.number}</th>
+                        <th scope="col">{t.license}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {decided.map((l) => (
+                        <tr key={l.id}>
+                          <td>{l.full_name}</td>
+                          <td>{l.club}</td>
+                          <td>{l.season}</td>
+                          <td>{l.number ?? ""}</td>
+                          <td>
+                            {t.licenseStatus[l.status]}
+                            {l.note && (
+                              <span className="muted"> · {l.note}</span>
+                            )}
+                            {l.status === "active" && data.can.manage && (
+                              <form
+                                className="inline-form"
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  void send({
+                                    action: "suspendLicense",
+                                    id: l.id,
+                                    note: String(
+                                      new FormData(e.currentTarget).get(
+                                        "note",
+                                      ) ?? "",
+                                    ),
+                                  });
+                                }}
+                              >
+                                <label>
+                                  <span className="sr-only">
+                                    {t.suspendNote}
+                                  </span>
+                                  <input
+                                    name="note"
+                                    required
+                                    minLength={5}
+                                    maxLength={500}
+                                    placeholder={t.suspendNote}
+                                  />
+                                </label>
+                                <button className="text-button" disabled={busy}>
+                                  {t.suspend}
+                                  <span className="sr-only">
+                                    {" "}
+                                    : {l.full_name}
+                                  </span>
+                                </button>
+                              </form>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </section>
+
+          <section className="panel" aria-labelledby="fed-classes">
+            <h2 id="fed-classes">{t.classifications}</h2>
+            {data.classifications.length ? (
+              <ul className="records">
+                {data.classifications.map((x) => (
+                  <li key={x.profile_id}>
+                    <strong>{x.full_name}</strong>
+                    <span className="muted">
+                      {" "}
+                      · {x.birth_year ?? ""} · {x.club} ·{" "}
+                      {t.classes[x.classification] ?? x.classification}
+                      {x.valid_until ? ` · ${t.until} ${x.valid_until}` : ""}
+                    </span>{" "}
+                    <span
+                      className="status-tag"
+                      data-tone={
+                        x.status === "validated"
+                          ? "success"
+                          : x.status === "refused"
+                            ? "danger"
+                            : "warning"
+                      }
+                    >
+                      {t.classStatus[x.status]}
+                    </span>
+                    {x.note && <span className="muted"> · {x.note}</span>}
+                    {x.status === "requested" && data.can.manage && (
+                      <form
+                        className="inline-form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const f = new FormData(e.currentTarget);
+                          const decision =
+                            (
+                              (e.nativeEvent as SubmitEvent)
+                                .submitter as HTMLButtonElement | null
+                            )?.value ?? "validated";
+                          void send({
+                            action: "decideClassification",
+                            profileId: x.profile_id,
+                            decision,
+                            classification:
+                              decision === "validated" ? f.get("class") : null,
+                            validUntil: (f.get("until") as string) || null,
+                            note: String(f.get("note") ?? ""),
+                          });
+                        }}
+                      >
+                        <label>
+                          <span className="sr-only">{t.classification}</span>
+                          <select
+                            name="class"
+                            defaultValue={
+                              x.classification === "PF2" ? "PF2" : "PF1"
+                            }
+                          >
+                            <option value="PF1">PF1</option>
+                            <option value="PF2">PF2</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span className="sr-only">{t.validUntil}</span>
+                          <input
+                            name="until"
+                            type="date"
+                            defaultValue={x.valid_until ?? ""}
+                            aria-label={t.validUntil}
+                          />
+                        </label>
+                        <label>
+                          <span className="sr-only">{t.note}</span>
+                          <input
+                            name="note"
+                            maxLength={500}
+                            placeholder={t.note}
+                          />
+                        </label>
+                        <button
+                          className="button"
+                          value="validated"
+                          disabled={busy}
+                        >
+                          {t.validate}
+                          <span className="sr-only"> : {x.full_name}</span>
+                        </button>
+                        <button
+                          className="button secondary"
+                          value="refused"
+                          disabled={busy}
+                        >
+                          {t.refuse}
+                          <span className="sr-only"> : {x.full_name}</span>
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">{t.none}</p>
+            )}
+          </section>
+
+          <section className="panel" aria-labelledby="fed-transfers">
+            <h2 id="fed-transfers">{t.transfers}</h2>
+            {data.transfers.length ? (
+              <div className="table-scroll">
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t.player}</th>
+                      <th scope="col">{t.from}</th>
+                      <th scope="col">{t.to}</th>
+                      <th scope="col">{t.license}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.transfers.map((x) => (
+                      <tr key={x.id}>
+                        <td>{x.full_name}</td>
+                        <td>{x.from_club}</td>
+                        <td>{x.to_club ?? ""}</td>
+                        <td>
+                          {t.transferStatus[x.status]} ·{" "}
+                          {day(x.accepted_at ?? x.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="muted">{t.none}</p>
+            )}
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
+export function FederalCalendar({ locale }: { locale: Locale }) {
+  const t = licensesCopy[locale];
+  const failure = useCallback(
+    (code: string) => errors[code]?.[locale] ?? t.unavailable,
+    [t, locale],
+  );
+  const { data, error, denied } = useData<
+    Awaited<ReturnType<typeof federalCalendarView>>
+  >("/api/federal-calendar", failure);
+  const when = (d: string) =>
+    new Intl.DateTimeFormat(tag(locale), {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Brussels",
+    }).format(new Date(d));
+  return (
+    <main id="main" className="access federal-calendar">
+      <h1>{t.calendarTitle}</h1>
+      <p className="muted">{t.calendarIntro}</p>
+      {error && <p role="alert">{error}</p>}
+      {denied && <p className="notice">{t.denied}</p>}
+      {!data && !denied && !error && <p role="status">{t.loading}</p>}
+      {data && !data.federation && <p className="notice">{t.noFederation}</p>}
+      {data?.federation &&
+        (data.events.length ? (
+          <ul className="agenda">
+            {data.events.map((e) => (
+              <li key={e.id}>
+                <span className="agenda-body">
+                  <strong>
+                    {e.title}
+                    {e.status === "cancelled" && (
+                      <span className="status-tag" data-tone="danger">
+                        ×
+                      </span>
+                    )}
+                  </strong>
+                  <span>
+                    {when(e.starts_at)} · {e.custom_type || t.kinds[e.kind]}
+                    {e.location ? ` · ${e.location}` : ""}
+                  </span>
+                  {e.instructions && (
+                    <span className="muted">{e.instructions}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{t.noEvent}</p>
+        ))}
+    </main>
+  );
+}

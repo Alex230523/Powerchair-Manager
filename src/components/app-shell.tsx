@@ -58,6 +58,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               { route: "/players", label: "players", icon: "players" },
               registrations,
               { route: "/attendance", label: "attendance", icon: "attendance" },
+              { route: "/licenses", label: "licenses", icon: "check" },
             ],
           },
           {
@@ -67,6 +68,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             items: [
               { route: "/calendar", label: "calendar", icon: "calendar" },
               { route: "/matches", label: "matches", icon: "whistle" },
+              {
+                route: "/federal-calendar",
+                label: "federalCalendar",
+                icon: "calendar",
+              },
               { route: "/documents", label: "documents", icon: "document" },
               { route: "/messages", label: "messages", icon: "message" },
             ],
@@ -116,6 +122,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                         route: "/federation/courses",
                         label: "courses",
                         icon: "team",
+                      },
+                      {
+                        route: "/federation/licenses",
+                        label: "federationLicenses",
+                        icon: "check",
                       },
                       {
                         route: "/federation/referees",

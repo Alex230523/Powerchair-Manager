@@ -18,6 +18,7 @@ import {
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Button, Panel } from "./ui";
+import { SignaturePad, signatureCopy } from "./signature-pad";
 type View = Awaited<ReturnType<typeof documentView>>;
 function Field({
   id,
@@ -289,6 +290,51 @@ export function Documents({ locale }: { locale: Locale }) {
                     <p className="muted">{t.fileHint}</p>
                     <Button disabled={busy}>{t.upload}</Button>
                   </form>
+                )}
+                {doc.signatures.length > 0 && (
+                  <ul className="records">
+                    {doc.signatures.map(
+                      (
+                        g: { signer_name: string; signed_at: string },
+                        i: number,
+                      ) => (
+                        <li key={i}>
+                          <span className="status-tag" data-tone="success">
+                            {signatureCopy[locale].signed
+                              .replace("{name}", g.signer_name)
+                              .replace(
+                                "{date}",
+                                new Date(g.signed_at).toLocaleString(
+                                  locale === "en" ? "en-GB" : `${locale}-BE`,
+                                  { timeZone: "Europe/Brussels" },
+                                ),
+                              )}
+                          </span>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                )}
+                {doc.canSign && (
+                  <SignaturePad
+                    locale={locale}
+                    busy={busy}
+                    onSign={(input) =>
+                      void task(async () => {
+                        const r = await fetch("/api/documents/sign/" + doc.id, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            ...input,
+                            accept: true,
+                            version: doc.version,
+                            organizationId: data.context.organization_id,
+                          }),
+                        });
+                        if (!r.ok) throw new Error((await r.json()).error);
+                      })
+                    }
+                  />
                 )}
                 <h3>{t.versions}</h3>
                 <ul>

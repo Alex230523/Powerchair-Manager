@@ -36,6 +36,10 @@ import {
   designationExecute,
   refereeExecute,
 } from "../src/domains/competitions/service";
+import {
+  clubLicensesExecute,
+  federationLicensesExecute,
+} from "../src/domains/federation/service";
 import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
@@ -544,6 +548,36 @@ try {
   await request(people.camille, `Licence ${year}-${year + 1}`, "licence");
   await request(people.lucas, "Autorisation parentale", "consent");
   await request(people.yanis, "Attestation d’assurance", "insurance");
+  // A template-generated authorisation that Lucas's mother can sign electronically.
+  const authorisation = await documentExecute(
+    db,
+    president,
+    {
+      action: "template",
+      name: "Autorisation parentale",
+      locale: "fr",
+      body: "Je soussigné(e), représentant légal de {name}, autorise {organization} à l'inscrire aux entraînements, matchs et déplacements de la saison {season}, et à prendre les mesures urgentes nécessaires en cas d'accident.\nFait le {date}.",
+      expectedVersion: 0,
+    },
+    org,
+  );
+  const consent = (
+    await db.query(
+      "SELECT id,version FROM club_document WHERE organization_id=$1 AND name='Autorisation parentale'",
+      [org],
+    )
+  ).rows[0];
+  await documentExecute(
+    db,
+    president,
+    {
+      action: "generate",
+      id: consent.id,
+      templateId: authorisation.id,
+      expectedVersion: consent.version,
+    },
+    org,
+  );
   for (const name of ["Carte d’identité", "Attestation d’assurance"]) {
     const doc = (
       await db.query(
@@ -1223,6 +1257,85 @@ try {
         available: i !== 2,
         note: "",
       })),
+    },
+    federation,
+  );
+
+  // 14. Licences and classifications with the BPCF, and a federation tournament.
+  const licenceSeason = seasonOf(day(0)).label;
+  await clubLicensesExecute(
+    db,
+    president,
+    {
+      action: "requestLicenses",
+      season: licenceSeason,
+      profileIds: [
+        people.camille,
+        people.yanis,
+        people.thomas,
+        people.lucas,
+        people.emma,
+      ],
+    },
+    org,
+  );
+  const firstTwo = (
+    await db.query(
+      "SELECT id FROM license WHERE profile_id=ANY($1::uuid[]) ORDER BY requested_at",
+      [[people.camille, people.yanis]],
+    )
+  ).rows.map((r) => r.id as string);
+  await federationLicensesExecute(
+    db,
+    fed,
+    { action: "decideLicenses", ids: firstTwo, decision: "active", note: "" },
+    federation,
+  );
+  for (const profileId of [people.camille, people.emma])
+    await clubLicensesExecute(
+      db,
+      president,
+      { action: "requestClassification", profileId },
+      org,
+    );
+  await federationLicensesExecute(
+    db,
+    fed,
+    {
+      action: "decideClassification",
+      profileId: people.camille,
+      decision: "validated",
+      classification: "PF2",
+      validUntil: `${year + 2}-06-30`,
+      note: "Classification confirmée lors du tournoi de septembre.",
+    },
+    federation,
+  );
+  await calendarExecute(
+    db,
+    fed,
+    {
+      action: "create",
+      title: "Tournoi BPCF des jeunes",
+      kind: "tournament",
+      customType: "",
+      timezone: "Europe/Brussels",
+      localStart: `${next(6, 3)}T10:00`,
+      localEnd: `${next(6, 3)}T17:00`,
+      fold: "reject",
+      teamId: null,
+      placeId: null,
+      freeLocation: "Complexe sportif de Louvain-la-Neuve",
+      responsibleId: fedUser,
+      visibility: "organization",
+      equipment: "",
+      instructions:
+        "Inscriptions des équipes auprès de la BPCF avant la fin du mois.",
+      participants: [],
+      documents: [],
+      intervalDays: 0,
+      occurrences: 1,
+      requestId: randomUUID(),
     },
     federation,
   );
