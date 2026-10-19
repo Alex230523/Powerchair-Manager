@@ -8,6 +8,7 @@ import {
   type Principal,
 } from "../access/service";
 import { permissions } from "../access/policy";
+import { publish } from "../notifications/queue";
 import {
   peopleScope,
   peopleRecords,
@@ -27,6 +28,66 @@ import {
 export { clubCommand, federationCommand };
 
 const coachRoles = ["coach", "assistant"];
+const statusText: Record<string, Record<"fr" | "nl" | "en", string>> = {
+  requested: {
+    fr: "nouvelle demande à traiter",
+    nl: "nieuwe aanvraag te behandelen",
+    en: "new request to review",
+  },
+  approved: { fr: "validée", nl: "gevalideerd", en: "approved" },
+  refused: { fr: "refusée", nl: "geweigerd", en: "refused" },
+};
+/** In-app and email notice about a course request (no health or contact data). */
+async function notifyTraining(
+  c: PoolClient,
+  input: {
+    organizationId: string;
+    userIds: string[];
+    requestId: string;
+    course: string;
+    person: string;
+    status: "requested" | "approved" | "refused";
+    path: (locale: string) => string;
+  },
+) {
+  if (!input.userIds.length) return;
+  const organization = (
+    await c.query("SELECT name FROM organization WHERE id=$1", [
+      input.organizationId,
+    ])
+  ).rows[0]?.name as string;
+  const users = (
+    await c.query(
+      `SELECT u.id,u.email,u.name,COALESCE(p.locale,'fr') AS locale FROM "user" u LEFT JOIN person p ON p.user_id=u.id WHERE u.id=ANY($1) AND u.active`,
+      [input.userIds],
+    )
+  ).rows as {
+    id: string;
+    email: string;
+    name: string;
+    locale: "fr" | "nl" | "en";
+  }[];
+  for (const u of users)
+    await publish(c, {
+      organizationId: input.organizationId,
+      userId: u.id,
+      email: u.email,
+      kind: "training_update",
+      category: "administrative",
+      resourceType: "training",
+      resourceId: input.requestId,
+      eventKey: `training:${input.requestId}:${input.status}`,
+      locale: u.locale,
+      variables: {
+        name: u.name,
+        organization,
+        url: input.path(u.locale),
+        course: input.course,
+        person: input.person,
+        status: statusText[input.status][u.locale],
+      },
+    });
+}
 
 /**
  * Coach profile for the club: identity (directory staff only), teams coached,
@@ -112,13 +173,22 @@ export async function coachProfileView(db: Pool, p: Principal, id: string) {
             )
           ).rows
         : [];
-    const courses = canRequest
-      ? (
-          await c.query(
-            "SELECT k.id,k.title,k.level,k.hours::float AS hours,f.name AS federation FROM training_course k JOIN organization f ON f.id=k.federation_id WHERE k.active ORDER BY f.name,k.title",
-          )
-        ).rows
-      : [];
+    // A club only sees the courses of the federation it is affiliated with (the BPCF).
+    const affiliation = (
+      await c.query(
+        "SELECT f.id,f.name FROM organization o JOIN organization f ON f.id=o.federation_id WHERE o.id=$1",
+        [org],
+      )
+    ).rows[0] as { id: string; name: string } | undefined;
+    const courses =
+      canRequest && affiliation
+        ? (
+            await c.query(
+              "SELECT k.id,k.title,k.level,k.hours::float AS hours,f.name AS federation FROM training_course k JOIN organization f ON f.id=k.federation_id WHERE k.active AND k.federation_id=$1 ORDER BY k.title",
+              [affiliation.id],
+            )
+          ).rows
+        : [];
     return {
       organization_id: org,
       today: day,
@@ -144,6 +214,7 @@ export async function coachProfileView(db: Pool, p: Principal, id: string) {
       attendance: coachAttendance(rows),
       formations,
       courses,
+      federation: affiliation?.name ?? null,
       can: { request: canRequest },
     };
   });
@@ -170,11 +241,13 @@ export async function coachExecute(
         [command.profileId, org],
       );
       if (!coach.rowCount) throw new AccessError("NOT_FOUND", 404);
-      const course = await c.query(
-        "SELECT 1 FROM training_course WHERE id=$1 AND active",
-        [command.courseId],
-      );
-      if (!course.rowCount) throw new AccessError("NOT_FOUND", 404);
+      const course = (
+        await c.query(
+          "SELECT k.title,k.federation_id FROM training_course k JOIN organization o ON o.federation_id=k.federation_id WHERE k.id=$1 AND k.active AND o.id=$2",
+          [command.courseId, org],
+        )
+      ).rows[0] as { title: string; federation_id: string } | undefined;
+      if (!course) throw new AccessError("NOT_FOUND", 404);
       const open = await c.query(
         "SELECT 1 FROM training_request WHERE profile_id=$1 AND course_id=$2 AND status='requested'",
         [command.profileId, command.courseId],
@@ -186,6 +259,26 @@ export async function coachExecute(
           [org, command.profileId, command.courseId, command.note, p.userId],
         )
       ).rows[0].id;
+      const person = (
+        await c.query("SELECT full_name FROM club_person WHERE id=$1", [
+          command.profileId,
+        ])
+      ).rows[0].full_name as string;
+      const presidents = (
+        await c.query(
+          "SELECT r.user_id FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id WHERE r.organization_id=$1 AND r.role='federation_president' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active",
+          [course.federation_id],
+        )
+      ).rows.map((r) => r.user_id as string);
+      await notifyTraining(c, {
+        organizationId: course.federation_id,
+        userIds: presidents,
+        requestId: target,
+        course: course.title,
+        person: `${person} (${s.context.organization_name})`,
+        status: "requested",
+        path: (l) => `/${l}/federation/courses`,
+      });
     } else {
       const changed = await c.query(
         "UPDATE training_request SET status='cancelled',decided_at=now(),decided_by=$3 WHERE id=$1 AND organization_id=$2 AND status='requested' RETURNING id",
@@ -261,12 +354,31 @@ export async function coursesView(db: Pool, p: Principal) {
         [fed],
       )
     ).rows;
+    // Affiliated clubs: public identity and headcounts only.
+    const clubs = (
+      await c.query(
+        `SELECT o.id,o.name,COALESCE(o.contact_email,'') AS contact_email,
+                (SELECT count(*)::int FROM club_person p WHERE p.organization_id=o.id AND p.status='active' AND 'player'=ANY(p.directory_roles) AND NOT 'player'=ANY(p.former_roles)) AS players,
+                (SELECT count(*)::int FROM club_person p WHERE p.organization_id=o.id AND p.status='active' AND 'coach'=ANY(p.directory_roles) AND NOT 'coach'=ANY(p.former_roles)) AS coaches,
+                (SELECT count(*)::int FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=o.id AND NOT t.archived AND NOT s.archived) AS teams
+           FROM organization o WHERE o.federation_id=$1 AND o.kind='club' ORDER BY o.name`,
+        [fed],
+      )
+    ).rows as {
+      id: string;
+      name: string;
+      contact_email: string;
+      players: number;
+      coaches: number;
+      teams: number;
+    }[];
     return {
       organization_id: fed,
       today: brusselsToday(),
       can: { manage },
       courses,
       requests,
+      clubs,
     };
   });
 }
@@ -327,7 +439,7 @@ export async function coursesExecute(
       } else {
         const request = (
           await c.query(
-            "SELECT q.id,k.validity_years FROM training_request q JOIN training_course k ON k.id=q.course_id WHERE q.id=$1 AND k.federation_id=$2 AND q.status='requested' FOR UPDATE OF q",
+            "SELECT q.id,q.organization_id,q.profile_id,q.requested_by,k.title,k.validity_years,cp.full_name FROM training_request q JOIN training_course k ON k.id=q.course_id JOIN club_person cp ON cp.id=q.profile_id WHERE q.id=$1 AND k.federation_id=$2 AND q.status='requested' FOR UPDATE OF q",
             [command.id, fed],
           )
         ).rows[0];
@@ -349,6 +461,15 @@ export async function coursesExecute(
           ],
         );
         target = command.id;
+        await notifyTraining(c, {
+          organizationId: request.organization_id,
+          userIds: [request.requested_by],
+          requestId: target,
+          course: request.title,
+          person: request.full_name,
+          status: command.decision,
+          path: (l) => `/${l}/coaches/${request.profile_id}`,
+        });
       }
       await audit(c, fed, p.userId, "training." + command.action, target);
       return { ok: true as const, id: target };

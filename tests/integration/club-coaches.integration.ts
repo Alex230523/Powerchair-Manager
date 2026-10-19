@@ -96,6 +96,10 @@ beforeAll(async () => {
       [club, season],
     )
   ).rows[0].id;
+  await db.query("UPDATE organization SET federation_id=$1 WHERE id=$2", [
+    federation,
+    club,
+  ]);
   president = (await actor(club, "club_president")).p;
   const c = await actor(club, "coach");
   coach = c.p;
@@ -375,7 +379,19 @@ it("runs the course workflow: federation creates, club asks, federation confirms
       club,
     ),
   ).rejects.toMatchObject({ code: "DUPLICATE" });
+  // The federation president is told in the app that a request is waiting.
+  expect(
+    (
+      await db.query(
+        "SELECT count(*)::int AS n FROM app_notification WHERE kind='training_update' AND recipient_user_id=$1",
+        [fedPresident.userId],
+      )
+    ).rows[0].n,
+  ).toBe(1);
   const pending = await coursesView(db, fedWorker);
+  expect(pending.clubs.map((c: { name: string }) => c.name)).toEqual([
+    "Club renommé",
+  ]);
   expect(pending.can.manage).toBe(false);
   expect(
     pending.requests.map((r: { coach: string; status: string }) => [

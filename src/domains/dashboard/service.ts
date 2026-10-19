@@ -207,6 +207,23 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     );
   }
 
+  // Coach courses: approved courses expiring within 60 days (club management).
+  if (club && has("mandates.manage"))
+    counts.coursesExpiring = await count(
+      c,
+      "SELECT count(*) FROM training_request WHERE organization_id=$1 AND status='approved' AND valid_until BETWEEN CURRENT_DATE AND CURRENT_DATE+60",
+      [org],
+    );
+  // Federation: club requests waiting for a decision.
+  if (!club && ["federation_president", "federation_worker"].includes(a.role)) {
+    scopes.push("courses");
+    counts.courseRequests = await count(
+      c,
+      "SELECT count(*) FROM training_request q JOIN training_course k ON k.id=q.course_id WHERE k.federation_id=$1 AND q.status='requested'",
+      [org],
+    );
+  }
+
   // People: only with the directory rights used by peopleView.
   if (club && (has("people.read") || has("people.manage"))) {
     scopes.push("people");
@@ -234,7 +251,14 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
       "SELECT COALESCE(sum(i.amount_cents),0) AS count FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND i.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30",
       [org],
     );
+    // Treasury: balance of the club ledger (cancelled entries never count).
+    const treasury = await count(
+      c,
+      "SELECT COALESCE(sum(CASE WHEN direction='in' THEN amount_cents ELSE -amount_cents END),0) AS count FROM finance_transaction WHERE organization_id=$1 AND cancelled_at IS NULL",
+      [org],
+    );
     metrics.push(
+      metric("treasury", treasury, { format: "cents", href: "/funding" }),
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );
   } else if (club && own.length) {

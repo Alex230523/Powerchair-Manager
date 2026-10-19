@@ -10,6 +10,8 @@ export const todoKeys = [
   "documentsReview",
   "registrationFollowups",
   "equipmentService",
+  "courseRequests",
+  "coursesExpiring",
   "documentsMissing",
   "documentsExpiring",
 ] as const;
@@ -25,6 +27,8 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   documentsReview: { href: "/documents", tone: "warning" },
   registrationFollowups: { href: "/registrations", tone: "warning" },
   equipmentService: { href: "/equipment", tone: "warning" },
+  courseRequests: { href: "/federation/courses", tone: "warning" },
+  coursesExpiring: { href: "/coaches", tone: "info" },
   documentsMissing: { href: "/documents", tone: "info" },
   documentsExpiring: { href: "/documents", tone: "info" },
 };
@@ -47,6 +51,7 @@ export const metricKeys = [
   "waitingList",
   "acceptedRecently",
   "duesNext30",
+  "treasury",
   "myNextDue",
 ] as const;
 export type MetricKey = (typeof metricKeys)[number];

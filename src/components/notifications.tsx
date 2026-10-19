@@ -20,6 +20,24 @@ const variables: Record<string, string[]> = {
   calendar_update: ["name", "organization", "url"],
   document_update: ["name", "organization", "url"],
   registration_update: ["name", "organization", "url"],
+  dues_reminder: [
+    "name",
+    "person",
+    "amount",
+    "due",
+    "details",
+    "organization",
+    "url",
+  ],
+  document_reminder: ["name", "person", "details", "organization", "url"],
+  training_update: [
+    "name",
+    "person",
+    "course",
+    "status",
+    "organization",
+    "url",
+  ],
 };
 export function Notifications({ locale }: { locale: Locale }) {
   const t = notificationCopy[locale];

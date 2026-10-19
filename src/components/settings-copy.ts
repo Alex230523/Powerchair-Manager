@@ -27,6 +27,7 @@ type Copy = {
   presets: string;
   presetField: string;
   presetHead: string;
+  presetTreasurer: string;
   presetNone: string;
   saveGrants: string;
   grantsSaved: string;
@@ -65,6 +66,7 @@ const fr: Copy = {
   presets: "Préréglages",
   presetField: "Coach terrain",
   presetHead: "Coach principal",
+  presetTreasurer: "Trésorier",
   presetNone: "Aucun accès",
   saveGrants: "Enregistrer les accès",
   grantsSaved: "Accès mis à jour.",
@@ -131,6 +133,7 @@ const nl: Copy = {
   presets: "Voorinstellingen",
   presetField: "Veldcoach",
   presetHead: "Hoofdcoach",
+  presetTreasurer: "Penningmeester",
   presetNone: "Geen toegang",
   saveGrants: "Toegang opslaan",
   grantsSaved: "Toegang bijgewerkt.",
@@ -196,6 +199,7 @@ const en: Copy = {
   presets: "Presets",
   presetField: "Pitch coach",
   presetHead: "Head coach",
+  presetTreasurer: "Treasurer",
   presetNone: "No access",
   saveGrants: "Save access",
   grantsSaved: "Access updated.",
@@ -271,21 +275,23 @@ export const grantGroups: { key: string; grants: Grant[] }[] = [
   },
 ];
 /** Typical coach profiles, applied in one click then adjustable. */
-export const presets: Record<"field" | "head" | "none", Grant[]> = {
-  field: [
-    "people.read",
-    "calendar.read",
-    "attendance.manage",
-    "documents.read",
-  ],
-  head: [
-    "people.read",
-    "teams.manage",
-    "calendar.read",
-    "calendar.manage",
-    "attendance.manage",
-    "documents.read",
-    "equipment.manage",
-  ],
-  none: [],
-};
+export const presets: Record<"field" | "head" | "treasurer" | "none", Grant[]> =
+  {
+    treasurer: ["dues.manage", "people.read", "documents.read", "members.read"],
+    field: [
+      "people.read",
+      "calendar.read",
+      "attendance.manage",
+      "documents.read",
+    ],
+    head: [
+      "people.read",
+      "teams.manage",
+      "calendar.read",
+      "calendar.manage",
+      "attendance.manage",
+      "documents.read",
+      "equipment.manage",
+    ],
+    none: [],
+  };

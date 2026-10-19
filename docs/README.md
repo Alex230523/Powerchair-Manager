@@ -39,6 +39,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 19/10/2026 | [Charte orange, navigation, tableau de bord et PWA](evolutions/2026-10-19-d-charte-orange-tableau-de-bord.md)                           |
 | 19/10/2026 | [Menu par thèmes, matériel (fauteuils) et fiche joueur](evolutions/2026-10-19-e-menu-materiel-fiche-joueur.md)                          |
 | 19/10/2026 | [Inscriptions, coachs et formations, réglages, finances du club, import Excel](evolutions/2026-10-19-f-inscriptions-coachs-finances.md) |
+| 19/10/2026 | [Vague 1 : design plus fin, formulaire Tigerstorm, BPCF, relances](evolutions/2026-10-19-g-vague-1-design-inscriptions-rappels.md)      |
 
 ## Convention
 

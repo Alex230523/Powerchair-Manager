@@ -185,8 +185,15 @@ type View = {
     profile_id: string;
     season_id: string;
     subject_name: string;
+    /** Number of payments chosen on the registration form, if asked. */
+    installments: number | null;
   }[];
   debts: Debt[];
+};
+const remindLabel = {
+  fr: "Relancer ceux qui ne sont pas en ordre",
+  nl: "Wie niet in orde is herinneren",
+  en: "Remind those not up to date",
 };
 export function Dues({ locale }: { locale: Locale }) {
   const t = copy[locale],
@@ -259,6 +266,16 @@ export function Dues({ locale }: { locale: Locale }) {
       <h1>{t.title}</h1>
       <p>{t.intro}</p>
       <p className="notice">{t.limits}</p>
+      {view?.manage && (
+        <p>
+          <Link
+            className="button secondary"
+            href={`/${locale}/reminders?kind=dues`}
+          >
+            {remindLabel[locale]}
+          </Link>
+        </p>
+      )}
       {error && (
         <p role="alert">
           {error} <Link href={`/${locale}/access`}>{t.access}</Link>
@@ -462,11 +479,14 @@ export function Dues({ locale }: { locale: Locale }) {
                     {t.count}
                     <input
                       name="count"
-                      key={planId + "count"}
+                      key={planId + applicationId + "count"}
                       type="number"
                       min="1"
                       max={plan?.max_installments ?? 1}
-                      defaultValue="1"
+                      defaultValue={Math.min(
+                        admission?.installments ?? 1,
+                        plan?.max_installments ?? 1,
+                      )}
                       required
                     />
                   </label>

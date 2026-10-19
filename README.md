@@ -21,7 +21,7 @@ Le cahier des charges complet se trouve dans [docs/cahier-des-charges](docs/cahi
 | `coach@demo.pfm`      | Coach de l'Équipe A                        | Calendrier, présences, fiches sportives et fauteuils de son équipe                                             |
 | `joueur@demo.pfm`     | Joueuse adulte                             | Sa fiche complète, ses convocations, documents, échéances et son fauteuil                                      |
 | `parent@demo.pfm`     | Parent de Lucas                            | La fiche de Lucas, ses présences, documents et son fauteuil                                                    |
-| `federation@demo.pfm` | Présidente fédérale                        | Catalogue des formations des coachs et décisions sur les demandes des clubs                                    |
+| `federation@demo.pfm` | Présidente fédérale                        | BPCF (démo) : clubs affiliés, catalogue des formations et décisions sur les demandes des clubs                 |
 
 Mot de passe commun : `Demo-Powerchair-2026`. Ces comptes sont fictifs et réservés à la démo.
 

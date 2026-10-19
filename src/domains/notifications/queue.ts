@@ -19,7 +19,9 @@ export type ResourceType =
   | "registration"
   | "document"
   | "calendar"
-  | "attendance";
+  | "attendance"
+  | "dues"
+  | "training";
 export type Envelope = {
   email: string;
   url: string;

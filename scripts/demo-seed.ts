@@ -28,6 +28,7 @@ import { financeExecute } from "../src/domains/finance/service";
 import type { categories, methods } from "../src/domains/finance/schema";
 import { coachExecute, coursesExecute } from "../src/domains/coaches/service";
 import { tigerstormTemplate } from "../src/domains/registrations/templates";
+import { seal } from "../src/domains/notifications/crypto";
 
 const CLUB = "Club démo Powerchair";
 export const DEMO_PASSWORD = "Demo-Powerchair-2026";
@@ -62,11 +63,11 @@ const accounts = [
   },
 ] as const;
 type Key = (typeof accounts)[number]["key"];
-const FEDERATION = "Fédération démo Powerchair";
+const FEDERATION = "BPCF (démo)";
 const federationAccount = {
   email: "federation@demo.pfm",
   name: "Marie Dupont",
-  profile: "Présidence · Fédération démo",
+  profile: "Présidence · BPCF (démo)",
 };
 
 if (process.env.NODE_ENV === "production" && !process.argv.includes("--force"))
@@ -805,26 +806,37 @@ try {
         season,
         JSON.stringify({ title: template.title, fields: template.fields }),
         JSON.stringify({
-          address: "Rue de la Démo 12, 1030 Schaerbeek",
+          gender: ["Femme"],
+          address: "Rue de la Démo 12",
+          postal_code: "1030",
+          email: "parent@demo.pfm",
           phone: "+32 470 12 34 56",
-          guardian_name: "Nadia Peeters",
-          guardian_phone: "+32 470 65 43 21",
-          own_chair: "Oui",
-          chair_model: "Permobil F5 (exemple)",
-          control: "Joystick main droite",
-          experience: "Jamais joué",
-          transfer_help: "Oui",
-          support_needs: "Prévoir un peu plus de temps pour les transferts.",
-          trial: "Oui",
-          saturday: "Oui",
-          heard_about: "École, centre ou kiné",
+          emergency: "Nadia Peeters, mère, +32 470 65 43 21",
+          heard_about: ["École, centre ou kiné", "Réseaux sociaux"],
+          jersey_size: "Enfant 12-14 ans",
+          jersey_number: "8",
+          joystick: ["Main droite"],
           photo_consent: true,
+          installments: "4 fois",
           privacy_consent: true,
-          rules_consent: true,
         }),
       ],
     )
   ).rows[0].id;
+  // Confidential answers are stored encrypted, exactly as the service does.
+  await db.query(
+    "UPDATE registration_application SET confidential_answers=$2 WHERE id=$1",
+    [
+      application,
+      seal(
+        {
+          condition:
+            "Amyotrophie spinale de type 2 (donnée fictive de démonstration).",
+        },
+        "registration:" + application,
+      ),
+    ],
+  );
   await db.query(
     "INSERT INTO registration_history(application_id,actor_id,status) VALUES($1,$2,'submitted')",
     [application, users.parent],
@@ -911,6 +923,11 @@ try {
     "INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)",
     [federation, fedUser],
   );
+  // The demo club is affiliated with the BPCF: its coaches see the federation's courses.
+  await db.query("UPDATE organization SET federation_id=$1 WHERE id=$2", [
+    federation,
+    org,
+  ]);
   const fedMandate = (
     await db.query(
       "INSERT INTO role_assignment(organization_id,user_id,role,created_by) VALUES($1,$2,'federation_president',$2) RETURNING id",

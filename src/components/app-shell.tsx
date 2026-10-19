@@ -97,6 +97,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "club",
               items: [
                 {
+                  route: "/federation/clubs",
+                  label: "federationClubs",
+                  icon: "club",
+                },
+                {
                   route: "/federation/courses",
                   label: "courses",
                   icon: "team",
@@ -118,6 +123,15 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
         ...(state?.selected
           ? ([
               { route: "/notifications", label: "notifications", icon: "bell" },
+              ...(kind === "club"
+                ? ([
+                    {
+                      route: "/reminders",
+                      label: "reminders",
+                      icon: "message",
+                    },
+                  ] satisfies NavItem[])
+                : []),
               { route: "/settings", label: "settings", icon: "settings" },
             ] satisfies NavItem[])
           : state

@@ -44,6 +44,7 @@ type Copy = {
   requested: string;
   cancelRequest: string;
   noCourses: string;
+  noFederation: string;
   hours: string;
   errors: Record<string, string>;
 };
@@ -104,6 +105,8 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     requested: "Demande envoyée à la fédération.",
     cancelRequest: "Annuler la demande",
     noCourses: "La fédération n'a encore publié aucune formation.",
+    noFederation:
+      "Le club n'est affilié à aucune fédération : choisissez la BPCF dans Gestion du club pour voir ses formations.",
     hours: "h",
     errors: {
       DUPLICATE: "Une demande est déjà en attente pour cette formation.",
@@ -166,6 +169,8 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     requested: "Aanvraag naar de federatie verstuurd.",
     cancelRequest: "Aanvraag annuleren",
     noCourses: "De federatie heeft nog geen opleidingen gepubliceerd.",
+    noFederation:
+      "De club is bij geen federatie aangesloten: kies de BPCF in Clubbeheer om haar opleidingen te zien.",
     hours: "u",
     errors: {
       DUPLICATE: "Er loopt al een aanvraag voor deze opleiding.",
@@ -228,6 +233,8 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     requested: "Request sent to the federation.",
     cancelRequest: "Cancel request",
     noCourses: "The federation has not published any course yet.",
+    noFederation:
+      "The club is not affiliated with a federation: choose the BPCF in Club management to see its courses.",
     hours: "h",
     errors: {
       DUPLICATE: "A request for this course is already pending.",

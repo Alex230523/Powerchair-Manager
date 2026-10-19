@@ -289,25 +289,30 @@ export function Settings({ locale }: { locale: Locale }) {
                       aria-label={`${t.presets} : ${m.name}`}
                     >
                       <span className="muted">{t.presets}</span>
-                      {(["field", "head", "none"] as const).map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          className="chip-button"
-                          onClick={() =>
-                            setDraft({
-                              ...draft,
-                              [m.id]: presets[k].filter((g) => own.has(g)),
-                            })
-                          }
-                        >
-                          {k === "field"
-                            ? t.presetField
-                            : k === "head"
-                              ? t.presetHead
-                              : t.presetNone}
-                        </button>
-                      ))}
+                      {(["field", "head", "treasurer", "none"] as const).map(
+                        (k) => (
+                          <button
+                            key={k}
+                            type="button"
+                            className="chip-button"
+                            onClick={() =>
+                              setDraft({
+                                ...draft,
+                                [m.id]: presets[k].filter((g) => own.has(g)),
+                              })
+                            }
+                          >
+                            {
+                              {
+                                field: t.presetField,
+                                head: t.presetHead,
+                                treasurer: t.presetTreasurer,
+                                none: t.presetNone,
+                              }[k]
+                            }
+                          </button>
+                        ),
+                      )}
                     </div>
                     <div className="grant-groups">
                       {grantGroups.map((group) => (

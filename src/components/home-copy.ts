@@ -100,6 +100,14 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Admissions à finaliser",
         text: "Documents ou cotisation à créer",
       },
+      courseRequests: {
+        title: "Demandes de formation",
+        text: "Des clubs attendent votre décision pour un coach",
+      },
+      coursesExpiring: {
+        title: "Formations à renouveler",
+        text: "Formations de coachs qui expirent sous 60 jours",
+      },
       equipmentService: {
         title: "Fauteuils à réviser",
         text: "En maintenance ou révision sous 14 jours",
@@ -124,6 +132,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       waitingList: { label: "Liste d’attente" },
       acceptedRecently: { label: "Acceptées", hint: "14 derniers jours" },
+      treasury: { label: "Trésorerie", hint: "Solde du grand livre" },
       duesNext30: {
         label: "Échéances à 30 jours",
         hint: "Montant prévu, paiements suivis au lot bancaire",
@@ -204,6 +213,14 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Toelatingen af te ronden",
         text: "Documenten of bijdrage aan te maken",
       },
+      courseRequests: {
+        title: "Opleidingsaanvragen",
+        text: "Clubs wachten op uw beslissing voor een coach",
+      },
+      coursesExpiring: {
+        title: "Te vernieuwen opleidingen",
+        text: "Coachopleidingen die binnen 60 dagen vervallen",
+      },
       equipmentService: {
         title: "Rolstoelen voor onderhoud",
         text: "In onderhoud of onderhoud binnen 14 dagen",
@@ -228,6 +245,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       waitingList: { label: "Wachtlijst" },
       acceptedRecently: { label: "Aanvaard", hint: "Laatste 14 dagen" },
+      treasury: { label: "Kas", hint: "Saldo van het grootboek" },
       duesNext30: {
         label: "Vervaldagen binnen 30 dagen",
         hint: "Gepland bedrag, betalingen volgen in de bankfase",
@@ -308,6 +326,14 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Admissions to finalise",
         text: "Documents or dues to create",
       },
+      courseRequests: {
+        title: "Course requests",
+        text: "Clubs are waiting for your decision on a coach",
+      },
+      coursesExpiring: {
+        title: "Courses to renew",
+        text: "Coach courses expiring within 60 days",
+      },
       equipmentService: {
         title: "Chairs to service",
         text: "In maintenance or due within 14 days",
@@ -332,6 +358,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       waitingList: { label: "Waiting list" },
       acceptedRecently: { label: "Accepted", hint: "Last 14 days" },
+      treasury: { label: "Treasury", hint: "Ledger balance" },
       duesNext30: {
         label: "Due within 30 days",
         hint: "Scheduled amount, payments tracked with the bank module",
