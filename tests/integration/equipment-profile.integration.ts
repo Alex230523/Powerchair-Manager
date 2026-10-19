@@ -109,7 +109,7 @@ beforeAll(async () => {
   );
   const season = (
     await db.query(
-      "INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'S',CURRENT_DATE-30,CURRENT_DATE+300) RETURNING id",
+      "INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'Saison test',CURRENT_DATE-30,CURRENT_DATE+300) RETURNING id",
       [clubA],
     )
   ).rows[0].id;
