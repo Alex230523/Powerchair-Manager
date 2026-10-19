@@ -15,12 +15,12 @@ Le cahier des charges complet se trouve dans [docs/cahier-des-charges](docs/cahi
 3. L'application s'ouvre dans un nouvel onglet (sinon : onglet **Ports**, ligne 3000, icône globe).
 4. Se connecter sur la page **Mon espace** avec un des comptes ci-dessous.
 
-| Compte               | Rôle                | Ce qu'on y voit                                                          |
-| -------------------- | ------------------- | ------------------------------------------------------------------------ |
-| `president@demo.pfm` | Président de club   | Tableau de bord complet, inscriptions, documents à vérifier, cotisations |
-| `coach@demo.pfm`     | Coach de l'Équipe A | Calendrier et présences de son équipe                                    |
-| `joueur@demo.pfm`    | Joueuse adulte      | Ses convocations, ses documents, ses échéances                           |
-| `parent@demo.pfm`    | Parent de Lucas     | Présences et documents de son enfant                                     |
+| Compte               | Rôle                | Ce qu'on y voit                                                                                                      |
+| -------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `president@demo.pfm` | Président de club   | Tableau de bord complet, inscriptions, documents, cotisations, matériel, fiches joueurs avec données confidentielles |
+| `coach@demo.pfm`     | Coach de l'Équipe A | Calendrier, présences, fiches sportives et fauteuils de son équipe                                                   |
+| `joueur@demo.pfm`    | Joueuse adulte      | Sa fiche complète, ses convocations, documents, échéances et son fauteuil                                            |
+| `parent@demo.pfm`    | Parent de Lucas     | La fiche de Lucas, ses présences, documents et son fauteuil                                                          |
 
 Mot de passe commun : `Demo-Powerchair-2026`. Ces comptes sont fictifs et réservés à la démo.
 
@@ -120,11 +120,11 @@ Chaque dossier principal de `src/` a son propre README qui détaille son contenu
 
 ## Avancement
 
-| Lot            | Contenu                                                                                | État                       |
-| -------------- | -------------------------------------------------------------------------------------- | -------------------------- |
-| 00 à 02        | Socle, comptes, mandats multi-rôles, personnes, familles, équipes, saisons             | Validé                     |
-| 03 à 05        | Notifications, inscriptions, documents                                                 | Validé                     |
-| 06 à 08        | Calendrier, présences, cotisations, profils, langues                                   | Validé                     |
-| Évolutions     | Annuaire joueurs/coachs, messagerie, statistiques, charte orange, tableau de bord, PWA | Livré, en recette          |
-| 09             | Banque, QR et rapprochement                                                            | En cours, hors de ce dépôt |
-| 10 et suivants | Dashboard complet, PWA hors ligne, multi-clubs, fédération, compétitions               | À venir                    |
+| Lot            | Contenu                                                                                                                    | État                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| 00 à 02        | Socle, comptes, mandats multi-rôles, personnes, familles, équipes, saisons                                                 | Validé                     |
+| 03 à 05        | Notifications, inscriptions, documents                                                                                     | Validé                     |
+| 06 à 08        | Calendrier, présences, cotisations, profils, langues                                                                       | Validé                     |
+| Évolutions     | Annuaire joueurs/coachs, messagerie, statistiques, charte orange, tableau de bord, PWA, matériel (fauteuils), fiche joueur | Livré, en recette          |
+| 09             | Banque, QR et rapprochement                                                                                                | En cours, hors de ce dépôt |
+| 10 et suivants | Dashboard complet, PWA hors ligne, multi-clubs, fédération, compétitions                                                   | À venir                    |
