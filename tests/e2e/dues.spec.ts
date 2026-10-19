@@ -1,6 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+// Menu groups unfold on click; open the one holding the link if it is closed.
+async function openMenuGroup(page: Page, name: string) {
+  const group = page
+    .locator("nav details")
+    .filter({ has: page.locator("summary", { hasText: name }) });
+  if (!(await group.evaluate((d) => (d as HTMLDetailsElement).open)))
+    await group.locator("summary").click();
+}
 test("saved profiles, English preferences, sidebar and a 250 EUR debt in four instalments", async ({
   page,
 }) => {
@@ -92,6 +100,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page).toHaveURL("/en/access");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("header")).not.toContainText("Language");
+    await openMenuGroup(page, "Club finances");
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })
@@ -163,6 +172,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
         exact: true,
       }),
     ).toHaveCount(0);
+    await openMenuGroup(page, "Club finances");
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })

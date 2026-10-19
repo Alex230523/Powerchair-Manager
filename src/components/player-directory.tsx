@@ -40,6 +40,7 @@ const copy = {
     all: "Tous",
     unassigned: "Sans équipe actuelle",
     open: "Voir le profil",
+    full: "Fiche complète",
     close: "Fermer la fiche",
     addRole: "Ajouter au répertoire",
     noAccess:
@@ -81,6 +82,7 @@ const copy = {
     all: "Alle",
     unassigned: "Geen huidig team",
     open: "Profiel bekijken",
+    full: "Volledige fiche",
     close: "Profiel sluiten",
     addRole: "Aan lijst toevoegen",
     noAccess: "Persoonlijke gegevens blijven beperkt tot uw rechten.",
@@ -121,6 +123,7 @@ const copy = {
     all: "All",
     unassigned: "No current team",
     open: "View profile",
+    full: "Full profile",
     close: "Close profile",
     addRole: "Add to directory",
     noAccess: "Personal details remain limited to your permissions.",
@@ -574,6 +577,15 @@ export function PlayerDirectory({
                         >
                           {t.open} →
                         </button>
+                        {role === "player" && (
+                          <Link
+                            className="text-button"
+                            href={`/${locale}/players/${r.id}`}
+                            aria-label={`${t.full} : ${r.full_name}`}
+                          >
+                            {t.full}
+                          </Link>
+                        )}
                         {manager && r.status === "active" && (
                           <button
                             className="button secondary"
@@ -874,6 +886,11 @@ export function PlayerDirectory({
             )}
           </section>
           <div className="directory-actions">
+            {role === "player" && (
+              <Link className="button" href={`/${locale}/players/${person.id}`}>
+                {t.full}
+              </Link>
+            )}
             <Link className="button secondary" href={`/${locale}/dues`}>
               {t.dues}
             </Link>

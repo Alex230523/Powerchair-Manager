@@ -1098,3 +1098,13 @@ export async function peopleExecute(
     command.action === "acceptTransfer" ? command.token : undefined,
   );
 }
+// Shared with the player profile: one visibility model for every view of a person.
+export type PeopleScope = Scope;
+export {
+  transaction as peopleScope,
+  records as peopleRecords,
+  visibility as peopleVisibility,
+  relationAllows,
+  adult,
+  today as brusselsToday,
+};

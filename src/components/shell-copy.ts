@@ -32,6 +32,10 @@ export const shellCopy = {
     dark: "Activer le thème sombre",
     light: "Activer le thème clair",
     noContext: "Aucun profil actif",
+    groupPlayers: "Joueurs",
+    groupFinance: "Finance du club",
+    groupManagement: "Gestion du club",
+    equipment: "Matériel",
   },
   nl: {
     home: "Start",
@@ -64,6 +68,10 @@ export const shellCopy = {
     dark: "Donker thema inschakelen",
     light: "Licht thema inschakelen",
     noContext: "Geen actief profiel",
+    groupPlayers: "Spelers",
+    groupFinance: "Clubfinanciën",
+    groupManagement: "Clubbeheer",
+    equipment: "Materiaal",
   },
   en: {
     home: "Home",
@@ -96,5 +104,9 @@ export const shellCopy = {
     dark: "Switch to dark theme",
     light: "Switch to light theme",
     noContext: "No active profile",
+    groupPlayers: "Players",
+    groupFinance: "Club finances",
+    groupManagement: "Club management",
+    equipment: "Equipment",
   },
 } satisfies Record<Locale, Record<string, string>>;

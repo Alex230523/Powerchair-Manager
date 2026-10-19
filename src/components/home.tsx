@@ -127,12 +127,12 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
                 },
               ]
             : []),
-          ...(data.scopes.includes("attendance")
+          ...(data.scopes.includes("equipment")
             ? [
                 {
-                  route: "/statistics",
-                  label: s.statistics,
-                  icon: "chart" as const,
+                  route: "/equipment",
+                  label: s.equipment,
+                  icon: "wheelchair" as const,
                 },
               ]
             : []),
@@ -153,6 +153,12 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           </h1>
           <p>{today}</p>
         </div>
+        {data.context && (
+          <Link className="button secondary" href={href("/statistics")}>
+            <Icon name="chart" />
+            {s.statistics}
+          </Link>
+        )}
       </div>
       {!data.context && (
         <p className="notice">

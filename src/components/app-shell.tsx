@@ -21,35 +21,81 @@ export type Workspace = {
   permissions: string[];
 };
 type NavItem = { route: string; label: keyof Copy; icon: IconName };
-// Visibility mirrors the previous shell exactly; each page still enforces its own permissions server-side.
-function clubItems(): NavItem[] {
-  return [
-    { route: "/players", label: "players", icon: "players" },
-    { route: "/coaches", label: "coaches", icon: "whistle" },
-    { route: "/club/manage", label: "clubManage", icon: "club" },
-    { route: "/funding", label: "funding", icon: "funding" },
-    { route: "/calendar", label: "calendar", icon: "calendar" },
-    { route: "/attendance", label: "attendance", icon: "attendance" },
-    { route: "/statistics", label: "statistics", icon: "chart" },
-    { route: "/documents", label: "documents", icon: "document" },
-    { route: "/dues", label: "dues", icon: "dues" },
-  ];
-}
-function adminItems(state: Workspace | null): NavItem[] {
+type NavGroup = {
+  id: string;
+  label: keyof Copy;
+  icon: IconName;
+  items: NavItem[];
+};
+/**
+ * Menu structure. Club groups appear once a profile is active; each page still
+ * enforces its own permissions server-side. Statistics are reached from the
+ * home dashboard, not from the menu.
+ */
+export function menuGroups(state: Workspace | null): NavGroup[] {
   const manager = !!state?.permissions.includes("registrations.manage");
+  const club: NavGroup[] = state?.selected
+    ? [
+        {
+          id: "players",
+          label: "groupPlayers",
+          icon: "players",
+          items: [
+            { route: "/players", label: "players", icon: "players" },
+            { route: "/attendance", label: "attendance", icon: "attendance" },
+          ],
+        },
+        {
+          id: "life",
+          label: "club",
+          icon: "calendar",
+          items: [
+            { route: "/calendar", label: "calendar", icon: "calendar" },
+            { route: "/documents", label: "documents", icon: "document" },
+            { route: "/messages", label: "messages", icon: "message" },
+          ],
+        },
+        {
+          id: "finance",
+          label: "groupFinance",
+          icon: "dues",
+          items: [
+            { route: "/funding", label: "funding", icon: "funding" },
+            { route: "/dues", label: "dues", icon: "dues" },
+          ],
+        },
+        {
+          id: "management",
+          label: "groupManagement",
+          icon: "club",
+          items: [
+            { route: "/club/manage", label: "clubManage", icon: "club" },
+            { route: "/coaches", label: "coaches", icon: "whistle" },
+            { route: "/equipment", label: "equipment", icon: "wheelchair" },
+          ],
+        },
+      ]
+    : [];
   return [
-    ...(state
-      ? ([
-          {
-            route: manager ? "/registrations" : "/registrations/mine",
-            label: manager ? "registrations" : "mine",
-            icon: "inbox",
-          },
-          { route: "/messages", label: "messages", icon: "message" },
-          { route: "/notifications", label: "notifications", icon: "bell" },
-        ] satisfies NavItem[])
-      : []),
-    { route: "/access", label: "access", icon: "user" },
+    ...club,
+    {
+      id: "admin",
+      label: "admin",
+      icon: "settings",
+      items: [
+        ...(state
+          ? ([
+              {
+                route: manager ? "/registrations" : "/registrations/mine",
+                label: manager ? "registrations" : "mine",
+                icon: "inbox",
+              },
+              { route: "/notifications", label: "notifications", icon: "bell" },
+            ] satisfies NavItem[])
+          : []),
+        { route: "/access", label: "access", icon: "user" },
+      ],
+    },
   ];
 }
 export function initials(name: string) {
@@ -162,16 +208,19 @@ export function AppShell({
     };
   }, [path]);
   if (path.includes("/registration-widget/")) return children;
-  function item({ route, label, icon }: NavItem) {
+  function current(route: string) {
     const href = `/${locale}${route}`;
-    const current =
-      path === href
-        ? ("page" as const)
-        : route && path.startsWith(href + "/")
-          ? ("true" as const)
-          : undefined;
+    if (path === href) return "page" as const;
+    if (route && path.startsWith(href + "/")) return "true" as const;
+    return undefined;
+  }
+  function item({ route, label, icon }: NavItem) {
     return (
-      <Link key={route} href={href} aria-current={current}>
+      <Link
+        key={route}
+        href={`/${locale}${route}`}
+        aria-current={current(route)}
+      >
         <span className="nav-icon">
           <Icon name={icon} />
         </span>
@@ -218,16 +267,27 @@ export function AppShell({
           </summary>
           <nav aria-label={t.menu}>
             {item({ route: "", label: "home", icon: "home" })}
-            {state?.selected && (
-              <details className="nav-group" open>
-                <summary>{t.club}</summary>
-                {clubItems().map(item)}
-              </details>
-            )}
-            <details className="nav-group" open>
-              <summary>{t.admin}</summary>
-              {adminItems(state).map(item)}
-            </details>
+            {menuGroups(state).map((group) => {
+              const holds = group.items.some(
+                (i) => current(i.route) !== undefined,
+              );
+              return (
+                <details
+                  key={group.id}
+                  className="nav-group"
+                  open={holds || undefined}
+                  data-current={holds || undefined}
+                >
+                  <summary>
+                    <span className="nav-icon">
+                      <Icon name={group.icon} />
+                    </span>
+                    {t[group.label]}
+                  </summary>
+                  <div className="nav-items">{group.items.map(item)}</div>
+                </details>
+              );
+            })}
           </nav>
         </details>
         <div className="sidebar-foot">

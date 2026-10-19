@@ -9,6 +9,7 @@ export const todoKeys = [
   "registrationsReview",
   "documentsReview",
   "registrationFollowups",
+  "equipmentService",
   "documentsMissing",
   "documentsExpiring",
 ] as const;
@@ -23,6 +24,7 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   registrationsReview: { href: "/registrations", tone: "warning" },
   documentsReview: { href: "/documents", tone: "warning" },
   registrationFollowups: { href: "/registrations", tone: "warning" },
+  equipmentService: { href: "/equipment", tone: "warning" },
   documentsMissing: { href: "/documents", tone: "info" },
   documentsExpiring: { href: "/documents", tone: "info" },
 };

@@ -21,6 +21,8 @@ import {
   documentUpload,
 } from "../src/domains/documents/service";
 import { duesExecute } from "../src/domains/dues/service";
+import { equipmentExecute } from "../src/domains/equipment/service";
+import { playerProfileExecute } from "../src/domains/player-profile/service";
 
 const CLUB = "Club démo Powerchair";
 export const DEMO_PASSWORD = "Demo-Powerchair-2026";
@@ -155,13 +157,17 @@ try {
     );
     mandates[a.key] = (
       await db.query(
-        "INSERT INTO role_assignment(organization_id,user_id,role,team_id,created_by) VALUES($1,$2,$3,$4,$5) RETURNING id",
+        "INSERT INTO role_assignment(organization_id,user_id,role,team_id,created_by,grants) VALUES($1,$2,$3,$4,$5,$6) RETURNING id",
         [
           org,
           users[a.key],
           a.role,
           a.role === "coach" ? team : null,
           users.president,
+          // The president also holds the explicit grants for confidential health data.
+          a.role === "club_president"
+            ? ["people.sensitive", "documents.sensitive"]
+            : [],
         ],
       )
     ).rows[0].id;
@@ -391,6 +397,97 @@ try {
       [org, register, id],
     );
 
+  // Earlier sessions with closed registers, so profiles and statistics have history.
+  const history: [
+    number,
+    string,
+    "training" | "friendly",
+    Record<string, [string, string]>,
+  ][] = [
+    [
+      10,
+      "Entraînement Équipe A",
+      "training",
+      {
+        camille: ["present", "present"],
+        lucas: ["present", "late"],
+        yanis: ["absent", "absent"],
+        emma: ["present", "present"],
+        thomas: ["present", "present"],
+      },
+    ],
+    [
+      13,
+      "Match amical contre Namur",
+      "friendly",
+      {
+        camille: ["present", "present"],
+        lucas: ["present", "present"],
+        yanis: ["present", "present"],
+        emma: ["uncertain", "absent"],
+        thomas: ["present", "present"],
+      },
+    ],
+    [
+      17,
+      "Entraînement Équipe A",
+      "training",
+      {
+        camille: ["present", "present"],
+        lucas: ["absent", "absent"],
+        yanis: ["present", "present"],
+        emma: ["present", "early"],
+        thomas: ["none", "absent"],
+      },
+    ],
+    [
+      24,
+      "Entraînement Équipe A",
+      "training",
+      {
+        camille: ["present", "late"],
+        lucas: ["present", "present"],
+        yanis: ["present", "present"],
+        emma: ["present", "present"],
+        thomas: ["present", "present"],
+      },
+    ],
+  ];
+  const key = {
+    camille: people.camille,
+    lucas: people.lucas,
+    yanis: people.yanis,
+    emma: people.emma,
+    thomas: people.thomas,
+  } as Record<string, string>;
+  for (const [daysAgo, title, kind, results] of history) {
+    const s = randomUUID();
+    await db.query(
+      "INSERT INTO calendar_series(id,organization_id,interval_days,occurrences,created_by) VALUES($1,$2,0,1,$3)",
+      [s, org, users.president],
+    );
+    const eventId = (
+      await db.query(
+        `INSERT INTO calendar_event(organization_id,series_id,ordinal,title,kind,timezone,starts_at,ends_at,local_start,local_end,team_id,place_id,responsible_user_id,visibility)
+         SELECT $1,$2,1,$3,$4,'Europe/Brussels',t.s,t.s+interval '2 hours',
+                to_char(t.s AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI'),to_char((t.s+interval '2 hours') AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI'),$5,$6,$7,'team'
+           FROM (SELECT ((CURRENT_DATE-$8::int)+time '18:30') AT TIME ZONE 'Europe/Brussels' AS s) t RETURNING id`,
+        [org, s, title, kind, team, place, users.coach, daysAgo],
+      )
+    ).rows[0].id;
+    const reg = (
+      await db.query(
+        "INSERT INTO attendance_register(organization_id,event_id,deadline,closed_at,closed_by) VALUES($1,$2,now()-($3::int||' days')::interval,now()-(($3::int-1)||' days')::interval,$4) RETURNING id",
+        [org, eventId, daysAgo, users.coach],
+      )
+    ).rows[0].id;
+    for (const [who, [response, actual]] of Object.entries(results))
+      await db.query(
+        "INSERT INTO attendance_invitation(organization_id,register_id,profile_id,response,actual) VALUES($1,$2,$3,$4,$5)",
+        [org, reg, key[who], response, actual],
+      );
+  }
+
   // 5. Documents: one to verify, one expired, pieces still expected from families.
   const request = (
     profileId: string,
@@ -465,7 +562,208 @@ try {
       org,
     );
 
-  // 7. A submitted application waiting for the club's decision.
+  // 7. Equipment: club chairs (one shared), a player's own chair, a loan chair in repair.
+  const chair = async (input: {
+    name: string;
+    ownership: "club" | "player" | "loan";
+    status: "available" | "maintenance";
+    speed: number;
+    last: string | null;
+    next: string | null;
+    notes?: string;
+  }) =>
+    (
+      await equipmentExecute(
+        db,
+        president,
+        {
+          action: "chair",
+          name: input.name,
+          brand: "Démo Sport",
+          model: "Pivot 10",
+          serialNumber:
+            "DEMO-" + input.name.replace(/\D/g, "").padStart(3, "0"),
+          ownership: input.ownership,
+          status: input.status,
+          maxSpeedKmh: input.speed,
+          battery: "2 × 12 V, 73 Ah (gel)",
+          acquiredOn: `${year - 2}-09-01`,
+          lastServiceOn: input.last,
+          nextServiceOn: input.next,
+          notes: input.notes ?? "",
+        },
+        org,
+      )
+    ).id;
+  const club1 = await chair({
+    name: "Fauteuil club n°1",
+    ownership: "club",
+    status: "available",
+    speed: 10,
+    last: day(-90),
+    next: day(90),
+  });
+  const club2 = await chair({
+    name: "Fauteuil club n°2",
+    ownership: "club",
+    status: "available",
+    speed: 10,
+    last: day(-170),
+    next: day(7),
+  });
+  const own = await chair({
+    name: "Fauteuil de Camille",
+    ownership: "player",
+    status: "available",
+    speed: 10,
+    last: day(-30),
+    next: day(150),
+  });
+  await chair({
+    name: "Fauteuil de prêt",
+    ownership: "loan",
+    status: "maintenance",
+    speed: 11,
+    last: day(-200),
+    next: null,
+    notes: "Contrôleur à recalibrer : 11 km/h mesurés.",
+  });
+  for (const [chairId, profileId, primary] of [
+    [club1, people.yanis, true],
+    [club1, people.thomas, false],
+    [club2, people.lucas, true],
+    [own, people.camille, true],
+    [club2, people.emma, true],
+  ] as const)
+    await equipmentExecute(
+      db,
+      president,
+      {
+        action: "assign",
+        chairId,
+        profileId,
+        primary,
+        startsOn: `${year}-09-01`,
+      },
+      org,
+    );
+
+  // 8. Player profiles: sport class, chair control, support needs and confidential notes (fictitious).
+  const profiles: [
+    string,
+    "PF1" | "PF2" | "pending",
+    "right_hand" | "left_hand" | "chin",
+    string,
+    string,
+    string,
+    string,
+    string,
+  ][] = [
+    [
+      people.camille,
+      "PF2",
+      "right_hand",
+      "Finition rapide, bonne lecture du jeu. Capitaine.",
+      "Autonome pour les transferts. Prévoir 10 minutes pour installer les sangles.",
+      "Sangle de cuisse obligatoire en match.",
+      "Marc Dubois (frère) · +32 470 00 00 01",
+      "Myopathie (donnée fictive de démonstration)",
+    ],
+    [
+      people.lucas,
+      "PF1",
+      "chin",
+      "Très bon placement défensif. Travailler les passes longues.",
+      "Transfert avec l’aide d’un adulte formé. Communication : laisser le temps de répondre.",
+      "Ceinture pectorale. Pauses hydratation toutes les 20 minutes.",
+      "Nadia Peeters (mère) · +32 470 00 00 02",
+      "Amyotrophie spinale (donnée fictive de démonstration)",
+    ],
+    [
+      people.yanis,
+      "PF1",
+      "left_hand",
+      "Gardien titulaire, excellent sur les tirs de près.",
+      "",
+      "",
+      "",
+      "",
+    ],
+    [
+      people.emma,
+      "pending",
+      "right_hand",
+      "Nouvelle venue, classification demandée à la fédération.",
+      "",
+      "",
+      "",
+      "",
+    ],
+    [
+      people.thomas,
+      "PF2",
+      "right_hand",
+      "Attaquant de soutien, polyvalent.",
+      "",
+      "",
+      "",
+      "",
+    ],
+  ];
+  for (const [
+    id,
+    classification,
+    control,
+    notes,
+    needs,
+    safety,
+    emergency,
+    impairment,
+  ] of profiles) {
+    await playerProfileExecute(
+      db,
+      president,
+      {
+        action: "sport",
+        id,
+        version: 0,
+        classification,
+        classificationValidUntil:
+          classification === "pending" ? null : `${year + 2}-06-30`,
+        control,
+        sportNotes: notes,
+      },
+      org,
+    );
+    if (!needs) continue;
+    await playerProfileExecute(
+      db,
+      president,
+      {
+        action: "support",
+        id,
+        version: 0,
+        supportNeeds: needs,
+        safetyNotes: safety,
+        emergencyContact: emergency,
+      },
+      org,
+    );
+    await playerProfileExecute(
+      db,
+      president,
+      {
+        action: "confidential",
+        id,
+        version: 1,
+        impairment,
+        medicalNotes: "Aucune allergie connue (donnée fictive).",
+      },
+      org,
+    );
+  }
+
+  // 9. A submitted application waiting for the club's decision.
   const form = (
     await db.query(
       "INSERT INTO registration_form(organization_id,season_id,title,description,published) VALUES($1,$2,'Inscription saison','Formulaire de démonstration.',true) RETURNING id",
