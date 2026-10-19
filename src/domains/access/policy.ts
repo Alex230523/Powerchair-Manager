@@ -25,6 +25,8 @@ export const delegable = [
   "attendance.manage",
   "calendar.read",
   "dues.manage",
+  "equipment.manage",
+  "people.sensitive",
 ] as const;
 export type Permission =
   "organization.read" | "mandates.manage" | (typeof delegable)[number];
@@ -79,7 +81,8 @@ export function permissions(
                 p !== "registrations.manage" &&
                 p !== "documents.manage" &&
                 p !== "attendance.manage" &&
-                p !== "dues.manage"),
+                p !== "dues.manage" &&
+                p !== "equipment.manage"),
           ),
         ]
       : grants.filter((p) => delegable.some((d) => d === p))),

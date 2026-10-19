@@ -239,6 +239,18 @@ export function Access({ locale }: { locale: Locale }) {
   const secured = state && (!state.mfaRequired || state.user.twoFactorEnabled);
   const roleText = (role: Role) => labels[role][locale];
   const grantLabels = {
+    "equipment.manage":
+      locale === "en"
+        ? "Manage equipment and chairs"
+        : locale === "fr"
+          ? "Gérer le matériel et les fauteuils"
+          : "Materiaal en rolstoelen beheren",
+    "people.sensitive":
+      locale === "en"
+        ? "Explicit access to players' impairment and health information"
+        : locale === "fr"
+          ? "Habilitation explicite aux informations de handicap et de santé"
+          : "Expliciete toegang tot beperkings- en gezondheidsgegevens",
     "dues.manage":
       locale === "en"
         ? "Manage dues"

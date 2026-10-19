@@ -197,6 +197,16 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     );
   }
 
+  // Equipment: chairs in maintenance or due for service within 14 days.
+  if (club && has("equipment.manage")) {
+    scopes.push("equipment");
+    counts.equipmentService = await count(
+      c,
+      "SELECT count(*) FROM equipment_chair WHERE organization_id=$1 AND status<>'retired' AND (status='maintenance' OR next_service_on<=CURRENT_DATE+14)",
+      [org],
+    );
+  }
+
   // People: only with the directory rights used by peopleView.
   if (club && (has("people.read") || has("people.manage"))) {
     scopes.push("people");

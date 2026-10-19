@@ -100,6 +100,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Admissions à finaliser",
         text: "Documents ou cotisation à créer",
       },
+      equipmentService: {
+        title: "Fauteuils à réviser",
+        text: "En maintenance ou révision sous 14 jours",
+      },
       documentsMissing: {
         title: "Documents manquants",
         text: "Demandés, non déposés ou refusés",
@@ -200,6 +204,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Toelatingen af te ronden",
         text: "Documenten of bijdrage aan te maken",
       },
+      equipmentService: {
+        title: "Rolstoelen voor onderhoud",
+        text: "In onderhoud of onderhoud binnen 14 dagen",
+      },
       documentsMissing: {
         title: "Ontbrekende documenten",
         text: "Gevraagd, niet geüpload of geweigerd",
@@ -299,6 +307,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       registrationFollowups: {
         title: "Admissions to finalise",
         text: "Documents or dues to create",
+      },
+      equipmentService: {
+        title: "Chairs to service",
+        text: "In maintenance or due within 14 days",
       },
       documentsMissing: {
         title: "Missing documents",

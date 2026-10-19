@@ -48,7 +48,7 @@ Un dossier par module, toujours selon le même découpage :
 | `access.ts`  | Qui peut lire ou modifier quelle ligne (ex. `docAccess`, `canRead`, `mayRespond`)                   |
 | `service.ts` | `xView(db, principal)` pour la lecture, `xExecute(db, principal, commande, org)` pour les écritures |
 
-Modules : `access` (comptes, mandats, profils), `people` (personnes, familles, équipes), `notifications`, `registrations`, `documents`, `calendar`, `attendance`, `dues`, `messages`, `statistics`, `dashboard`.
+Modules : `access` (comptes, mandats, profils), `people` (personnes, familles, équipes), `notifications`, `registrations`, `documents`, `calendar`, `attendance`, `dues`, `messages`, `statistics`, `dashboard`, `equipment`, `player-profile`.
 
 ### `src/lib/` : socle
 
@@ -101,12 +101,14 @@ Les services ne contactent jamais l'extérieur directement : ils publient un év
 - **Accessibilité** : cible WCAG 2.2 AA. Libellés explicites, focus visible, `role="alert"` / `role="status"` pour les messages, pas de défilement horizontal à 320 px. Les E2E passent axe sur les pages clés.
 - **Langues** : toute chaîne visible existe en `fr`, `nl` et `en`. Les tests unitaires vérifient que les trois dictionnaires ont les mêmes clés.
 
-## Ajouter un module (exemple : « matériel »)
+## Ajouter un module
 
-1. **Migration** `db/migrations/0018_equipment.sql` : tables avec `organization_id`, clés composites, contraintes `CHECK`, ajout de la permission dans les contraintes `grants` si besoin.
+Le module `equipment/` (fauteuils) est un bon exemple récent et compact à suivre.
+
+1. **Migration** `db/migrations/00NN_sujet.sql` : tables avec `organization_id`, clés composites, contraintes `CHECK`, ajout de la permission dans les contraintes `grants` si besoin.
 2. **Permission** dans `src/domains/access/policy.ts` (`delegable`) si le module est délégable.
-3. **Domaine** `src/domains/equipment/` : `schema.ts` (commandes Zod), `access.ts` (règles par ligne), `service.ts` (`equipmentView`, `equipmentExecute` avec `scope()`).
-4. **Route** `src/app/api/equipment/route.ts` : copier `api/dues/route.ts` et remplacer le service.
-5. **Interface** `src/components/equipment.tsx` + textes FR/NL/EN, page `src/app/[locale]/equipment/page.tsx`, lien dans `clubItems()` de `app-shell.tsx`.
+3. **Domaine** `src/domains/<module>/` : `schema.ts` (commandes Zod), règles d'accès, `service.ts` (`xView`, `xExecute` avec `scope()`).
+4. **Route** `src/app/api/<module>/route.ts` : copier `api/equipment/route.ts` et remplacer le service.
+5. **Interface** `src/components/<module>.tsx` + textes FR/NL/EN, page `src/app/[locale]/<module>/page.tsx`, lien dans le bon groupe de `menuGroups()` (`app-shell.tsx`).
 6. **Tests** : unitaires pour les fonctions pures, intégration pour les droits (deux clubs, rôle autorisé, rôle refusé), E2E pour le parcours principal.
 7. **Documentation** : une note dans `docs/evolutions/` et une ligne dans le README si une commande change.
