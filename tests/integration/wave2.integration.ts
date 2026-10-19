@@ -218,6 +218,10 @@ it("keeps a season budget and builds the annual report", async () => {
     ),
   ).toMatchObject({ planned: 50000, actual: 20000, gap: 30000 });
   const report = await financeReport(db, president, label);
+  // A link without a season opens the current one.
+  expect((await financeReport(db, president, "")).season.label).toMatch(
+    /^\d{4}-\d{2}$/,
+  );
   expect(report.closing).toBe(report.opening + report.summary.result);
   expect(report.entries.length).toBeGreaterThan(0);
   await expect(financeReport(db, coach, label)).rejects.toMatchObject({

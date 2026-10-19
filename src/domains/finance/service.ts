@@ -301,6 +301,8 @@ export async function financeReceiptFile(db: Pool, p: Principal, id: string) {
  * expenses per category, budget comparison and every line of the season.
  */
 export async function financeReport(db: Pool, p: Principal, label: string) {
+  // Without a season in the link, the report covers the current one.
+  if (!label) label = seasonOf(brusselsToday()).label;
   if (!/^\d{4}-\d{2}$/.test(label)) throw new AccessError("INVALID_INPUT", 400);
   return scope(db, p, false, async (c, org) => {
     const season = seasonBounds(label);
