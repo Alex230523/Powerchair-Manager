@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell, themeScript } from "@/components/app-shell";
+import { OfflineSupport } from "@/components/offline-support";
 import { notFound } from "next/navigation";
 import { copy, isLocale } from "@/lib/locale";
 import "../globals.css";
@@ -41,6 +42,7 @@ export default async function Layout({
           {copy[locale].skip}
         </a>
         <AppShell locale={locale}>{children}</AppShell>
+        <OfflineSupport />
       </body>
     </html>
   );

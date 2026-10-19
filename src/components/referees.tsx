@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type {
   refereeView,
@@ -7,6 +7,7 @@ import type {
 } from "@/domains/competitions/service";
 import { refereesCopy, weekendDays } from "./referees-copy";
 import { errors } from "./access-copy";
+import { useData } from "./use-api";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const when = (l: Locale, d: string) =>
@@ -33,58 +34,15 @@ const label = (m: {
     ? `${m.club} (${m.team}) · ${m.opponent}`
     : `${m.opponent} · ${m.club} (${m.team})`;
 
-/** Shared loader: first fetch inline in the effect, reload after each command. */
-function useResource<T>(
-  url: string,
-  deniedCodes: string[],
-  failure: (c: string) => string,
-) {
-  const [data, setData] = useState<T | null>(null),
-    [error, setError] = useState(""),
-    [denied, setDenied] = useState(false);
-  const reload = useCallback(async () => {
-    const r = await fetch(url, { cache: "no-store" });
-    const v = await r.json();
-    if (!r.ok) throw new Error(v.error);
-    setData(v);
-  }, [url]);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(url, { cache: "no-store" })
-      .then(async (r) => {
-        const v = await r.json();
-        if (!r.ok) throw new Error(v.error);
-        if (!cancelled) setData(v);
-      })
-      .catch((e: Error) => {
-        if (cancelled) return;
-        if (deniedCodes.includes(e.message)) setDenied(true);
-        else setError(failure(e.message));
-      });
-    return () => {
-      cancelled = true;
-    };
-    // deniedCodes is a constant list.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, failure]);
-  return { data, error, setError, denied, reload };
-}
-const deniedCodes = [
-  "FORBIDDEN",
-  "FEDERATION_ONLY",
-  "CONTEXT_REQUIRED",
-  "MFA_REQUIRED",
-];
-
 export function RefereeSpace({ locale }: { locale: Locale }) {
   const t = refereesCopy[locale];
   const failure = useCallback(
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
     [t, locale],
   );
-  const { data, error, setError, denied, reload } = useResource<
+  const { data, error, setError, denied, reload } = useData<
     Awaited<ReturnType<typeof refereeView>>
-  >("/api/referee", deniedCodes, failure);
+  >("/api/referee", failure);
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   async function send(body: Record<string, unknown>, done: string) {
@@ -323,9 +281,9 @@ export function Designations({ locale }: { locale: Locale }) {
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
     [t, locale],
   );
-  const { data, error, setError, denied, reload } = useResource<
+  const { data, error, setError, denied, reload } = useData<
     Awaited<ReturnType<typeof designationsView>>
-  >("/api/designations", deniedCodes, failure);
+  >("/api/designations", failure);
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   async function send(body: Record<string, unknown>) {

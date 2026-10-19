@@ -1,5 +1,6 @@
 "use client";
 import { shellCopy, contextChanged } from "./app-shell";
+import { clearOfflineData } from "@/lib/offline-queue";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -505,6 +506,7 @@ export function Access({ locale }: { locale: Locale }) {
                 onClick={() =>
                   void task(async () => {
                     await authClient.signOut();
+                    clearOfflineData();
                     setMode("login");
                     setChallenge(false);
                     setSetup(null);

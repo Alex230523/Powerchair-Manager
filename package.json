@@ -25,7 +25,8 @@
     "demo:start": "bash scripts/demo-start.sh",
     "mail:worker": "tsx --env-file=.env.local scripts/mail-worker.ts",
     "docs:worker": "tsx --env-file=.env.local scripts/documents-worker.ts",
-    "attendance:worker": "tsx --env-file=.env.local scripts/attendance-worker.ts"
+    "attendance:worker": "tsx --env-file=.env.local scripts/attendance-worker.ts",
+    "i18n:export": "tsx scripts/i18n-export.ts"
   },
   "dependencies": {
     "better-auth": "1.7.10",

@@ -7,6 +7,7 @@ import { categories, methods } from "@/domains/finance/schema";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
+import { ShowMore, useShowMore } from "./use-api";
 
 type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -175,6 +176,7 @@ export function Finance({ locale }: { locale: Locale }) {
           .toLocaleLowerCase()
           .includes(q.toLocaleLowerCase()),
     ) ?? [];
+  const { visible: shownEntries, more: moreEntries } = useShowMore(entries);
   function exportCsv() {
     const cell = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const rows = [
@@ -625,7 +627,7 @@ export function Finance({ locale }: { locale: Locale }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {entries.map((e) => (
+                    {shownEntries.map((e) => (
                       <tr
                         key={e.id}
                         data-cancelled={e.cancelled_at ? true : undefined}
@@ -761,6 +763,9 @@ export function Finance({ locale }: { locale: Locale }) {
                   </tbody>
                 </table>
               </div>
+            ) : null}
+            {entries.length ? (
+              <ShowMore locale={locale} {...moreEntries} />
             ) : (
               <p className="empty-directory">{t.empty}</p>
             )}
