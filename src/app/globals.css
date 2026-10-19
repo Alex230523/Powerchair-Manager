@@ -364,10 +364,8 @@ main p[role="status"] {
   text-decoration: none;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.05s ease;
+  /* No colour transition: a fading background would briefly fail the contrast ratio. */
+  transition: transform 0.05s ease;
 }
 .button:hover {
   background: var(--accent-solid-hover);
