@@ -11,7 +11,19 @@ import {
   sessionGroup,
   validUntil,
 } from "../src/domains/coaches/schema";
-import { fieldsSchema } from "../src/domains/registrations/schema";
+import {
+  controlFrom,
+  fieldsSchema,
+  fieldVisible,
+  installmentsFrom,
+  splitConfidential,
+  validateAnswers,
+} from "../src/domains/registrations/schema";
+import { addDays, duesStatus } from "../src/domains/reminders/schema";
+import {
+  builtin,
+  validateTemplate,
+} from "../src/domains/notifications/templates";
 import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { importLimit, peopleCommand } from "../src/domains/people/schema";
 import { delegable } from "../src/domains/access/policy";
@@ -160,9 +172,112 @@ describe("registration template", () => {
     expect(fieldsSchema.safeParse(t.fields).success).toBe(true);
     expect(t.fields.length).toBeLessThanOrEqual(20);
     expect(t.description).toMatch(/250/);
-    const own = t.fields.find((f) => f.key === "own_chair")!;
-    const model = t.fields.find((f) => f.key === "chair_model")!;
-    expect(own.options).toContain(model.condition?.equals);
+    expect(t.description).toMatch(/BE41 3632 6208 1310/);
+    const confidential = t.fields
+      .filter((f) => f.confidential)
+      .map((f) => f.key);
+    expect(confidential).toEqual(["national_number", "condition"]);
+    const joystick = t.fields.find((f) => f.key === "joystick")!;
+    expect([joystick.type, joystick.max, joystick.maps]).toEqual([
+      "multi",
+      2,
+      "control",
+    ]);
+    const pay = t.fields.find((f) => f.maps === "installments")!;
+    expect(pay.options.map((o) => installmentsFrom(o))).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("registration answers", () => {
+  const fields = fieldsSchema.parse(tigerstormTemplate("fr").fields);
+  const base = {
+    address: "Rue 1",
+    postal_code: "1030",
+    email: "a@b.be",
+    phone: "+32 470 00 00 00",
+    emergency: "Maman, 0470 00 00 00",
+    installments: "2 fois",
+    privacy_consent: true,
+  };
+  it("accepts multiple choices within the limit and real e-mail addresses", () => {
+    expect(
+      validateAnswers(fields, { ...base, joystick: ["Main droite", "Menton"] })
+        .joystick,
+    ).toEqual(["Main droite", "Menton"]);
+    expect(() =>
+      validateAnswers(fields, {
+        ...base,
+        joystick: ["Main droite", "Menton", "Tête"],
+      }),
+    ).toThrow();
+    expect(() =>
+      validateAnswers(fields, { ...base, joystick: ["Pied"] }),
+    ).toThrow();
+    expect(() =>
+      validateAnswers(fields, { ...base, email: "pas-un-email" }),
+    ).toThrow();
+    expect(() =>
+      validateAnswers(fields, { ...base, privacy_consent: false }),
+    ).toThrow();
+  });
+  it("separates confidential answers before storage", () => {
+    const { clear, hidden } = splitConfidential(fields, {
+      ...base,
+      condition: "secret",
+      national_number: "00",
+    });
+    expect(Object.keys(hidden).sort()).toEqual([
+      "condition",
+      "national_number",
+    ]);
+    expect(clear.condition).toBeUndefined();
+  });
+  it("reads the joystick and the number of payments", () => {
+    expect(controlFrom(["Main gauche", "Menton"])).toBe("left_hand");
+    expect(controlFrom(["Kin"])).toBe("chin");
+    expect(controlFrom([])).toBe("");
+    expect(installmentsFrom("4 fois")).toBe(4);
+    expect(installmentsFrom("jamais")).toBeNull();
+  });
+  it("shows conditional questions when a multiple choice includes the value", () => {
+    const f = { ...fields[0], condition: { key: "gender", equals: "Femme" } };
+    expect(fieldVisible(f, { gender: ["Homme", "Femme"] })).toBe(true);
+    expect(fieldVisible(f, { gender: ["Homme"] })).toBe(false);
+  });
+});
+
+describe("reminders", () => {
+  it("flags overdue and soon-due instalments only", () => {
+    const s = duesStatus(
+      [
+        { due_on: "2026-09-29", amount_cents: 6250 },
+        { due_on: "2026-10-29", amount_cents: 6250 },
+        { due_on: "2026-11-29", amount_cents: 6250 },
+      ],
+      "2026-10-19",
+    );
+    expect([
+      s.overdueCents,
+      s.upcomingCents,
+      s.next?.due_on,
+      s.concerned,
+    ]).toEqual([6250, 6250, "2026-10-29", true]);
+    expect(
+      duesStatus([{ due_on: "2027-01-01", amount_cents: 100 }], "2026-10-19")
+        .concerned,
+    ).toBe(false);
+    expect(addDays("2026-12-25", 10)).toBe("2027-01-04");
+  });
+  it("ships editable reminder templates that pass validation", () => {
+    for (const kind of [
+      "dues_reminder",
+      "document_reminder",
+      "training_update",
+    ] as const)
+      for (const locale of ["fr", "nl", "en"] as const)
+        expect(() =>
+          validateTemplate(kind, builtin[kind][locale]),
+        ).not.toThrow();
   });
 });
 

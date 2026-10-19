@@ -216,7 +216,9 @@ export const typeLabels = {
     text: "Texte",
     date: "Date",
     phone: "Téléphone",
-    choice: "Choix",
+    email: "E-mail",
+    choice: "Choix unique",
+    multi: "Choix multiples",
     file: "Pièce jointe",
     consent: "Consentement",
     signature: "Attestation par nom saisi",
@@ -225,7 +227,9 @@ export const typeLabels = {
     text: "Tekst",
     date: "Datum",
     phone: "Telefoon",
-    choice: "Keuze",
+    email: "E-mail",
+    choice: "Eén keuze",
+    multi: "Meerdere keuzes",
     file: "Bestand",
     consent: "Toestemming",
     signature: "Verklaring met getypte naam",
@@ -416,5 +420,85 @@ export const registrationExtras = {
     empty: "Not answered",
     fileGiven: "File provided",
     fileMissing: "No file",
+  },
+};
+
+const mapLabels = {
+  fr: {
+    phone: "Téléphone de la fiche",
+    email: "E-mail de la fiche",
+    emergency: "Contact d'urgence",
+    condition: "Pathologie (fiche confidentielle)",
+    control: "Commande / joystick",
+    jersey_size: "Taille de maillot",
+    jersey_number: "Numéro de joueur",
+    installments: "Paiement : nombre de fois",
+  },
+  nl: {
+    phone: "Telefoon van de fiche",
+    email: "E-mail van de fiche",
+    emergency: "Noodcontact",
+    condition: "Aandoening (vertrouwelijke fiche)",
+    control: "Bediening / joystick",
+    jersey_size: "Shirtmaat",
+    jersey_number: "Spelersnummer",
+    installments: "Betaling: aantal keer",
+  },
+  en: {
+    phone: "Profile phone",
+    email: "Profile email",
+    emergency: "Emergency contact",
+    condition: "Condition (confidential profile)",
+    control: "Control / joystick",
+    jersey_size: "Shirt size",
+    jersey_number: "Player number",
+    installments: "Payment: number of instalments",
+  },
+};
+/** Question settings: help text, confidentiality, limits and profile mapping. */
+export const fieldExtras = {
+  fr: {
+    helpFr: "Aide sous la question (français)",
+    helpNl: "Aide sous la question (néerlandais)",
+    max: "Nombre maximum de cases cochées",
+    upTo: "{n} au maximum",
+    confidential:
+      "Réponse confidentielle (chiffrée, visible avec l'habilitation données sensibles)",
+    confidentialHint:
+      "Réponse confidentielle : elle reste strictement au sein du club.",
+    confidentialTag: "Confidentiel",
+    hidden: "Réponse confidentielle (accès réservé)",
+    maps: "À l'admission, recopier dans",
+    noMap: "Ne pas recopier",
+    mapLabels: mapLabels.fr,
+  },
+  nl: {
+    helpFr: "Hulptekst onder de vraag (Frans)",
+    helpNl: "Hulptekst onder de vraag (Nederlands)",
+    max: "Maximum aantal aangevinkte vakjes",
+    upTo: "maximaal {n}",
+    confidential:
+      "Vertrouwelijk antwoord (versleuteld, zichtbaar met machtiging gevoelige gegevens)",
+    confidentialHint:
+      "Vertrouwelijk antwoord: het blijft strikt binnen de club.",
+    confidentialTag: "Vertrouwelijk",
+    hidden: "Vertrouwelijk antwoord (beperkte toegang)",
+    maps: "Bij toelating overnemen in",
+    noMap: "Niet overnemen",
+    mapLabels: mapLabels.nl,
+  },
+  en: {
+    helpFr: "Help under the question (French)",
+    helpNl: "Help under the question (Dutch)",
+    max: "Maximum number of ticked boxes",
+    upTo: "up to {n}",
+    confidential:
+      "Confidential answer (encrypted, visible with the sensitive data grant)",
+    confidentialHint: "Confidential answer: it stays strictly within the club.",
+    confidentialTag: "Confidential",
+    hidden: "Confidential answer (restricted)",
+    maps: "On admission, copy into",
+    noMap: "Do not copy",
+    mapLabels: mapLabels.en,
   },
 };

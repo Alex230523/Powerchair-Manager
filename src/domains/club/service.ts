@@ -15,6 +15,8 @@ export const identitySchema = z.object({
   action: z.literal("identity"),
   name: z.string().trim().min(2).max(120),
   contactEmail: z.union([z.email().max(254), z.literal("")]),
+  /** Club affiliation (in Belgium the BPCF). Omitted: unchanged. */
+  federationId: z.uuid().nullable().optional(),
 });
 export const logoSchema = z.object({
   action: z.literal("logo"),
@@ -52,7 +54,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,COALESCE(o.contact_email,'') AS contact_email,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -68,8 +70,17 @@ export async function clubView(db: Pool, p: Principal) {
             )
           ).rows
         : [];
+    const federations =
+      a.kind === "club"
+        ? (
+            await c.query(
+              "SELECT id,name FROM organization WHERE kind='federation' ORDER BY name",
+            )
+          ).rows
+        : [];
     return {
       organization: org,
+      federations: federations as { id: string; name: string }[],
       canEdit:
         mfaSatisfied(!!user.twoFactorEnabled) &&
         permissions(a.role, a.grants).includes("mandates.manage"),
@@ -107,6 +118,23 @@ export async function clubExecute(
         "UPDATE organization SET name=$2,contact_email=$3 WHERE id=$1",
         [a.organization_id, input.name, input.contactEmail || null],
       );
+      if (input.federationId !== undefined) {
+        if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+        if (
+          input.federationId &&
+          !(
+            await c.query(
+              "SELECT 1 FROM organization WHERE id=$1 AND kind='federation'",
+              [input.federationId],
+            )
+          ).rowCount
+        )
+          throw new AccessError("NOT_FOUND", 404);
+        await c.query("UPDATE organization SET federation_id=$2 WHERE id=$1", [
+          a.organization_id,
+          input.federationId,
+        ]);
+      }
     } else if (input.action === "logo") {
       const bytes = Buffer.from(input.data, "base64");
       if (!validLogo(input.mediaType, bytes))
@@ -144,6 +172,16 @@ export async function clubLogo(db: Pool, organizationId: string) {
     await db.query(
       "SELECT media_type,content FROM organization_logo WHERE organization_id=$1",
       [organizationId],
+    )
+  ).rows[0] as { media_type: string; content: Buffer } | undefined;
+}
+/** Logo shown on a published registration form, found through the form itself. */
+export async function clubLogoForForm(db: Pool, formId: string) {
+  z.uuid().parse(formId);
+  return (
+    await db.query(
+      "SELECT l.media_type,l.content FROM registration_form f JOIN organization_logo l ON l.organization_id=f.organization_id WHERE f.id=$1 AND f.published",
+      [formId],
     )
   ).rows[0] as { media_type: string; content: Buffer } | undefined;
 }

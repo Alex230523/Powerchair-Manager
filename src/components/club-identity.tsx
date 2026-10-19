@@ -13,6 +13,8 @@ const copy = {
       "Le nom et le logo apparaissent dans l’application et sur les formulaires d’inscription publics.",
     name: "Nom du club",
     contact: "Email de contact public",
+    federation: "Fédération",
+    noFederation: "Aucune fédération",
     save: "Enregistrer",
     logo: "Logo",
     change: "Choisir un logo (PNG, JPEG ou WebP, 512 Ko max.)",
@@ -35,6 +37,8 @@ const copy = {
       "Naam en logo verschijnen in de applicatie en op de openbare inschrijvingsformulieren.",
     name: "Naam van de club",
     contact: "Openbaar contactadres",
+    federation: "Federatie",
+    noFederation: "Geen federatie",
     save: "Opslaan",
     logo: "Logo",
     change: "Logo kiezen (PNG, JPEG of WebP, max. 512 kB)",
@@ -55,6 +59,8 @@ const copy = {
     identity: "Club identity",
     intro:
       "The name and logo appear in the app and on public registration forms.",
+    federation: "Federation",
+    noFederation: "No federation",
     name: "Club name",
     contact: "Public contact email",
     save: "Save",
@@ -195,7 +201,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
           </div>
           {view.canEdit ? (
             <form
-              key={o.name + o.contact_email}
+              key={o.name + o.contact_email + (o.federation_id ?? "")}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -203,6 +209,11 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                   action: "identity",
                   name: String(f.get("name") ?? "").trim(),
                   contactEmail: String(f.get("contact") ?? "").trim(),
+                  ...(o.kind === "club"
+                    ? {
+                        federationId: String(f.get("federation") ?? "") || null,
+                      }
+                    : {}),
                 });
               }}
             >
@@ -227,6 +238,23 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                   defaultValue={o.contact_email}
                 />
               </label>
+              {o.kind === "club" && (
+                <label htmlFor="club-federation">
+                  {t.federation}
+                  <select
+                    id="club-federation"
+                    name="federation"
+                    defaultValue={o.federation_id ?? ""}
+                  >
+                    <option value="">{t.noFederation}</option>
+                    {view.federations.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <button className="button" disabled={busy}>
                 {t.save}
               </button>

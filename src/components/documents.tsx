@@ -35,6 +35,11 @@ function Field({
     </div>
   );
 }
+const remindLabel = {
+  fr: "Relancer les documents manquants",
+  nl: "Herinneren aan ontbrekende documenten",
+  en: "Remind about missing documents",
+};
 export function Documents({ locale }: { locale: Locale }) {
   const t = documentCopy[locale],
     cl = categoryLabels[locale],
@@ -136,6 +141,16 @@ export function Documents({ locale }: { locale: Locale }) {
       <main id="main" className="access documents">
         <h1>{t.title}</h1>
         <p>{t.intro}</p>
+        {data?.manage && (
+          <p>
+            <Link
+              className="button secondary"
+              href={`/${locale}/reminders?kind=documents`}
+            >
+              {remindLabel[locale]}
+            </Link>
+          </p>
+        )}
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
           <p role="alert" className="error-message">

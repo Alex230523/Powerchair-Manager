@@ -6,6 +6,8 @@ import type { Locale } from "@/lib/locale";
 import { Panel, Button } from "./ui";
 import {
   fieldVisible,
+  mappings,
+  type Answers,
   type Field,
   type Status,
 } from "@/domains/registrations/schema";
@@ -15,6 +17,7 @@ import {
   typeLabels,
   registrationErrors,
   registrationExtras,
+  fieldExtras,
 } from "./registrations-copy";
 import { tigerstormTemplate } from "@/domains/registrations/templates";
 import { ageOn } from "@/domains/people/schema";
@@ -31,6 +34,7 @@ type Form = {
   version: number;
   organization_name?: string;
   season_name?: string;
+  logo_version?: string | null;
 };
 type Application = {
   id: string;
@@ -43,13 +47,14 @@ type Application = {
   locale: Locale;
   status: Status;
   version: number;
-  answers: Record<string, string | boolean>;
+  answers: Answers;
   form_snapshot: { title: string; fields: Field[] };
   applicant_name: string;
   applicant_email: string;
   organization_name: string;
   decided_at: string | null;
   submitted_at?: string | null;
+  confidential_hidden?: boolean;
   history: {
     id: string;
     status: Status | "attachment" | "note" | "saved";
@@ -93,8 +98,8 @@ function Questions({
 }: {
   fields: Field[];
   locale: Locale;
-  answers: Record<string, string | boolean>;
-  setAnswers: (a: Record<string, string | boolean>) => void;
+  answers: Answers;
+  setAnswers: (a: Answers) => void;
   disabled?: boolean;
 }) {
   const t = registrationCopy[locale];
@@ -104,16 +109,70 @@ function Questions({
         .filter((f) => fieldVisible(f, answers))
         .map((f) => {
           const fid = "answer-" + f.key;
+          const x = fieldExtras[locale];
           const label =
             (f.label[locale] || f.label.fr) + (f.required ? " *" : "");
+          const help = f.help ? f.help[locale] || f.help.fr : "";
+          const notes = (
+            <>
+              {help && <p className="field-help">{help}</p>}
+              {f.confidential && (
+                <p className="field-help field-confidential">
+                  {x.confidentialHint}
+                </p>
+              )}
+            </>
+          );
           if (f.type === "file")
             return (
-              <p key={f.key}>
-                {label} · {t.fileHint}
-              </p>
+              <div key={f.key}>
+                <p>
+                  {label} · {t.fileHint}
+                </p>
+                {notes}
+              </div>
             );
+          if (f.type === "multi") {
+            const chosen = Array.isArray(answers[f.key])
+              ? (answers[f.key] as string[])
+              : [];
+            const full = f.max !== undefined && chosen.length >= f.max;
+            return (
+              <fieldset key={f.key} className="choice-group">
+                <legend>
+                  {label}
+                  {f.max ? (
+                    <span className="muted">
+                      {" "}
+                      ({x.upTo.replace("{n}", String(f.max))})
+                    </span>
+                  ) : null}
+                </legend>
+                {notes}
+                {f.options.map((o) => (
+                  <label key={o} className="check">
+                    <input
+                      type="checkbox"
+                      checked={chosen.includes(o)}
+                      disabled={disabled || (full && !chosen.includes(o))}
+                      onChange={(e) =>
+                        setAnswers({
+                          ...answers,
+                          [f.key]: e.target.checked
+                            ? [...chosen, o]
+                            : chosen.filter((v) => v !== o),
+                        })
+                      }
+                    />
+                    {o}
+                  </label>
+                ))}
+              </fieldset>
+            );
+          }
           return (
             <FieldLabel key={f.key} id={fid} label={label}>
+              {notes}
               {f.type === "consent" ? (
                 <input
                   id={fid}
@@ -146,9 +205,14 @@ function Questions({
                       ? "date"
                       : f.type === "phone"
                         ? "tel"
-                        : "text"
+                        : f.type === "email"
+                          ? "email"
+                          : "text"
                   }
-                  maxLength={f.type === "phone" ? 35 : 5000}
+                  autoComplete={f.confidential ? "off" : undefined}
+                  maxLength={
+                    f.type === "phone" ? 35 : f.type === "email" ? 254 : 5000
+                  }
                   value={String(answers[f.key] ?? "")}
                   disabled={disabled}
                   onChange={(e) =>
@@ -174,7 +238,7 @@ function ShareDialog({
   close: () => void;
 }) {
   const x = registrationExtras[locale];
-  const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
+  const [answers, setAnswers] = useState<Answers>({});
   const [copied, setCopied] = useState("");
   const site = typeof window === "undefined" ? "" : window.location.origin;
   const url = `${site}/${locale}/inscription/${form.id}`;
@@ -239,6 +303,100 @@ function ShareDialog({
     </Modal>
   );
 }
+/** Help text, confidentiality, multiple-choice limit and profile mapping of a question. */
+function FieldEditorExtras({
+  locale,
+  field: f,
+  index: i,
+  update,
+}: {
+  locale: Locale;
+  field: Field;
+  index: number;
+  update: (f: Field) => void;
+}) {
+  const x = fieldExtras[locale];
+  return (
+    <div className="field-extras">
+      <FieldLabel id={"help-fr-" + i} label={x.helpFr}>
+        <input
+          id={"help-fr-" + i}
+          maxLength={500}
+          value={f.help?.fr ?? ""}
+          onChange={(e) =>
+            update({
+              ...f,
+              help:
+                e.target.value || f.help?.nl
+                  ? { fr: e.target.value, nl: f.help?.nl ?? "", en: f.help?.en }
+                  : undefined,
+            })
+          }
+        />
+      </FieldLabel>
+      <FieldLabel id={"help-nl-" + i} label={x.helpNl}>
+        <input
+          id={"help-nl-" + i}
+          maxLength={500}
+          value={f.help?.nl ?? ""}
+          onChange={(e) =>
+            update({
+              ...f,
+              help:
+                e.target.value || f.help?.fr
+                  ? { fr: f.help?.fr ?? "", nl: e.target.value, en: f.help?.en }
+                  : undefined,
+            })
+          }
+        />
+      </FieldLabel>
+      {f.type === "multi" && (
+        <FieldLabel id={"max-" + i} label={x.max}>
+          <input
+            id={"max-" + i}
+            type="number"
+            min={1}
+            max={20}
+            value={f.max ?? ""}
+            onChange={(e) =>
+              update({
+                ...f,
+                max: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+          />
+        </FieldLabel>
+      )}
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={!!f.confidential}
+          onChange={(e) => update({ ...f, confidential: e.target.checked })}
+        />
+        {x.confidential}
+      </label>
+      <FieldLabel id={"maps-" + i} label={x.maps}>
+        <select
+          id={"maps-" + i}
+          value={f.maps ?? ""}
+          onChange={(e) =>
+            update({
+              ...f,
+              maps: (e.target.value || undefined) as Field["maps"],
+            })
+          }
+        >
+          <option value="">{x.noMap}</option>
+          {mappings.map((m) => (
+            <option key={m} value={m}>
+              {x.mapLabels[m]}
+            </option>
+          ))}
+        </select>
+      </FieldLabel>
+    </div>
+  );
+}
 function FormEditor({
   locale,
   form,
@@ -260,7 +418,7 @@ function FormEditor({
     ),
     [preview, setPreview] = useState(false),
     [mobile, setMobile] = useState(false),
-    [answers, setAnswers] = useState<Record<string, string | boolean>>({});
+    [answers, setAnswers] = useState<Answers>({});
   return (
     <Panel title={form?.title ?? t.newForm}>
       <form
@@ -434,7 +592,15 @@ function FormEditor({
               />
               {t.required}
             </label>
-            {f.type === "choice" && (
+            <FieldEditorExtras
+              locale={locale}
+              field={f}
+              index={i}
+              update={(next) =>
+                setFields(fields.map((v, n) => (n === i ? next : v)))
+              }
+            />
+            {(f.type === "choice" || f.type === "multi") && (
               <FieldLabel id={"options-" + i} label={t.options}>
                 <textarea
                   id={"options-" + i}
@@ -473,7 +639,12 @@ function FormEditor({
                 <option value="">{t.noCondition}</option>
                 {fields
                   .slice(0, i)
-                  .filter((v) => v.type === "choice" || v.type === "text")
+                  .filter(
+                    (v) =>
+                      v.type === "choice" ||
+                      v.type === "multi" ||
+                      v.type === "text",
+                  )
                   .map((v) => (
                     <option key={v.key} value={v.key}>
                       {v.label[locale] || v.label.fr}
@@ -536,6 +707,7 @@ function FormEditor({
                   label: { fr: "", nl: "" },
                   required: false,
                   options: [],
+                  confidential: false,
                 },
               ])
             }
@@ -597,7 +769,7 @@ export function Registrations({
     [filter, setFilter] = useState("pending"),
     [answerDraft, setAnswerDraft] = useState<{
       key: string;
-      values: Record<string, string | boolean>;
+      values: Answers;
     }>({ key: "", values: {} });
   const router = useRouter();
   const [recentSince] = useState(() => Date.now() - 14 * 86400000);
@@ -670,7 +842,7 @@ export function Registrations({
     answerDraft.key === answerKey
       ? answerDraft.values
       : (application?.answers ?? {});
-  function setAnswers(values: Record<string, string | boolean>) {
+  function setAnswers(values: Answers) {
     setAnswerDraft({ key: answerKey, values });
   }
   async function task(work: () => Promise<void>) {
@@ -715,10 +887,20 @@ export function Registrations({
         )}
         {mode === "public" && publicData && (
           <Panel title={publicData.title}>
-            <p>
-              {publicData.organization_name} · {publicData.season_name}
-            </p>
-            <p>{publicData.description}</p>
+            <div className="club-banner">
+              {publicData.logo_version && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="club-banner-logo"
+                  src={`/api/club/logo?form=${publicData.id}&v=${publicData.logo_version}`}
+                  alt={publicData.organization_name ?? ""}
+                />
+              )}
+              <p>
+                {publicData.organization_name} · {publicData.season_name}
+              </p>
+            </div>
+            <p className="message-text">{publicData.description}</p>
             <p>{t.account}</p>
             {!data ? (
               <Link href={"/" + locale + "/access"}>{t.access}</Link>
@@ -1089,10 +1271,19 @@ export function Registrations({
                     const empty =
                       f.type === "file"
                         ? !files.length
-                        : value === undefined || value === "";
+                        : value === undefined ||
+                          value === "" ||
+                          (Array.isArray(value) && !value.length);
                     return (
                       <div key={f.key} data-empty={empty || undefined}>
-                        <dt>{f.label[locale] || f.label.fr}</dt>
+                        <dt>
+                          {f.label[locale] || f.label.fr}
+                          {f.confidential && (
+                            <span className="status-tag" data-tone="warning">
+                              {fieldExtras[locale].confidentialTag}
+                            </span>
+                          )}
+                        </dt>
                         <dd>
                           {f.type === "file"
                             ? files.length
@@ -1103,8 +1294,13 @@ export function Registrations({
                                 ? t.yes
                                 : t.no
                               : empty
-                                ? registrationExtras[locale].empty
-                                : String(value)}
+                                ? f.confidential &&
+                                  application.confidential_hidden
+                                  ? fieldExtras[locale].hidden
+                                  : registrationExtras[locale].empty
+                                : Array.isArray(value)
+                                  ? value.join(", ")
+                                  : String(value)}
                         </dd>
                       </div>
                     );

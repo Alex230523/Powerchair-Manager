@@ -10,6 +10,7 @@ const choice: Field = {
   label: { fr: "Choix", nl: "Keuze" },
   required: true,
   options: ["Oui", "Non"],
+  confidential: false,
 };
 it("requires earlier conditional references and unique question identifiers", () => {
   expect(() => fieldsSchema.parse([choice, { ...choice }])).toThrow();

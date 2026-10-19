@@ -17,11 +17,23 @@ export default async function Page({
     notFound();
   }
   return (
-    <main id="main">
-      <h1>{form.title}</h1>
-      <p>
-        {form.organization_name} · {form.season_name}
-      </p>
+    <main id="main" className="widget">
+      <div className="club-banner">
+        {form.logo_version && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className="club-banner-logo"
+            src={`/api/club/logo?form=${form.id}&v=${form.logo_version}`}
+            alt={form.organization_name}
+          />
+        )}
+        <div>
+          <h1>{form.title}</h1>
+          <p>
+            {form.organization_name} · {form.season_name}
+          </p>
+        </div>
+      </div>
       <a
         href={"/" + locale + "/inscription/" + id}
         target="_blank"

@@ -9,6 +9,9 @@ export const editableKinds = [
   "document_update",
   "calendar_update",
   "attendance_update",
+  "dues_reminder",
+  "document_reminder",
+  "training_update",
 ] as const;
 export const allKinds = [
   "auth_verify",
@@ -22,9 +25,59 @@ export type Variables = {
   url: string;
   role?: string;
   team?: string;
+  /** Reminders: the player concerned, amounts due, documents expected. */
+  person?: string;
+  amount?: string;
+  due?: string;
+  details?: string;
+  /** Coach courses. */
+  course?: string;
+  status?: string;
 };
 export type Template = { subject: string; body: string };
 export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
+  dues_reminder: {
+    fr: {
+      subject: "Rappel de cotisation · {person}",
+      body: "Bonjour {name},\nSauf erreur de notre part, la cotisation de {person} n’est pas encore en ordre.\nMontant : {amount}\nÉchéance : {due}\n{details}\nSi le paiement a déjà été fait, merci de ne pas tenir compte de ce message.\nSportivement,\n{organization}\n{url}",
+    },
+    nl: {
+      subject: "Herinnering lidgeld · {person}",
+      body: "Hallo {name},\nTenzij wij ons vergissen, is het lidgeld van {person} nog niet in orde.\nBedrag: {amount}\nVervaldag: {due}\n{details}\nAls de betaling al gebeurd is, mag u dit bericht negeren.\nSportieve groeten,\n{organization}\n{url}",
+    },
+    en: {
+      subject: "Membership fee reminder · {person}",
+      body: "Hello {name},\nUnless we are mistaken, the membership fee for {person} is not settled yet.\nAmount: {amount}\nDue: {due}\n{details}\nIf you have already paid, please ignore this message.\nKind regards,\n{organization}\n{url}",
+    },
+  },
+  document_reminder: {
+    fr: {
+      subject: "Documents à fournir · {person}",
+      body: "Bonjour {name},\nIl manque encore des documents pour {person} :\n{details}\nVous pouvez les déposer directement dans votre espace.\nMerci,\n{organization}\n{url}",
+    },
+    nl: {
+      subject: "Ontbrekende documenten · {person}",
+      body: "Hallo {name},\nEr ontbreken nog documenten voor {person}:\n{details}\nU kunt ze rechtstreeks in uw ruimte opladen.\nBedankt,\n{organization}\n{url}",
+    },
+    en: {
+      subject: "Documents to provide · {person}",
+      body: "Hello {name},\nSome documents are still missing for {person}:\n{details}\nYou can upload them directly in your space.\nThank you,\n{organization}\n{url}",
+    },
+  },
+  training_update: {
+    fr: {
+      subject: "Formation des coachs · {course}",
+      body: "Bonjour {name},\nLa demande de formation « {course} » pour {person} : {status}.\n{url}",
+    },
+    nl: {
+      subject: "Coachopleiding · {course}",
+      body: "Hallo {name},\nDe opleidingsaanvraag « {course} » voor {person}: {status}.\n{url}",
+    },
+    en: {
+      subject: "Coach education · {course}",
+      body: "Hello {name},\nThe course request \u201c{course}\u201d for {person}: {status}.\n{url}",
+    },
+  },
   attendance_update: {
     en: {
       subject: "Invitations and attendance · {organization}",
@@ -182,6 +235,24 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
 };
 const allowed: Record<Kind, string[]> = {
   attendance_update: ["name", "organization", "url"],
+  dues_reminder: [
+    "name",
+    "organization",
+    "url",
+    "person",
+    "amount",
+    "due",
+    "details",
+  ],
+  document_reminder: ["name", "organization", "url", "person", "details"],
+  training_update: [
+    "name",
+    "organization",
+    "url",
+    "person",
+    "course",
+    "status",
+  ],
   calendar_update: ["name", "organization", "url"],
   document_update: ["name", "organization", "url"],
   registration_update: ["name", "organization", "url"],

@@ -24,7 +24,8 @@ Un dossier par module. Les routes API appellent ces fonctions ; l'interface n'y 
 | `player-profile/` | Fiche joueur : vue personnelle (accompagnement, données confidentielles chiffrées) et vue sportive       |
 | `club/`           | Identité du club (nom, contact, logo) et résumé des équipes                                              |
 | `finance/`        | Grand livre du club : recettes, dépenses, annulations, synthèse de saison                                |
-| `coaches/`        | Fiche coach, catalogue fédéral de formations et demandes des clubs                                       |
+| `coaches/`        | Fiche coach, formations fédérales, demandes des clubs, clubs affiliés                                    |
+| `reminders/`      | Relances cotisations et documents : personnes concernées, destinataires, envoi                           |
 | `dashboard/`      | Tableau de bord en lecture seule, construit avec les règles d'accès des autres modules                   |
 
 Point d'entrée recommandé pour comprendre le modèle : `access/policy.ts`, puis `access/service.ts` (`active()`, `requirePermission()`), puis un module simple comme `dues/`.

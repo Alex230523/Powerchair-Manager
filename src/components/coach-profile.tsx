@@ -339,7 +339,9 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
                 </button>
               </form>
             ) : (
-              <p className="notice">{t.noCourses}</p>
+              <p className="notice">
+                {view.federation ? t.noCourses : t.noFederation}
+              </p>
             ))}
         </Card>
       </div>

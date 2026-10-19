@@ -1,3 +1,4 @@
+import { installmentsFrom } from "../registrations/schema";
 import type { Pool, PoolClient } from "pg";
 import {
   active,
@@ -170,10 +171,27 @@ export async function duesView(db: Pool, p: Principal) {
       followups: s.manage
         ? (
             await s.c.query(
-              "SELECT a.id,a.profile_id,a.season_id,a.subject_name FROM registration_application a JOIN registration_followup f ON f.application_id=a.id WHERE a.organization_id=$1 AND a.status='accepted' AND f.kind='dues' AND f.state='awaiting_module' ORDER BY a.decided_at",
+              "SELECT a.id,a.profile_id,a.season_id,a.subject_name,a.answers,a.form_snapshot FROM registration_application a JOIN registration_followup f ON f.application_id=a.id WHERE a.organization_id=$1 AND a.status='accepted' AND f.kind='dues' AND f.state='awaiting_module' ORDER BY a.decided_at",
               [o],
             )
-          ).rows
+          ).rows.map(({ answers, form_snapshot, ...a }) => {
+            // Number of payments the family chose on the registration form, if asked.
+            const field = (form_snapshot?.fields ?? []).find(
+              (f: { maps?: string }) => f.maps === "installments",
+            );
+            return {
+              ...a,
+              installments: field
+                ? installmentsFrom(answers?.[field.key])
+                : null,
+            } as {
+              id: string;
+              profile_id: string;
+              season_id: string;
+              subject_name: string;
+              installments: number | null;
+            };
+          })
         : [],
     };
   });

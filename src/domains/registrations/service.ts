@@ -13,10 +13,127 @@ import {
   applicationSchema,
   validateAnswers,
   fieldVisible,
+  splitConfidential,
+  controlFrom,
+  type Answers,
   type Field,
+  type Mapping,
   type Status,
 } from "./schema";
 import { publish } from "../notifications/queue";
+import { seal, unseal } from "../notifications/crypto";
+import { mfaSatisfied } from "../../lib/security-policy";
+
+/** Confidential answers are sealed with the application id as associated data. */
+const secretAad = (applicationId: string) => "registration:" + applicationId;
+function allAnswers(row: Record<string, unknown>): Answers {
+  const clear = (row.answers ?? {}) as Answers;
+  if (!row.confidential_answers) return clear;
+  return {
+    ...clear,
+    ...unseal<Answers>(
+      String(row.confidential_answers),
+      secretAad(String(row.id)),
+    ),
+  };
+}
+function sealedAnswers(
+  applicationId: string,
+  fields: Field[],
+  answers: Answers,
+) {
+  const { clear, hidden } = splitConfidential(fields, answers);
+  return {
+    clear: JSON.stringify(clear),
+    secret: Object.keys(hidden).length
+      ? seal(hidden, secretAad(applicationId))
+      : null,
+  };
+}
+/** First visible answer of the question mapped to a profile field, as text. */
+function mapped(fields: Field[], answers: Answers, key: Mapping) {
+  const field = fields.find((f) => f.maps === key && fieldVisible(f, answers));
+  const value = field ? answers[field.key] : undefined;
+  return Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.trim()
+      : "";
+}
+/**
+ * Copies mapped answers into the new player's profile. Only empty profile fields
+ * are filled, so data the club already holds is never overwritten.
+ */
+async function applyMappings(
+  c: PoolClient,
+  org: string,
+  profileId: string,
+  fields: Field[],
+  answers: Answers,
+  userId: string,
+) {
+  const text = (k: Mapping) => {
+    const v = mapped(fields, answers, k);
+    return Array.isArray(v) ? v.join(", ") : v;
+  };
+  const number = Number.parseInt(text("jersey_number"), 10);
+  const email = text("email").toLowerCase();
+  await c.query(
+    "UPDATE club_person SET email=COALESCE(NULLIF(email,''),NULLIF($3,'')),phone=CASE WHEN phone='' THEN left($4,40) ELSE phone END,jersey_number=COALESCE(jersey_number,$5),updated_at=now() WHERE id=$1 AND organization_id=$2",
+    [
+      profileId,
+      org,
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "",
+      text("phone"),
+      Number.isInteger(number) && number >= 0 && number <= 99 ? number : null,
+    ],
+  );
+  const control = mapped(fields, answers, "control");
+  const controls = Array.isArray(control) ? control : control ? [control] : [];
+  const size = text("jersey_size").slice(0, 20);
+  if (controls.length || size)
+    await c.query(
+      `INSERT INTO player_sport_profile(profile_id,organization_id,control,jersey_size,sport_notes,updated_by) VALUES($1,$2,$3,$4,$5,$6)
+       ON CONFLICT(profile_id) DO UPDATE SET control=CASE WHEN player_sport_profile.control='' THEN EXCLUDED.control ELSE player_sport_profile.control END,
+         jersey_size=CASE WHEN player_sport_profile.jersey_size='' THEN EXCLUDED.jersey_size ELSE player_sport_profile.jersey_size END,
+         sport_notes=CASE WHEN player_sport_profile.sport_notes='' THEN EXCLUDED.sport_notes ELSE player_sport_profile.sport_notes END`,
+      [
+        profileId,
+        org,
+        controlFrom(controls),
+        size,
+        controls.length ? "Joystick : " + controls.join(", ") : "",
+        userId,
+      ],
+    );
+  const emergency = text("emergency").slice(0, 300);
+  const condition = text("condition").slice(0, 2000);
+  if (emergency || condition) {
+    const existing = (
+      await c.query(
+        "SELECT emergency_contact,confidential_ciphertext FROM player_support_profile WHERE profile_id=$1 FOR UPDATE",
+        [profileId],
+      )
+    ).rows[0];
+    const sealed =
+      condition && !existing?.confidential_ciphertext
+        ? seal(
+            { impairment: condition, medical_notes: "" },
+            "player-health:" + profileId,
+          )
+        : null;
+    if (!existing)
+      await c.query(
+        "INSERT INTO player_support_profile(profile_id,organization_id,emergency_contact,confidential_ciphertext,updated_by) VALUES($1,$2,$3,$4,$5)",
+        [profileId, org, emergency, sealed, userId],
+      );
+    else
+      await c.query(
+        "UPDATE player_support_profile SET emergency_contact=CASE WHEN emergency_contact='' THEN $2 ELSE emergency_contact END,confidential_ciphertext=COALESCE(confidential_ciphertext,$3),updated_by=$4,updated_at=now() WHERE profile_id=$1",
+        [profileId, emergency, sealed, userId],
+      );
+  }
+}
 const id = z.uuid();
 const formSchema = z.object({
   action: z.literal("form"),
@@ -146,14 +263,19 @@ async function application(
     throw new AccessError("NOT_FOUND", 404);
   return row;
 }
-async function details(
+async function details<R extends Record<string, unknown>>(
   c: PoolClient,
-  row: Record<string, unknown>,
+  row: R,
   internal: boolean,
+  sensitive = true,
 ) {
   const applicationId = row.id;
+  const { confidential_answers, ...rest } = row;
   return {
-    ...row,
+    ...rest,
+    answers: sensitive ? allAnswers(row) : (row.answers as Answers),
+    // Staff without people.sensitive see that confidential answers exist, not their content.
+    confidential_hidden: !sensitive && !!confidential_answers,
     birth_date: String(row.birth_date).slice(0, 10),
     history: (
       await c.query(
@@ -174,7 +296,7 @@ export async function publicForm(db: Pool, formId: string) {
   id.parse(formId);
   const row = (
     await db.query(
-      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,o.name AS organization_name,s.name AS season_name FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id WHERE f.id=$1 AND f.published AND NOT s.archived",
+      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND f.published AND NOT s.archived",
       [formId],
     )
   ).rows[0];
@@ -188,6 +310,7 @@ export async function publicForm(db: Pool, formId: string) {
     capacity: number | null;
     organization_name: string;
     season_name: string;
+    logo_version: string | null;
   };
 }
 export async function registrationView(
@@ -211,6 +334,10 @@ export async function registrationView(
     }
     const context = await manager(c, p);
     const org = context.organization_id;
+    const user = await account(c, p);
+    const sensitive =
+      mfaSatisfied(!!user.twoFactorEnabled) &&
+      context.grants.includes("people.sensitive");
     const rows = (
       await c.query(
         selectApps +
@@ -244,7 +371,10 @@ export async function registrationView(
           [org],
         )
       ).rows,
-      applications: await Promise.all(rows.map((r) => details(c, r, true))),
+      applications: await Promise.all(
+        rows.map((r) => details(c, r, true, sensitive)),
+      ),
+      canSeeConfidential: sensitive,
     };
   });
 }
@@ -396,7 +526,7 @@ export async function registrationExecute(
         )
           throw new AccessError("NOT_FOUND", 404);
       }
-      const priorAnswers = prior?.answers ?? {};
+      const priorAnswers: Answers = prior ? allAnswers(prior) : {};
       const values = Object.fromEntries(
         fieldsSchema
           .parse(f.fields)
@@ -420,7 +550,12 @@ export async function registrationExecute(
             input.subjectName,
             input.birthDate,
             input.locale,
-            JSON.stringify({ ...values, ...input.answers }),
+            JSON.stringify(
+              splitConfidential(fieldsSchema.parse(f.fields), {
+                ...values,
+                ...input.answers,
+              }).clear,
+            ),
             JSON.stringify({
               version: f.version,
               title: f.title,
@@ -441,6 +576,15 @@ export async function registrationExecute(
           ).rows[0].id,
         };
       }
+      const initial = sealedAnswers(row.id, fieldsSchema.parse(f.fields), {
+        ...values,
+        ...input.answers,
+      });
+      if (initial.secret)
+        await c.query(
+          "UPDATE registration_application SET confidential_answers=$2 WHERE id=$1",
+          [row.id, initial.secret],
+        );
       await history(c, p, row, "draft");
       return { id: row.id };
     }
@@ -477,12 +621,14 @@ export async function registrationExecute(
           kind !== a.subject_kind)
       )
         throw new AccessError("IDENTITY_MISMATCH", 409);
-      const keys = fieldsSchema.parse(a.form_snapshot.fields).map((f) => f.key);
+      const snapshot = fieldsSchema.parse(a.form_snapshot.fields);
+      const keys = snapshot.map((f) => f.key);
       if (Object.keys(input.answers).some((k) => !keys.includes(k)))
         throw new AccessError("INVALID_INPUT", 400);
+      const stored = sealedAnswers(a.id, snapshot, input.answers);
       await c.query(
-        "UPDATE registration_application SET answers=$2,subject_name=$3,birth_date=$4,subject_kind=$5,version=version+1,updated_at=now() WHERE id=$1",
-        [a.id, JSON.stringify(input.answers), name, birth, kind],
+        "UPDATE registration_application SET answers=$2,confidential_answers=$6,subject_name=$3,birth_date=$4,subject_kind=$5,version=version+1,updated_at=now() WHERE id=$1",
+        [a.id, stored.clear, name, birth, kind, stored.secret],
       );
       await history(c, p, a, "saved");
       return { id: a.id };
@@ -505,27 +651,25 @@ export async function registrationExecute(
           [a.id],
         )
       ).rows.map((r) => r.field_key);
+      const snapshot = fieldsSchema.parse(a.form_snapshot.fields);
+      const current = allAnswers(a);
       let answers;
       try {
-        answers = validateAnswers(
-          fieldsSchema.parse(a.form_snapshot.fields),
-          a.answers,
-          files,
-        );
+        answers = validateAnswers(snapshot, current, files);
       } catch {
         throw new AccessError("MISSING_FIELDS", 400);
       }
-      const visibleFiles = fieldsSchema
-        .parse(a.form_snapshot.fields)
-        .filter((f) => f.type === "file" && fieldVisible(f, a.answers))
+      const visibleFiles = snapshot
+        .filter((f) => f.type === "file" && fieldVisible(f, current))
         .map((f) => f.key);
       await c.query(
         "DELETE FROM registration_attachment WHERE application_id=$1 AND NOT(field_key=ANY($2::text[]))",
         [a.id, visibleFiles],
       );
+      const stored = sealedAnswers(a.id, snapshot, answers);
       await c.query(
-        "UPDATE registration_application SET answers=$2,submitted_at=COALESCE(submitted_at,now()) WHERE id=$1",
-        [a.id, JSON.stringify(answers)],
+        "UPDATE registration_application SET answers=$2,confidential_answers=$3,submitted_at=COALESCE(submitted_at,now()) WHERE id=$1",
+        [a.id, stored.clear, stored.secret],
       );
       status = "submitted";
     } else if (input.action === "withdraw") {
@@ -655,6 +799,14 @@ export async function registrationExecute(
         await c.query(
           "UPDATE registration_application SET profile_id=$2 WHERE id=$1",
           [a.id, profileId],
+        );
+        await applyMappings(
+          c,
+          org,
+          profileId!,
+          fieldsSchema.parse(a.form_snapshot.fields),
+          allAnswers(a),
+          p.userId,
         );
         await c.query(
           "INSERT INTO registration_followup(application_id,kind) VALUES($1,'documents'),($1,'dues') ON CONFLICT DO NOTHING",

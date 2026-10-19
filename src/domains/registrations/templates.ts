@@ -2,14 +2,13 @@ import type { Field } from "./schema";
 
 type Lang = "fr" | "nl" | "en";
 type Label = { fr: string; nl: string; en: string };
-const yes: Label = { fr: "Oui", nl: "Ja", en: "Yes" };
-const no: Label = { fr: "Non", nl: "Nee", en: "No" };
 
 /**
- * Starting point modelled on the Tigerstorm club's public registration form
- * (tigerstorm.org/inscription). Choice options are written in the editor's
- * language because answers and conditions compare the option text.
- * The club adjusts wording, prices and schedule before publishing.
+ * The Tigerstorm club's registration form, question by question.
+ * Name, first name and date of birth are asked by every application already
+ * ("Préparer ma candidature"), so they are not repeated here.
+ * Choice options are written in the editor's language because answers and
+ * conditions compare the option text.
  */
 export function tigerstormTemplate(lang: Lang) {
   const o = (...labels: Label[]) => labels.map((l) => l[lang]);
@@ -18,153 +17,91 @@ export function tigerstormTemplate(lang: Lang) {
     type: Field["type"],
     label: Label,
     extra: Partial<Field> = {},
-  ): Field => ({ key, type, label, required: false, options: [], ...extra });
+  ): Field => ({
+    key,
+    type,
+    label,
+    required: false,
+    options: [],
+    confidential: false,
+    ...extra,
+  });
   const fields: Field[] = [
+    field(
+      "gender",
+      "multi",
+      { fr: "Genre", nl: "Gender", en: "Gender" },
+      {
+        options: o(
+          { fr: "Homme", nl: "Man", en: "Man" },
+          { fr: "Femme", nl: "Vrouw", en: "Woman" },
+          { fr: "Non binaire", nl: "Non-binair", en: "Non-binary" },
+          {
+            fr: "Je préfère ne pas répondre",
+            nl: "Zeg ik liever niet",
+            en: "Prefer not to say",
+          },
+        ),
+      },
+    ),
+    field(
+      "national_number",
+      "text",
+      {
+        fr: "Numéro de registre national",
+        nl: "Rijksregisternummer",
+        en: "National register number",
+      },
+      {
+        confidential: true,
+        help: {
+          fr: "Facultatif. Demandé uniquement si la fédération l'exige pour la licence ; chiffré et réservé au président.",
+          nl: "Optioneel. Enkel gevraagd als de federatie het eist voor de licentie; versleuteld en voorbehouden aan de voorzitter.",
+          en: "Optional. Only asked if the federation requires it for the licence; encrypted and reserved for the president.",
+        },
+      },
+    ),
     field(
       "address",
       "text",
-      {
-        fr: "Adresse complète (rue, numéro, code postal, commune)",
-        nl: "Volledig adres (straat, nummer, postcode, gemeente)",
-        en: "Full address (street, number, postcode, town)",
-      },
+      { fr: "Adresse", nl: "Adres", en: "Address" },
       { required: true },
+    ),
+    field(
+      "postal_code",
+      "text",
+      { fr: "Code postal", nl: "Postcode", en: "Postcode" },
+      { required: true },
+    ),
+    field(
+      "email",
+      "email",
+      { fr: "Email", nl: "E-mail", en: "Email" },
+      { required: true, maps: "email" },
     ),
     field(
       "phone",
       "phone",
-      {
-        fr: "Téléphone du joueur",
-        nl: "Telefoon van de speler",
-        en: "Player's phone",
-      },
-      { required: true },
-    ),
-    field("guardian_name", "text", {
-      fr: "Nom du parent ou représentant (si mineur ou sous tutelle)",
-      nl: "Naam van ouder of vertegenwoordiger (bij minderjarige of bewindvoering)",
-      en: "Parent or representative's name (if a minor or under guardianship)",
-    }),
-    field("guardian_phone", "phone", {
-      fr: "Téléphone du parent ou représentant",
-      nl: "Telefoon van ouder of vertegenwoordiger",
-      en: "Parent or representative's phone",
-    }),
-    field(
-      "own_chair",
-      "choice",
-      {
-        fr: "Le joueur possède-t-il une chaise électrique ?",
-        nl: "Heeft de speler een elektrische rolstoel?",
-        en: "Does the player own a power wheelchair?",
-      },
-      { required: true, options: o(yes, no) },
+      { fr: "Téléphone", nl: "Telefoon", en: "Phone" },
+      { required: true, maps: "phone" },
     ),
     field(
-      "chair_model",
+      "emergency",
       "text",
       {
-        fr: "Marque et modèle de la chaise",
-        nl: "Merk en model van de rolstoel",
-        en: "Wheelchair make and model",
+        fr: "Contact d'urgence : nom, prénom, lien et numéro de téléphone de cette personne",
+        nl: "Noodcontact: naam, voornaam, relatie en telefoonnummer van deze persoon",
+        en: "Emergency contact: name, first name, relationship and phone number",
       },
-      { condition: { key: "own_chair", equals: yes[lang] } },
-    ),
-    field(
-      "control",
-      "choice",
-      {
-        fr: "Commande utilisée pour piloter la chaise",
-        nl: "Bediening van de rolstoel",
-        en: "How the chair is controlled",
-      },
-      {
-        options: o(
-          {
-            fr: "Joystick main droite",
-            nl: "Joystick rechterhand",
-            en: "Right-hand joystick",
-          },
-          {
-            fr: "Joystick main gauche",
-            nl: "Joystick linkerhand",
-            en: "Left-hand joystick",
-          },
-          { fr: "Commande au menton", nl: "Kinbediening", en: "Chin control" },
-          { fr: "Autre", nl: "Andere", en: "Other" },
-        ),
-      },
-    ),
-    field(
-      "experience",
-      "choice",
-      {
-        fr: "Expérience du powerchair football",
-        nl: "Ervaring met powerchair voetbal",
-        en: "Powerchair football experience",
-      },
-      {
-        required: true,
-        options: o(
-          { fr: "Jamais joué", nl: "Nog nooit gespeeld", en: "Never played" },
-          {
-            fr: "Déjà joué en loisir",
-            nl: "Al recreatief gespeeld",
-            en: "Played for fun",
-          },
-          {
-            fr: "Déjà joué en compétition",
-            nl: "Al in competitie gespeeld",
-            en: "Played in competition",
-          },
-        ),
-      },
-    ),
-    field(
-      "transfer_help",
-      "choice",
-      {
-        fr: "Besoin d'aide pour les transferts (voiture, chaise de sport) ?",
-        nl: "Hulp nodig bij transfers (auto, sportrolstoel)?",
-        en: "Help needed with transfers (car, sports chair)?",
-      },
-      { options: o(no, yes) },
-    ),
-    field("support_needs", "text", {
-      fr: "Informations utiles pour l'encadrement (accompagnement, sécurité, communication)",
-      nl: "Nuttige info voor de begeleiding (begeleiding, veiligheid, communicatie)",
-      en: "Useful information for staff (support, safety, communication)",
-    }),
-    field(
-      "trial",
-      "choice",
-      {
-        fr: "Souhaitez-vous d'abord une séance d'essai gratuite ?",
-        nl: "Wenst u eerst een gratis proeftraining?",
-        en: "Would you like a free trial session first?",
-      },
-      { required: true, options: o(yes, no) },
-    ),
-    field(
-      "saturday",
-      "choice",
-      {
-        fr: "Disponible le samedi de 11 h à 13 h ?",
-        nl: "Beschikbaar op zaterdag van 11 tot 13 uur?",
-        en: "Available on Saturdays from 11:00 to 13:00?",
-      },
-      {
-        required: true,
-        options: o(yes, { fr: "Parfois", nl: "Soms", en: "Sometimes" }, no),
-      },
+      { required: true, maps: "emergency" },
     ),
     field(
       "heard_about",
-      "choice",
+      "multi",
       {
-        fr: "Comment avez-vous connu le club ?",
-        nl: "Hoe hebt u de club leren kennen?",
-        en: "How did you hear about the club?",
+        fr: "Comment avez-vous appris notre existence ?",
+        nl: "Hoe hebt u ons leren kennen?",
+        en: "How did you hear about us?",
       },
       {
         options: o(
@@ -174,72 +111,167 @@ export function tigerstormTemplate(lang: Lang) {
             en: "Word of mouth",
           },
           { fr: "Réseaux sociaux", nl: "Sociale media", en: "Social media" },
+          { fr: "Site internet", nl: "Website", en: "Website" },
           {
             fr: "École, centre ou kiné",
             nl: "School, centrum of kinesist",
             en: "School, centre or therapist",
           },
-          { fr: "Fédération", nl: "Federatie", en: "Federation" },
+          {
+            fr: "Fédération (BPCF)",
+            nl: "Federatie (BPCF)",
+            en: "Federation (BPCF)",
+          },
+          {
+            fr: "Événement ou démonstration",
+            nl: "Evenement of demonstratie",
+            en: "Event or demonstration",
+          },
           { fr: "Autre", nl: "Andere", en: "Other" },
         ),
       },
     ),
-    field("medical_certificate", "file", {
-      fr: "Certificat médical d'aptitude au sport",
-      nl: "Medisch attest van sportgeschiktheid",
-      en: "Medical certificate of fitness for sport",
-    }),
-    field("photo_consent", "consent", {
-      fr: "J'autorise le club à publier des photos et vidéos du joueur prises lors des activités",
-      nl: "Ik geef de club toestemming om foto's en video's van de speler tijdens activiteiten te publiceren",
-      en: "I allow the club to publish photos and videos of the player taken during activities",
-    }),
+    field(
+      "condition",
+      "text",
+      {
+        fr: "Nom et détail concernant la pathologie",
+        nl: "Naam en details van de aandoening",
+        en: "Name and details of the condition",
+      },
+      {
+        confidential: true,
+        maps: "condition",
+        help: {
+          fr: "Ces détails resteront strictement confidentiels au sein du club.",
+          nl: "Deze gegevens blijven strikt vertrouwelijk binnen de club.",
+          en: "These details stay strictly confidential within the club.",
+        },
+      },
+    ),
+    field(
+      "jersey_size",
+      "choice",
+      { fr: "Taille de maillot", nl: "Shirtmaat", en: "Shirt size" },
+      {
+        maps: "jersey_size",
+        options: [
+          ...o(
+            { fr: "Enfant 8-10 ans", nl: "Kind 8-10 jaar", en: "Child 8-10" },
+            {
+              fr: "Enfant 12-14 ans",
+              nl: "Kind 12-14 jaar",
+              en: "Child 12-14",
+            },
+          ),
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL",
+          "XXL",
+        ],
+      },
+    ),
+    field(
+      "jersey_number",
+      "text",
+      { fr: "Numéro de joueur", nl: "Spelersnummer", en: "Player number" },
+      {
+        maps: "jersey_number",
+        help: {
+          fr: "Si vous êtes un nouveau joueur, vous pouvez en choisir un nouveau et nous regardons la disponibilité ensemble.",
+          nl: "Als nieuwe speler kunt u een nummer kiezen; we bekijken samen of het nog vrij is.",
+          en: "New players can pick a number; we check together whether it is available.",
+        },
+      },
+    ),
+    field(
+      "joystick",
+      "multi",
+      { fr: "Joystick", nl: "Joystick", en: "Joystick" },
+      {
+        maps: "control",
+        max: 2,
+        options: o(
+          { fr: "Main droite", nl: "Rechterhand", en: "Right hand" },
+          { fr: "Main gauche", nl: "Linkerhand", en: "Left hand" },
+          { fr: "Menton", nl: "Kin", en: "Chin" },
+          { fr: "Tête", nl: "Hoofd", en: "Head" },
+          { fr: "Autre", nl: "Andere", en: "Other" },
+        ),
+      },
+    ),
+    field(
+      "photo_consent",
+      "consent",
+      {
+        fr: "J'autorise les Tigerstorm à utiliser mon image (ou celle de mon enfant) pour leur communication",
+        nl: "Ik geef de Tigerstorm toestemming om mijn beeld (of dat van mijn kind) te gebruiken voor hun communicatie",
+        en: "I allow the Tigerstorm to use my image (or my child's) in their communication",
+      },
+      {
+        help: {
+          fr: "En cochant cette case, j'autorise l'équipe des Tigerstorm à utiliser mon image (photos, vidéos, etc.) (pour les parents, celle de mon fils/ma fille) dans le cadre de ses activités de communication, notamment sur ses réseaux sociaux, son site internet et tout support promotionnel.",
+          nl: "Door dit vakje aan te vinken, geef ik het Tigerstorm-team toestemming om mijn beeld (foto's, video's, enz.) (voor ouders: dat van mijn zoon/dochter) te gebruiken voor zijn communicatie, onder meer op sociale media, de website en elk promotiemateriaal.",
+          en: "By ticking this box, I allow the Tigerstorm team to use my image (photos, videos, etc.) (for parents: my son's or daughter's) in its communication, including social media, its website and any promotional material.",
+        },
+      },
+    ),
+    field(
+      "installments",
+      "choice",
+      {
+        fr: "Paiement de la cotisation (250 €) : en combien de fois ?",
+        nl: "Betaling van het lidgeld (250 €): in hoeveel keer?",
+        en: "Membership fee (€250): in how many payments?",
+      },
+      {
+        required: true,
+        maps: "installments",
+        options: o(
+          {
+            fr: "1 fois (250 €)",
+            nl: "1 keer (250 €)",
+            en: "1 payment (€250)",
+          },
+          { fr: "2 fois", nl: "2 keer", en: "2 payments" },
+          { fr: "3 fois", nl: "3 keer", en: "3 payments" },
+          { fr: "4 fois", nl: "4 keer", en: "4 payments" },
+        ),
+        help: {
+          fr: "Numéro de compte de l'ASBL : BE41 3632 6208 1310. Merci d'indiquer en communication du virement le nom et le prénom du joueur ainsi que la ou les dates des prochains paiements si vous payez en plusieurs fois.",
+          nl: "Rekeningnummer van de vzw: BE41 3632 6208 1310. Vermeld bij de overschrijving de naam en voornaam van de speler en, bij betaling in meerdere keren, de data van de volgende betalingen.",
+          en: "Club account: BE41 3632 6208 1310. Please put the player's first and last name in the transfer reference and, if paying in several instalments, the dates of the next payments.",
+        },
+      },
+    ),
     field(
       "privacy_consent",
       "consent",
       {
-        fr: "J'accepte que le club traite ces données pour gérer l'inscription et la vie sportive (RGPD)",
-        nl: "Ik ga akkoord dat de club deze gegevens verwerkt voor de inschrijving en het sportleven (AVG)",
-        en: "I agree that the club processes this data to manage the registration and sporting life (GDPR)",
-      },
-      { required: true },
-    ),
-    field(
-      "rules_consent",
-      "consent",
-      {
-        fr: "J'accepte le règlement du club et la cotisation annuelle de 250 €",
-        nl: "Ik aanvaard het clubreglement en de jaarlijkse bijdrage van 250 €",
-        en: "I accept the club rules and the annual fee of €250",
-      },
-      { required: true },
-    ),
-    field(
-      "signature",
-      "signature",
-      {
-        fr: "Signature du joueur ou de son représentant",
-        nl: "Handtekening van de speler of vertegenwoordiger",
-        en: "Signature of the player or representative",
+        fr: "J'accepte que le club traite ces données, y compris les informations de santé, pour l'inscription et l'encadrement sportif",
+        nl: "Ik ga akkoord dat de club deze gegevens, ook gezondheidsgegevens, verwerkt voor de inschrijving en sportieve begeleiding",
+        en: "I agree that the club processes this data, including health information, for registration and sports supervision",
       },
       { required: true },
     ),
   ];
   const text = {
     fr: {
-      title: "Inscription au club de powerchair football",
+      title: "Formulaire d'inscription",
       description:
-        "Entraînements le samedi de 11 h à 13 h au Crossing (Schaerbeek). Cotisation annuelle : 250 €. La première séance d'essai est gratuite. Nous vous recontactons après réception de la demande.",
+        "Bienvenue chez les Tigerstorm ! La cotisation s'élève à 250 € par saison, payable en 1 à 4 fois. Numéro de compte de l'ASBL : BE41 3632 6208 1310. Les informations de santé restent strictement confidentielles au sein du club.",
     },
     nl: {
-      title: "Inschrijving bij de powerchair voetbalclub",
+      title: "Inschrijvingsformulier",
       description:
-        "Trainingen op zaterdag van 11 tot 13 uur in de Crossing (Schaarbeek). Jaarlijkse bijdrage: 250 €. De eerste proeftraining is gratis. We nemen contact op na ontvangst van de aanvraag.",
+        "Welkom bij de Tigerstorm! Het lidgeld bedraagt 250 € per seizoen, te betalen in 1 tot 4 keer. Rekeningnummer van de vzw: BE41 3632 6208 1310. Gezondheidsgegevens blijven strikt vertrouwelijk binnen de club.",
     },
     en: {
-      title: "Powerchair football club registration",
+      title: "Registration form",
       description:
-        "Training on Saturdays from 11:00 to 13:00 at the Crossing (Schaerbeek). Annual fee: €250. The first trial session is free. We get back to you once the request is received.",
+        "Welcome to the Tigerstorm! The membership fee is €250 per season, payable in 1 to 4 instalments. Club account: BE41 3632 6208 1310. Health information stays strictly confidential within the club.",
     },
   }[lang];
   return { ...text, capacity: null as number | null, fields };
