@@ -18,7 +18,7 @@ async function switchProfile(page: Page, assignment: string) {
 async function check(page: Page, path: string) {
   await page.goto(path);
   const heading = page.locator("main h1").first();
-  await expect(heading, path).toBeVisible();
+  await expect(heading, path).toBeVisible({ timeout: 15000 });
   // Views load after the first paint: wait until no loading text remains.
   await expect(page.getByText(/^Chargement/)).toHaveCount(0, {
     timeout: 15000,
@@ -27,6 +27,7 @@ async function check(page: Page, path: string) {
     page.getByText(/Page indisponible|Cette page est réservée|est réservée aux personnes/),
     path,
   ).toHaveCount(0);
+  await expect(page.locator("main [role=alert]"), path).toHaveCount(0);
   const violations = (
     await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
