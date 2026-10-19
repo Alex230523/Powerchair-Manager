@@ -13,13 +13,15 @@
 | `/` (accueil)                                                | `home.tsx`                           | `api/dashboard`                                   |
 | `/access`                                                    | `access.tsx`                         | `api/workspace`, `api/auth/*`                     |
 | `/players`, `/coaches`, `…/former`                           | `player-directory.tsx`               | `api/people`                                      |
+| `/players/[id]`                                              | `player-profile.tsx`                 | `api/player-profile`                              |
+| `/equipment`                                                 | `equipment.tsx`                      | `api/equipment`                                   |
 | `/club`, `/club/manage`                                      | `people.tsx`                         | `api/people`, `api/people/export`                 |
 | `/registrations`, `/registrations/mine`, `/inscription/[id]` | `registrations.tsx`                  | `api/registrations`                               |
 | `/registration-widget/[id]`                                  | page autonome intégrable (iframe)    | `api/registrations/public/[id]`                   |
 | `/documents`                                                 | `documents.tsx`                      | `api/documents`, `api/documents/file/[id]`        |
 | `/calendar`                                                  | `calendar.tsx`, `calendar-board.tsx` | `api/calendar`, `api/calendar/feed/[token]` (ICS) |
 | `/attendance`                                                | `attendance.tsx`                     | `api/attendance`                                  |
-| `/statistics`                                                | `statistics.tsx`                     | `api/attendance`                                  |
+| `/statistics` (bouton de l'accueil)                          | `statistics.tsx`                     | `api/attendance`                                  |
 | `/dues`                                                      | `dues.tsx`                           | `api/dues`                                        |
 | `/messages`                                                  | `messages.tsx`                       | `api/messages`                                    |
 | `/notifications`                                             | `notifications.tsx`                  | `api/notifications`                               |
