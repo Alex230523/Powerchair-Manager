@@ -46,6 +46,11 @@ export const commandSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("cancelInvitation"), id: uuid }),
   z.object({ action: z.literal("revoke"), id: uuid }),
+  z.object({
+    action: z.literal("grants"),
+    id: uuid,
+    grants: z.array(z.enum(delegable)).max(delegable.length),
+  }),
   z.object({ action: z.literal("renew"), id: uuid, validUntil: expiry }),
   z.object({
     action: z.literal("membership"),
@@ -118,9 +123,17 @@ async function readWorkspace(db: Db, p: Principal) {
     `SELECT r.id,r.role,r.organization_id,o.name,o.kind FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.user_id=$1 AND ${current} ORDER BY o.name,r.role`,
     [p.userId],
   );
-  let selected;
+  let selected:
+    | (Awaited<ReturnType<typeof active>> & { logo_version: string | null })
+    | undefined;
   try {
-    selected = await active(db, p);
+    const context = await active(db, p);
+    // The logo version lets the shell show the club logo and refresh it after a change.
+    const logo = await db.query(
+      "SELECT extract(epoch FROM updated_at)::bigint::text AS v FROM organization_logo WHERE organization_id=$1",
+      [context.organization_id],
+    );
+    selected = { ...context, logo_version: logo.rows[0]?.v ?? null };
   } catch (e) {
     if (!(e instanceof AccessError)) throw e;
   }
@@ -165,7 +178,7 @@ async function readWorkspace(db: Db, p: Principal) {
     if (result.permissions.includes("members.read"))
       result.members = (
         await db.query(
-          'SELECT r.id,r.user_id,u.name,r.role,r.grants,r.valid_from,r.valid_until,r.revoked_at,m.active FROM role_assignment r JOIN "user" u ON u.id=r.user_id JOIN organization_membership m ON m.user_id=r.user_id AND m.organization_id=r.organization_id WHERE r.organization_id=$1 ORDER BY u.name,r.created_at',
+          'SELECT r.id,r.user_id,u.name,r.role,r.grants,r.team_id,r.valid_from,r.valid_until,r.revoked_at,m.active FROM role_assignment r JOIN "user" u ON u.id=r.user_id JOIN organization_membership m ON m.user_id=r.user_id AND m.organization_id=r.organization_id WHERE r.organization_id=$1 ORDER BY u.name,r.created_at',
           [selected.organization_id],
         )
       ).rows;
@@ -437,6 +450,32 @@ export async function execute(
           context.organization_id,
           p.userId,
           "invitation.revoked",
+          command.id,
+        );
+      } else if (command.action === "grants") {
+        // Delegation from the settings page: an administrator adjusts what a
+        // non-administrator mandate may do, never beyond their own permissions.
+        const target = (
+          await client.query(
+            "SELECT id,user_id,role FROM role_assignment WHERE id=$1 AND organization_id=$2 AND revoked_at IS NULL FOR UPDATE",
+            [command.id, context.organization_id],
+          )
+        ).rows[0];
+        if (!target) throw new AccessError("NOT_FOUND", 404);
+        if (isAdmin(target.role) || target.user_id === p.userId)
+          throw new AccessError("FORBIDDEN");
+        const own = permissions(context.role, context.grants);
+        if (command.grants.some((g) => !own.includes(g)))
+          throw new AccessError("FORBIDDEN");
+        await client.query(
+          "UPDATE role_assignment SET grants=$3 WHERE id=$1 AND organization_id=$2",
+          [command.id, context.organization_id, [...new Set(command.grants)]],
+        );
+        await audit(
+          client,
+          context.organization_id,
+          p.userId,
+          "mandate.grants",
           command.id,
         );
       } else if (command.action === "membership") {

@@ -36,6 +36,9 @@ export const shellCopy = {
     groupFinance: "Finance du club",
     groupManagement: "Gestion du club",
     equipment: "Matériel",
+    settings: "Réglages",
+    groupFederation: "Fédération",
+    courses: "Formations des coachs",
   },
   nl: {
     home: "Start",
@@ -72,6 +75,9 @@ export const shellCopy = {
     groupFinance: "Clubfinanciën",
     groupManagement: "Clubbeheer",
     equipment: "Materiaal",
+    settings: "Instellingen",
+    groupFederation: "Federatie",
+    courses: "Coachopleidingen",
   },
   en: {
     home: "Home",
@@ -108,5 +114,8 @@ export const shellCopy = {
     groupFinance: "Club finances",
     groupManagement: "Club management",
     equipment: "Equipment",
+    settings: "Settings",
+    groupFederation: "Federation",
+    courses: "Coach education",
   },
 } satisfies Record<Locale, Record<string, string>>;

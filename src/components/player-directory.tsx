@@ -1,12 +1,14 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
 import { errors } from "./access-copy";
 import { Button } from "./ui";
+import { Modal } from "./modal";
+import { PlayerImport } from "./player-import";
 const copy = {
   fr: {
     players: "Joueurs",
@@ -135,40 +137,6 @@ const copy = {
 };
 type View = Awaited<ReturnType<typeof peopleView>>;
 type Profile = View["profiles"][number];
-function Modal({
-  title,
-  close,
-  children,
-}: {
-  title: string;
-  close: () => void;
-  children: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      className="player-dialog"
-      aria-label={title}
-      onCancel={close}
-    >
-      <div className="dialog-heading">
-        <h2>{title}</h2>
-        <button
-          className="button secondary"
-          onClick={close}
-          aria-label="Fermer / Sluiten / Close"
-        >
-          ×
-        </button>
-      </div>
-      {children}
-    </dialog>
-  );
-}
 export function PlayerDirectory({
   locale,
   role = "player",
@@ -397,6 +365,18 @@ export function PlayerDirectory({
                 ? t.activeCoach
                 : t.formerCoach}
           </Link>
+          {manager && !former && role === "player" && data && (
+            <PlayerImport
+              locale={locale}
+              organizationId={data.context.id}
+              teams={data.teams.filter(
+                (x) => !x.archived && !x.season_archived,
+              )}
+              done={(text) => {
+                void load().then(() => setMessage(text));
+              }}
+            />
+          )}
           {manager && !former && (
             <Button
               onClick={() => {
@@ -577,15 +557,15 @@ export function PlayerDirectory({
                         >
                           {t.open} →
                         </button>
-                        {role === "player" && (
+                        {
                           <Link
                             className="text-button"
-                            href={`/${locale}/players/${r.id}`}
+                            href={`/${locale}/${role === "player" ? "players" : "coaches"}/${r.id}`}
                             aria-label={`${t.full} : ${r.full_name}`}
                           >
                             {t.full}
                           </Link>
-                        )}
+                        }
                         {manager && r.status === "active" && (
                           <button
                             className="button secondary"
@@ -886,11 +866,12 @@ export function PlayerDirectory({
             )}
           </section>
           <div className="directory-actions">
-            {role === "player" && (
-              <Link className="button" href={`/${locale}/players/${person.id}`}>
-                {t.full}
-              </Link>
-            )}
+            <Link
+              className="button"
+              href={`/${locale}/${role === "player" ? "players" : "coaches"}/${person.id}`}
+            >
+              {t.full}
+            </Link>
             <Link className="button secondary" href={`/${locale}/dues`}>
               {t.dues}
             </Link>

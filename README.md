@@ -15,12 +15,13 @@ Le cahier des charges complet se trouve dans [docs/cahier-des-charges](docs/cahi
 3. L'application s'ouvre dans un nouvel onglet (sinon : onglet **Ports**, ligne 3000, icône globe).
 4. Se connecter sur la page **Mon espace** avec un des comptes ci-dessous.
 
-| Compte               | Rôle                | Ce qu'on y voit                                                                                                      |
-| -------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `president@demo.pfm` | Président de club   | Tableau de bord complet, inscriptions, documents, cotisations, matériel, fiches joueurs avec données confidentielles |
-| `coach@demo.pfm`     | Coach de l'Équipe A | Calendrier, présences, fiches sportives et fauteuils de son équipe                                                   |
-| `joueur@demo.pfm`    | Joueuse adulte      | Sa fiche complète, ses convocations, documents, échéances et son fauteuil                                            |
-| `parent@demo.pfm`    | Parent de Lucas     | La fiche de Lucas, ses présences, documents et son fauteuil                                                          |
+| Compte                | Rôle                                       | Ce qu'on y voit                                                                                                |
+| --------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `president@demo.pfm`  | Président de club (et coach de l'Équipe B) | Tableau de bord, finances, réglages des droits, inscriptions, import Excel, matériel, fiches joueurs et coachs |
+| `coach@demo.pfm`      | Coach de l'Équipe A                        | Calendrier, présences, fiches sportives et fauteuils de son équipe                                             |
+| `joueur@demo.pfm`     | Joueuse adulte                             | Sa fiche complète, ses convocations, documents, échéances et son fauteuil                                      |
+| `parent@demo.pfm`     | Parent de Lucas                            | La fiche de Lucas, ses présences, documents et son fauteuil                                                    |
+| `federation@demo.pfm` | Présidente fédérale                        | Catalogue des formations des coachs et décisions sur les demandes des clubs                                    |
 
 Mot de passe commun : `Demo-Powerchair-2026`. Ces comptes sont fictifs et réservés à la démo.
 

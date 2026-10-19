@@ -17,7 +17,13 @@ export type Workspace = {
     name: string;
     is_default: boolean;
   }[];
-  selected?: { id: string; organization_name: string };
+  selected?: {
+    id: string;
+    organization_id: string;
+    organization_name: string;
+    kind: "club" | "federation";
+    logo_version: string | null;
+  };
   permissions: string[];
 };
 type NavItem = { route: string; label: keyof Copy; icon: IconName };
@@ -34,48 +40,74 @@ type NavGroup = {
  */
 export function menuGroups(state: Workspace | null): NavGroup[] {
   const manager = !!state?.permissions.includes("registrations.manage");
-  const club: NavGroup[] = state?.selected
-    ? [
-        {
-          id: "players",
-          label: "groupPlayers",
-          icon: "players",
-          items: [
-            { route: "/players", label: "players", icon: "players" },
-            { route: "/attendance", label: "attendance", icon: "attendance" },
-          ],
-        },
-        {
-          id: "life",
-          label: "club",
-          icon: "calendar",
-          items: [
-            { route: "/calendar", label: "calendar", icon: "calendar" },
-            { route: "/documents", label: "documents", icon: "document" },
-            { route: "/messages", label: "messages", icon: "message" },
-          ],
-        },
-        {
-          id: "finance",
-          label: "groupFinance",
-          icon: "dues",
-          items: [
-            { route: "/funding", label: "funding", icon: "funding" },
-            { route: "/dues", label: "dues", icon: "dues" },
-          ],
-        },
-        {
-          id: "management",
-          label: "groupManagement",
-          icon: "club",
-          items: [
-            { route: "/club/manage", label: "clubManage", icon: "club" },
-            { route: "/coaches", label: "coaches", icon: "whistle" },
-            { route: "/equipment", label: "equipment", icon: "wheelchair" },
-          ],
-        },
-      ]
-    : [];
+  const kind = state?.selected?.kind;
+  const registrations: NavItem = {
+    route: manager ? "/registrations" : "/registrations/mine",
+    label: manager ? "registrations" : "mine",
+    icon: "inbox",
+  };
+  const club: NavGroup[] =
+    kind === "club"
+      ? [
+          {
+            id: "players",
+            label: "groupPlayers",
+            icon: "players",
+            items: [
+              { route: "/players", label: "players", icon: "players" },
+              registrations,
+              { route: "/attendance", label: "attendance", icon: "attendance" },
+            ],
+          },
+          {
+            id: "life",
+            label: "club",
+            icon: "calendar",
+            items: [
+              { route: "/calendar", label: "calendar", icon: "calendar" },
+              { route: "/documents", label: "documents", icon: "document" },
+              { route: "/messages", label: "messages", icon: "message" },
+            ],
+          },
+          {
+            id: "management",
+            label: "groupManagement",
+            icon: "club",
+            items: [
+              { route: "/club/manage", label: "clubManage", icon: "club" },
+              { route: "/coaches", label: "coaches", icon: "whistle" },
+              { route: "/equipment", label: "equipment", icon: "wheelchair" },
+            ],
+          },
+          {
+            id: "finance",
+            label: "groupFinance",
+            icon: "dues",
+            items: [
+              { route: "/funding", label: "funding", icon: "funding" },
+              { route: "/dues", label: "dues", icon: "dues" },
+            ],
+          },
+        ]
+      : kind === "federation"
+        ? [
+            {
+              id: "federation",
+              label: "groupFederation",
+              icon: "club",
+              items: [
+                {
+                  route: "/federation/courses",
+                  label: "courses",
+                  icon: "team",
+                },
+                { route: "/calendar", label: "calendar", icon: "calendar" },
+                { route: "/documents", label: "documents", icon: "document" },
+                { route: "/messages", label: "messages", icon: "message" },
+              ],
+            },
+          ]
+        : [];
   return [
     ...club,
     {
@@ -83,16 +115,14 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
       label: "admin",
       icon: "settings",
       items: [
-        ...(state
+        ...(state?.selected
           ? ([
-              {
-                route: manager ? "/registrations" : "/registrations/mine",
-                label: manager ? "registrations" : "mine",
-                icon: "inbox",
-              },
               { route: "/notifications", label: "notifications", icon: "bell" },
+              { route: "/settings", label: "settings", icon: "settings" },
             ] satisfies NavItem[])
-          : []),
+          : state
+            ? ([registrations] satisfies NavItem[])
+            : []),
         { route: "/access", label: "access", icon: "user" },
       ],
     },
@@ -302,6 +332,14 @@ export function AppShell({
       <div className="app-content">
         <header className="topbar">
           <div className="topbar-context">
+            {state?.selected?.logo_version && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="org-logo"
+                src={`/api/club/logo?org=${state.selected.organization_id}&v=${state.selected.logo_version}`}
+                alt=""
+              />
+            )}
             <strong>
               {state?.selected?.organization_name ??
                 (state ? t.noContext : "Powerchair Football Manager")}

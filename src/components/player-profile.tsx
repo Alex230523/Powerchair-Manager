@@ -13,7 +13,7 @@ import { playerProfileCopy } from "./player-profile-copy";
 import { kindLabels } from "./calendar-copy";
 import { documentStatuses } from "./documents-copy";
 import { errors } from "./access-copy";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
@@ -706,7 +706,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
   );
 }
 
-function Card({
+export function Card({
   title,
   icon,
   tone,
@@ -715,7 +715,7 @@ function Card({
   children,
 }: {
   title: string;
-  icon?: "lock" | "wheelchair" | "chart";
+  icon?: IconName;
   tone?: "confidential";
   action?: ReactNode;
   wide?: boolean;
@@ -739,7 +739,7 @@ function Card({
   );
 }
 
-function Stat({
+export function Stat({
   label,
   value,
   hint,

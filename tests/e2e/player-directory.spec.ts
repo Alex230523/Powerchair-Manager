@@ -129,6 +129,7 @@ test("player listing, personal then sporting profile, former players and dedicat
       ["/en/coaches", "Coach management"],
       ["/fr/club/manage", "Gestion du club"],
       ["/nl/funding", "Financiering"],
+      ["/fr/settings", "Réglages"],
     ]) {
       await page.goto(url);
       await expect(

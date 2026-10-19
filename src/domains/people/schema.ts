@@ -22,6 +22,18 @@ export const statuses = [
   "archived",
   "transferred",
 ] as const;
+/** Maximum number of players accepted in one spreadsheet import. */
+export const importLimit = 300;
+export const importRow = z.object({
+  fullName: text(120).min(2),
+  birthDate: date.nullable(),
+  email,
+  phone: text(40),
+  joinedOn: date.nullable(),
+  position: text(80),
+  jerseyNumber: z.number().int().min(0).max(99).nullable(),
+});
+export type ImportRow = z.infer<typeof importRow>;
 export const peopleCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("directoryRole"),
@@ -110,6 +122,16 @@ export const peopleCommand = z.discriminatedUnion("action", [
     endsOn: date.nullable(),
   }),
   z.object({ action: z.literal("endAssignment"), id, endsOn: date }),
+  z.object({
+    // A president (or any staff member) who also coaches: one profile, no duplicate.
+    action: z.literal("selfCoach"),
+    teamId: id.nullable(),
+  }),
+  z.object({
+    action: z.literal("importPlayers"),
+    teamId: id.nullable(),
+    rows: z.array(importRow).min(1).max(importLimit),
+  }),
   z.object({
     action: z.literal("coachScope"),
     mandateId: id,
