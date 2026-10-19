@@ -1372,6 +1372,9 @@ caption {
   flex: 1;
   min-width: 0;
 }
+.chair-head > .status-tag {
+  flex-shrink: 0;
+}
 .chair-head h2 {
   margin: 0;
   font-size: 1.1rem;
@@ -2323,6 +2326,7 @@ a.metric:hover {
 }
 .status-tag {
   display: inline-block;
+  white-space: nowrap;
   margin-left: 6px;
   padding: 0 8px;
   border-radius: var(--radius-pill);
