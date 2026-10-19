@@ -341,6 +341,15 @@ export const registrationErrors: Record<string, [string, string, string]> = {
 /** Template, sharing dialog and applicant summary (lot 05 additions). */
 export const registrationExtras = {
   fr: {
+    guestTitle: "Pas encore de compte ?",
+    guestIntro:
+      "Recevez un lien personnel par e-mail pour remplir et suivre votre inscription, sans créer de mot de passe.",
+    guestName: "Votre nom et prénom",
+    guestEmail: "Votre adresse e-mail",
+    guestSend: "Recevoir mon lien",
+    guestSent:
+      "Si l'adresse est valide, un lien vient d'y être envoyé. Pensez à vérifier les indésirables.",
+    haveAccount: "J'ai déjà un compte : me connecter",
     tigerstorm: "Partir du modèle Tigerstorm",
     tigerstormHint:
       "Modèle inspiré du formulaire d'inscription de Tigerstorm : adaptez les textes, l'horaire et le tarif avant de publier.",
@@ -368,6 +377,15 @@ export const registrationExtras = {
     fileMissing: "Aucune pièce",
   },
   nl: {
+    guestTitle: "Nog geen account?",
+    guestIntro:
+      "Ontvang een persoonlijke link per e-mail om uw inschrijving in te vullen en op te volgen, zonder wachtwoord.",
+    guestName: "Uw naam en voornaam",
+    guestEmail: "Uw e-mailadres",
+    guestSend: "Mijn link ontvangen",
+    guestSent:
+      "Als het adres geldig is, werd er net een link naartoe gestuurd. Kijk ook bij ongewenste berichten.",
+    haveAccount: "Ik heb al een account: aanmelden",
     tigerstorm: "Starten van het Tigerstorm-model",
     tigerstormHint:
       "Model gebaseerd op het inschrijvingsformulier van Tigerstorm: pas teksten, uurrooster en tarief aan voor publicatie.",
@@ -395,6 +413,15 @@ export const registrationExtras = {
     fileMissing: "Geen bestand",
   },
   en: {
+    guestTitle: "No account yet?",
+    guestIntro:
+      "Get a personal link by email to fill in and follow your registration, without creating a password.",
+    guestName: "Your full name",
+    guestEmail: "Your email address",
+    guestSend: "Send me my link",
+    guestSent:
+      "If the address is valid, a link has just been sent to it. Check your spam folder too.",
+    haveAccount: "I already have an account: sign in",
     tigerstorm: "Start from the Tigerstorm template",
     tigerstormHint:
       "Template based on Tigerstorm's registration form: adjust wording, schedule and fee before publishing.",

@@ -89,6 +89,90 @@ function FieldLabel({
     </div>
   );
 }
+/** No account: sign in, or receive a personal link by email. */
+function GuestLink({ locale, formId }: { locale: Locale; formId: string }) {
+  const x = registrationExtras[locale];
+  const [sent, setSent] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  return (
+    <div className="guest-link">
+      <p>
+        <Link href={"/" + locale + "/access"}>{x.haveAccount}</Link>
+      </p>
+      <h3>{x.guestTitle}</h3>
+      <p className="muted">{x.guestIntro}</p>
+      {sent ? (
+        <p role="status" className="notice">
+          {x.guestSent}
+        </p>
+      ) : (
+        <form
+          className="inline-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const d = new FormData(e.currentTarget);
+            setBusy(true);
+            setError("");
+            fetch("/api/registrations/guest", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                formId,
+                name: d.get("guest-name"),
+                email: d.get("guest-email"),
+                locale,
+                website: d.get("guest-website") || undefined,
+              }),
+            })
+              .then(async (r) => {
+                if (!r.ok) throw new Error((await r.json()).error);
+                setSent(true);
+              })
+              .catch(() => setError(x.guestSent))
+              .finally(() => setBusy(false));
+          }}
+        >
+          <label htmlFor="guest-name">
+            {x.guestName}
+            <input
+              id="guest-name"
+              name="guest-name"
+              required
+              minLength={2}
+              maxLength={120}
+              autoComplete="name"
+            />
+          </label>
+          <label htmlFor="guest-email">
+            {x.guestEmail}
+            <input
+              id="guest-email"
+              name="guest-email"
+              type="email"
+              required
+              maxLength={254}
+              autoComplete="email"
+            />
+          </label>
+          <div className="honeypot" aria-hidden="true">
+            <label htmlFor="guest-website">Website</label>
+            <input
+              id="guest-website"
+              name="guest-website"
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+          <button className="button" disabled={busy}>
+            {x.guestSend}
+          </button>
+          {error && <p role="alert">{error}</p>}
+        </form>
+      )}
+    </div>
+  );
+}
 function Questions({
   fields,
   locale,
@@ -750,11 +834,19 @@ export function Registrations({
   locale,
   mode = "admin",
   formId,
+  guest,
 }: {
   locale: Locale;
   mode?: "admin" | "mine" | "public";
   formId?: string;
+  /** Personal link received by email (registration without a password). */
+  guest?: string;
 }) {
+  // A guest works on the public page: applicant panels are shown there.
+  const applicant = mode === "mine" || (!!guest && mode === "public");
+  const guestHeaders: Record<string, string> = guest
+    ? { "x-guest-token": guest }
+    : {};
   const t = registrationCopy[locale],
     sl = statusLabels[locale];
   const [data, setData] = useState<View | null>(null),
@@ -806,7 +898,10 @@ export function Registrations({
         body = await r.json();
       if (!r.ok) throw new Error(body.error);
       setPublic(body);
-      const own = await fetch("/api/registrations", { cache: "no-store" });
+      const own = await fetch("/api/registrations", {
+        cache: "no-store",
+        headers: guestHeaders,
+      });
       if (own.ok) setData(await own.json());
       return;
     }
@@ -817,7 +912,9 @@ export function Registrations({
       body = await r.json();
     if (!r.ok) throw new Error(body.error);
     setData(body);
-  }, [mode, formId]);
+    // guestHeaders only depends on guest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, formId, guest]);
   useEffect(() => {
     let cancelled = false;
     Promise.resolve()
@@ -834,7 +931,7 @@ export function Registrations({
   }, [load, errorText]);
   const application =
     data?.applications.find((a) => a.id === selected) ??
-    (mode === "mine" ? data?.applications[0] : undefined);
+    (applicant ? data?.applications[0] : undefined);
   const answerKey = application
     ? application.id + ":" + application.version
     : "preview";
@@ -862,7 +959,7 @@ export function Registrations({
   async function send(body: Record<string, unknown>) {
     const r = await fetch("/api/registrations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...guestHeaders },
         body: JSON.stringify({
           ...body,
           organizationId: data?.context?.organization_id,
@@ -903,7 +1000,7 @@ export function Registrations({
             <p className="message-text">{publicData.description}</p>
             <p>{t.account}</p>
             {!data ? (
-              <Link href={"/" + locale + "/access"}>{t.access}</Link>
+              <GuestLink locale={locale} formId={formId ?? ""} />
             ) : (
               <form
                 onSubmit={(e) => {
@@ -922,7 +1019,8 @@ export function Registrations({
                       website: d.get("website") ?? "",
                     });
                     setSelected(result.id);
-                    router.push("/" + locale + "/registrations/mine");
+                    if (!guest)
+                      router.push("/" + locale + "/registrations/mine");
                   });
                 }}
               >
@@ -1103,7 +1201,7 @@ export function Registrations({
             />
           </>
         )}
-        {data && mode !== "public" && (
+        {data && (mode !== "public" || applicant) && (
           <Panel title={mode === "admin" ? t.review : t.mine}>
             <p className="muted">{t.limits}</p>
             {mode === "admin" && (
@@ -1149,7 +1247,7 @@ export function Registrations({
             {!data.applications.length && <p>{t.empty}</p>}
           </Panel>
         )}
-        {application && mode !== "public" && (
+        {application && (mode !== "public" || applicant) && (
           <Panel title={application.subject_name}>
             <h3>{registrationExtras[locale].summary}</h3>
             <dl className="facts application-summary">
@@ -1188,7 +1286,7 @@ export function Registrations({
               )}
             </dl>
             <h3>{t.answers}</h3>
-            {mode === "mine" ? (
+            {applicant ? (
               <>
                 <p>{t.draftHint}</p>
                 <form
@@ -1318,7 +1416,9 @@ export function Registrations({
                       f.id +
                       (mode === "admin"
                         ? "?organizationId=" + application.organization_id
-                        : "")
+                        : guest
+                          ? "?guest=" + encodeURIComponent(guest)
+                          : "")
                     }
                   >
                     {f.filename}
@@ -1327,7 +1427,7 @@ export function Registrations({
               ))}
             </ul>
             {!application.attachments.length && <p>{t.noFiles}</p>}
-            {mode === "mine" &&
+            {applicant &&
               ["draft", "incomplete"].includes(application.status) &&
               application.form_snapshot.fields
                 .filter(
@@ -1345,7 +1445,7 @@ export function Registrations({
                       void task(async () => {
                         const r = await fetch(
                           "/api/registrations/file/" + application.id,
-                          { method: "POST", body: d },
+                          { method: "POST", body: d, headers: guestHeaders },
                         );
                         if (!r.ok) throw new Error((await r.json()).error);
                       });
@@ -1366,7 +1466,7 @@ export function Registrations({
                     <Button disabled={busy}>{t.upload}</Button>
                   </form>
                 ))}
-            {mode === "mine" && (
+            {applicant && (
               <div className="actions">
                 {["draft", "incomplete"].includes(application.status) && (
                   <Button

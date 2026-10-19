@@ -3091,3 +3091,28 @@ input.narrow {
 .match-totals {
   margin-bottom: 12px;
 }
+
+/* Electronic signature and guest registration link. */
+.signature-pad {
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 10 / 3;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+.signature-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.guest-link {
+  margin: 12px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}

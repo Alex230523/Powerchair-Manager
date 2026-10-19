@@ -3,14 +3,13 @@ import {
   attachmentUpload,
   attachmentRead,
 } from "@/domains/registrations/service";
-import {
-  principal,
-  origin,
-  bounded,
-  noStore,
-  failure,
-} from "@/lib/http";
+import { principal, origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
+import { guestPrincipal, guestToken } from "@/domains/registrations/guest";
+const who = async (request: Request) => {
+  const token = guestToken(request);
+  return token ? guestPrincipal(getDb(), token) : principal(request);
+};
 export const dynamic = "force-dynamic";
 export async function GET(
   request: Request,
@@ -20,7 +19,7 @@ export async function GET(
     const org = new URL(request.url).searchParams.get("organizationId");
     const file = await attachmentRead(
       getDb(),
-      await principal(request),
+      await who(request),
       (await params).id,
       org ? z.uuid().parse(org) : undefined,
     );
@@ -43,7 +42,7 @@ export async function POST(
 ) {
   try {
     origin(request);
-    const p = await principal(request);
+    const p = await who(request);
     const bytes = await bounded(request, 2200000);
     const wrapped = new Request(request.url, {
       method: "POST",

@@ -10,6 +10,7 @@ import {
 } from "@/domains/player-profile/schema";
 import { overMatchSpeed } from "@/domains/equipment/schema";
 import { playerProfileCopy, matchCopy } from "./player-profile-copy";
+import { licensesCopy } from "./licenses-copy";
 import { kindLabels } from "./calendar-copy";
 import { documentStatuses } from "./documents-copy";
 import { errors } from "./access-copy";
@@ -627,7 +628,32 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                   ]
                 }
                 {view.sport.classification_valid_until &&
-                  ` · ${t.validUntil.toLocaleLowerCase()} ${day(view.sport.classification_valid_until)}`}
+                  ` · ${t.validUntil.toLocaleLowerCase()} ${day(view.sport.classification_valid_until)}`}{" "}
+                <span
+                  className="status-tag"
+                  data-tone={
+                    view.sport.classification_status === "validated"
+                      ? "success"
+                      : view.sport.classification_status === "refused"
+                        ? "danger"
+                        : view.sport.classification_status === "requested"
+                          ? "warning"
+                          : ""
+                  }
+                >
+                  {
+                    licensesCopy[locale].classStatus[
+                      view.sport.classification_status ?? "unverified"
+                    ]
+                  }
+                </span>
+              </dd>
+              <dt>{licensesCopy[locale].license}</dt>
+              <dd>
+                {view.license
+                  ? `${licensesCopy[locale].licenseStatus[view.license.status]} · ${view.license.season}${view.license.number ? " · " + view.license.number : ""}`
+                  : licensesCopy[locale].licenseStatus.none}{" "}
+                <Link href={`/${locale}/licenses`}>→</Link>
               </dd>
               <dt>{t.control}</dt>
               <dd>{t.controls[view.sport.control] ?? "—"}</dd>

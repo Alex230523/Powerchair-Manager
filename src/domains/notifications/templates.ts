@@ -13,6 +13,8 @@ export const editableKinds = [
   "document_reminder",
   "training_update",
   "match_update",
+  "registration_link",
+  "license_update",
 ] as const;
 export const allKinds = [
   "auth_verify",
@@ -65,6 +67,34 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     en: {
       subject: "Documents to provide · {person}",
       body: "Hello {name},\nSome documents are still missing for {person}:\n{details}\nYou can upload them directly in your space.\nThank you,\n{organization}\n{url}",
+    },
+  },
+  registration_link: {
+    fr: {
+      subject: "Votre lien d'inscription · {organization}",
+      body: "Bonjour {name},\nVoici votre lien personnel pour compléter et suivre votre inscription auprès de {organization}. Il est valable 30 jours ; ne le transmettez pas.\n{url}\nSi vous n'avez rien demandé, ignorez ce message.",
+    },
+    nl: {
+      subject: "Uw inschrijvingslink · {organization}",
+      body: "Hallo {name},\nHier is uw persoonlijke link om uw inschrijving bij {organization} aan te vullen en op te volgen. Hij blijft 30 dagen geldig; geef hem niet door.\n{url}\nHebt u niets aangevraagd, negeer dan dit bericht.",
+    },
+    en: {
+      subject: "Your registration link · {organization}",
+      body: "Hello {name},\nHere is your personal link to complete and follow your registration with {organization}. It is valid for 30 days; do not share it.\n{url}\nIf you did not ask for it, ignore this message.",
+    },
+  },
+  license_update: {
+    fr: {
+      subject: "Licence · {person}",
+      body: "Bonjour {name},\nLicence de {person} : {status}.\n{url}",
+    },
+    nl: {
+      subject: "Licentie · {person}",
+      body: "Hallo {name},\nLicentie van {person}: {status}.\n{url}",
+    },
+    en: {
+      subject: "Licence · {person}",
+      body: "Hello {name},\nLicence of {person}: {status}.\n{url}",
     },
   },
   match_update: {
@@ -271,6 +301,8 @@ const allowed: Record<Kind, string[]> = {
     "status",
   ],
   match_update: ["name", "organization", "url", "match", "status"],
+  registration_link: ["name", "organization", "url"],
+  license_update: ["name", "organization", "url", "person", "status"],
   calendar_update: ["name", "organization", "url"],
   document_update: ["name", "organization", "url"],
   registration_update: ["name", "organization", "url"],

@@ -265,6 +265,21 @@ export async function documentView(db: Pool, p: Principal) {
           !foreign &&
           manages(s.a) &&
           (!d.sensitive || s.a.grants.includes("documents.sensitive")),
+        // Electronic signature: a template-generated text, signed by the person
+        // or a representative allowed to act for them.
+        canSign:
+          !foreign &&
+          d.status !== "archived" &&
+          !!d.profile_id &&
+          (await signable(s.c, d, s.p.userId)),
+        signatures: foreign
+          ? []
+          : (
+              await s.c.query(
+                "SELECT signer_name,signed_at FROM document_signature WHERE document_id=$1 ORDER BY signed_at DESC",
+                [d.id],
+              )
+            ).rows,
         versions: (
           await s.c.query(
             'SELECT v.id,v.sequence,v.filename,v.media_type,v.uploaded_at,v.verdict,v.expires_on::text AS expires_on,v.template_id,v.registration_attachment_id,u.name AS uploader,r.name AS reviewer FROM document_version v JOIN "user" u ON u.id=v.uploaded_by LEFT JOIN "user" r ON r.id=v.reviewed_by WHERE v.document_id=$1 AND ($2 OR v.id=$3) ORDER BY sequence DESC',
@@ -803,6 +818,133 @@ export async function documentDownload(
         "document:" + versionId,
       );
       return { bytes: Buffer.from(body.data, "base64"), filename: f.filename };
+    },
+    org,
+  );
+}
+
+/** The current version comes from a template and is not signed yet; the actor signs for the person. */
+async function signable(c: Scope["c"], d: Doc, userId: string) {
+  if (!d.current_version_id || !d.profile_id) return false;
+  const source = (
+    await c.query(
+      "SELECT v.template_id,v.media_type,EXISTS(SELECT 1 FROM document_signature g WHERE g.source_version_id=v.id OR g.signed_version_id=v.id) AS signed FROM document_version v WHERE v.id=$1",
+      [d.current_version_id],
+    )
+  ).rows[0];
+  if (
+    !source?.template_id ||
+    source.media_type !== "text/plain" ||
+    source.signed
+  )
+    return false;
+  return !!(
+    await c.query(
+      `SELECT 1 FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE cp.id=$1 AND pe.user_id=$2
+       UNION ALL
+       SELECT 1 FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person pe ON pe.id=gp.person_id
+        WHERE g.subject_profile_id=$1 AND pe.user_id=$2 AND g.can_edit AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE)`,
+      [d.profile_id, userId],
+    )
+  ).rowCount;
+}
+
+/**
+ * Electronic signature: the signed text (template text, signer, time, SHA-256
+ * of the text) becomes a new version for the club to review; the drawn
+ * signature is kept beside it.
+ */
+export async function documentSign(
+  db: Pool,
+  p: Principal,
+  id: string,
+  input: {
+    expectedVersion: number;
+    signerName: string;
+    signature: string;
+    accept: boolean;
+  },
+  org: string,
+) {
+  z.uuid().parse(id);
+  const name = z.string().trim().min(2).max(120).parse(input.signerName);
+  if (input.accept !== true) throw new AccessError("CONSENT_REQUIRED", 400);
+  const png = Buffer.from(
+    z
+      .string()
+      .regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/)
+      .max(280000)
+      .parse(input.signature)
+      .split(",")[1],
+    "base64",
+  );
+  if (
+    png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+    png.length > 204800
+  )
+    throw new AccessError("INVALID_FILE", 400);
+  return scope(
+    db,
+    p,
+    async (s) => {
+      const d = await record(s, id, true);
+      if (d.version !== input.expectedVersion)
+        throw new AccessError("STALE_VERSION", 409);
+      if (!(await signable(s.c, d, p.userId)))
+        throw new AccessError("FORBIDDEN");
+      const source = (
+        await s.c.query("SELECT * FROM document_version WHERE id=$1", [
+          d.current_version_id,
+        ])
+      ).rows[0];
+      const text = Buffer.from(
+        unseal<{ data: string }>(
+          source.content_ciphertext,
+          "document:" + source.id,
+        ).data,
+        "base64",
+      ).toString("utf8");
+      const sha = createHash("sha256").update(text).digest("hex");
+      const account = (
+        await s.c.query('SELECT email FROM "user" WHERE id=$1', [p.userId])
+      ).rows[0];
+      const when = new Intl.DateTimeFormat("fr-BE", {
+        dateStyle: "long",
+        timeStyle: "medium",
+        timeZone: "Europe/Brussels",
+      }).format(new Date());
+      const signed = [
+        text,
+        "",
+        "--------------------------------------------------------------",
+        "Signature électronique",
+        `Signé par : ${name} (compte ${account.email})`,
+        `Le : ${when} (heure de Bruxelles)`,
+        `Empreinte SHA-256 du texte signé : ${sha}`,
+        "Mention : lu et approuvé.",
+      ].join("\n");
+      await addVersion(
+        s,
+        d,
+        {
+          name: source.filename.replace(/\.txt$/i, "") + "-signe.txt",
+          type: "text/plain",
+          bytes: Buffer.from(signed, "utf8"),
+        },
+        { templateId: source.template_id },
+      );
+      const after = (
+        await s.c.query(
+          "SELECT current_version_id FROM club_document WHERE id=$1",
+          [d.id],
+        )
+      ).rows[0].current_version_id;
+      await s.c.query(
+        "INSERT INTO document_signature(organization_id,document_id,source_version_id,signed_version_id,signer_user_id,signer_name,text_sha256,signature_png) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+        [d.organization_id, d.id, source.id, after, p.userId, name, sha, png],
+      );
+      await log(s.c, d, p.userId, "signed");
+      return { id: d.id };
     },
     org,
   );

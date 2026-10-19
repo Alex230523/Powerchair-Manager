@@ -167,7 +167,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
 
     const sport = (
       await c.query(
-        "SELECT classification,classification_valid_until::text,control,sport_notes,version FROM player_sport_profile WHERE profile_id=$1 AND organization_id=$2",
+        "SELECT classification,classification_valid_until::text,control,sport_notes,version,classification_status,classification_note FROM player_sport_profile WHERE profile_id=$1 AND organization_id=$2",
         [id, org],
       )
     ).rows[0] ?? {
@@ -176,6 +176,8 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
       control: "",
       sport_notes: "",
       version: 0,
+      classification_status: "unverified",
+      classification_note: "",
     };
     const supportRow = (
       await c.query(
@@ -255,6 +257,16 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
       teams,
       guardians,
       matches: await playerMatchStats(c, org, id),
+      license: ((
+        await c.query(
+          "SELECT status,season,number FROM license WHERE profile_id=$1 AND organization_id=$2 AND status<>'refused' ORDER BY season DESC,requested_at DESC LIMIT 1",
+          [id, org],
+        )
+      ).rows[0] ?? null) as {
+        status: string;
+        season: string;
+        number: string | null;
+      } | null,
       attendance: {
         total: attendanceSummary(attendance),
         byKind,
@@ -323,7 +335,7 @@ export async function playerProfileExecute(
               values,
             )
           : await c.query(
-              "UPDATE player_sport_profile SET classification=$3,classification_valid_until=$4,control=$5,sport_notes=$6,updated_by=$7,version=version+1,updated_at=now() WHERE profile_id=$1 AND organization_id=$2 AND version=$8 RETURNING version",
+              "UPDATE player_sport_profile SET classification_status=CASE WHEN classification IS DISTINCT FROM $3 OR classification_valid_until IS DISTINCT FROM $4::date THEN 'unverified' ELSE classification_status END,classification=$3,classification_valid_until=$4,control=$5,sport_notes=$6,updated_by=$7,version=version+1,updated_at=now() WHERE profile_id=$1 AND organization_id=$2 AND version=$8 RETURNING version",
               [...values, input.version],
             );
     } else if (input.action === "support") {
