@@ -314,11 +314,11 @@ export async function federationLicensesView(db: Pool, p: Principal) {
     ).rows;
     const transfers = (
       await c.query(
-        `SELECT t.id,cp.full_name,src.name AS from_club,dst.name AS to_club,t.created_at,t.accepted_at,t.revoked_at,t.expires_at,
+        `SELECT t.id,cp.full_name,src.name AS from_club,dst.name AS to_club,(t.expires_at-interval '7 days') AS created_at,t.accepted_at,t.revoked_at,t.expires_at,
                 CASE WHEN t.accepted_at IS NOT NULL THEN 'accepted' WHEN t.revoked_at IS NOT NULL THEN 'revoked' WHEN t.expires_at<now() THEN 'expired' ELSE 'pending' END AS status
            FROM person_transfer t JOIN organization src ON src.id=t.source_organization_id JOIN club_person cp ON cp.id=t.source_profile_id
            LEFT JOIN organization dst ON dst.id=t.target_organization_id
-          WHERE src.federation_id=$1 OR dst.federation_id=$1 ORDER BY t.created_at DESC LIMIT 300`,
+          WHERE src.federation_id=$1 OR dst.federation_id=$1 ORDER BY t.expires_at DESC LIMIT 300`,
         [fed],
       )
     ).rows;
