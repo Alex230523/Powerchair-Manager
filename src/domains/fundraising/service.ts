@@ -137,7 +137,17 @@ export async function fundraisingView(db: Pool, p: Principal) {
         "SELECT id,group_id,name,description,goal_cents,deadline::text AS deadline,status,public_token,version FROM fundraising_pot WHERE organization_id=$1 ORDER BY status,created_at DESC",
         [org],
       )
-    ).rows;
+    ).rows as {
+      id: string;
+      group_id: string;
+      name: string;
+      description: string;
+      goal_cents: number;
+      deadline: string | null;
+      status: string;
+      public_token: string | null;
+      version: number;
+    }[];
     const movements = (
       await c.query(
         `SELECT m.id,m.pot_id,m.occurred_on::text AS occurred_on,m.kind,m.label,m.amount_cents,m.donor,m.anonymous,m.cancelled_at,u.name AS author
@@ -145,7 +155,7 @@ export async function fundraisingView(db: Pool, p: Principal) {
           WHERE p.organization_id=$1 ORDER BY m.occurred_on DESC,m.created_at DESC`,
         [org],
       )
-    ).rows;
+    ).rows as (MovementView & { pot_id: string; amount_cents: number })[];
     return {
       organization_id: org,
       can: { manage, detail },
