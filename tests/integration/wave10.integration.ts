@@ -257,7 +257,7 @@ it("ticks a payment from the dues table and refuses to overpay", async () => {
   const view = await duesView(db, president);
   const debt = view.debts.find((d) => d.profile_id === emma)!;
   expect(debt.state).toBe("on_track");
-  expect(debt.settled.map((i) => i.left_cents)).toEqual([12500, 12500]);
+  expect(debt.settled.map((i: { left_cents: number }) => i.left_cents)).toEqual([12500, 12500]);
   await duesExecute(
     db,
     president,
@@ -266,7 +266,7 @@ it("ticks a payment from the dues table and refuses to overpay", async () => {
   );
   const paid = (await duesView(db, president)).debts.find((d) => d.id === debt.id)!;
   expect(paid.paid_cents).toBe(12500);
-  expect(paid.settled.map((i) => i.left_cents)).toEqual([0, 12500]);
+  expect(paid.settled.map((i: { left_cents: number }) => i.left_cents)).toEqual([0, 12500]);
   expect(paid.payments).toHaveLength(1);
   expect(paid.state).toBe("on_track");
   await expect(

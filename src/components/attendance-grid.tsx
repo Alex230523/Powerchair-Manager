@@ -33,13 +33,13 @@ export function AttendanceGrid({
   onMark: (invitationId: string, version: number, actual: string, closed: boolean) => void;
 }) {
   const t = gridCopy[locale] as (typeof gridCopy)["fr"];
+  // Fixed at first render: a cell does not flip while the coach is looking at it.
+  const [now] = useState(() => Date.now());
   const shown = events.filter((e) => e.status !== "cancelled" && e.register);
   if (!shown.length) return <p className="muted">{t.empty}</p>;
   const people = new Map<string, string>();
   for (const e of shown) for (const i of e.invitations) if (!i.withdrawn_at) people.set(i.profile_id, i.full_name);
   const rows = [...people.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  // Fixed at first render: a cell does not flip while the coach is looking at it.
-  const [now] = useState(() => Date.now());
   const day = (d: string | Date) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {
       day: "numeric",

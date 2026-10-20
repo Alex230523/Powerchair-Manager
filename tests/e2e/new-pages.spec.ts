@@ -168,7 +168,7 @@ test("new club, federation and referee pages load and pass axe", async ({
       await new AxeBuilder({ page })
         .include("dialog")
         .exclude("iframe")
-        .disableFrame("iframe")
+        .options({ iframes: false })
         .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
         .analyze()
     ).violations.map((v) => v.id);

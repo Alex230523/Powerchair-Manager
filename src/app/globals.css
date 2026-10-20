@@ -3813,6 +3813,7 @@ input.narrow {
 }
 .page-header-text {
   min-width: 0;
+  flex: 1 1 360px;
 }
 .page-header h1 {
   margin: 4px 0 2px;
@@ -3827,7 +3828,9 @@ input.narrow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  flex: 0 1 auto;
 }
 .page-actions .button {
   font-size: 0.86rem;
