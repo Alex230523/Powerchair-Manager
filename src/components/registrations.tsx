@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
-import { Panel, Button } from "./ui";
+import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone } from "./ui";
 import {
   fieldVisible,
   mappings,
@@ -22,6 +22,16 @@ import {
 import { tigerstormTemplate } from "@/domains/registrations/templates";
 import { ageOn } from "@/domains/people/schema";
 import { Modal } from "./modal";
+const statusTone: Record<string, Tone> = {
+  draft: "neutral",
+  submitted: "info",
+  incomplete: "warning",
+  review: "info",
+  waiting: "warning",
+  accepted: "success",
+  refused: "danger",
+  withdrawn: "neutral",
+};
 type Form = {
   id: string;
   organization_id: string;
@@ -972,7 +982,22 @@ export function Registrations({
   return (
     <>
       <main id="main" className="access registrations">
-        <h1>{mode === "mine" ? t.mine : t.title}</h1>
+        {mode === "admin" && data?.context ? (
+          <PageHeader
+            title={t.title}
+            subtitle={data.context.organization_name}
+            actions={
+              <>
+                <button type="button" className="button secondary" onClick={() => setEditing("tigerstorm")}>
+                  {registrationExtras[locale].tigerstorm}
+                </button>
+                <Button onClick={() => setEditing("new")}>{t.newForm}</Button>
+              </>
+            }
+          />
+        ) : (
+          <h1>{mode === "mine" ? t.mine : t.title}</h1>
+        )}
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
           <p className="error-message" role="alert">
@@ -1108,68 +1133,55 @@ export function Registrations({
         )}
         {mode === "admin" && data?.context && (
           <>
-            <p className="notice">{data.context.organization_name}</p>
-            <Panel title={t.forms}>
+            {editing === "tigerstorm" && (
+              <p className="notice">{registrationExtras[locale].tigerstormHint}</p>
+            )}
+            <Card title={t.forms} id="reg-forms">
               {!data.seasons?.length && <p>{t.closed}</p>}
-              <ul className="records">
-                {data.forms?.map((f) => (
-                  <li key={f.id}>
-                    <h3>
-                      <button
-                        type="button"
-                        className="text-button form-open"
-                        onClick={() => setSharing(f.id)}
-                      >
-                        {f.title}
-                      </button>
-                    </h3>
-                    <p>
-                      {f.published
-                        ? t.formOpen
-                        : locale === "en"
-                          ? "Closed"
-                          : locale === "fr"
-                            ? "Fermé"
-                            : "Gesloten"}{" "}
-                      · {f.version}
-                    </p>
-                    <div className="actions">
-                      <Button onClick={() => setEditing("clone:" + f.id)}>
-                        {t.clone}
-                      </Button>
-                      <Button onClick={() => setEditing(f.id)}>{t.edit}</Button>
-                    </div>
-                    {f.published && (
-                      <>
-                        <p>
-                          <Link href={"/" + locale + "/inscription/" + f.id}>
-                            {t.public}
-                          </Link>
-                        </p>
-                        <Button onClick={() => setSharing(f.id)}>
-                          {registrationExtras[locale].share}
-                        </Button>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <div className="actions">
-                <Button onClick={() => setEditing("new")}>{t.newForm}</Button>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => setEditing("tigerstorm")}
-                >
-                  {registrationExtras[locale].tigerstorm}
-                </button>
-              </div>
-              {editing === "tigerstorm" && (
-                <p className="notice">
-                  {registrationExtras[locale].tigerstormHint}
-                </p>
+              {data.forms?.length ? (
+                <div className="table-scroll">
+                  <table className="compact-table">
+                    <tbody>
+                      {data.forms.map((f) => (
+                        <tr key={f.id}>
+                          <th scope="row">
+                            <button type="button" className="text-button form-open" onClick={() => setSharing(f.id)}>
+                              {f.title}
+                            </button>
+                          </th>
+                          <td>
+                            <Badge tone={f.published ? "success" : "neutral"} dot>
+                              {f.published
+                                ? t.formOpen
+                                : locale === "en"
+                                  ? "Closed"
+                                  : locale === "fr"
+                                    ? "Fermé"
+                                    : "Gesloten"}
+                            </Badge>
+                          </td>
+                          <td className="muted">v{f.version}</td>
+                          <td className="row-actions">
+                            <button type="button" className="text-button" onClick={() => setEditing(f.id)}>{t.edit}</button>
+                            <button type="button" className="text-button" onClick={() => setEditing("clone:" + f.id)}>{t.clone}</button>
+                            {f.published && (
+                              <>
+                                <button type="button" className="text-button" onClick={() => setSharing(f.id)}>
+                                  {registrationExtras[locale].share}
+                                </button>
+                                <Link href={"/" + locale + "/inscription/" + f.id}>{t.public}</Link>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="muted">{t.empty}</p>
               )}
-            </Panel>
+            </Card>
             {sharing && data.forms?.some((f) => f.id === sharing) && (
               <ShareDialog
                 locale={locale}
@@ -1202,24 +1214,26 @@ export function Registrations({
           </>
         )}
         {data && (mode !== "public" || applicant) && (
-          <Panel title={mode === "admin" ? t.review : t.mine}>
-            <p className="muted">{t.limits}</p>
+          <Card title={mode === "admin" ? t.review : t.mine} subtitle={t.limits} id="reg-apps">
             {mode === "admin" && (
-              <FieldLabel id="registration-filter" label={t.filter}>
-                <select
-                  id="registration-filter"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                >
-                  <option value="pending">{t.pending}</option>
-                  <option value="recent">{t.recent}</option>
-                  <option value="waiting">{sl.waiting}</option>
-                  <option value="refused">{sl.refused}</option>
-                  <option value="all">{t.all}</option>
-                </select>
-              </FieldLabel>
+              <Toolbar label={t.filter}>
+                <label className="toolbar-field">
+                  <span className="sr-only">{t.filter}</span>
+                  <select
+                    id="registration-filter"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  >
+                    <option value="pending">{t.pending}</option>
+                    <option value="recent">{t.recent}</option>
+                    <option value="waiting">{sl.waiting}</option>
+                    <option value="refused">{sl.refused}</option>
+                    <option value="all">{t.all}</option>
+                  </select>
+                </label>
+              </Toolbar>
             )}
-            <ul className="records">
+            <ul className="records compact-records">
               {data.applications
                 .filter(
                   (a) =>
@@ -1235,17 +1249,26 @@ export function Registrations({
                 )
                 .map((a) => (
                   <li key={a.id}>
-                    <Button onClick={() => setSelected(a.id)}>
-                      {a.subject_name} · {sl[a.status]}
-                    </Button>
-                    <p>
-                      {a.organization_name} · {a.form_snapshot.title}
-                    </p>
+                    <button
+                      type="button"
+                      className="record-row"
+                      aria-pressed={selected === a.id}
+                      aria-label={`${a.subject_name} · ${sl[a.status]}`}
+                      onClick={() => setSelected(a.id)}
+                    >
+                      <strong>{a.subject_name}</strong>
+                      <span className="muted">
+                        {a.organization_name} · {a.form_snapshot.title}
+                      </span>
+                      <Badge tone={statusTone[a.status] ?? "neutral"} dot>
+                        {sl[a.status]}
+                      </Badge>
+                    </button>
                   </li>
                 ))}
             </ul>
-            {!data.applications.length && <p>{t.empty}</p>}
-          </Panel>
+            {!data.applications.length && <p className="muted">{t.empty}</p>}
+          </Card>
         )}
         {application && (mode !== "public" || applicant) && (
           <Panel title={application.subject_name}>

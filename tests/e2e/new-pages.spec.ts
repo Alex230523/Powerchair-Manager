@@ -195,6 +195,31 @@ test("new club, federation and referee pages load and pass axe", async ({
     );
     await check(page, `/fr/trips/${tripId}`);
 
+    // Wave 10: the home dashboard, the attendance table, the dues table and
+    // the registrations inbox pass axe; the menu lost "Messagerie".
+    for (const path of ["/fr", "/fr/dues", "/fr/attendance", "/fr/registrations"])
+      await check(page, path);
+    await expect(
+      page.locator("nav").getByRole("link", { name: "Messagerie", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.locator("nav").getByRole("link", { name: "Statistiques", exact: true })).toBeVisible();
+    // Presence thresholds: the president lowers the bar for trainings.
+    await page.goto("/fr/settings");
+    const okPlayers = page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true });
+    await expect(okPlayers).toHaveValue("5");
+    await okPlayers.fill("3");
+    await page.getByLabel("Entraînements · Joueurs · Tendu à partir de", { exact: true }).fill("2");
+    await page.getByRole("button", { name: "Enregistrer les seuils", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText("Seuils enregistrés.");
+    await page.reload();
+    await expect(page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true })).toHaveValue("3");
+    // The dashboard: to-do blocks, key figures on the left, the agenda on the right.
+    await page.goto("/fr");
+    await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^À faire/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Prochains événements", exact: true })).toBeVisible();
+    await expect(page.getByText("Accès rapide", { exact: true })).toHaveCount(0);
+
     await switchProfile(page, roles.federation_president);
     for (const path of [
       "/fr/federation/clubs",

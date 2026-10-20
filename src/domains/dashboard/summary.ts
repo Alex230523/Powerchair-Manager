@@ -1,4 +1,5 @@
 // Pure dashboard shaping. No I/O here so ordering and visibility rules are unit-tested.
+import type { Readiness } from "./presence";
 export type Tone = "danger" | "warning" | "info";
 export const todoKeys = [
   "documentsExpired",
@@ -79,6 +80,19 @@ export type AgendaItem = {
   team: string | null;
   place: string | null;
   responseNeeded: boolean;
+  /** Players and coaches who answered "present", against the club thresholds. */
+  readiness?: Readiness;
+};
+/** An administrative date shown with the events: documents, dues, fundraising, trips. */
+export type Deadline = {
+  id: string;
+  kind: "documents" | "dues" | "fundraising" | "trip";
+  /** YYYY-MM-DD */
+  date: string;
+  title: string;
+  count: number;
+  cents?: number;
+  href: string;
 };
 export type Dashboard = {
   /** Server time of the snapshot; the page renders dates from it, not from the client clock. */
@@ -94,6 +108,7 @@ export type Dashboard = {
   todos: Todo[];
   metrics: Metric[];
   agenda: AgendaItem[];
+  deadlines: Deadline[];
   /** Modules whose figures were computed for this actor; others are hidden, not zero. */
   scopes: string[];
 };

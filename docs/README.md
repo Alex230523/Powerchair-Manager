@@ -48,6 +48,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 20/10/2026 | [Vague 7 : déplacements, annuaire des salles, consignes de soin, carnet hors ligne](evolutions/2026-10-20-m-vague-7-deplacements-salles-soins.md) |
 | 20/10/2026 | [Vague 8 : attestations mutuelle, fratrie, levée de fonds, absences, passage de saison, fidélisation](evolutions/2026-10-20-n-vague-8-familles-argent.md) |
 | 20/10/2026 | [Vague 9 : communication du club, fils protégés, matériel, export, copie de semaine](evolutions/2026-10-20-o-vague-9-communication-materiel.md) |
+| 20/10/2026 | [Vague 10 : tableau de bord, présences en tableau, cotisations ligne par ligne, cagnottes avec les joueurs, accès par rôle](evolutions/2026-10-20-p-vague-10-tableau-de-bord-finitions.md) |
 
 ## Convention
 

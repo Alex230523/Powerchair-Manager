@@ -12,7 +12,7 @@ import {
 } from "@/domains/statistics/summary";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import { kindLabels } from "./calendar-copy";
-import { Button, Panel } from "./ui";
+import { Button, Card, EmptyState, PageHeader, StatCard, Toolbar } from "./ui";
 const copies = {
   fr: {
     title: "Statistiques",
@@ -183,7 +183,7 @@ export function Statistics({ locale }: { locale: Locale }) {
       kind,
     ),
     rate = (n: number, d: number) =>
-      percentage(n, d) === null ? "—" : percentage(n, d) + " %";
+      percentage(n, d) === null ? "…" : percentage(n, d) + " %";
   function exportCsv() {
     const text = statisticsCsv([
       [
@@ -218,14 +218,27 @@ export function Statistics({ locale }: { locale: Locale }) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  const seasonValue =
+    data?.seasons.find((s) => s.starts_on === filters.from && s.ends_on === filters.to)?.id ?? "";
   return (
     <main id="main" className="access statistics">
-      <h1>{t.title}</h1>
-      <p>{t.intro}</p>
-      <div className="actions">
-        <Link href={"/" + locale + "/calendar"}>{t.calendar}</Link>
-        <Link href={"/" + locale + "/attendance"}>{t.attendance}</Link>
-      </div>
+      <PageHeader
+        title={t.title}
+        subtitle={t.intro}
+        actions={
+          <>
+            <Link className="button secondary" href={"/" + locale + "/attendance"}>
+              {t.attendance}
+            </Link>
+            <Link className="button secondary" href={"/" + locale + "/calendar"}>
+              {t.calendar}
+            </Link>
+            <Button disabled={!data || loading || data.limited || !report.people.length} onClick={exportCsv}>
+              {t.export}
+            </Button>
+          </>
+        }
+      />
       <form
         className="statistics-filters"
         key={filters.from + filters.to + filters.team}
@@ -234,10 +247,7 @@ export function Statistics({ locale }: { locale: Locale }) {
           const f = new FormData(e.currentTarget),
             from = String(f.get("from")),
             to = String(f.get("to"));
-          if (
-            from >= to ||
-            Date.parse(to) - Date.parse(from) > 366 * 86400000
-          ) {
+          if (from >= to || Date.parse(to) - Date.parse(from) > 366 * 86400000) {
             setInvalid(true);
             return;
           }
@@ -246,193 +256,169 @@ export function Statistics({ locale }: { locale: Locale }) {
           setFilters({ from, to, team: String(f.get("team")) });
         }}
       >
-        <div>
-          <label htmlFor="stats-from">{t.from}</label>
-          <input
-            id="stats-from"
-            name="from"
-            type="date"
-            required
-            defaultValue={filters.from}
-          />
-        </div>
-        <div>
-          <label htmlFor="stats-to">{t.to}</label>
-          <input
-            id="stats-to"
-            name="to"
-            type="date"
-            required
-            defaultValue={filters.to}
-          />
-        </div>
-        <div>
-          <label htmlFor="stats-team">{t.team}</label>
-          <select id="stats-team" name="team" defaultValue={filters.team}>
-            <option value="">{t.all}</option>
-            {data?.teams.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button disabled={loading}>{t.apply}</Button>
-      </form>
-      <div className="statistics-filters">
-        <div>
-          <label htmlFor="stats-season">{t.season}</label>
-          <select
-            id="stats-season"
-            value={
-              data?.seasons.find(
-                (s) => s.starts_on === filters.from && s.ends_on === filters.to,
-              )?.id ?? ""
-            }
-            disabled={loading}
-            onChange={(e) => {
-              const s = data?.seasons.find((s) => s.id === e.target.value);
-              if (s) {
-                if (
-                  Date.parse(s.ends_on) - Date.parse(s.starts_on) >
-                  366 * 86400000
-                ) {
-                  setInvalid(true);
-                  return;
+        <Toolbar label={t.apply} actions={<Button disabled={loading}>{t.apply}</Button>}>
+          <label className="toolbar-field">
+            <span>{t.season}</span>
+            <select
+              id="stats-season"
+              value={seasonValue}
+              disabled={loading}
+              onChange={(e) => {
+                const s = data?.seasons.find((s) => s.id === e.target.value);
+                if (s) {
+                  if (Date.parse(s.ends_on) - Date.parse(s.starts_on) > 366 * 86400000) {
+                    setInvalid(true);
+                    return;
+                  }
+                  setInvalid(false);
+                  setLoading(true);
+                  setFilters({ ...filters, from: s.starts_on, to: s.ends_on });
                 }
-                setInvalid(false);
-                setLoading(true);
-                setFilters({ ...filters, from: s.starts_on, to: s.ends_on });
-              }
-            }}
-          >
-            <option value="">{t.custom}</option>
-            {data?.seasons.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="stats-kind">{t.kind}</label>
-          <select
-            id="stats-kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-          >
-            <option value="">{t.all}</option>
-            {Object.entries(kindLabels[locale]).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      {invalid && <p role="alert">{t.invalid}</p>}
-      {error && <p role="alert">{t.error}</p>}
-      <div role="status">{loading ? t.loading : ""}</div>
-      {data && !loading && (
-        <>
-          {data.limited && <p role="alert">{t.partial}</p>}
-          <p>{t.hint}</p>
-          <div className="statistics-cards">
-            {[
-              [t.sessions, report.sessions],
-              [t.closed, report.closedSessions],
-              [t.people, report.people.length],
-              [t.rate, rate(report.total.attended, report.total.closed)],
-              [t.answers, rate(report.total.answered, report.total.invited)],
-            ].map(([label, value]) => (
-              <article key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </article>
-            ))}
-          </div>
-          {!report.total.invited && <p className="notice">{t.empty}</p>}
-          <Panel title={t.monthly}>
-            <div className="statistics-bars">
-              {report.months.map((m) => (
-                <div className="statistics-bar" key={m.month}>
-                  <span>
-                    {new Intl.DateTimeFormat(locale, {
-                      month: "long",
-                      year: "numeric",
-                      timeZone: "UTC",
-                    }).format(new Date(m.month + "-01T12:00Z"))}
-                  </span>
-                  <meter
-                    min={0}
-                    max={100}
-                    value={percentage(m.attended, m.closed) ?? 0}
-                    aria-label={m.month + " · " + t.rate}
-                  />
-                  <strong>{rate(m.attended, m.closed)}</strong>
-                  <span>
-                    {m.attended} / {m.closed}
-                  </span>
-                </div>
+              }}
+            >
+              <option value="">{t.custom}</option>
+              {data?.seasons.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
-            </div>
-          </Panel>
-          <Panel title={t.individual}>
-            <Button
-              disabled={data.limited || !report.people.length}
-              onClick={exportCsv}
-            >
-              {t.export}
-            </Button>
-            <div
-              className="statistics-table-scroll"
-              tabIndex={0}
-              role="region"
-              aria-label={t.individual}
-            >
-              <table>
-                <caption>{t.observed}</caption>
-                <thead>
-                  <tr>
-                    {[
-                      t.name,
-                      t.invited,
-                      t.answers,
-                      t.attended,
-                      t.absent,
-                      t.late,
-                      t.early,
-                      t.rate,
-                    ].map((h) => (
-                      <th scope="col" key={h}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.people.map((p) => (
-                    <tr key={p.id}>
-                      <th scope="row">{p.name}</th>
-                      <td>{p.invited}</td>
-                      <td>{rate(p.answered, p.invited)}</td>
-                      <td>
-                        {p.attended} / {p.closed}
-                      </td>
-                      <td>{p.absent}</td>
-                      <td>{p.late}</td>
-                      <td>{p.early}</td>
-                      <td>{rate(p.attended, p.closed)}</td>
-                    </tr>
+            </select>
+          </label>
+          <label className="toolbar-field">
+            <span>{t.from}</span>
+            <input id="stats-from" name="from" type="date" required defaultValue={filters.from} />
+          </label>
+          <label className="toolbar-field">
+            <span>{t.to}</span>
+            <input id="stats-to" name="to" type="date" required defaultValue={filters.to} />
+          </label>
+          <label className="toolbar-field">
+            <span>{t.team}</span>
+            <select id="stats-team" name="team" defaultValue={filters.team}>
+              <option value="">{t.all}</option>
+              {data?.teams.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="toolbar-field">
+            <span>{t.kind}</span>
+            <select id="stats-kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+              <option value="">{t.all}</option>
+              {Object.entries(kindLabels[locale]).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+        </Toolbar>
+      </form>
+      {invalid && <p role="alert" className="error-message">{t.invalid}</p>}
+      {error && (
+        <p role="alert" className="error-message">
+          {t.error}{" "}
+          <button type="button" className="text-button" onClick={() => { setLoading(true); setError(false); setFilters({ ...filters }); }}>
+            {t.apply}
+          </button>
+        </p>
+      )}
+      <div role="status" className="sr-only">{loading ? t.loading : ""}</div>
+      {loading && !data && (
+        <div className="stat-row-grid" data-cols="5" aria-hidden="true">
+          {[0, 1, 2, 3, 4].map((k) => (
+            <div key={k} className="skeleton stat-card" />
+          ))}
+        </div>
+      )}
+      {data && (
+        <>
+          {data.limited && <p role="alert" className="notice">{t.partial}</p>}
+          <div className="stat-row-grid" data-cols="5">
+            <StatCard label={t.sessions} value={report.sessions} icon="calendar" tone="brand" />
+            <StatCard label={t.closed} value={report.closedSessions} icon="check" tone="success" hint={`${report.sessions ? Math.round((report.closedSessions / report.sessions) * 100) : 0} %`} />
+            <StatCard label={t.people} value={report.people.length} icon="players" tone="info" />
+            <StatCard label={t.rate} value={rate(report.total.attended, report.total.closed)} icon="attendance" tone="brand" hint={`${report.total.attended} / ${report.total.closed}`} />
+            <StatCard label={t.answers} value={rate(report.total.answered, report.total.invited)} icon="inbox" tone="warning" hint={`${report.total.answered} / ${report.total.invited}`} />
+          </div>
+          {!report.total.invited ? (
+            <EmptyState
+              icon="chart"
+              title={t.empty}
+              action={
+                <Link className="button secondary" href={"/" + locale + "/calendar"}>
+                  {t.calendar}
+                </Link>
+              }
+            />
+          ) : (
+            <div className="statistics-columns">
+              <Card title={t.monthly} subtitle={t.hint} id="stats-monthly">
+                <div className="statistics-bars">
+                  {report.months.map((m) => (
+                    <div className="statistics-bar" key={m.month}>
+                      <span>
+                        {new Intl.DateTimeFormat(locale, {
+                          month: "long",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        }).format(new Date(m.month + "-01T12:00Z"))}
+                      </span>
+                      <meter
+                        min={0}
+                        max={100}
+                        value={percentage(m.attended, m.closed) ?? 0}
+                        aria-label={m.month + " · " + t.rate}
+                      />
+                      <strong>{rate(m.attended, m.closed)}</strong>
+                      <span>
+                        {m.attended} / {m.closed}
+                      </span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </Card>
+              <Card title={t.individual} subtitle={t.observed} id="stats-people" className="card-flush">
+                <div className="statistics-table-scroll" tabIndex={0} role="region" aria-label={t.individual}>
+                  <table className="compact-table">
+                    <thead>
+                      <tr>
+                        {[t.name, t.invited, t.answers, t.attended, t.absent, t.late, t.early, t.rate].map((h) => (
+                          <th scope="col" key={h}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.people.map((p) => (
+                        <tr key={p.id}>
+                          <th scope="row">{p.name}</th>
+                          <td className="num">{p.invited}</td>
+                          <td className="num">{rate(p.answered, p.invited)}</td>
+                          <td className="num">
+                            {p.attended} / {p.closed}
+                          </td>
+                          <td className="num">{p.absent}</td>
+                          <td className="num">{p.late}</td>
+                          <td className="num">{p.early}</td>
+                          <td className="num">
+                            <strong>{rate(p.attended, p.closed)}</strong>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             </div>
-          </Panel>
+          )}
         </>
       )}
-      <p className="notice">{t.future}</p>
       <RetentionCard locale={locale} />
+      <p className="muted small">{t.future}</p>
     </main>
   );
 }

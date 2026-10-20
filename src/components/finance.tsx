@@ -8,6 +8,8 @@ import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
+import { PageHeader } from "./ui";
+import { Modal } from "./modal";
 
 type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -228,34 +230,30 @@ export function Finance({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access finance">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p>{t.intro}</p>
-        </div>
-        {view && (
-          <div className="directory-actions">
-            <button
-              className="button secondary"
-              type="button"
-              onClick={exportCsv}
-              disabled={!entries.length}
-            >
-              {t.export}
-            </button>
-            {view?.can_edit && (
-              <button
-                className="button"
-                type="button"
-                aria-expanded={adding}
-                onClick={() => setAdding(!adding)}
-              >
-                {adding ? t.close : t.add}
+      <PageHeader
+        title={t.title}
+        subtitle={t.intro}
+        actions={
+          view && (
+            <>
+              <Link className="button secondary" href={`/${locale}/dues`}>
+                {t.dues}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/funding/report?season=${view.season.label}`}>
+                {x.report}
+              </Link>
+              <button className="button secondary" type="button" onClick={exportCsv} disabled={!entries.length}>
+                {t.export}
               </button>
-            )}
-          </div>
-        )}
-      </div>
+              {view.can_edit && (
+                <button className="button" type="button" aria-expanded={adding} onClick={() => setAdding(!adding)}>
+                  {adding ? t.close : t.add}
+                </button>
+              )}
+            </>
+          )
+        }
+      />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
@@ -300,8 +298,7 @@ export function Finance({ locale }: { locale: Locale }) {
           <p className="notice">{t.bankNote}</p>
 
           {adding && (
-            <section className="panel" aria-labelledby="finance-add">
-              <h2 id="finance-add">{t.add}</h2>
+            <Modal title={t.add} close={() => setAdding(false)}>
               <form onSubmit={record} className="finance-form">
                 <div className="form-pair">
                   <label htmlFor="fin-date">
@@ -440,7 +437,7 @@ export function Finance({ locale }: { locale: Locale }) {
                   {t.save}
                 </button>
               </form>
-            </section>
+            </Modal>
           )}
 
           {categoryRows.length > 0 && (

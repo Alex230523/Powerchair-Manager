@@ -24,6 +24,7 @@ import { logSensitiveAccess } from "../club/governance";
 import { publish } from "../notifications/queue";
 import { seal, unseal } from "../notifications/crypto";
 import { mfaSatisfied } from "../../lib/security-policy";
+import { fillDues, seasonFeeSql } from "./templates";
 
 /** Confidential answers are sealed with the application id as associated data. */
 const secretAad = (applicationId: string) => "registration:" + applicationId;
@@ -292,16 +293,25 @@ async function details<R extends Record<string, unknown>>(
     ).rows,
   };
 }
+async function seasonFee(db: Pool | PoolClient, org: string, season: string) {
+  const r = (await db.query(seasonFeeSql, [org, season])).rows[0];
+  return r ? (r.amount_cents as number) : null;
+}
 const selectApps = `SELECT a.*,a.birth_date::text AS birth_date,o.name AS organization_name,u.email AS applicant_email,u.name AS applicant_name FROM registration_application a JOIN organization o ON o.id=a.organization_id JOIN "user" u ON u.id=a.applicant_user_id`;
 export async function publicForm(db: Pool, formId: string) {
   id.parse(formId);
   const row = (
     await db.query(
-      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND f.published AND NOT s.archived",
+      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,f.organization_id,f.season_id,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND f.published AND NOT s.archived",
       [formId],
     )
   ).rows[0];
   if (!row) throw new AccessError("NOT_FOUND", 404);
+  const fee = await seasonFee(db, row.organization_id, row.season_id);
+  row.description = fillDues(row.description, fee);
+  row.fields = fillDues(row.fields, fee);
+  delete row.organization_id;
+  delete row.season_id;
   return row as {
     id: string;
     title: string;
@@ -571,7 +581,7 @@ export async function registrationExecute(
             JSON.stringify({
               version: f.version,
               title: f.title,
-              fields: f.fields,
+              fields: fillDues(f.fields, await seasonFee(c, f.organization_id, f.season_id)),
             }),
             prior?.id ?? null,
             input.subjectKind,

@@ -31,6 +31,13 @@ type Copy = {
   presetNone: string;
   saveGrants: string;
   grantsSaved: string;
+  editRights: string;
+  noRights: string;
+  rightsOf: string;
+  whatTheySee: string;
+  coachesOnly: string;
+  othersTitle: string;
+  othersIntro: string;
   groups: Record<string, string>;
   grants: Record<Grant, string>;
   roles: Record<string, string>;
@@ -70,6 +77,13 @@ const fr: Copy = {
   presetNone: "Aucun accès",
   saveGrants: "Enregistrer les accès",
   grantsSaved: "Accès mis à jour.",
+  editRights: "Choisir ses droits",
+  noRights: "Aucun droit : calendrier et sa fiche seulement",
+  rightsOf: "Droits de",
+  whatTheySee: "Un coach ne voit dans son menu que les modules cochés ici. Le reste reste réservé au président.",
+  coachesOnly: "Coachs",
+  othersTitle: "Joueurs et parents",
+  othersIntro: "Les joueurs et parents voient seulement le calendrier, leur fiche, leurs documents et leurs cotisations. Rien à régler ici.",
   groups: {
     people: "Joueurs et personnes",
     teams: "Équipes et présences",
@@ -138,6 +152,13 @@ const nl: Copy = {
   presetNone: "Geen toegang",
   saveGrants: "Toegang opslaan",
   grantsSaved: "Toegang bijgewerkt.",
+  editRights: "Rechten kiezen",
+  noRights: "Geen recht: enkel kalender en eigen fiche",
+  rightsOf: "Rechten van",
+  whatTheySee: "Een coach ziet in zijn menu enkel de modules die hier aangevinkt zijn. De rest blijft voor de voorzitter.",
+  coachesOnly: "Coaches",
+  othersTitle: "Spelers en ouders",
+  othersIntro: "Spelers en ouders zien enkel de kalender, hun fiche, hun documenten en hun lidgeld. Niets in te stellen hier.",
   groups: {
     people: "Spelers en personen",
     teams: "Teams en aanwezigheden",
@@ -205,6 +226,13 @@ const en: Copy = {
   presetNone: "No access",
   saveGrants: "Save access",
   grantsSaved: "Access updated.",
+  editRights: "Choose their rights",
+  noRights: "No right: calendar and own file only",
+  rightsOf: "Rights of",
+  whatTheySee: "A coach only sees in the menu the modules ticked here. The rest stays with the president.",
+  coachesOnly: "Coaches",
+  othersTitle: "Players and parents",
+  othersIntro: "Players and parents only see the calendar, their file, their documents and their dues. Nothing to set here.",
   groups: {
     people: "Players and people",
     teams: "Teams and attendance",

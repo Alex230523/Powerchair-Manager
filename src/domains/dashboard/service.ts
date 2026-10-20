@@ -24,9 +24,11 @@ import {
   metric,
   type AgendaItem,
   type Dashboard,
+  type Deadline,
   type Metric,
   type TodoKey,
 } from "./summary";
+import { presenceRules, readiness } from "./presence";
 
 /**
  * Read-only operational summary for the active context.
@@ -77,6 +79,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
         todos: buildTodos(counts),
         metrics,
         agenda: [],
+        deadlines: [],
         scopes,
       };
     throw e;
@@ -291,10 +294,29 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   ).rows as (Event & { team_name: string | null; place_name: string | null })[];
   const agenda: AgendaItem[] = [];
   let upcoming = 0;
+  const rules = presenceRules(
+    (await c.query("SELECT presence_rules FROM organization WHERE id=$1", [org]))
+      .rows[0]?.presence_rules,
+  );
   for (const e of events) {
     if (!(await canRead(c, a, e))) continue;
     if (e.status === "scheduled") upcoming++;
-    if (agenda.length < 6)
+    if (agenda.length < 8) {
+      // Who answered "present": coaches are the team's coaches (or listed as
+      // coach in the directory), everyone else counts as a player.
+      const present = (
+        await c.query(
+          `SELECT count(*) FILTER (WHERE is_coach)::int AS coaches,count(*) FILTER (WHERE NOT is_coach)::int AS players FROM (
+             SELECT (EXISTS(SELECT 1 FROM team_membership m WHERE m.profile_id=cp.id AND m.team_id=$2 AND m.role IN ('coach','assistant') AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=$3::date AND (m.ends_on IS NULL OR m.ends_on>=$3::date))
+                     OR ('coach'=ANY(cp.directory_roles) AND NOT 'coach'=ANY(cp.former_roles))) AS is_coach
+               FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id JOIN club_person cp ON cp.id=i.profile_id
+              WHERE r.event_id=$1 AND i.withdrawn_at IS NULL AND i.response='present') x`,
+          [e.id, e.team_id, e.starts_at],
+        )
+      ).rows[0] as { coaches: number; players: number } | undefined;
+      const hasRegister = !!(
+        await c.query("SELECT 1 FROM attendance_register WHERE event_id=$1", [e.id])
+      ).rowCount;
       agenda.push({
         id: e.id,
         title: e.title,
@@ -305,10 +327,67 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
         team: e.team_name,
         place: e.place_name,
         responseNeeded: pendingEvents.has(e.id),
+        ...(hasRegister && e.status === "scheduled"
+          ? { readiness: readiness(e.kind, present ?? { players: 0, coaches: 0 }, rules) }
+          : {}),
       });
+    }
   }
   scopes.push("calendar");
   metrics.unshift(metric("upcomingEvents", upcoming, { href: "/calendar" }));
+
+  // Administrative dates of the next 30 days, next to the events.
+  const deadlines: Deadline[] = [];
+  const push = (d: Omit<Deadline, "id">) =>
+    deadlines.push({ id: `${d.kind}:${d.date}:${d.href}`, ...d });
+  if (managesDocuments(a)) {
+    for (const r of (
+      await c.query(
+        "SELECT expires_on::text AS day,count(*)::int AS n FROM club_document WHERE organization_id=$1 AND status='valid' AND expires_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30 AND (NOT sensitive OR $2) GROUP BY expires_on ORDER BY expires_on",
+        [org, a.grants.includes("documents.sensitive")],
+      )
+    ).rows)
+      push({ kind: "documents", date: r.day, title: "", count: r.n, href: "/documents" });
+  } else if (own.length) {
+    for (const r of (
+      await c.query(
+        "SELECT expires_on::text AS day,count(*)::int AS n FROM club_document WHERE organization_id=$1 AND profile_id=ANY($2::uuid[]) AND status='valid' AND expires_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30 GROUP BY expires_on ORDER BY expires_on",
+        [org, own],
+      )
+    ).rows)
+      push({ kind: "documents", date: r.day, title: "", count: r.n, href: "/documents" });
+  }
+  if (club && on("dues") && (has("dues.manage") || has("dues.read") || own.length)) {
+    const mine = !(has("dues.manage") || has("dues.read"));
+    for (const r of (
+      await c.query(
+        "SELECT i.due_on::text AS day,count(DISTINCT d.profile_id)::int AS n,sum(i.amount_cents)::int AS cents FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND i.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30 AND ($2 OR d.profile_id=ANY($3::uuid[])) GROUP BY i.due_on ORDER BY i.due_on",
+        [org, !mine, own],
+      )
+    ).rows)
+      push({ kind: "dues", date: r.day, title: "", count: r.n, cents: r.cents, href: "/dues" });
+  }
+  if (club && on("fundraising")) {
+    const staff = has("dues.manage") || has("dues.read");
+    for (const r of (
+      await c.query(
+        "SELECT p.id,p.name,p.deadline::text AS day FROM fundraising_pot p WHERE p.organization_id=$1 AND p.status='open' AND p.deadline BETWEEN CURRENT_DATE AND CURRENT_DATE+60 AND ($2 OR p.players_join) ORDER BY p.deadline",
+        [org, staff],
+      )
+    ).rows)
+      push({ kind: "fundraising", date: r.day, title: r.name, count: 1, href: "/fundraising" });
+  }
+  if (club && on("trips")) {
+    for (const r of (
+      await c.query(
+        `SELECT t.id,t.title,t.starts_on::text AS day FROM trip t WHERE t.organization_id=$1 AND t.status IN ('planned','confirmed') AND t.starts_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30
+           AND ($2 OR EXISTS(SELECT 1 FROM trip_participant tp WHERE tp.trip_id=t.id AND tp.profile_id=ANY($3::uuid[]))) ORDER BY t.starts_on`,
+        [org, has("calendar.manage") || has("teams.manage") || a.role === "coach", own],
+      )
+    ).rows)
+      push({ kind: "trip", date: r.day, title: r.title, count: 1, href: `/trips/${r.id}` });
+  }
+  deadlines.sort((x, y) => x.date.localeCompare(y.date));
 
   return {
     generatedAt: new Date().toISOString(),
@@ -322,6 +401,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     todos: buildTodos(counts),
     metrics,
     agenda,
+    deadlines: deadlines.slice(0, 8),
     scopes,
   };
 }

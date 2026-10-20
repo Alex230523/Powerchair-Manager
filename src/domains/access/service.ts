@@ -159,6 +159,7 @@ async function readWorkspace(db: Db, p: Principal) {
     members: unknown[];
     invitations: unknown[];
     audit: unknown[];
+    fundraisingOpen: boolean;
   } = {
     user,
     mfaRequired: mfaRequired(),
@@ -175,7 +176,17 @@ async function readWorkspace(db: Db, p: Principal) {
     members: [],
     invitations: [],
     audit: [],
+    fundraisingOpen: false,
   };
+  // Members see "Levée de fonds" only while a pot open to the players exists.
+  if (selected && selected.kind === "club")
+    result.fundraisingOpen =
+      (
+        await db.query(
+          "SELECT 1 FROM fundraising_pot WHERE organization_id=$1 AND status='open' AND players_join LIMIT 1",
+          [selected.organization_id],
+        )
+      ).rows.length > 0;
   if (selected && mfaSatisfied(!!user.twoFactorEnabled)) {
     if (result.permissions.includes("members.read"))
       result.members = (

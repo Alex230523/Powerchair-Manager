@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { Button, Panel } from "./ui";
 import { attendanceCopy } from "./attendance-copy";
+import { AttendanceGrid, gridCopy } from "./attendance-grid";
 import { actuals, responses } from "@/domains/attendance/schema";
 import { kindLabels } from "./calendar-copy";
 import { localAt, shiftLocal, toInstant } from "@/domains/calendar/time";
@@ -193,7 +194,6 @@ export function Attendance({ locale }: { locale: Locale }) {
   return (
     <>
       <main id="main" className="access attendance">
-        <p className="eyebrow">LOT 07</p>
         <h1>{t.title}</h1>
         <p>{t.intro}</p>
         {error && (
@@ -280,33 +280,60 @@ export function Attendance({ locale }: { locale: Locale }) {
           ) : !data?.events.length ? (
             <p>{t.empty}</p>
           ) : (
-            <ul className="plain-list">
-              {data.events.map((v) => (
-                <li key={v.id}>
-                  <Button
-                    onClick={() => {
-                      setSelected(v.id);
-                      setMessage("");
-                    }}
-                  >
-                    {v.title} · {date(v.starts_at)}
-                  </Button>
-                  <p>
-                    {v.team_name} ·{" "}
-                    {v.status === "cancelled"
-                      ? t.cancelled
-                      : v.register?.closed_at
-                        ? t.closed
-                        : v.register
-                          ? t.pending
-                          : t.noRegister}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="muted small">{gridCopy[locale].intro}</p>
+              <AttendanceGrid
+                locale={locale}
+                events={data.events}
+                selected={selected}
+                busy={busy}
+                onSelect={(id) => {
+                  setSelected(id);
+                  setMessage("");
+                  setTimeout(
+                    () => document.getElementById("attendance-event")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                    0,
+                  );
+                }}
+                onMark={(id, version, actual, closed) =>
+                  void command({
+                    action: "mark",
+                    id,
+                    expectedVersion: version,
+                    actual,
+                    // A closed register needs a reason: the quick grid writes a standard one.
+                    reason: closed ? t.correction : "",
+                  })
+                }
+              />
+              <details className="muted small">
+                <summary>{gridCopy[locale].legend}</summary>
+                <p>
+                  {(["present", "absent", "late", "early", "unchecked"] as const)
+                    .map((k) => `${gridCopy[locale].short[k]} = ${gridCopy[locale].actuals[k]}`)
+                    .join(" · ")}
+                  {" · "}
+                  {(["present", "absent", "uncertain", "none"] as const)
+                    .map((k) => `${gridCopy[locale].answer[k]} = ${gridCopy[locale].responses[k]}`)
+                    .join(" · ")}
+                </p>
+              </details>
+              <ul className="plain-list grid-missing">
+                {data.events
+                  .filter((v) => v.manage && !v.register && v.status === "scheduled")
+                  .map((v) => (
+                    <li key={v.id}>
+                      <button type="button" className="text-button" onClick={() => { setSelected(v.id); setMessage(""); }}>
+                        {v.title} · {date(v.starts_at)} · {t.noRegister}
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </>
           )}
         </Panel>
         {e && (
+          <div id="attendance-event">
           <Panel title={e.title}>
             <p>
               {date(e.starts_at)} — {date(e.ends_at)}
@@ -599,6 +626,7 @@ export function Attendance({ locale }: { locale: Locale }) {
               ))}
             </ol>
           </Panel>
+          </div>
         )}
         <Panel title={t.stats}>
           <p>{t.statHint}</p>

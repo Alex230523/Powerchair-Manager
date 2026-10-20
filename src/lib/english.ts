@@ -715,6 +715,7 @@ export const english = {
     respond: "Save my response",
     mark: "Save attendance",
     reason: "Correction reason (required after closure)",
+    correction: "Corrected from the attendance table",
     withdrawn: "Invitation withdrawn",
     remind: "Remind people who have not replied",
     close: "Close register",

@@ -40,7 +40,44 @@ export const commandSchema = z.discriminatedUnion("action", [
     version: z.number().int().positive(),
     reason: z.string().trim().min(5).max(500),
   }),
+  /** Money received for a receivable: written in the ledger (income, dues). */
+  z.object({
+    action: z.literal("pay"),
+    id: z.uuid(),
+    amountCents: z.number().int().min(1).max(100000000),
+    method: z.enum(["transfer", "cash", "card", "other"]),
+    occurredOn: z.iso.date(),
+    reference: z.string().trim().max(160).default(""),
+  }),
 ]);
+/** What a receivable still owes, instalment by instalment, after the payments received. */
+export function settle(
+  installments: { ordinal: number; due_on: string; amount_cents: number }[],
+  paidCents: number,
+) {
+  let left = Math.max(0, paidCents);
+  return installments.map((i) => {
+    const covered = Math.min(left, i.amount_cents);
+    left -= covered;
+    return { ...i, paid_cents: covered, left_cents: i.amount_cents - covered };
+  });
+}
+export type DuesState = "paid" | "late" | "due_soon" | "on_track" | "cancelled" | "exempt";
+/** One word for the row of a player: paid, late, due within 14 days, on track. */
+export function duesState(
+  d: { status: string; net_cents: number },
+  settled: { due_on: string; left_cents: number }[],
+  today: string,
+): DuesState {
+  if (d.status === "cancelled") return "cancelled";
+  if (d.net_cents === 0) return "exempt";
+  const open = settled.filter((i) => i.left_cents > 0);
+  if (!open.length) return "paid";
+  if (open.some((i) => i.due_on < today)) return "late";
+  const soon = new Date(today + "T12:00:00Z");
+  soon.setUTCDate(soon.getUTCDate() + 14);
+  return open[0].due_on <= soon.toISOString().slice(0, 10) ? "due_soon" : "on_track";
+}
 export type Command = z.infer<typeof commandSchema>;
 export function schedule(cents: number, count: number, first: string) {
   if (
