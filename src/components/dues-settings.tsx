@@ -21,8 +21,10 @@ type Plan = {
   sibling_second_percent: number;
   sibling_next_percent: number;
   issued_count: number;
+  team_id: string | null;
+  team_name: string | null;
 };
-type View = { manage: boolean; plans: Plan[]; seasons: { id: string; name: string }[] };
+type View = { manage: boolean; plans: Plan[]; seasons: { id: string; name: string }[]; teams: { id: string; name: string; season_id: string }[] };
 type Post = (url: string, body: Record<string, unknown>, done: string) => Promise<void | boolean>;
 
 export function DuesSettingsPanel({
@@ -74,6 +76,7 @@ export function DuesSettingsPanel({
           amountCents: Math.round(Number(String(f.get("amount") ?? "0").replace(",", ".")) * 100),
           maxInstallments: Number(f.get("max") || 1),
           firstDue: String(f.get("due") ?? ""),
+          teamId: String(f.get("team") ?? "") || null,
         }
       : {
           action: "plan",
@@ -82,6 +85,7 @@ export function DuesSettingsPanel({
           amountCents: Math.round(Number(String(f.get("amount") ?? "0").replace(",", ".")) * 100),
           maxInstallments: Number(f.get("max") || 1),
           firstDue: String(f.get("due") ?? ""),
+          teamId: String(f.get("team") ?? "") || null,
         };
     const second = Number(f.get("second") || 0),
       next = Number(f.get("next") || 0);
@@ -122,6 +126,7 @@ export function DuesSettingsPanel({
                   <tr key={p.id}>
                     <th scope="row">
                       {p.category}
+                      {p.team_name && <span className="muted small"> · {p.team_name}</span>}
                       <span className="muted small"> · {p.issued_count ? t.issued.replace("{n}", String(p.issued_count)) : t.none}</span>
                     </th>
                     <td>{p.season_name}</td>
@@ -223,10 +228,23 @@ export function DuesSettingsPanel({
                 <input name="max" type="number" min={1} max={12} required defaultValue={editing === "new" ? 4 : editing.max_installments} />
               </label>
             </div>
-            <label>
-              {t.firstDue}
-              <input name="due" type="date" required defaultValue={editing === "new" ? "" : editing.first_due} />
-            </label>
+            <div className="form-pair">
+              <label>
+                {t.firstDue}
+                <input name="due" type="date" required defaultValue={editing === "new" ? "" : editing.first_due} />
+              </label>
+              <label>
+                {t.team}
+                <select name="team" defaultValue={editing === "new" ? "" : (editing.team_id ?? "")}>
+                  <option value="">{t.wholeClub}</option>
+                  {data.teams
+                    .filter((x) => editing === "new" || x.season_id === editing.season_id)
+                    .map((x) => (
+                      <option key={x.id} value={x.id}>{x.name}</option>
+                    ))}
+                </select>
+              </label>
+            </div>
             <p className="muted small">{t.nextDues}</p>
             {editing !== "new" && (
               <>

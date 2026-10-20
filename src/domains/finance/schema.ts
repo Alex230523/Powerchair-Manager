@@ -30,10 +30,14 @@ export const commandSchema = z.discriminatedUnion("action", [
     receivableId: z.uuid().nullable().optional(),
     /** Trip this expense or income belongs to (budget against actual). */
     tripId: z.uuid().nullable().optional(),
+    /** Team the line belongs to (wave 12); null or absent means the whole club. */
+    teamId: z.uuid().nullable().optional(),
   }),
   z.object({
     action: z.literal("budget"),
     season: z.string().regex(/^\d{4}-\d{2}$/),
+    /** Budget of one team (wave 12), or of the whole club when absent. */
+    teamId: z.uuid().nullable().optional(),
     lines: z
       .array(
         z.object({

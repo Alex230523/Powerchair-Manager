@@ -231,7 +231,7 @@ export async function duesView(db: Pool, p: Principal) {
       plans: s.readAll
         ? (
             await s.c.query(
-              "SELECT p.*,p.first_due::text AS first_due,se.name AS season_name,(SELECT count(*)::int FROM dues_receivable d WHERE d.plan_id=p.id AND d.status='open') AS issued_count FROM dues_plan p JOIN season se ON se.id=p.season_id WHERE p.organization_id=$1 ORDER BY p.created_at DESC",
+              "SELECT p.*,p.first_due::text AS first_due,se.name AS season_name,t.name AS team_name,(SELECT count(*)::int FROM dues_receivable d WHERE d.plan_id=p.id AND d.status='open') AS issued_count FROM dues_plan p JOIN season se ON se.id=p.season_id LEFT JOIN team t ON t.id=p.team_id WHERE p.organization_id=$1 ORDER BY p.created_at DESC",
               [o],
             )
           ).rows
@@ -243,6 +243,10 @@ export async function duesView(db: Pool, p: Principal) {
               [o],
             )
           ).rows
+        : [],
+      // Teams of the open seasons, for a rate by team (wave 12).
+      teams: s.manage
+        ? ((await s.c.query("SELECT id,name,season_id FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [o])).rows as { id: string; name: string; season_id: string }[])
         : [],
       profiles: s.manage
         ? (
@@ -350,9 +354,11 @@ export async function duesExecute(
           ).rowCount
         )
           throw new AccessError("NOT_FOUND", 404);
+        if (cmd.teamId && !(await s.c.query("SELECT 1 FROM team WHERE id=$1 AND organization_id=$2 AND season_id=$3", [cmd.teamId, o, cmd.seasonId])).rowCount)
+          throw new AccessError("NOT_FOUND", 404);
         const row = (
           await s.c.query(
-            "INSERT INTO dues_plan(organization_id,season_id,category,amount_cents,max_installments,first_due) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
+            "INSERT INTO dues_plan(organization_id,season_id,category,amount_cents,max_installments,first_due,team_id) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *",
             [
               o,
               cmd.seasonId,
@@ -360,6 +366,7 @@ export async function duesExecute(
               cmd.amountCents,
               cmd.maxInstallments,
               cmd.firstDue,
+              cmd.teamId ?? null,
             ],
           )
         ).rows[0];
@@ -374,10 +381,12 @@ export async function duesExecute(
           )
         ).rows[0].n as number;
         if (issued > 0 && !cmd.confirm) throw new AccessError("SEASON_STARTED", 409);
+        if (cmd.teamId && !(await s.c.query("SELECT 1 FROM team t JOIN dues_plan p ON p.season_id=t.season_id WHERE t.id=$1 AND t.organization_id=$2 AND p.id=$3", [cmd.teamId, o, cmd.id])).rowCount)
+          throw new AccessError("NOT_FOUND", 404);
         const row = (
           await s.c.query(
-            "UPDATE dues_plan SET category=$3,amount_cents=$4,max_installments=$5,first_due=$6,version=version+1 WHERE id=$1 AND organization_id=$2 AND NOT archived RETURNING *",
-            [cmd.id, o, cmd.category, cmd.amountCents, cmd.maxInstallments, cmd.firstDue],
+            "UPDATE dues_plan SET category=$3,amount_cents=$4,max_installments=$5,first_due=$6,team_id=$7,version=version+1 WHERE id=$1 AND organization_id=$2 AND NOT archived RETURNING *",
+            [cmd.id, o, cmd.category, cmd.amountCents, cmd.maxInstallments, cmd.firstDue, cmd.teamId ?? null],
           )
         ).rows[0];
         if (!row) throw new AccessError("NOT_FOUND", 404);
