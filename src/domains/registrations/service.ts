@@ -20,6 +20,7 @@ import {
   type Mapping,
   type Status,
 } from "./schema";
+import { logSensitiveAccess } from "../club/governance";
 import { publish } from "../notifications/queue";
 import { seal, unseal } from "../notifications/crypto";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -345,6 +346,17 @@ export async function registrationView(
         [org],
       )
     ).rows;
+    // Opening the inbox with confidential answers visible is one journal line.
+    const revealed = rows.filter((r) => r.confidential_answers).length;
+    if (sensitive && revealed)
+      await logSensitiveAccess(
+        c,
+        org,
+        p.userId,
+        null,
+        "registration_confidential",
+        `inbox:${revealed}`,
+      );
     return {
       context,
       forms: (

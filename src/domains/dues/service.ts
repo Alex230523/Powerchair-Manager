@@ -12,7 +12,14 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { ownProfiles, today, type Actor } from "../calendar/access";
 import { commandSchema, schedule, type Command } from "./schema";
 export { commandSchema };
-type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean };
+type Scope = {
+  c: PoolClient;
+  p: Principal;
+  a: Actor;
+  manage: boolean;
+  /** Sees every debt without changing anything (dues.read). */
+  readAll: boolean;
+};
 async function scope<T>(
   db: Pool,
   p: Principal,
@@ -48,6 +55,11 @@ async function scope<T>(
       manage:
         mfaSatisfied(a.twoFactorEnabled) &&
         permissions(a.role, a.grants).includes("dues.manage"),
+      readAll:
+        mfaSatisfied(a.twoFactorEnabled) &&
+        permissions(a.role, a.grants).some(
+          (g) => g === "dues.manage" || g === "dues.read",
+        ),
     });
     await c.query("COMMIT");
     return out;
@@ -108,12 +120,12 @@ async function writeSchedule(
 }
 export async function duesView(db: Pool, p: Principal) {
   return scope(db, p, async (s) => {
-    const own = s.manage ? [] : [...(await ownProfiles(s.c, s.a))],
+    const own = s.readAll ? [] : [...(await ownProfiles(s.c, s.a))],
       o = s.a.organization_id;
     const debts = (
       await s.c.query(
         "SELECT d.*,c.full_name,se.name AS season_name FROM dues_receivable d JOIN club_person c ON c.id=d.profile_id JOIN season se ON se.id=d.season_id WHERE d.organization_id=$1 AND ($2 OR d.profile_id=ANY($3::uuid[])) ORDER BY d.created_at DESC",
-        [o, s.manage, own],
+        [o, s.readAll, own],
       )
     ).rows;
     for (const d of debts) {
@@ -143,8 +155,9 @@ export async function duesView(db: Pool, p: Principal) {
     return {
       organizationId: o,
       manage: s.manage,
+      readOnly: s.readAll && !s.manage,
       debts,
-      plans: s.manage
+      plans: s.readAll
         ? (
             await s.c.query(
               "SELECT *,first_due::text AS first_due FROM dues_plan WHERE organization_id=$1 ORDER BY created_at DESC",

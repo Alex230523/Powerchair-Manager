@@ -152,6 +152,45 @@ test("new club, federation and referee pages load and pass axe", async ({
       );
       expect(overflow, path).toBeLessThanOrEqual(1);
     }
+
+    // Global search: Ctrl+K opens it, a name leads to the player.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/fr/players");
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await page.keyboard.press("Control+k");
+    const box = page.getByRole("combobox", {
+      name: /Rechercher un joueur/,
+    });
+    await expect(box).toBeFocused();
+    await box.fill("pages pla");
+    await expect(page.getByRole("option", { name: /Pages player/ })).toBeVisible();
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include(".command-palette")
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations.map((v) => v.id),
+    ).toEqual([]);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/fr\/players\/[0-9a-f-]{36}$/);
+
+    // Switching a module off removes it from the menu; switching it back restores it.
+    await db.query(
+      "UPDATE organization SET disabled_modules='{equipment}' WHERE id=$1",
+      [club],
+    );
+    await page.goto("/fr/equipment");
+    await expect(
+      page.getByText(/Ce module est désactivé pour votre club/),
+    ).toBeVisible();
+    await expect(
+      page.locator("nav").getByRole("link", { name: "Matériel" }),
+    ).toHaveCount(0);
+    await db.query(
+      "UPDATE organization SET disabled_modules='{}' WHERE id=$1",
+      [club],
+    );
   } finally {
     await db.end();
   }

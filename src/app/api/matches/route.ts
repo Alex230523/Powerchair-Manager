@@ -5,13 +5,13 @@ import {
   matchExecute,
   clubCommand,
 } from "@/domains/competitions/service";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const id = new URL(request.url).searchParams.get("id");
-    const p = await principal(request);
+    const p = await principalIn(request, "matches");
     return Response.json(
       id
         ? await matchDetail(getDb(), p, z.uuid().parse(id))
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     origin(request);
-    const p = await principal(request),
+    const p = await principalIn(request, "matches"),
       body = JSON.parse(
         new TextDecoder().decode(await bounded(request, 30000)),
       );

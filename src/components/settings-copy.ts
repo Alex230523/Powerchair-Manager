@@ -95,6 +95,7 @@ const fr: Copy = {
     "documents.sensitive": "Documents sensibles",
     "notifications.manage": "Gérer les notifications",
     "dues.manage": "Gérer cotisations et finances",
+    "dues.read": "Consulter cotisations et finances",
     "equipment.manage": "Gérer le matériel",
   },
   roles: {
@@ -162,6 +163,7 @@ const nl: Copy = {
     "documents.sensitive": "Gevoelige documenten",
     "notifications.manage": "Meldingen beheren",
     "dues.manage": "Bijdragen en financiën beheren",
+    "dues.read": "Bijdragen en financiën raadplegen",
     "equipment.manage": "Materiaal beheren",
   },
   roles: {
@@ -228,6 +230,7 @@ const en: Copy = {
     "documents.sensitive": "Sensitive documents",
     "notifications.manage": "Manage notifications",
     "dues.manage": "Manage dues and finance",
+    "dues.read": "View dues and finance",
     "equipment.manage": "Manage equipment",
   },
   roles: {
@@ -268,7 +271,7 @@ export const grantGroups: { key: string; grants: Grant[] }[] = [
       "notifications.manage",
     ],
   },
-  { key: "money", grants: ["dues.manage", "equipment.manage"] },
+  { key: "money", grants: ["dues.read", "dues.manage", "equipment.manage"] },
   {
     key: "admin",
     grants: ["members.read", "invitations.create", "audit.read"],

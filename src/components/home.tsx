@@ -153,7 +153,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           </h1>
           <p>{today}</p>
         </div>
-        {data.context && (
+        {data.context && data.context.statistics !== false && (
           <Link className="button secondary" href={href("/statistics")}>
             <Icon name="chart" />
             {s.statistics}

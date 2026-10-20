@@ -6,7 +6,7 @@ import {
   messagesExecute,
 } from "@/domains/messages/service";
 import {
-  principal,
+  principalIn,
   origin,
   bounded,
   noStore,
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return Response.json(
       await messagesView(
         getDb(),
-        await principal(request),
+        await principalIn(request, "messages"),
         id ? z.uuid().parse(id) : undefined,
       ),
       { headers: noStore },
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     origin(request);
-    const p = await principal(request);
+    const p = await principalIn(request, "messages");
     const body = JSON.parse(
       new TextDecoder().decode(await bounded(request, 30000)),
     );

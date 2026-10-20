@@ -242,20 +242,23 @@ export function Finance({ locale }: { locale: Locale }) {
             >
               {t.export}
             </button>
-            <button
-              className="button"
-              type="button"
-              aria-expanded={adding}
-              onClick={() => setAdding(!adding)}
-            >
-              {adding ? t.close : t.add}
-            </button>
+            {view?.can_edit && (
+              <button
+                className="button"
+                type="button"
+                aria-expanded={adding}
+                onClick={() => setAdding(!adding)}
+              >
+                {adding ? t.close : t.add}
+              </button>
+            )}
           </div>
         )}
       </div>
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
+      {view && !view.can_edit && <p className="notice">{x.readOnly}</p>}
 
       {view && s && (
         <>
@@ -464,14 +467,16 @@ export function Finance({ locale }: { locale: Locale }) {
               <h2 id="finance-budget">
                 {x.budget} · {view.season.label}
               </h2>
-              <button
-                type="button"
-                className="button secondary"
-                aria-expanded={editingBudget}
-                onClick={() => setEditingBudget(!editingBudget)}
-              >
-                {editingBudget ? t.close : x.editBudget}
-              </button>
+              {view.can_edit && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  aria-expanded={editingBudget}
+                  onClick={() => setEditingBudget(!editingBudget)}
+                >
+                  {editingBudget ? t.close : x.editBudget}
+                </button>
+              )}
             </div>
             <p className="muted">{x.budgetIntro}</p>
             {editingBudget ? (
@@ -672,7 +677,7 @@ export function Finance({ locale }: { locale: Locale }) {
                                 >
                                   {r.filename}
                                 </a>
-                                <button
+                                {view.can_edit && <button
                                   type="button"
                                   className="text-button"
                                   disabled={busy}
@@ -685,11 +690,11 @@ export function Finance({ locale }: { locale: Locale }) {
                                   }
                                 >
                                   ×
-                                </button>
+                                </button>}
                               </li>
                             ))}
                           </ul>
-                          {!e.cancelled_at && (
+                          {!e.cancelled_at && view.can_edit && (
                             <label className="text-button file-button">
                               {x.attach}
                               <span className="sr-only">
@@ -711,6 +716,7 @@ export function Finance({ locale }: { locale: Locale }) {
                         </td>
                         <td>
                           {!e.cancelled_at &&
+                            view.can_edit &&
                             (cancelling === e.id ? (
                               <form
                                 className="inline-form"

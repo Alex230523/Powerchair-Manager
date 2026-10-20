@@ -37,6 +37,7 @@ const paths = {
   wrench:
     "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z",
   team: "M12 2.5 15 8l6 .9-4.5 4.3 1.1 6.3L12 16.6l-5.6 2.9 1.1-6.3L3 8.9 9 8z",
+  search: "M10.5 17.5a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm5-2L21 21",
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -57,33 +58,24 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     </svg>
   );
 }
-// Brand mark: a wheel with a ball, drawn for the orange tile.
-export function BrandMark({ size = 24 }: { size?: number }) {
+// PCM wordmark. Letters follow the text colour (white on the dark sidebar,
+// near black elsewhere); the orange stroke of the C keeps the brand colour.
+export const logoPaths = {
+  letters:
+    "M1.8 249.5L75 249.8L133 172.8L284.2 172.8L306 168.8L328.5 158.8L344.2 147.8L357.8 134.2L369.5 117.8L377.8 100.5L383.8 77L384.8 59.2L381.8 43L376.8 31.8L370.8 23.2L358.2 12.2L346.2 6L330 2L57.8 1.8L103.5 60.5L112.5 66.5L117.2 67.8L297.8 67.8L304 69.8L307.5 73L310 78.5L310 86L304.2 98L297.2 104L290 107L109.2 107L98.8 109L91.5 112.2L84.2 117L76 126.5ZM426.2 38L409.5 60.2L399.2 82.2L376 173.2L374.5 194.5L377 209.2L384.2 224.8L393.2 234.8L407.5 243.8L417.8 247.5L430.2 249.8L624.5 250L649.2 249L664.8 187.5L664.5 184.2L460.5 184L455 181L451 175.5L450 166.2L474.5 68.5L450.8 67.2L453 65L453.5 66.5L462.2 66.2L458.8 64.8L457.8 60.5L455.2 61.5L467.2 45.5L468.5 45L468 47.8L471.2 44.2L472.8 40.2L468.2 44.8L499 3.2L482.8 5L462.2 12L443.5 23ZM722 2.2L660.8 249.8L732 249.2L766.8 107L768.2 105L845.5 218.2L978 110L943 249.5L1019.8 249.2L1066.8 76.2L1085 3L1017 2L1004.8 6L872.8 117L796 5L788 1.8Z",
+  accent: "M450 68.5L655 69L707.8 4.8L708.2 2.5L500 2L450.2 66.5Z",
+};
+export function BrandLogo({ height = 24 }: { height?: number }) {
   return (
     <svg
       aria-hidden="true"
       focusable="false"
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
+      height={height}
+      width={Math.round((height * 1087) / 252)}
+      viewBox="0 0 1087 252"
     >
-      <circle cx="13" cy="17" r="9" stroke="#1c1917" strokeWidth="2.6" />
-      <circle cx="13" cy="17" r="2.4" fill="#1c1917" />
-      <path
-        d="M13 8v6.6M13 19.4V26M4 17h6.6M15.4 17H22"
-        stroke="#1c1917"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <circle
-        cx="25"
-        cy="8"
-        r="4.4"
-        fill="#fff"
-        stroke="#1c1917"
-        strokeWidth="1.8"
-      />
+      <path fill="currentColor" d={logoPaths.letters} />
+      <path fill="#fa6f1d" d={logoPaths.accent} />
     </svg>
   );
 }

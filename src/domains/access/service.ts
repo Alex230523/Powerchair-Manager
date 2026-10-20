@@ -76,13 +76,14 @@ async function account(db: Db, p: Principal) {
 }
 async function active(db: Db, p: Principal) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
     [p.sessionId, p.userId],
   );
   if (!result.rowCount) throw new AccessError("CONTEXT_REQUIRED");
   return result.rows[0] as Mandate & {
     organization_name: string;
     kind: "club" | "federation";
+    disabled_modules: string[];
   };
 }
 function requirePermission(
@@ -102,10 +103,11 @@ async function audit(
   actor: string,
   action: string,
   target: string,
+  details?: Record<string, unknown>,
 ) {
   const event = await db.query(
-    "INSERT INTO audit_log(organization_id,actor_id,action,target_id) VALUES($1,$2,$3,$4) RETURNING id",
-    [org, actor, action, target],
+    "INSERT INTO audit_log(organization_id,actor_id,action,target_id,details) VALUES($1,$2,$3,$4,$5) RETURNING id",
+    [org, actor, action, target, details ? JSON.stringify(details) : null],
   );
   const { publishAuditEvent } = await import("../notifications/events");
   await publishAuditEvent(db, org, action, target, event.rows[0].id);
@@ -457,7 +459,7 @@ export async function execute(
         // non-administrator mandate may do, never beyond their own permissions.
         const target = (
           await client.query(
-            "SELECT id,user_id,role FROM role_assignment WHERE id=$1 AND organization_id=$2 AND revoked_at IS NULL FOR UPDATE",
+            "SELECT id,user_id,role,grants FROM role_assignment WHERE id=$1 AND organization_id=$2 AND revoked_at IS NULL FOR UPDATE",
             [command.id, context.organization_id],
           )
         ).rows[0];
@@ -471,12 +473,19 @@ export async function execute(
           "UPDATE role_assignment SET grants=$3 WHERE id=$1 AND organization_id=$2",
           [command.id, context.organization_id, [...new Set(command.grants)]],
         );
+        // The rights journal shows what changed, not only that something did.
         await audit(
           client,
           context.organization_id,
           p.userId,
           "mandate.grants",
           command.id,
+          {
+            userId: target.user_id,
+            role: target.role,
+            before: target.grants ?? [],
+            after: [...new Set(command.grants)],
+          },
         );
       } else if (command.action === "membership") {
         const changed = await client.query(

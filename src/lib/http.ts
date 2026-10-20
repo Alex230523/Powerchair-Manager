@@ -3,11 +3,20 @@
 import { getAuth } from "@/lib/auth-server";
 import { AccessError } from "@/domains/access/service";
 import { ZodError } from "zod";
+import { getDb } from "@/lib/db";
+import { assertModule } from "@/domains/club/governance";
+import type { OptionalModule } from "@/domains/access/rights";
 export const noStore = { "Cache-Control": "private, no-store" };
 export async function principal(request: Request) {
   const s = await getAuth().api.getSession({ headers: request.headers });
   if (!s) throw new AccessError("UNAUTHENTICATED", 401);
   return { userId: s.user.id, sessionId: s.session.id };
+}
+/** Session of a route that belongs to a module the club may switch off. */
+export async function principalIn(request: Request, module: OptionalModule) {
+  const p = await principal(request);
+  await assertModule(getDb(), p, module);
+  return p;
 }
 export function origin(request: Request) {
   if (request.headers.get("origin") !== process.env.BETTER_AUTH_URL)

@@ -2,6 +2,7 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { Pool, type PoolClient } from "pg";
 import { randomUUID, createHash } from "node:crypto";
 import { z } from "zod";
+import { logSensitiveAccess } from "../club/governance";
 import {
   account,
   active,
@@ -813,6 +814,16 @@ export async function documentDownload(
       )
         throw new AccessError("NOT_FOUND", 404);
       await log(s.c, d, p.userId, "downloaded");
+      // Staff opening a health document also writes the health access journal.
+      if (d.sensitive && s.a.grants.includes("documents.sensitive"))
+        await logSensitiveAccess(
+          s.c,
+          d.organization_id,
+          p.userId,
+          d.profile_id ?? null,
+          "sensitive_document",
+          versionId,
+        );
       const body = unseal<{ data: string }>(
         f.content_ciphertext,
         "document:" + versionId,

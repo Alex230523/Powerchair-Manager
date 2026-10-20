@@ -27,6 +27,7 @@ export const delegable = [
   "dues.manage",
   "equipment.manage",
   "people.sensitive",
+  "dues.read",
 ] as const;
 export type Permission =
   "organization.read" | "mandates.manage" | (typeof delegable)[number];
@@ -82,6 +83,7 @@ export function permissions(
                 p !== "documents.manage" &&
                 p !== "attendance.manage" &&
                 p !== "dues.manage" &&
+                p !== "dues.read" &&
                 p !== "equipment.manage"),
           ),
         ]

@@ -88,6 +88,8 @@ export type Dashboard = {
     organization: string;
     kind: "club" | "federation";
     role: string;
+    /** False when the club switched the statistics module off. */
+    statistics?: boolean;
   };
   todos: Todo[];
   metrics: Metric[];

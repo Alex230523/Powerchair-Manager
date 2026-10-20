@@ -15,6 +15,7 @@ import { docAccess, type Doc } from "../documents/access";
 import { chairsFor } from "../equipment/service";
 import { playerMatchStats } from "../competitions/service";
 import { seal, unseal } from "../notifications/crypto";
+import { logSensitiveAccess } from "../club/governance";
 import {
   attendanceSummary,
   commandSchema,
@@ -81,7 +82,10 @@ function rightsFor(s: PeopleScope, all: Records, v: Visibility, id: string) {
           s.rights.includes("people.manage"))) ||
       coachOf,
     editPosition: mfa && s.rights.includes("teams.manage"),
-    viewMoney: own || !!relation || (mfa && s.rights.includes("dues.manage")),
+    viewMoney:
+      own ||
+      !!relation ||
+      (mfa && (s.rights.includes("dues.manage") || s.rights.includes("dues.read"))),
   };
 }
 
@@ -190,8 +194,16 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         ? unseal<Confidential>(supportRow.confidential_ciphertext, aad(id))
         : { impairment: "", medical_notes: "" }
       : null;
+    // Staff reading someone else's health data leaves a line in the journal.
+    if (
+      can.viewConfidential &&
+      supportRow?.confidential_ciphertext &&
+      !can.own &&
+      !can.guardian
+    )
+      await logSensitiveAccess(c, org, s.p.userId, id, "player_health");
 
-    const actor = { ...s.context, twoFactorEnabled: !!s.user.twoFactorEnabled };
+    const actor ={ ...s.context, twoFactorEnabled: !!s.user.twoFactorEnabled };
     const documents = [];
     for (const d of (
       await c.query(

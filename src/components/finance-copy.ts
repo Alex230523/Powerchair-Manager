@@ -251,6 +251,8 @@ export const financeExtras = {
     attached: "Justificatif ajouté.",
     removeReceipt: "Retirer",
     budget: "Budget de la saison",
+    readOnly:
+      "Accès en lecture seule : vous consultez les comptes sans pouvoir les modifier.",
     budgetIntro:
       "Montants prévus par catégorie, comparés au réel. Un écart positif est favorable au club.",
     planned: "Prévu",
@@ -288,6 +290,8 @@ export const financeExtras = {
     attached: "Bewijsstuk toegevoegd.",
     removeReceipt: "Verwijderen",
     budget: "Budget van het seizoen",
+    readOnly:
+      "Alleen-lezen: u raadpleegt de rekeningen zonder ze te kunnen wijzigen.",
     budgetIntro:
       "Geplande bedragen per categorie, vergeleken met de realiteit. Een positief verschil is gunstig voor de club.",
     planned: "Gepland",
@@ -325,6 +329,7 @@ export const financeExtras = {
     attached: "Receipt attached.",
     removeReceipt: "Remove",
     budget: "Season budget",
+    readOnly: "Read-only access: you can see the accounts but not change them.",
     budgetIntro:
       "Planned amounts per category compared with actuals. A positive gap is good for the club.",
     planned: "Planned",

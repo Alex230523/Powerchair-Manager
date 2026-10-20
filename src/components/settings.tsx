@@ -3,7 +3,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { isAdmin, type Role } from "@/domains/access/policy";
-import { settingsCopy, grantGroups, presets } from "./settings-copy";
+import { settingsCopy } from "./settings-copy";
+import { builtInProfiles, type Grant } from "@/domains/access/rights";
+import {
+  ModuleRights,
+  ModulesPanel,
+  ProfilesPanel,
+  Journal,
+  type Governance,
+} from "./governance";
+import { governanceCopy } from "./governance-copy";
 import { errors } from "./access-copy";
 
 type Member = {
@@ -50,8 +59,10 @@ type PeopleState = {
  * team a coach follows, and the "I also coach" switch.
  */
 export function Settings({ locale }: { locale: Locale }) {
-  const t = settingsCopy[locale];
+  const t = settingsCopy[locale],
+    g = governanceCopy[locale];
   const [ws, setWs] = useState<WorkspaceState | null>(null),
+    [gov, setGov] = useState<Governance | null>(null),
     [people, setPeople] = useState<PeopleState | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
@@ -63,30 +74,35 @@ export function Settings({ locale }: { locale: Locale }) {
     [locale, t.unavailable],
   );
   const load = useCallback(async () => {
-    const [w, p] = await Promise.all([
+    const [w, p, gv] = await Promise.all([
       fetch("/api/workspace", { cache: "no-store" }),
       fetch("/api/people", { cache: "no-store" }),
+      fetch("/api/governance", { cache: "no-store" }),
     ]);
     if (!w.ok) throw new Error("UNAVAILABLE");
     const wv = (await w.json()) as WorkspaceState;
     setWs(wv);
     setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));
     setPeople(p.ok ? await p.json() : null);
+    setGov(gv.ok ? await gv.json() : null);
   }, []);
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       fetch("/api/workspace", { cache: "no-store" }),
       fetch("/api/people", { cache: "no-store" }),
+      fetch("/api/governance", { cache: "no-store" }),
     ])
-      .then(async ([w, p]) => {
+      .then(async ([w, p, gv]) => {
         if (!w.ok) throw new Error("UNAVAILABLE");
         const wv = (await w.json()) as WorkspaceState;
         const pv = p.ok ? ((await p.json()) as PeopleState) : null;
+        const gov = gv.ok ? ((await gv.json()) as Governance) : null;
         if (cancelled) return;
         setWs(wv);
         setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));
         setPeople(pv);
+        setGov(gov);
       })
       .catch((e: Error) => {
         if (!cancelled) setError(failure(e.message));
@@ -227,12 +243,10 @@ export function Settings({ locale }: { locale: Locale }) {
             <ul className="grant-list">
               {members.map((m) => {
                 const chosen = new Set(draft[m.id] ?? m.grants);
-                const toggle = (g: string) =>
+                const apply = (list: readonly string[]) =>
                   setDraft({
                     ...draft,
-                    [m.id]: chosen.has(g)
-                      ? [...chosen].filter((x) => x !== g)
-                      : [...chosen, g],
+                    [m.id]: list.filter((x) => own.has(x)),
                   });
                 return (
                   <li key={m.id} className="grant-card">
@@ -286,52 +300,40 @@ export function Settings({ locale }: { locale: Locale }) {
                     <div
                       className="preset-row"
                       role="group"
-                      aria-label={`${t.presets} : ${m.name}`}
+                      aria-label={`${g.apply} : ${m.name}`}
                     >
                       <span className="muted">{t.presets}</span>
-                      {(["field", "head", "treasurer", "none"] as const).map(
-                        (k) => (
-                          <button
-                            key={k}
-                            type="button"
-                            className="chip-button"
-                            onClick={() =>
-                              setDraft({
-                                ...draft,
-                                [m.id]: presets[k].filter((g) => own.has(g)),
-                              })
-                            }
-                          >
-                            {
-                              {
-                                field: t.presetField,
-                                head: t.presetHead,
-                                treasurer: t.presetTreasurer,
-                                none: t.presetNone,
-                              }[k]
-                            }
-                          </button>
-                        ),
-                      )}
-                    </div>
-                    <div className="grant-groups">
-                      {grantGroups.map((group) => (
-                        <fieldset key={group.key}>
-                          <legend>{t.groups[group.key]}</legend>
-                          {group.grants.map((g) => (
-                            <label key={g} className="check">
-                              <input
-                                type="checkbox"
-                                checked={chosen.has(g)}
-                                disabled={!own.has(g)}
-                                onChange={() => toggle(g)}
-                              />
-                              {t.grants[g]}
-                            </label>
-                          ))}
-                        </fieldset>
+                      {Object.keys(builtInProfiles).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className="chip-button"
+                          onClick={() => apply(builtInProfiles[k])}
+                        >
+                          {g.profiles[k]}
+                        </button>
+                      ))}
+                      {(gov?.profiles ?? []).map((x) => (
+                        <button
+                          key={x.id}
+                          type="button"
+                          className="chip-button"
+                          data-club="true"
+                          onClick={() => apply(x.grants)}
+                        >
+                          {x.name}
+                        </button>
                       ))}
                     </div>
+                    <ModuleRights
+                      locale={locale}
+                      id={m.id}
+                      grants={[...chosen]}
+                      own={own}
+                      onChange={(next: Grant[]) =>
+                        setDraft({ ...draft, [m.id]: next })
+                      }
+                    />
                     <button
                       type="button"
                       className="button"
@@ -342,7 +344,7 @@ export function Settings({ locale }: { locale: Locale }) {
                           {
                             action: "grants",
                             id: m.id,
-                            grants: [...chosen].filter((g) => own.has(g)),
+                            grants: [...chosen].filter((x) => own.has(x)),
                           },
                           t.grantsSaved,
                         )
@@ -360,6 +362,21 @@ export function Settings({ locale }: { locale: Locale }) {
           )}
         </section>
       )}
+
+      {gov && (gov.can.profiles || gov.profiles.length > 0) && (
+        <ProfilesPanel
+          locale={locale}
+          gov={gov}
+          own={own}
+          busy={busy}
+          post={post}
+        />
+      )}
+      {gov?.can.modules && (
+        <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />
+      )}
+      {gov?.can.rightsJournal && <Journal locale={locale} kind="rights" />}
+      {gov?.can.healthJournal && <Journal locale={locale} kind="health" />}
     </main>
   );
 }

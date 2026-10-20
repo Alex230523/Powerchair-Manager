@@ -4,7 +4,7 @@ import {
   financeReceiptUpload,
 } from "@/domains/finance/service";
 import { receiptMaxBytes } from "@/domains/finance/schema";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
 import { AccessError } from "@/domains/access/service";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function GET(
   try {
     const f = await financeReceiptFile(
       getDb(),
-      await principal(request),
+      await principalIn(request, "finance"),
       z.uuid().parse((await params).id),
     );
     return new Response(new Uint8Array(f.content), {
@@ -42,7 +42,7 @@ export async function POST(
 ) {
   try {
     origin(request);
-    const p = await principal(request),
+    const p = await principalIn(request, "finance"),
       bytes = await bounded(request, receiptMaxBytes + 200000);
     let d: FormData;
     try {
