@@ -257,8 +257,8 @@ export function Statistics({ locale }: { locale: Locale }) {
         }}
       >
         <Toolbar label={t.apply} actions={<Button disabled={loading}>{t.apply}</Button>}>
-          <label className="toolbar-field">
-            <span>{t.season}</span>
+          <div className="toolbar-field">
+            <label htmlFor="stats-season">{t.season}</label>
             <select
               id="stats-season"
               value={seasonValue}
@@ -283,17 +283,17 @@ export function Statistics({ locale }: { locale: Locale }) {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="toolbar-field">
-            <span>{t.from}</span>
+          </div>
+          <div className="toolbar-field">
+            <label htmlFor="stats-from">{t.from}</label>
             <input id="stats-from" name="from" type="date" required defaultValue={filters.from} />
-          </label>
-          <label className="toolbar-field">
-            <span>{t.to}</span>
+          </div>
+          <div className="toolbar-field">
+            <label htmlFor="stats-to">{t.to}</label>
             <input id="stats-to" name="to" type="date" required defaultValue={filters.to} />
-          </label>
-          <label className="toolbar-field">
-            <span>{t.team}</span>
+          </div>
+          <div className="toolbar-field">
+            <label htmlFor="stats-team">{t.team}</label>
             <select id="stats-team" name="team" defaultValue={filters.team}>
               <option value="">{t.all}</option>
               {data?.teams.map((v) => (
@@ -302,9 +302,9 @@ export function Statistics({ locale }: { locale: Locale }) {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="toolbar-field">
-            <span>{t.kind}</span>
+          </div>
+          <div className="toolbar-field">
+            <label htmlFor="stats-kind">{t.kind}</label>
             <select id="stats-kind" value={kind} onChange={(e) => setKind(e.target.value)}>
               <option value="">{t.all}</option>
               {Object.entries(kindLabels[locale]).map(([k, v]) => (
@@ -313,7 +313,7 @@ export function Statistics({ locale }: { locale: Locale }) {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         </Toolbar>
       </form>
       {invalid && <p role="alert" className="error-message">{t.invalid}</p>}

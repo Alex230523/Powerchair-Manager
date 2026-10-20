@@ -80,6 +80,9 @@ describe("registration form and the dues plan", () => {
     expect(text).not.toMatch(/250 ?€|€ ?250/);
     expect(text).toContain("{cotisation}");
     expect(text).toContain("{cotisation/4}");
+    // Options stay plain: answers are compared with the stored option text.
+    const pay = tigerstormTemplate("fr").fields.find((f) => f.maps === "installments")!;
+    expect(pay.options).toEqual(["1 fois", "2 fois", "3 fois", "4 fois"]);
   });
   it("fills the amount of the season, split by installment", () => {
     expect(fillDues("Paiement de la cotisation ({cotisation}) : en combien de fois ?", 25000)).toBe(

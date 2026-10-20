@@ -7,7 +7,8 @@ type Label = { fr: string; nl: string; en: string };
  * The membership fee is never written in a form: the texts carry the
  * placeholders {cotisation} and {cotisation/n}, filled at read time from the
  * season's dues plan (wave 10). When the club has no plan yet the amount is
- * left out, parentheses included.
+ * left out, parentheses included. Choice options never carry a placeholder:
+ * answers are compared with the stored option text.
  */
 const placeholder = /\s?\(?\{cotisation(?:\/(\d+))?\}\)?/g;
 export function fillDues<T>(value: T, cents: number | null): T {
@@ -256,19 +257,15 @@ export function tigerstormTemplate(lang: Lang) {
         required: true,
         maps: "installments",
         options: o(
-          {
-            fr: "1 fois ({cotisation})",
-            nl: "1 keer ({cotisation})",
-            en: "1 payment ({cotisation})",
-          },
-          { fr: "2 fois ({cotisation/2})", nl: "2 keer ({cotisation/2})", en: "2 payments ({cotisation/2})" },
-          { fr: "3 fois ({cotisation/3})", nl: "3 keer ({cotisation/3})", en: "3 payments ({cotisation/3})" },
-          { fr: "4 fois ({cotisation/4})", nl: "4 keer ({cotisation/4})", en: "4 payments ({cotisation/4})" },
+          { fr: "1 fois", nl: "1 keer", en: "1 payment" },
+          { fr: "2 fois", nl: "2 keer", en: "2 payments" },
+          { fr: "3 fois", nl: "3 keer", en: "3 payments" },
+          { fr: "4 fois", nl: "4 keer", en: "4 payments" },
         ),
         help: {
-          fr: "Numéro de compte de l'ASBL : BE41 3632 6208 1310. Merci d'indiquer en communication du virement le nom et le prénom du joueur ainsi que la ou les dates des prochains paiements si vous payez en plusieurs fois.",
-          nl: "Rekeningnummer van de vzw: BE41 3632 6208 1310. Vermeld bij de overschrijving de naam en voornaam van de speler en, bij betaling in meerdere keren, de data van de volgende betalingen.",
-          en: "Club account: BE41 3632 6208 1310. Please put the player's first and last name in the transfer reference and, if paying in several instalments, the dates of the next payments.",
+          fr: "En 2 fois : {cotisation/2} par versement ; en 3 fois : {cotisation/3} ; en 4 fois : {cotisation/4}. Numéro de compte de l'ASBL : BE41 3632 6208 1310. Merci d'indiquer en communication du virement le nom et le prénom du joueur ainsi que la ou les dates des prochains paiements si vous payez en plusieurs fois.",
+          nl: "In 2 keer: {cotisation/2} per storting; in 3 keer: {cotisation/3}; in 4 keer: {cotisation/4}. Rekeningnummer van de vzw: BE41 3632 6208 1310. Vermeld bij de overschrijving de naam en voornaam van de speler en, bij betaling in meerdere keren, de data van de volgende betalingen.",
+          en: "In 2 payments: {cotisation/2} each; in 3: {cotisation/3}; in 4: {cotisation/4}. Club account: BE41 3632 6208 1310. Please put the player's first and last name in the transfer reference and, if paying in several instalments, the dates of the next payments.",
         },
       },
     ),

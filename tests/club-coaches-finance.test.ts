@@ -171,7 +171,9 @@ describe("registration template", () => {
     const t = tigerstormTemplate(lang);
     expect(fieldsSchema.safeParse(t.fields).success).toBe(true);
     expect(t.fields.length).toBeLessThanOrEqual(20);
-    expect(t.description).toMatch(/250/);
+    // The amount comes from the season's dues plan (wave 10), never from the text.
+    expect(t.description).toMatch(/\{cotisation\}/);
+    expect(JSON.stringify(t.fields)).not.toMatch(/250/);
     expect(t.description).toMatch(/BE41 3632 6208 1310/);
     const confidential = t.fields
       .filter((f) => f.confidential)

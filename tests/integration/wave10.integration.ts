@@ -393,7 +393,8 @@ it("fills the registration form with the amount of the season's dues plan", asyn
   expect(shown.description).toContain("La cotisation s'élève à 250 € par saison");
   const installments = shown.fields.find((f) => f.key === "installments")!;
   expect(installments.label.fr).toBe("Paiement de la cotisation (250 €) : en combien de fois ?");
-  expect(installments.options).toEqual(["1 fois (250 €)", "2 fois (125 €)", "3 fois (83,34 €)", "4 fois (62,50 €)"]);
+  expect(installments.options).toEqual(["1 fois", "2 fois", "3 fois", "4 fois"]);
+  expect(installments.help?.fr).toContain("En 2 fois : 125 € par versement ; en 3 fois : 83,34 € ; en 4 fois : 62,50 €.");
   // The stored form keeps the placeholders: a new plan changes the public form at once.
   const stored = await db.query("SELECT description FROM registration_form WHERE id=$1", [form]);
   expect(stored.rows[0].description).toContain("{cotisation}");

@@ -4406,3 +4406,6 @@ input.narrow {
 .card-flush .compact-table th, .card-flush .compact-table td { padding-inline: 14px; }
 .toolbar-filters .toolbar-field > span { display: block; }
 .stat-row-grid .skeleton { min-height: 96px; }
+.toolbar-filters .toolbar-field { flex: 1 1 150px; max-width: 260px; font-size: 0.78rem; color: var(--muted); }
+.toolbar-filters .toolbar-field > label { display: block; }
+.toolbar-filters .toolbar-field input, .toolbar-filters .toolbar-field select { width: 100%; margin-top: 4px; min-height: 40px; padding: 6px 12px; font-size: 0.9rem; border-radius: 10px; }

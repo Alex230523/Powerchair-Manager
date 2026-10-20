@@ -604,7 +604,7 @@ export function Dues({ locale }: { locale: Locale }) {
                 amountCents: Math.round(Number(d.get("amount")) * 100),
                 maxInstallments: Number(d.get("count")),
                 firstDue: d.get("due"),
-              }))
+              })).then((ok) => ok && setPlanOpen(false))
             }
           >
             <label>
@@ -651,7 +651,7 @@ export function Dues({ locale }: { locale: Locale }) {
                 installments: Number(d.get("count")),
                 firstDue: d.get("due"),
                 ...(applicationId ? { applicationId } : {}),
-              }))
+              })).then((ok) => ok && setIssuing(false))
             }
           >
             <label>

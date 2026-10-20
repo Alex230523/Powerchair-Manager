@@ -1216,9 +1216,9 @@ export function Registrations({
         {data && (mode !== "public" || applicant) && (
           <Card title={mode === "admin" ? t.review : t.mine} subtitle={t.limits} id="reg-apps">
             {mode === "admin" && (
-              <Toolbar label={t.filter}>
-                <label className="toolbar-field">
-                  <span className="sr-only">{t.filter}</span>
+              <Toolbar>
+                <div className="toolbar-field">
+                  <label htmlFor="registration-filter">{t.filter}</label>
                   <select
                     id="registration-filter"
                     value={filter}
@@ -1230,7 +1230,7 @@ export function Registrations({
                     <option value="refused">{sl.refused}</option>
                     <option value="all">{t.all}</option>
                   </select>
-                </label>
+                </div>
               </Toolbar>
             )}
             <ul className="records compact-records">
