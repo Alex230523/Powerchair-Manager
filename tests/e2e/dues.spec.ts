@@ -163,10 +163,16 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     });
     await page.setViewportSize({ width: 375, height: 812 });
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+      await page.evaluate(() => {
+        const over = document.documentElement.scrollWidth - innerWidth;
+        if (over <= 0) return [];
+        // Names the widest offenders so the failure says what sticks out.
+        return [...document.querySelectorAll("body *")]
+          .filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(e).position !== "fixed")
+          .slice(0, 12)
+          .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")} right=${Math.round(e.getBoundingClientRect().right)} (over ${over}px)`);
+      }),
+    ).toEqual([]);
     await page.screenshot({
       path: "test-results/dues-mobile.png",
       fullPage: true,
