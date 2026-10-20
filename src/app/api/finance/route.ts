@@ -4,12 +4,12 @@ import {
   financeExecute,
   commandSchema,
 } from "@/domains/finance/service";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    return Response.json(await financeView(getDb(), await principal(request)), {
+    return Response.json(await financeView(getDb(), await principalIn(request, "finance")), {
       headers: noStore,
     });
   } catch (e) {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     origin(request);
-    const p = await principal(request),
+    const p = await principalIn(request, "finance"),
       body = JSON.parse(
         new TextDecoder().decode(await bounded(request, 10000)),
       );

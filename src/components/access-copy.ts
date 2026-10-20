@@ -139,6 +139,11 @@ export const accessCopy = {
   en: english.accessCopy,
 };
 export const errors: Record<string, { fr: string; nl: string; en: string }> = {
+  MODULE_OFF: {
+    fr: "Ce module est désactivé pour votre club. Le président peut le réactiver dans Réglages, rubrique Modules : rien n'a été supprimé.",
+    nl: "Deze module is uitgeschakeld voor uw club. De voorzitter kan ze opnieuw activeren in Instellingen, rubriek Modules: er werd niets verwijderd.",
+    en: "This module is switched off for your club. The president can switch it back on in Settings, Modules: nothing was deleted.",
+  },
   LAST_ADMIN: {
     fr: "Impossible de supprimer ou limiter le dernier président actif sans date de fin. Ajoutez un successeur avant cette modification.",
     nl: "De laatste actieve voorzitter zonder einddatum kan niet worden verwijderd of beperkt. Voeg eerst een opvolger toe.",

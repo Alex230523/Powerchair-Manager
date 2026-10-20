@@ -31,7 +31,7 @@ async function scope<T>(
   db: Pool,
   p: Principal,
   write: boolean,
-  fn: (c: PoolClient, org: string, userId: string) => Promise<T>,
+  fn: (c: PoolClient, org: string, userId: string, edit: boolean) => Promise<T>,
   expected?: string,
 ) {
   const c = await db.connect();
@@ -47,11 +47,21 @@ async function scope<T>(
     if (expected && expected !== a.organization_id)
       throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
-    if (!permissions(a.role, a.grants).includes("dues.manage"))
+    // dues.read opens the accounts without changing them (auditor, committee).
+    const rights = permissions(a.role, a.grants);
+    if (
+      !rights.includes("dues.manage") &&
+      (write || !rights.includes("dues.read"))
+    )
       throw new AccessError("FORBIDDEN");
     if (!mfaSatisfied(!!user.twoFactorEnabled))
       throw new AccessError("MFA_REQUIRED");
-    const out = await fn(c, a.organization_id, p.userId);
+    const out = await fn(
+      c,
+      a.organization_id,
+      p.userId,
+      rights.includes("dues.manage"),
+    );
     await c.query("COMMIT");
     return out;
   } catch (e) {
@@ -63,7 +73,7 @@ async function scope<T>(
 }
 
 export async function financeView(db: Pool, p: Principal) {
-  return scope(db, p, false, async (c, org) => {
+  return scope(db, p, false, async (c, org, _user, edit) => {
     const today = brusselsToday(),
       season = seasonOf(today);
     const entries = (
@@ -113,6 +123,7 @@ export async function financeView(db: Pool, p: Principal) {
     const budget = await budgetLines(c, org, season.label);
     return {
       organization_id: org,
+      can_edit: edit,
       today,
       season,
       seasons: seasonsOf(entries, season.label),

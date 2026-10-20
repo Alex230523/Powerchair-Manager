@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { financeReport } from "@/domains/finance/service";
-import { principal, noStore, failure } from "@/lib/http";
+import { principalIn, noStore, failure } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 const csvCell = (v: unknown) => {
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const report = await financeReport(
       getDb(),
-      await principal(request),
+      await principalIn(request, "finance"),
       url.searchParams.get("season") ?? "",
     );
     if (url.searchParams.get("format") !== "csv")

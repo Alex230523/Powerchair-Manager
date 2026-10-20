@@ -87,6 +87,8 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   const mfa = mfaSatisfied(a.twoFactorEnabled);
   const has = (permission: Permission) => mfa && rights.includes(permission);
   const club = context.kind === "club";
+  // Modules the club switched off add nothing to the dashboard.
+  const on = (m: string) => !club || !context.disabled_modules?.includes(m);
   const own = [...(await ownProfiles(c, a))];
 
   // Registrations: club inbox for registrations.manage, as in registrationView(adminMode).
@@ -110,7 +112,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   // Accepted applications still waiting for the documents or dues follow-up.
   const followupKinds = [
     ...(club && managesDocuments(a) ? ["documents"] : []),
-    ...(club && has("dues.manage") ? ["dues"] : []),
+    ...(club && on("dues") && has("dues.manage") ? ["dues"] : []),
   ];
   if (followupKinds.length)
     counts.registrationFollowups = await count(
@@ -198,7 +200,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   }
 
   // Equipment: chairs in maintenance or due for service within 14 days.
-  if (club && has("equipment.manage")) {
+  if (club && on("equipment") && has("equipment.manage")) {
     scopes.push("equipment");
     counts.equipmentService = await count(
       c,
@@ -244,7 +246,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
 
   // Dues: scheduled instalments only. Payments and reconciliation arrive with lot 09,
   // so nothing here claims that an amount is paid or late.
-  if (club && has("dues.manage")) {
+  if (club && on("dues") && has("dues.manage")) {
     scopes.push("dues");
     const next = await count(
       c,
@@ -258,10 +260,12 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
       [org],
     );
     metrics.push(
-      metric("treasury", treasury, { format: "cents", href: "/funding" }),
+      ...(on("finance")
+        ? [metric("treasury", treasury, { format: "cents", href: "/funding" })]
+        : []),
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );
-  } else if (club && own.length) {
+  } else if (club && on("dues") && own.length) {
     const next = (
       await c.query(
         "SELECT i.due_on::text AS due_on,i.amount_cents FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND d.profile_id=ANY($2::uuid[]) AND i.due_on>=CURRENT_DATE ORDER BY i.due_on,i.ordinal LIMIT 1",
@@ -313,6 +317,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
       organization: context.organization_name,
       kind: context.kind,
       role: a.role,
+      statistics: on("statistics"),
     },
     todos: buildTodos(counts),
     metrics,

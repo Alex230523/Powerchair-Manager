@@ -3,9 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef, useSyncExternalStore } from "react";
 import { labels, type Role } from "@/domains/access/policy";
+import { moduleOfPath } from "@/domains/access/rights";
 import type { Locale } from "@/lib/locale";
-import { BrandMark, Icon, type IconName } from "./icons";
+import { BrandLogo, Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
+import { CommandPalette } from "./command-palette";
 export { shellCopy };
 type Copy = (typeof shellCopy)[Locale];
 export type Workspace = {
@@ -23,6 +25,7 @@ export type Workspace = {
     organization_name: string;
     kind: "club" | "federation";
     logo_version: string | null;
+    disabled_modules?: string[];
   };
   permissions: string[];
 };
@@ -141,8 +144,17 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             },
           ]
         : [];
+  // Modules the club switched off leave the menu (their routes refuse too).
+  const off = new Set(state?.selected?.disabled_modules ?? []);
+  const shown = (items: NavItem[]) =>
+    items.filter((i) => {
+      const m = moduleOfPath(i.route);
+      return !m || !off.has(m);
+    });
   return [
-    ...club,
+    ...club
+      .map((g) => ({ ...g, items: shown(g.items) }))
+      .filter((g) => g.items.length > 0),
     {
       id: "admin",
       label: "admin",
@@ -153,11 +165,15 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               { route: "/notifications", label: "notifications", icon: "bell" },
               ...(kind === "club"
                 ? ([
-                    {
-                      route: "/reminders",
-                      label: "reminders",
-                      icon: "message",
-                    },
+                    ...(off.has("reminders")
+                      ? []
+                      : [
+                          {
+                            route: "/reminders",
+                            label: "reminders",
+                            icon: "message",
+                          } satisfies NavItem,
+                        ]),
                     { route: "/privacy", label: "privacy", icon: "lock" },
                   ] satisfies NavItem[])
                 : []),
@@ -325,13 +341,8 @@ export function AppShell({
     <div className="app-shell">
       <aside className="sidebar">
         <Link className="brand" href={`/${locale}`}>
-          <span className="brand-mark">
-            <BrandMark />
-          </span>
-          <span className="brand-text">
-            Powerchair
-            <small>Football Manager</small>
-          </span>
+          <BrandLogo height={26} />
+          <span className="brand-text">Powerchair Football Manager</span>
         </Link>
         <details ref={navigation} className="sidebar-nav" open>
           <summary>
@@ -417,6 +428,16 @@ export function AppShell({
                 </Link>
               )}
             </div>
+            <CommandPalette
+              locale={locale}
+              enabled={!!state?.selected}
+              pages={[
+                { route: "", label: t.home },
+                ...menuGroups(state).flatMap((g) =>
+                  g.items.map((i) => ({ route: i.route, label: t[i.label] })),
+                ),
+              ]}
+            />
             <ThemeToggle t={t} />
           </div>
           {error && <p role="alert">{error}</p>}

@@ -1,6 +1,6 @@
 {
   "name": "Powerchair Football Manager",
-  "short_name": "PFM",
+  "short_name": "PCM",
   "description": "Gestion des clubs et fédérations de Powerchair Football.",
   "id": "/fr",
   "start_url": "/fr",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "any",
   "lang": "fr",
-  "background_color": "#faf8f5",
+  "background_color": "#ffffff",
   "theme_color": "#f97316",
   "categories": ["sports", "productivity"],
   "icons": [

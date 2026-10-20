@@ -4,13 +4,13 @@ import {
   clubLicensesExecute,
   clubCommand,
 } from "@/domains/federation/service";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     return Response.json(
-      await clubLicensesView(getDb(), await principal(request)),
+      await clubLicensesView(getDb(), await principalIn(request, "licenses")),
       {
         headers: noStore,
       },
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     origin(request);
-    const p = await principal(request),
+    const p = await principalIn(request, "licenses"),
       body = JSON.parse(
         new TextDecoder().decode(await bounded(request, 20000)),
       );
