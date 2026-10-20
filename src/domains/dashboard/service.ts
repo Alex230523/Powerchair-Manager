@@ -29,6 +29,7 @@ import {
   type TodoKey,
 } from "./summary";
 import { presenceRules, readiness } from "./presence";
+import { fundingDeadlines } from "../funding/service";
 
 /**
  * Read-only operational summary for the active context.
@@ -339,7 +340,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   // Administrative dates of the next 30 days, next to the events.
   const deadlines: Deadline[] = [];
   const push = (d: Omit<Deadline, "id">) =>
-    deadlines.push({ id: `${d.kind}:${d.date}:${d.href}`, ...d });
+    deadlines.push({ id: `${d.kind}:${d.date}:${d.href}:${d.title}`, ...d });
   if (managesDocuments(a)) {
     for (const r of (
       await c.query(
@@ -387,6 +388,10 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     ).rows)
       push({ kind: "trip", date: r.day, title: r.title, count: 1, href: `/trips/${r.id}` });
   }
+  // Grants to file or report on, partners to renew or call back (wave 11): money people only.
+  if (club && on("finance") && (has("dues.manage") || has("dues.read")))
+    for (const d of await fundingDeadlines(c, org, 30))
+      push({ kind: d.kind, date: d.date, title: d.title, count: 1, href: d.href });
   deadlines.sort((x, y) => x.date.localeCompare(y.date));
 
   return {
