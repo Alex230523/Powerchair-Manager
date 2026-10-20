@@ -51,6 +51,18 @@ export const fundraisingCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("cancelMovement"), id: z.uuid() }),
 ]);
 export type FundraisingCommand = z.infer<typeof fundraisingCommand>;
+/** A movement as shown: amounts and donors only for money managers and readers. */
+export type MovementView = {
+  id: string;
+  occurred_on: string;
+  kind: string;
+  label: string;
+  amount_cents?: number;
+  donor?: string;
+  anonymous?: boolean;
+  cancelled_at?: string | null;
+  author?: string;
+};
 
 /** Collected = gifts, sponsors, actions and subsidies, minus expenses. */
 export function potProgress(
@@ -144,12 +156,12 @@ export async function fundraisingView(db: Pool, p: Principal) {
           ...pot,
           public_token: manage ? pot.public_token : null,
           progress: potProgress(pot.goal_cents, own),
-          movements: detail
+          movements: (detail
             ? own
             : // Members see the effort, not who gave what.
               own
                 .filter((m) => !m.cancelled_at && m.kind !== "expense")
-                .map((m) => ({ id: m.id, occurred_on: m.occurred_on, kind: m.kind, label: m.label })),
+                .map((m) => ({ id: m.id, occurred_on: m.occurred_on, kind: m.kind, label: m.label }))) as MovementView[],
         };
       }),
     };

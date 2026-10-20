@@ -430,7 +430,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
                               {t.movements} ({pot.movements.length})
                             </summary>
                             <ul className="movement-list">
-                              {(pot.movements as { id: string; occurred_on: string; kind: string; label: string; amount_cents?: number; donor?: string; anonymous?: boolean; cancelled_at?: string | null }[]).map((m) => (
+                              {pot.movements.map((m) => (
                                 <li key={m.id} data-cancelled={m.cancelled_at ? true : undefined}>
                                   <span>
                                     {day(m.occurred_on)} · {t.kinds[m.kind]} · {m.label}
