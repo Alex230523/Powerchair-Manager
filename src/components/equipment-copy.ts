@@ -25,6 +25,7 @@ export const equipmentCopy: Record<
     speedHint: string;
     overSpeed: string;
     battery: string;
+    storage: string;
     acquired: string;
     lastService: string;
     nextService: string;
@@ -84,6 +85,7 @@ export const equipmentCopy: Record<
     speedHint: "Limite en match (règles FIPFA) : 10 km/h.",
     overSpeed: "Au-dessus de 10 km/h",
     battery: "Batteries",
+    storage: "Lieu de rangement",
     acquired: "Date d’acquisition",
     lastService: "Dernière révision",
     nextService: "Prochaine révision",
@@ -156,6 +158,7 @@ export const equipmentCopy: Record<
     speedHint: "Limiet in wedstrijden (FIPFA-regels): 10 km/u.",
     overSpeed: "Boven 10 km/u",
     battery: "Batterijen",
+    storage: "Opbergplaats",
     acquired: "Aankoopdatum",
     lastService: "Laatste onderhoud",
     nextService: "Volgend onderhoud",
@@ -229,6 +232,7 @@ export const equipmentCopy: Record<
     speedHint: "Match limit (FIPFA laws): 10 km/h.",
     overSpeed: "Above 10 km/h",
     battery: "Batteries",
+    storage: "Storage place",
     acquired: "Acquired on",
     lastService: "Last service",
     nextService: "Next service",

@@ -13,6 +13,7 @@ import { equipmentCopy } from "./equipment-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { initials } from "./app-shell";
+import { Stock } from "./equipment-stock";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Chair = View["chairs"][number];
@@ -126,6 +127,7 @@ export function Equipment({ locale }: { locale: Locale }) {
       lastServiceOn: dateOrNull("last"),
       nextServiceOn: dateOrNull("next"),
       notes: value("notes"),
+      storage: value("storage"),
     }).then((r) => {
       if (r && !chair) setEditing(r.id);
     });
@@ -236,6 +238,7 @@ export function Equipment({ locale }: { locale: Locale }) {
               <h2 id="new-chair">{t.newChair}</h2>
               <ChairForm
                 t={t}
+                storages={view.storages}
                 busy={busy}
                 onSubmit={(e) => saveChair(e)}
                 onCancel={() => setEditing("")}
@@ -286,6 +289,12 @@ export function Equipment({ locale }: { locale: Locale }) {
                           </span>
                         )}
                       </dd>
+                      {c.storage && (
+                        <>
+                          <dt>{t.storage}</dt>
+                          <dd>{c.storage}</dd>
+                        </>
+                      )}
                       <dt>{t.nextService}</dt>
                       <dd>
                         {date(c.next_service_on)}
@@ -369,6 +378,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                 <ChairForm
                   key={current.id + "-" + current.version}
                   t={t}
+                  storages={view.storages}
                   chair={current}
                   busy={busy}
                   onSubmit={(e) => saveChair(e, current)}
@@ -477,6 +487,7 @@ export function Equipment({ locale }: { locale: Locale }) {
               </div>
             </section>
           )}
+          <Stock locale={locale} view={view} busy={busy} send={send} />
         </>
       )}
     </main>
@@ -486,12 +497,14 @@ export function Equipment({ locale }: { locale: Locale }) {
 function ChairForm({
   t,
   chair,
+  storages,
   busy,
   onSubmit,
   onCancel,
 }: {
   t: (typeof equipmentCopy)[Locale];
   chair?: Chair;
+  storages: string[];
   busy: boolean;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
@@ -595,6 +608,21 @@ function ChairForm({
           maxLength={120}
           defaultValue={chair?.battery}
         />
+      </label>
+      <label htmlFor={id("storage")}>
+        {t.storage}
+        <input
+          id={id("storage")}
+          name="storage"
+          maxLength={120}
+          list="storage-places"
+          defaultValue={chair?.storage}
+        />
+        <datalist id="storage-places">
+          {storages.map((v) => (
+            <option key={v} value={v} />
+          ))}
+        </datalist>
       </label>
       <div className="form-pair">
         <label htmlFor={id("acquired")}>

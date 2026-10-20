@@ -304,7 +304,16 @@ export async function communicationView(db: Pool, p: Principal) {
           place: placeOf(e),
           audience: (await audience(c, e)).length,
         });
-    const hashes = s.manage ? await unsubscribed(c, org) : new Set<string>();
+    const stops = new Map<string, string>(
+      s.manage
+        ? (
+            await c.query(
+              "SELECT email_hash,source FROM mail_unsubscribe WHERE organization_id=$1",
+              [org],
+            )
+          ).rows.map((r) => [r.email_hash as string, r.source as string])
+        : [],
+    );
     return {
       organization_id: org,
       can: { manage: s.manage, plan: s.planner },
@@ -370,10 +379,12 @@ export async function communicationView(db: Pool, p: Principal) {
             left_on: r.left_on as string,
             former_player: r.former_player as boolean,
             reachable: !!r.address,
-            unsubscribed: !!r.address && hashes.has(emailHash(r.address)),
+            unsubscribed: !!r.address && stops.has(emailHash(r.address)),
+            /** "link": asked by the person; only they can undo it. */
+            stop_source: r.address ? (stops.get(emailHash(r.address)) ?? null) : null,
           }))
         : [],
-      unsubscribedCount: hashes.size,
+      unsubscribedCount: stops.size,
     };
   });
 }

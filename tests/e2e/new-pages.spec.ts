@@ -132,8 +132,47 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/fundraising",
       "/fr/dues/attestations",
       "/fr/club/rollover",
+      "/fr/communication",
+      "/fr/equipment",
+      "/fr/messages",
     ])
       await check(page, path);
+    // Wave 9: each Communication tab, a group, a newsletter draft and its preview.
+    await page.goto("/fr/communication");
+    await expect(page.getByRole("tab", { name: "Newsletter", exact: true })).toBeVisible();
+    const axe = async (label: string, scope?: string) => {
+      const builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]);
+      if (scope) builder.include(scope);
+      expect((await builder.analyze()).violations.map((v) => `${label} ${v.id}`), label).toEqual([]);
+    };
+    await page.getByRole("tab", { name: "Groupes", exact: true }).click();
+    await page.getByRole("button", { name: "Nouveau groupe", exact: true }).click();
+    await page.getByLabel("Nom du groupe", { exact: true }).fill("Tous les joueurs");
+    await page.getByLabel("Joueurs", { exact: true }).check();
+    await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Tous les joueurs" })).toBeVisible();
+    await axe("groups");
+    await page.getByRole("tab", { name: "Newsletter", exact: true }).click();
+    await page.getByRole("button", { name: "Nouvelle newsletter", exact: true }).click();
+    await page.getByLabel("Objet", { exact: true }).fill("Nouvelles de la saison");
+    await page.getByLabel("Titre 1", { exact: true }).fill("Bienvenue");
+    await page.getByLabel("Texte 2", { exact: true }).fill("La saison commence samedi.");
+    await page.getByLabel("Tous les joueurs", { exact: false }).check();
+    await axe("newsletter editor");
+    await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Nouvelles de la saison" })).toBeVisible();
+    await page.getByRole("button", { name: "Aperçu : Nouvelles de la saison" }).click();
+    await expect(page.getByTitle("Aperçu de la newsletter")).toBeVisible();
+    await axe("preview", "dialog");
+    await page.keyboard.press("Escape");
+    for (const name of ["Mails d'événements", "Anciens", "Expéditeur"]) {
+      await page.getByRole("tab", { name, exact: true }).click();
+      await axe(name);
+    }
+    // An unknown unsubscribe link says so, politely and accessibly.
+    await page.goto("/fr/desinscription/00000000-0000-4000-8000-000000000000");
+    await expect(page.locator("main [role=alert]")).toHaveText("Ce lien n'est pas valable.");
+    await axe("unsubscribe");
     // A trip page with its sections (participants, transport, care, offline).
     const tripId = (
       await db.query(

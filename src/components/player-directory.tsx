@@ -9,6 +9,7 @@ import { errors } from "./access-copy";
 import { Button } from "./ui";
 import { Modal } from "./modal";
 import { PlayerImport } from "./player-import";
+import { ExportDialog } from "./export-dialog";
 import { ShowMore, useShowMore } from "./use-api";
 const copy = {
   fr: {
@@ -480,12 +481,10 @@ export function PlayerDirectory({
               {roster.length} {t.count}
             </p>
             {data.capabilities.canExport && (
-              <a
-                className="button secondary"
-                href={`/api/people/export?organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}${minimum ? "&minAge=" + minimum : ""}`}
-              >
-                CSV
-              </a>
+              <ExportDialog
+                locale={locale}
+                query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}${minimum ? "&minAge=" + minimum : ""}`}
+              />
             )}
           </div>
           <div

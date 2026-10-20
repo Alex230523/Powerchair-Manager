@@ -43,6 +43,11 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 19/10/2026 | [Vague 2 : finances (budget, justificatifs, rapport annuel), import enrichi, doublons et RGPD](evolutions/2026-10-19-h-vague-2-finances-import-rgpd.md)                                     |
 | 19/10/2026 | [Vague 3 : compétitions (matchs, compositions, statistiques) et arbitres](evolutions/2026-10-19-i-vague-3-competitions-arbitres.md)                                                         |
 | 19/10/2026 | [Vague 4 : licences, classifications, transferts, calendrier fédéral, inscription sans compte, signature électronique](evolutions/2026-10-19-j-vague-4-federation-inscription-signature.md) |
+| 19/10/2026 | [Vague 5 : hors ligne et qualité](evolutions/2026-10-19-k-vague-5-hors-ligne-qualite.md) |
+| 20/10/2026 | [Vague 6 : logo PCM, modules activables, droits par module, journaux, recherche](evolutions/2026-10-20-l-vague-6-modules-droits-logo.md) |
+| 20/10/2026 | [Vague 7 : déplacements, annuaire des salles, consignes de soin, carnet hors ligne](evolutions/2026-10-20-m-vague-7-deplacements-salles-soins.md) |
+| 20/10/2026 | [Vague 8 : attestations mutuelle, fratrie, levée de fonds, absences, passage de saison, fidélisation](evolutions/2026-10-20-n-vague-8-familles-argent.md) |
+| 20/10/2026 | [Vague 9 : communication du club, fils protégés, matériel, export, copie de semaine](evolutions/2026-10-20-o-vague-9-communication-materiel.md) |
 
 ## Convention
 

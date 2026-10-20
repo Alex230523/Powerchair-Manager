@@ -12,7 +12,12 @@ import {
 import type { Locale } from "@/lib/locale";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import { kinds, visibilities } from "@/domains/calendar/schema";
-import { calendarCopy, kindLabels, calendarErrors } from "./calendar-copy";
+import {
+  calendarCopy,
+  calendarCopyWeek,
+  kindLabels,
+  calendarErrors,
+} from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Button, Panel } from "./ui";
 type Place = {
@@ -215,7 +220,11 @@ export function Calendar({ locale }: { locale: Locale }) {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [feedUrl, setFeedUrl] = useState(""),
-    [requestId, setRequestId] = useState(() => crypto.randomUUID());
+    [requestId, setRequestId] = useState(() => crypto.randomUUID()),
+    // Wave 9: an event used as a model for a new one, and the week copy result.
+    [copyOf, setCopyOf] = useState<Item | null>(null),
+    [copyReport, setCopyReport] = useState<string[]>([]);
+  const w9 = calendarCopyWeek[locale] as (typeof calendarCopyWeek)["fr"];
   function setAnchor(value: string) {
     if (value >= "2000-01-01" && value <= "2099-12-31") setAnchorState(value);
   }
@@ -310,6 +319,7 @@ export function Calendar({ locale }: { locale: Locale }) {
     void task(() => fn(d));
   }
   const event = data?.events.find((e) => e.id === selected),
+    base = event ?? copyOf ?? undefined,
     venue = data?.places.find((p) => p.id === placeEdit);
   const scopes = (
     <>
@@ -332,6 +342,7 @@ export function Calendar({ locale }: { locale: Locale }) {
   }
   function newEvent(day = anchor) {
     setAnchor(day);
+    setCopyOf(null);
     setSelected("");
     setEditorOpen(true);
     setRequestId(crypto.randomUUID());
@@ -482,6 +493,80 @@ export function Calendar({ locale }: { locale: Locale }) {
                   </select>
                 </Field>
               </div>
+              {view === "week" && data.canPlan && (
+                <details className="calendar-settings">
+                  <summary>{w9.copyWeek}</summary>
+                  <form
+                    className="copy-week"
+                    onSubmit={(e) =>
+                      form(e, async (d) => {
+                        setCopyReport([]);
+                        const r = await fetch("/api/calendar", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "copyWeek",
+                            fromMonday: range.from,
+                            toMonday: d.get("to"),
+                            teamId: d.get("team") || null,
+                            requestId: crypto.randomUUID(),
+                            organizationId: data.context.organization_id,
+                          }),
+                        });
+                        const b = await r.json();
+                        if (!r.ok)
+                          throw new Error(
+                            b.error === "NOTHING_TO_COPY" ? "NOTHING_TO_COPY" : b.error,
+                          );
+                        setCopyReport([
+                          w9.copied.replace("{n}", String(b.created)),
+                          ...(b.skipped as { title: string; reason: string }[]).map((x) =>
+                            w9.skipped
+                              .replace("{title}", x.title)
+                              .replace("{reason}", w9.reasons[x.reason] ?? x.reason),
+                          ),
+                        ]);
+                      })
+                    }
+                  >
+                    <Field id="copy-week-to" label={w9.copyTo}>
+                      <input
+                        id="copy-week-to"
+                        name="to"
+                        type="date"
+                        required
+                        step={7}
+                        min={shiftLocal(range.from + "T12:00", 7).slice(0, 10)}
+                        defaultValue={shiftLocal(range.from + "T12:00", 7).slice(0, 10)}
+                        aria-describedby="copy-week-hint"
+                      />
+                    </Field>
+                    {data.teams.length > 1 && (
+                      <Field id="copy-week-team" label={w9.copyTeam}>
+                        <select id="copy-week-team" name="team">
+                          <option value="">{w9.allTeams}</option>
+                          {data.teams.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                    <Button disabled={busy}>{w9.copyButton}</Button>
+                    <p id="copy-week-hint" className="muted small">
+                      {w9.monday}
+                    </p>
+                  </form>
+                  {copyReport.length > 0 && (
+                    <ul className="plain-list" role="status">
+                      {copyReport.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
+                </details>
+              )}
               {view !== "list" && (
                 <CalendarBoard
                   locale={locale}
@@ -537,6 +622,27 @@ export function Calendar({ locale }: { locale: Locale }) {
                       <Button onClick={() => setEditorOpen(true)}>
                         {t.edit}
                       </Button>
+                    )}
+                    {event.canEdit && data.canPlan && (
+                      <Button
+                        onClick={() => {
+                          setCopyOf(event);
+                          setSelected("");
+                          setRequestId(crypto.randomUUID());
+                          setEditorOpen(true);
+                          setTimeout(
+                            () => document.getElementById("event-title")?.focus(),
+                            0,
+                          );
+                        }}
+                      >
+                        {w9.duplicate}
+                      </Button>
+                    )}
+                    {event.canEdit && event.status === "scheduled" && (
+                      <Link href={`/${locale}/communication?event=${event.id}`}>
+                        {w9.mail}
+                      </Link>
                     )}
                     <Button onClick={() => setSelected("")}>
                       {locale === "fr"
@@ -699,8 +805,13 @@ export function Calendar({ locale }: { locale: Locale }) {
               <div id="event-editor">
                 <Panel title={event ? t.edit : t.create}>
                   <p>{t.official}</p>
+                  {!event && copyOf && (
+                    <p className="notice">
+                      {w9.duplicating.replace("{title}", copyOf.title)}
+                    </p>
+                  )}
                   <form
-                    key={(event?.id ?? requestId) + ":" + (event?.version ?? 0)}
+                    key={(event?.id ?? copyOf?.id ?? requestId) + ":" + (event?.version ?? 0)}
                     onSubmit={(e) =>
                       form(e, async (d) => {
                         const body = {
@@ -747,7 +858,10 @@ export function Calendar({ locale }: { locale: Locale }) {
                             });
                         setSelected(result.id);
                         setEditorOpen(false);
-                        if (!event) setRequestId(crypto.randomUUID());
+                        if (!event) {
+                          setRequestId(crypto.randomUUID());
+                          setCopyOf(null);
+                        }
                       })
                     }
                   >
@@ -758,14 +872,14 @@ export function Calendar({ locale }: { locale: Locale }) {
                         required
                         minLength={2}
                         maxLength={160}
-                        defaultValue={event?.title}
+                        defaultValue={base?.title}
                       />
                     </Field>
                     <Field id="event-kind" label={t.kind}>
                       <select
                         id="event-kind"
                         name="kind"
-                        defaultValue={event?.kind ?? "training"}
+                        defaultValue={base?.kind ?? "training"}
                       >
                         {kinds.map((v) => (
                           <option key={v} value={v}>
@@ -779,7 +893,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         id="event-custom"
                         name="customType"
                         maxLength={80}
-                        defaultValue={event?.custom_type}
+                        defaultValue={base?.custom_type}
                       />
                     </Field>
                     <Field id="event-start" label={t.start}>
@@ -791,7 +905,9 @@ export function Calendar({ locale }: { locale: Locale }) {
                         defaultValue={
                           event
                             ? localAt(event.starts_at, "Europe/Brussels")
-                            : anchor + "T18:00"
+                            : copyOf
+                              ? shiftLocal(localAt(copyOf.starts_at, "Europe/Brussels"), 7)
+                              : anchor + "T18:00"
                         }
                       />
                     </Field>
@@ -804,7 +920,9 @@ export function Calendar({ locale }: { locale: Locale }) {
                         defaultValue={
                           event
                             ? localAt(event.ends_at, "Europe/Brussels")
-                            : anchor + "T20:00"
+                            : copyOf
+                              ? shiftLocal(localAt(copyOf.ends_at, "Europe/Brussels"), 7)
+                              : anchor + "T20:00"
                         }
                       />
                     </Field>
@@ -813,7 +931,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         id="event-team"
                         name="team"
                         required={!data.manage}
-                        defaultValue={event?.team_id ?? ""}
+                        defaultValue={base?.team_id ?? ""}
                       >
                         <option value="">{t.none}</option>
                         {data.teams.map((v) => (
@@ -827,7 +945,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                       <select
                         id="event-place"
                         name="place"
-                        defaultValue={event?.place_id ?? ""}
+                        defaultValue={base?.place_id ?? ""}
                       >
                         <option value="">{t.none}</option>
                         {data.places
@@ -846,7 +964,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                       <select
                         id="event-shared"
                         name="sharedVenue"
-                        defaultValue={event?.shared_venue_id ?? ""}
+                        defaultValue={base?.shared_venue_id ?? ""}
                       >
                         <option value="">{t.none}</option>
                         {data.sharedVenues.map((v) => (
@@ -861,7 +979,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         id="event-free"
                         name="freeLocation"
                         maxLength={500}
-                        defaultValue={event?.free_location ?? ""}
+                        defaultValue={base?.free_location ?? ""}
                       />
                     </Field>
                     {data.manage && (
@@ -922,7 +1040,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         name="participants"
                         multiple
                         size={Math.min(5, Math.max(2, data.profiles.length))}
-                        defaultValue={event?.explicitParticipants ?? []}
+                        defaultValue={base?.explicitParticipants ?? []}
                       >
                         {data.profiles.map((v) => (
                           <option key={v.id} value={v.id}>
@@ -939,7 +1057,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         id="event-equipment"
                         name="equipment"
                         maxLength={2000}
-                        defaultValue={event?.equipment}
+                        defaultValue={base?.equipment}
                       />
                     </Field>
                     <Field id="event-instructions" label={t.instructions}>
@@ -947,7 +1065,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         id="event-instructions"
                         name="instructions"
                         maxLength={5000}
-                        defaultValue={event?.instructions}
+                        defaultValue={base?.instructions}
                       />
                     </Field>
                     <Field
@@ -977,7 +1095,7 @@ export function Calendar({ locale }: { locale: Locale }) {
                         name="documents"
                         multiple
                         size={3}
-                        defaultValue={event?.documents.map((d) => d.id) ?? []}
+                        defaultValue={base?.documents.map((d) => d.id) ?? []}
                       >
                         {[
                           ...new Map(

@@ -224,6 +224,11 @@ export const kindLabels = {
   en: english.kindLabels,
 };
 export const calendarErrors: Record<string, [string, string, string]> = {
+  NOTHING_TO_COPY: [
+    "Aucun événement programmé dans cette semaine.",
+    "Geen gepland evenement in deze week.",
+    "No scheduled event in this week.",
+  ],
   SEASON_RANGE: [
     "Un événement de cette équipe doit rester dans les dates de sa saison.",
     "Een teamevenement moet binnen de seizoensdatums vallen.",
@@ -264,4 +269,74 @@ export const calendarErrors: Record<string, [string, string, string]> = {
     "De locatiecapaciteit is te klein voor de geplande deelnemers.",
     englishErrors["CAPACITY_REACHED"] ?? "Action unavailable.",
   ],
+};
+
+/** Wave 9: duplicate an event, copy a week, prepare a mail. */
+export const calendarCopyWeek = {
+  fr: {
+    duplicate: "Dupliquer",
+    duplicating: "Copie de « {title} » : ajustez la date puis enregistrez.",
+    mail: "Préparer un mail",
+    copyWeek: "Copier cette semaine",
+    copyTo: "Vers la semaine du",
+    copyTeam: "Équipe",
+    allTeams: "Toutes mes équipes",
+    copyButton: "Copier la semaine",
+    copied: "{n} événement(s) copié(s).",
+    skipped: "Non copié : {title} ({reason}).",
+    reasons: {
+      PLACE_CONFLICT: "lieu déjà occupé",
+      SEASON_RANGE: "hors de la saison",
+      FORBIDDEN: "pas votre équipe",
+      CAPACITY_REACHED: "capacité du lieu dépassée",
+      NOT_FOUND: "élément supprimé entre-temps",
+      NOTHING_TO_COPY: "aucun événement",
+    } as Record<string, string>,
+    nothing: "Aucun événement programmé dans cette semaine.",
+    monday: "Choisissez un lundi.",
+  },
+  nl: {
+    duplicate: "Dupliceren",
+    duplicating: "Kopie van « {title} »: pas de datum aan en sla op.",
+    mail: "Mail voorbereiden",
+    copyWeek: "Deze week kopiëren",
+    copyTo: "Naar de week van",
+    copyTeam: "Team",
+    allTeams: "Al mijn teams",
+    copyButton: "Week kopiëren",
+    copied: "{n} evenement(en) gekopieerd.",
+    skipped: "Niet gekopieerd: {title} ({reason}).",
+    reasons: {
+      PLACE_CONFLICT: "locatie al bezet",
+      SEASON_RANGE: "buiten het seizoen",
+      FORBIDDEN: "niet uw team",
+      CAPACITY_REACHED: "capaciteit van de locatie overschreden",
+      NOT_FOUND: "intussen verwijderd",
+      NOTHING_TO_COPY: "geen evenement",
+    },
+    nothing: "Geen gepland evenement in deze week.",
+    monday: "Kies een maandag.",
+  },
+  en: {
+    duplicate: "Duplicate",
+    duplicating: "Copy of \"{title}\": adjust the date, then save.",
+    mail: "Prepare a mail",
+    copyWeek: "Copy this week",
+    copyTo: "To the week of",
+    copyTeam: "Team",
+    allTeams: "All my teams",
+    copyButton: "Copy the week",
+    copied: "{n} event(s) copied.",
+    skipped: "Not copied: {title} ({reason}).",
+    reasons: {
+      PLACE_CONFLICT: "place already taken",
+      SEASON_RANGE: "outside the season",
+      FORBIDDEN: "not your team",
+      CAPACITY_REACHED: "place capacity exceeded",
+      NOT_FOUND: "removed in the meantime",
+      NOTHING_TO_COPY: "no event",
+    },
+    nothing: "No scheduled event in this week.",
+    monday: "Choose a Monday.",
+  },
 };

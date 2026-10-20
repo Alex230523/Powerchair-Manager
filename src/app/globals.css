@@ -3725,3 +3725,77 @@ input.narrow {
     break-after: auto;
   }
 }
+
+/* Wave 9: communication, threads, stock, export, week copy */
+.tab-panel {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+}
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 4px 16px;
+  margin: 6px 0;
+}
+.com-list > li {
+  display: grid;
+  gap: 6px;
+}
+.com-list h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+.newsletter-editor fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
+}
+.block-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.block-item {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand-500);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  background: var(--surface);
+}
+.block-item .panel-head {
+  margin: 0;
+}
+.block-add {
+  margin-top: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.newsletter-preview {
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #f6f6f6;
+}
+.wide-dialog {
+  width: min(760px, calc(100% - 24px));
+}
+.export-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px 12px;
+}
+.copy-week {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+.messages-page .message-list .status-tag {
+  margin-left: 8px;
+}
