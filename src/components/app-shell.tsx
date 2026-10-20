@@ -29,6 +29,7 @@ export type Workspace = {
   };
   permissions: string[];
   fundraisingOpen?: boolean;
+  avatarVersion?: string | null;
 };
 type NavItem = { route: string; label: keyof Copy; icon: IconName };
 type NavGroup = {
@@ -408,14 +409,19 @@ export function AppShell({
             })}
           </nav>
         </details>
-        <div className="sidebar-foot">
-          {state?.user.name && (
-            <span className="avatar" aria-hidden="true">
-              {initials(state.user.name)}
-            </span>
-          )}
+        {/* The account's own corner: photo and name open Mon espace (wave 11). */}
+        <Link className="sidebar-foot" href={`/${locale}/access`} aria-label={`${t.access} · ${state?.user.name ?? ""}`}>
+          {state?.user.name &&
+            (state.avatarVersion ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="avatar" src={`/api/account/avatar?v=${state.avatarVersion}`} alt="" />
+            ) : (
+              <span className="avatar" aria-hidden="true">
+                {initials(state.user.name)}
+              </span>
+            ))}
           <span>{state?.user.name ?? "Powerchair Football Manager"}</span>
-        </div>
+        </Link>
       </aside>
       <div className="app-content">
         <header className="topbar">
