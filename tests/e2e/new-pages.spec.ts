@@ -163,7 +163,11 @@ test("new club, federation and referee pages load and pass axe", async ({
     });
     await expect(box).toBeFocused();
     await box.fill("pages pla");
-    await expect(page.getByRole("option", { name: /Pages player/ })).toBeVisible();
+    const palette = page.locator(".command-palette");
+    await expect(
+      palette.getByRole("option", { name: /^Pages player/ }),
+    ).toBeVisible();
+    await expect(palette.getByRole("group", { name: "Personnes" })).toBeVisible();
     expect(
       (
         await new AxeBuilder({ page })

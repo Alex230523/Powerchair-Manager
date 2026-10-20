@@ -173,6 +173,7 @@ export function CommandPalette({
           })),
         ];
   const current = Math.min(active, Math.max(results.length - 1, 0));
+  const groups = [...new Set(results.map((r) => r.group))];
   function go(r: Result | undefined) {
     if (!r) return;
     dialog.current?.close();
@@ -240,26 +241,35 @@ export function CommandPalette({
               {t.close}
             </button>
           </div>
-          <ul id="command-results" role="listbox" aria-label={t.label}>
-            {results.map((r, i) => {
-              const heading = i === 0 || results[i - 1].group !== r.group;
-              return (
-                <li
-                  key={r.key}
-                  id={"cmd-" + i}
-                  role="option"
-                  aria-selected={i === current}
-                  className={heading ? "command-first" : undefined}
-                  data-group={heading ? r.group : undefined}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => go(r)}
+          <div id="command-results" role="listbox" aria-label={t.label}>
+            {groups.map((g, gi) => (
+              <div key={g} role="group" aria-labelledby={`cmd-group-${gi}`}>
+                <div
+                  className="command-group"
+                  id={`cmd-group-${gi}`}
+                  role="presentation"
                 >
-                  <span>{r.label}</span>
-                  {r.detail && <small>{r.detail}</small>}
-                </li>
-              );
-            })}
-          </ul>
+                  {g}
+                </div>
+                {results.map((r, i) =>
+                  r.group !== g ? null : (
+                    <div
+                      key={r.key}
+                      id={"cmd-" + i}
+                      role="option"
+                      aria-selected={i === current}
+                      className="command-option"
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => go(r)}
+                    >
+                      <span>{r.label}</span>
+                      {r.detail && <small>{r.detail}</small>}
+                    </div>
+                  ),
+                )}
+              </div>
+            ))}
+          </div>
           <p className="command-foot muted" aria-live="polite">
             {needle.length < 2
               ? t.hint
