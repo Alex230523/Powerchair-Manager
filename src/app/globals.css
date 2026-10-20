@@ -4528,3 +4528,35 @@ a.sidebar-foot:hover, a.sidebar-foot:focus-visible { background: var(--sidebar-h
   .capsule { flex: 1 1 140px; }
   .capsule select { max-width: none; flex: 1; }
 }
+
+/* Teams page and sheet (wave 12) */
+.team-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1200px) { .team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .team-grid { grid-template-columns: minmax(0, 1fr); } }
+.team-card { display: grid; gap: 12px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--team-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); min-width: 0; }
+.team-card[data-archived] { opacity: 0.75; }
+.team-card-link { display: grid; gap: 2px; text-decoration: none; color: inherit; border-radius: var(--radius-sm); }
+.team-card-link:hover .team-card-name, .team-card-link:focus-visible .team-card-name { text-decoration: underline; }
+.team-card-head { display: flex; align-items: center; gap: 8px; }
+.team-card-name { font-family: var(--font-serif, Georgia, serif); font-size: 18px; font-weight: 600; }
+.team-card-sub { color: var(--muted); font-size: 0.85rem; }
+.team-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
+.team-stats div { display: grid; gap: 2px; }
+.team-stats dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.team-stats dd { margin: 0; font-weight: 700; font-size: 1.05rem; }
+.team-stats dd[data-tone="warn"] { color: var(--warning-ink); }
+.team-coaches { display: flex; align-items: center; min-height: 28px; }
+.avatar-small { width: 28px; height: 28px; font-size: 0.68rem; border: 2px solid var(--surface); }
+.team-coaches .avatar-small + .avatar-small { margin-left: -8px; }
+.team-card-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.team-card-foot a { min-height: 44px; display: inline-flex; align-items: center; font-weight: 600; }
+.color-picker { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0 0 12px; }
+.color-swatch { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--team-border); background: var(--team-bg); display: grid; place-items: center; cursor: pointer; }
+.color-swatch .team-dot { width: 14px; height: 14px; background: var(--team-border); }
+.color-swatch[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
+.team-sheet .page-header { border-left: 6px solid var(--team-border); padding-left: 14px; }
+.team-sheet-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* Calendar events in their team's colour; club-wide ones stay neutral. */
+.board-event[data-color], .calendar-item[data-color] { background: var(--team-bg); border-color: var(--team-border); color: var(--team-ink); }
+.calendar-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 0.82rem; color: var(--muted); }
+.calendar-legend li { display: inline-flex; align-items: center; gap: 6px; }

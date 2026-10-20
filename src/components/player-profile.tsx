@@ -17,6 +17,8 @@ import { documentStatuses } from "./documents-copy";
 import { errors } from "./access-copy";
 import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
+import { MoveDialog } from "./teams";
+const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
 type Tab = "personal" | "sport";
@@ -68,6 +70,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const [moving, setMoving] = useState(false);
   async function send(body: Record<string, unknown>) {
     setBusy(true);
     setError("");
@@ -117,6 +120,9 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
   const currentTeams = view.teams.filter(
     (a) => a.current && a.role === "player",
   );
+  const moveTargets = currentTeams.length
+    ? view.otherTeams.filter((o) => o.season_id === currentTeams[0].season_id && o.id !== currentTeams[0].team_id)
+    : [];
   const former = p.status !== "active" || p.former_roles.includes("player");
   const kinds = kindLabels[locale] as Record<string, string>;
   const statuses = documentStatuses[locale] as Record<string, string>;
@@ -405,12 +411,25 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
           </Card>
         )}
 
-        <Card title={t.history}>
+        <Card
+          title={t.history}
+          action={
+            view.can.editPosition && currentTeams.length > 0 && view.otherTeams.some((o) => o.season_id === currentTeams[0].season_id && o.id !== currentTeams[0].team_id) && (
+              <button type="button" className="button secondary" onClick={() => setMoving(true)}>
+                {moveCopy[locale]}
+              </button>
+            )
+          }
+        >
           <ol className="timeline">
             {view.teams.map((a) => (
               <li key={a.id} data-current={a.current || undefined}>
                 <strong>
-                  {a.team} · {a.season}
+                  <span className="team-chip" data-color={a.team_color ?? "none"}>
+                    <span className="team-dot" aria-hidden="true" />
+                    {a.team}
+                  </span>{" "}
+                  · {a.season}
                 </strong>
                 <span>
                   {t.roles[a.role] ?? a.role}
@@ -797,7 +816,33 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
           <Link href={`/${locale}/matches`}>{matchCopy[locale].link} →</Link>
         </Card>
       </section>
-    </main>
+    {moving && currentTeams.length > 0 && (
+        <MoveDialog
+          locale={locale}
+          player={{ profile_id: p.id, full_name: p.full_name }}
+          fromTeamId={currentTeams[0].team_id}
+          others={moveTargets}
+          busy={busy}
+          close={() => setMoving(false)}
+          move={async (body) => {
+            const r = await fetch("/api/teams", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ organizationId: view.context.id, action: "move", ...body }),
+            });
+            const v = await r.json();
+            if (!r.ok) {
+              setError(failure(v.error));
+              return;
+            }
+            setMoving(false);
+            const fresh = await fetch("/api/player-profile?id=" + encodeURIComponent(id), { cache: "no-store" });
+            if (fresh.ok) setView(await fresh.json());
+            setMessage(t.saved);
+          }}
+        />
+      )}
+      </main>
   );
 }
 

@@ -296,10 +296,10 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
   // Agenda: the next fortnight, filtered exactly like the calendar.
   const events = (
     await c.query(
-      "SELECT e.*,t.name AS team_name,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>now() AND e.starts_at<now()+interval '14 days' AND ($2::uuid IS NULL OR e.team_id=$2 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 60",
+      "SELECT e.*,t.name AS team_name,t.color AS team_color,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>now() AND e.starts_at<now()+interval '14 days' AND ($2::uuid IS NULL OR e.team_id=$2 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 60",
       [org, teamId],
     )
-  ).rows as (Event & { team_name: string | null; place_name: string | null })[];
+  ).rows as (Event & { team_name: string | null; team_color: string | null; place_name: string | null })[];
   const agenda: AgendaItem[] = [];
   let upcoming = 0;
   const rules = presenceRules(
@@ -333,6 +333,7 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
         startsAt: new Date(e.starts_at).toISOString(),
         endsAt: new Date(e.ends_at).toISOString(),
         team: e.team_name,
+        teamColor: e.team_color ?? null,
         place: e.place_name,
         responseNeeded: pendingEvents.has(e.id),
         ...(hasRegister && e.status === "scheduled"

@@ -70,6 +70,7 @@ type Item = {
   place_name: string | null;
   place_address: string | null;
   team_name: string | null;
+  team_color?: string | null;
   participants: { id: string; name: string }[];
   explicitParticipants: string[];
   documents: { id: string; name: string; versionId: string | null }[];
@@ -95,7 +96,7 @@ type View = {
   canPlan: boolean;
   offModules?: string[];
   events: Item[];
-  teams: { id: string; name: string }[];
+  teams: { id: string; name: string; color?: string | null }[];
   places: Place[];
   profiles: { id: string; full_name: string }[];
   documentOptions: { id: string; name: string; category: string }[];
@@ -605,6 +606,20 @@ export function Calendar({
                   onCreate={data.canPlan ? newEvent : undefined}
                 />
               )}
+              {view !== "list" && data.teams.some((x) => x.color) && (
+                <ul className="calendar-legend" aria-label={t.team}>
+                  {data.teams.map((x) => (
+                    <li key={x.id}>
+                      <span className="team-dot" data-color={x.color ?? "none"} aria-hidden="true" />
+                      {x.name}
+                    </li>
+                  ))}
+                  <li>
+                    <span className="team-dot" data-color="none" aria-hidden="true" />
+                    {t.all}
+                  </li>
+                </ul>
+              )}
               <ul
                 hidden={view !== "list"}
                 className={
@@ -621,7 +636,13 @@ export function Calendar({
                       {when(e.starts_at)} → {when(e.ends_at)}
                     </p>
                     <p>
-                      {e.team_name} {e.place_name && " · " + e.place_name}
+                      {e.team_id && (
+                        <span className="team-chip" data-color={e.team_color ?? "none"}>
+                          <span className="team-dot" aria-hidden="true" />
+                          {e.team_name}
+                        </span>
+                      )}{" "}
+                      {e.place_name && " · " + e.place_name}
                     </p>
                     {e.is_exception && <p>{t.exception}</p>}
                   </li>

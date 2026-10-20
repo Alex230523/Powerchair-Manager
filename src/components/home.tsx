@@ -268,7 +268,6 @@ function AgendaRow({
   const time = part({ hour: "2-digit", minute: "2-digit" });
   const details = [
     `${part({ weekday: "long" }).format(start)} ${time.format(start)}–${time.format(end)}`,
-    event.team,
     event.place,
   ].filter(Boolean);
   const r = event.readiness;
@@ -298,6 +297,15 @@ function AgendaRow({
               {part({ day: "numeric", month: "long" }).format(start)},{" "}
             </span>
             {details.join(" · ")}
+            {event.team && (
+              <>
+                {" "}
+                <span className="team-chip" data-color={event.teamColor ?? "none"}>
+                  <span className="team-dot" aria-hidden="true" />
+                  {event.team}
+                </span>
+              </>
+            )}
           </span>
           {r && (
             <span className="readiness" title={t.readiness[r.tone]}>

@@ -88,6 +88,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "players",
               items: [
                 ...item("/players", "players", "players", has("people.read")),
+                ...item("/teams", "teams", "team", has("people.read", "teams.manage") || role === "coach"),
                 ...(manager ? [registrations] : []),
                 ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                 ...item("/licenses", "licenses", "check", has("people.read")),

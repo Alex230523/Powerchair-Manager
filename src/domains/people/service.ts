@@ -91,6 +91,9 @@ type Team = {
   level: string;
   home_location: string;
   archived: boolean;
+  /** Palette key of the team (wave 12), null when none. */
+  color: string | null;
+  staff_contact_id: string | null;
   starts_on: string;
   ends_on: string;
   season_archived: boolean;

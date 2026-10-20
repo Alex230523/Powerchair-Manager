@@ -533,10 +533,15 @@ export function PlayerDirectory({
                         {r.full_name}
                       </button>
                     </th>
-                    <td>
-                      {[
-                        ...new Set(current(r).map((a) => teamName(a.team_id))),
-                      ].join(", ") || t.unassigned}
+                    <td className="tag-cell">
+                      {[...new Set(current(r).map((a) => a.team_id))].length
+                        ? [...new Set(current(r).map((a) => a.team_id))].map((id) => (
+                            <span key={id} className="team-chip" data-color={data?.teams.find((x) => x.id === id)?.color ?? "none"}>
+                              <span className="team-dot" aria-hidden="true" />
+                              {teamName(id)}
+                            </span>
+                          ))
+                        : t.unassigned}
                     </td>
                     {role === "player" && (
                       <>
