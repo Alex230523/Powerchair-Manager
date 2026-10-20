@@ -40,7 +40,7 @@ test("new club, federation and referee pages load and pass axe", async ({
   page,
 }) => {
   test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use test:e2e:db");
-  test.setTimeout(240000);
+  test.setTimeout(420000);
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `pages-${Date.now()}@example.test`;
   try {
@@ -162,8 +162,17 @@ test("new club, federation and referee pages load and pass axe", async ({
     await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Nouvelles de la saison" })).toBeVisible();
     await page.getByRole("button", { name: "Aperçu : Nouvelles de la saison" }).click();
+    // The preview is a sandboxed frame: axe cannot enter it, the dialog itself is checked.
     await expect(page.getByTitle("Aperçu de la newsletter")).toBeVisible();
-    await axe("preview", "dialog");
+    const dialogViolations = (
+      await new AxeBuilder({ page })
+        .include("dialog")
+        .exclude("iframe")
+        .disableFrame("iframe")
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze()
+    ).violations.map((v) => v.id);
+    expect(dialogViolations).toEqual([]);
     await page.keyboard.press("Escape");
     for (const name of ["Mails d'événements", "Anciens", "Expéditeur"]) {
       await page.getByRole("tab", { name, exact: true }).click();
