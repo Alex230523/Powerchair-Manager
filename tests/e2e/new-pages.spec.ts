@@ -10,6 +10,8 @@ import { Pool } from "pg";
  */
 async function switchProfile(page: Page, assignment: string) {
   await page.goto("/fr");
+  // The profile select lives in the sidebar foot menu (wave 12): open it first.
+  await page.locator(".profile-menu > summary").click();
   await Promise.all([
     page.waitForEvent("load"),
     page.getByLabel("Profil actif", { exact: true }).selectOption(assignment),

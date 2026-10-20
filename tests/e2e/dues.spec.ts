@@ -70,6 +70,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
       [org, user],
     );
     await page.reload();
+    // The profile select lives in the sidebar foot menu (wave 12): open it first.
+    await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
       page.getByLabel("Profil actif", { exact: true }).selectOption(admin),
@@ -87,7 +89,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await profileForm
       .getByRole("button", { name: "Enregistrer", exact: true })
       .click();
-    await expect(page.locator("header option:checked")).toHaveText(
+    await expect(page.locator(".profile-menu option:checked")).toHaveText(
       "Club — Président",
     );
     const pref = page
@@ -187,6 +189,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
       fullPage: true,
     });
     await page.setViewportSize({ width: 1280, height: 900 });
+    // The profile select lives in the sidebar foot menu (wave 12): open it first.
+    await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
       page.getByLabel("Active profile", { exact: true }).selectOption(player),

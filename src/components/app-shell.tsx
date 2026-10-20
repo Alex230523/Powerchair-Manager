@@ -8,6 +8,8 @@ import type { Locale } from "@/lib/locale";
 import { BrandLogo, Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { CommandPalette } from "./command-palette";
+import { ScopeProvider, useScope } from "./use-scope";
+import type { SeasonOption, TeamOption } from "@/domains/scope/service";
 export { shellCopy };
 type Copy = (typeof shellCopy)[Locale];
 export type Workspace = {
@@ -30,6 +32,8 @@ export type Workspace = {
   permissions: string[];
   fundraisingOpen?: boolean;
   avatarVersion?: string | null;
+  seasons?: SeasonOption[];
+  teams?: TeamOption[];
 };
 type NavItem = { route: string; label: keyof Copy; icon: IconName };
 type NavGroup = {
@@ -373,6 +377,11 @@ export function AppShell({
   }
   const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
   return (
+    <ScopeProvider
+      organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}
+      seasons={state?.seasons ?? []}
+      teams={state?.teams ?? []}
+    >
     <div className="app-shell">
       <aside className="sidebar">
         <Link className="brand" href={`/${locale}`}>
@@ -409,19 +418,46 @@ export function AppShell({
             })}
           </nav>
         </details>
-        {/* The account's own corner: photo and name open Mon espace (wave 11). */}
-        <Link className="sidebar-foot" href={`/${locale}/access`} aria-label={`${t.access} · ${state?.user.name ?? ""}`}>
-          {state?.user.name &&
-            (state.avatarVersion ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="avatar" src={`/api/account/avatar?v=${state.avatarVersion}`} alt="" />
-            ) : (
-              <span className="avatar" aria-hidden="true">
-                {initials(state.user.name)}
-              </span>
-            ))}
-          <span>{state?.user.name ?? "Powerchair Football Manager"}</span>
-        </Link>
+        {/* The account's own corner (wave 11 and 12): photo and name open the profile menu. */}
+        <details className="profile-menu">
+          <summary className="sidebar-foot" aria-label={`${t.profileMenu} · ${state?.user.name ?? ""}`}>
+            {state?.user.name &&
+              (state.avatarVersion ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="avatar" src={`/api/account/avatar?v=${state.avatarVersion}`} alt="" />
+              ) : (
+                <span className="avatar" aria-hidden="true">
+                  {initials(state.user.name)}
+                </span>
+              ))}
+            <span>{state?.user.name ?? "Powerchair Football Manager"}</span>
+          </summary>
+          <div className="profile-menu-body">
+            {state ? (
+              <label>
+                {t.profile}
+                <select
+                  aria-label={t.profile}
+                  value={state.selected?.id ?? ""}
+                  disabled={busy}
+                  onChange={(e) => void change(e.target.value)}
+                >
+                  <option value="" disabled>
+                    {t.choose}
+                  </option>
+                  {state.contexts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {state.profiles?.find((p) => p.mandate_id === c.id)?.name ?? `${c.name} · ${labels[c.role][locale]}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <Link className="button secondary" href={`/${locale}/access`}>
+              {t.access}
+            </Link>
+          </div>
+        </details>
       </aside>
       <div className="app-content">
         <header className="topbar">
@@ -441,33 +477,12 @@ export function AppShell({
             {role && <span className="role-chip">{labels[role][locale]}</span>}
           </div>
           <div className="topbar-tools">
-            <div className="profile-switch">
-              {state ? (
-                <label>
-                  {t.profile}
-                  <select
-                    aria-label={t.profile}
-                    value={state.selected?.id ?? ""}
-                    disabled={busy}
-                    onChange={(e) => void change(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      {t.choose}
-                    </option>
-                    {state.contexts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {state.profiles?.find((p) => p.mandate_id === c.id)
-                          ?.name ?? `${c.name} · ${labels[c.role][locale]}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <Link className="button secondary" href={`/${locale}/access`}>
-                  {t.access}
-                </Link>
-              )}
-            </div>
+            {!state && (
+              <Link className="button secondary" href={`/${locale}/access`}>
+                {t.access}
+              </Link>
+            )}
+            {state?.selected?.kind === "club" && role !== "player" && role !== "guardian" && <ScopeBar t={t} />}
             <CommandPalette
               locale={locale}
               enabled={!!state?.selected}
@@ -482,8 +497,65 @@ export function AppShell({
           </div>
           {error && <p role="alert">{error}</p>}
         </header>
+        <ScopeChip t={t} />
         {children}
       </div>
+    </div>
+    </ScopeProvider>
+  );
+}
+/** Season and team capsules of the top bar (wave 12): the choice every page follows. */
+function ScopeBar({ t }: { t: Copy }) {
+  const scope = useScope();
+  if (!scope.organizationId || !scope.seasons.length) return null;
+  const open = scope.seasons.filter((s) => !s.archived),
+    archived = scope.seasons.filter((s) => s.archived);
+  return (
+    <div className="scope-bar">
+      <label className="capsule">
+        <span className="capsule-label">{t.season}</span>
+        <select aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
+          {open.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+          {archived.length > 0 && (
+            <optgroup label={t.archivedSeasons}>
+              {archived.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
+      {scope.seasonTeams.length > 1 && (
+        <label className="capsule">
+          <span className="team-dot" data-color={scope.team?.color ?? "none"} aria-hidden="true" />
+          <span className="capsule-label">{t.team}</span>
+          <select aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
+            <option value="">{t.allTeams}</option>
+            {scope.seasonTeams.map((x) => (
+              <option key={x.id} value={x.id}>{x.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+    </div>
+  );
+}
+/** Under the top bar when one team is chosen: "Équipe A · 2026-2027", with a cross. */
+function ScopeChip({ t }: { t: Copy }) {
+  const scope = useScope();
+  if (!scope.team) return null;
+  return (
+    <div className="scope-chip-row">
+      <span className="scope-chip">
+        <span className="team-dot" data-color={scope.team.color ?? "none"} aria-hidden="true" />
+        {scope.team.name}
+        {scope.season && <span className="muted"> · {scope.season.name}</span>}
+        <button type="button" className="scope-clear" aria-label={t.scopeClear} onClick={() => scope.setTeam(null)}>
+          ×
+        </button>
+      </span>
     </div>
   );
 }

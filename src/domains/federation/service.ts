@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -106,10 +107,13 @@ async function notify(
 
 /* ---------------------------------------------------------------- Club side */
 
-export async function clubLicensesView(db: Pool, p: Principal) {
+export async function clubLicensesView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
   return peopleScope(db, p, false, async (s) => {
     const c = s.client,
       org = s.context.organization_id;
+    // The top bar's team (wave 12): its current players only.
+    const chosen = await resolveScope(c, { organization_id: org, role: s.context.role, user_id: p.userId, team_id: s.context.team_id }, raw);
+    const members = chosen.teamId ? new Set(await teamMembers(c, org, chosen.teamId)) : null;
     const all = await peopleRecords(s),
       v = peopleVisibility(s, all);
     if (!v.full && !s.rights.includes("teams.manage"))
@@ -134,7 +138,7 @@ export async function clubLicensesView(db: Pool, p: Principal) {
           ORDER BY cp.full_name`,
         [org, season],
       )
-    ).rows;
+    ).rows.filter((r) => !members || members.has(r.id));
     const manage =
       mfaSatisfied(!!s.user.twoFactorEnabled) &&
       (s.rights.includes("people.manage") || s.rights.includes("teams.manage"));

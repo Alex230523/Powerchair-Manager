@@ -4453,3 +4453,78 @@ a.sidebar-foot:hover, a.sidebar-foot:focus-visible { background: var(--sidebar-h
 .contact-table tr[data-archived] th, .contact-table tr[data-archived] td { color: var(--muted); }
 .tag-picker { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; }
 .tag-picker legend { padding: 0 4px; font-size: 0.85rem; color: var(--muted); }
+
+/* ---------- Wave 12: team palette (light), season and team scope, profile menu ---------- */
+:root {
+  --team-blue-bg: #e3edfb; --team-blue-border: #8fb3ea; --team-blue-ink: #173f7a;
+  --team-teal-bg: #dcf3f1; --team-teal-border: #7fcbc4; --team-teal-ink: #0f4f4a;
+  --team-green-bg: #e2f3e1; --team-green-border: #8fcd8b; --team-green-ink: #1c5a1f;
+  --team-amber-bg: #fbeed3; --team-amber-border: #e8bf5d; --team-amber-ink: #6b4a00;
+  --team-coral-bg: #fde3df; --team-coral-border: #f09a8e; --team-coral-ink: #872a1e;
+  --team-plum-bg: #f0e3f6; --team-plum-border: #c79be0; --team-plum-ink: #5a2a7a;
+  --team-slate-bg: #e6e9ee; --team-slate-border: #a3adbb; --team-slate-ink: #2f3a48;
+  --team-sand-bg: #f3ebdd; --team-sand-border: #d2bb91; --team-sand-ink: #5c4a24;
+  --team-none-bg: var(--surface-3); --team-none-border: var(--line-strong); --team-none-ink: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --team-blue-bg: #17273f; --team-blue-border: #4c74b3; --team-blue-ink: #c7dbfa;
+    --team-teal-bg: #13302e; --team-teal-border: #3f8f88; --team-teal-ink: #bfeee9;
+    --team-green-bg: #173118; --team-green-border: #4e9a4b; --team-green-ink: #c9efc6;
+    --team-amber-bg: #3a2c0a; --team-amber-border: #a9842c; --team-amber-ink: #f7dfa3;
+    --team-coral-bg: #3d1a16; --team-coral-border: #b85a4d; --team-coral-ink: #fbc9c1;
+    --team-plum-bg: #2f1b3b; --team-plum-border: #8c5fab; --team-plum-ink: #e7cff5;
+    --team-slate-bg: #262c35; --team-slate-border: #6a7786; --team-slate-ink: #dde3ea;
+    --team-sand-bg: #35291a; --team-sand-border: #9b8155; --team-sand-ink: #efe0c3;
+  }
+}
+:root[data-theme="dark"] {
+  --team-blue-bg: #17273f; --team-blue-border: #4c74b3; --team-blue-ink: #c7dbfa;
+  --team-teal-bg: #13302e; --team-teal-border: #3f8f88; --team-teal-ink: #bfeee9;
+  --team-green-bg: #173118; --team-green-border: #4e9a4b; --team-green-ink: #c9efc6;
+  --team-amber-bg: #3a2c0a; --team-amber-border: #a9842c; --team-amber-ink: #f7dfa3;
+  --team-coral-bg: #3d1a16; --team-coral-border: #b85a4d; --team-coral-ink: #fbc9c1;
+  --team-plum-bg: #2f1b3b; --team-plum-border: #8c5fab; --team-plum-ink: #e7cff5;
+  --team-slate-bg: #262c35; --team-slate-border: #6a7786; --team-slate-ink: #dde3ea;
+  --team-sand-bg: #35291a; --team-sand-border: #9b8155; --team-sand-ink: #efe0c3;
+}
+/* Everything coloured by a team uses data-color, the palette does the rest. */
+[data-color="blue"] { --team-bg: var(--team-blue-bg); --team-border: var(--team-blue-border); --team-ink: var(--team-blue-ink); }
+[data-color="teal"] { --team-bg: var(--team-teal-bg); --team-border: var(--team-teal-border); --team-ink: var(--team-teal-ink); }
+[data-color="green"] { --team-bg: var(--team-green-bg); --team-border: var(--team-green-border); --team-ink: var(--team-green-ink); }
+[data-color="amber"] { --team-bg: var(--team-amber-bg); --team-border: var(--team-amber-border); --team-ink: var(--team-amber-ink); }
+[data-color="coral"] { --team-bg: var(--team-coral-bg); --team-border: var(--team-coral-border); --team-ink: var(--team-coral-ink); }
+[data-color="plum"] { --team-bg: var(--team-plum-bg); --team-border: var(--team-plum-border); --team-ink: var(--team-plum-ink); }
+[data-color="slate"] { --team-bg: var(--team-slate-bg); --team-border: var(--team-slate-border); --team-ink: var(--team-slate-ink); }
+[data-color="sand"] { --team-bg: var(--team-sand-bg); --team-border: var(--team-sand-border); --team-ink: var(--team-sand-ink); }
+[data-color="none"], [data-color=""] { --team-bg: var(--team-none-bg); --team-border: var(--team-none-border); --team-ink: var(--team-none-ink); }
+.team-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--team-border, var(--line-strong)); flex: none; }
+.team-chip { display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px; border-radius: var(--radius-pill); border: 1px solid var(--team-border); background: var(--team-bg); color: var(--team-ink); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.team-chip .team-dot { background: var(--team-border); }
+
+.scope-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.capsule { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px 0 12px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--surface); font-size: 0.78rem; color: var(--muted); }
+.capsule-label { white-space: nowrap; }
+.capsule select { margin: 0; min-height: 40px; border: 0; background: transparent; padding: 4px 28px 4px 4px; font-size: 0.9rem; font-weight: 600; color: var(--ink); max-width: 220px; }
+.capsule:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.scope-chip-row { padding: 10px 18px 0; max-width: 1160px; margin: auto; }
+.scope-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border-radius: var(--radius-pill); border: 1px solid var(--line); background: var(--surface); font-size: 0.85rem; font-weight: 600; }
+.scope-clear { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--ink); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.scope-clear:hover, .scope-clear:focus-visible { background: var(--accent-soft); color: var(--accent-ink); }
+.scope-note { font-size: 0.82rem; color: var(--muted); margin: -6px 0 14px; }
+.apply-scope { font-size: 0.82rem; margin-left: 10px; }
+
+.profile-menu { margin-top: auto; position: relative; }
+.profile-menu > summary { list-style: none; cursor: pointer; border-radius: var(--radius-sm); }
+.profile-menu > summary::-webkit-details-marker { display: none; }
+.profile-menu > summary:hover, .profile-menu > summary:focus-visible { background: var(--sidebar-hover); }
+.profile-menu .sidebar-foot { margin-top: 0; }
+.profile-menu-body { display: grid; gap: 10px; padding: 10px 8px 12px; border-top: 1px solid var(--sidebar-line); }
+.profile-menu-body label { font-size: 0.76rem; color: var(--sidebar-muted); display: grid; gap: 4px; }
+.profile-menu-body select { min-height: 40px; max-width: 100%; }
+.profile-menu-body .button { justify-content: center; }
+@media (max-width: 760px) {
+  .scope-bar { width: 100%; }
+  .capsule { flex: 1 1 140px; }
+  .capsule select { max-width: none; flex: 1; }
+}

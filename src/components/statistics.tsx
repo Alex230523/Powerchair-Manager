@@ -3,6 +3,7 @@ import { RetentionCard } from "./retention";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
+import { useScope, ApplyScope } from "./use-scope";
 import type { attendanceView } from "@/domains/attendance/service";
 import {
   summarize,
@@ -141,16 +142,22 @@ type View = Awaited<ReturnType<typeof attendanceView>>;
 export function Statistics({ locale }: { locale: Locale }) {
   const t = copies[locale],
     today = localAt(new Date(), "Europe/Brussels").slice(0, 10);
+  const scope = useScope();
   const [filters, setFilters] = useState({
       from: shiftLocal(today + "T12:00", -90).slice(0, 10),
       to: today,
-      team: "",
+      team: scope.teamId ?? "",
     }),
     [kind, setKind] = useState(""),
     [data, setData] = useState<View | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(false),
     [invalid, setInvalid] = useState(false);
+  const globalTeam = scope.teamId ?? "";
+  useEffect(() => {
+    // The top bar choice (wave 12) re-seeds the local filter.
+    setFilters((f) => (f.team === globalTeam ? f : { ...f, team: globalTeam }));
+  }, [globalTeam]);
   useEffect(() => {
     const c = new AbortController();
     fetch("/api/attendance?" + new URLSearchParams({ ...filters, place: "" }), {
@@ -302,6 +309,7 @@ export function Statistics({ locale }: { locale: Locale }) {
                 </option>
               ))}
             </select>
+            <ApplyScope locale={locale} differs={filters.team !== globalTeam} apply={() => scope.setTeam(filters.team || null)} />
           </div>
           <div className="toolbar-field">
             <label htmlFor="stats-kind">{t.kind}</label>

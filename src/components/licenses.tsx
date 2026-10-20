@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type {
   clubLicensesView,
   federationLicensesView,
@@ -18,9 +19,10 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
     [t, locale],
   );
+  const scope = useScope();
   const { data, error, setError, denied, reload } = useData<
     Awaited<ReturnType<typeof clubLicensesView>>
-  >("/api/licenses", failure);
+  >("/api/licenses" + (scope.teamId ? `?team=${scope.teamId}` : ""), failure);
   const { busy, message, post } = usePost(
     "/api/licenses",
     reload,

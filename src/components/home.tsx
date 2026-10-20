@@ -11,6 +11,7 @@ import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
+import { useScope } from "./use-scope";
 type State =
   | { kind: "loading" }
   | { kind: "visitor"; failed: boolean }
@@ -24,10 +25,16 @@ export function Home({ locale }: { locale: Locale }) {
   const t = homeCopy[locale];
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
+  // The season and team chosen in the top bar (wave 12) shape every figure.
+  const scope = useScope();
+  const query = new URLSearchParams();
+  if (scope.seasonId) query.set("season", scope.seasonId);
+  if (scope.teamId) query.set("team", scope.teamId);
+  const url = "/api/dashboard" + (query.toString() ? "?" + query.toString() : "");
   useEffect(() => {
     let cancelled = false;
     const load = () =>
-      fetch("/api/dashboard", { cache: "no-store" })
+      fetch(url, { cache: "no-store" })
         .then(async (r) => {
           const next: State = r.ok
             ? { kind: "ready", data: (await r.json()) as Dashboard }
@@ -44,7 +51,7 @@ export function Home({ locale }: { locale: Locale }) {
       cancelled = true;
       window.removeEventListener("pfm-workspace", load);
     };
-  }, [attempt]);
+  }, [attempt, url]);
   if (state.kind === "loading")
     return (
       <main id="main" aria-busy="true">

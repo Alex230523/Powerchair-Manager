@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
@@ -158,9 +159,9 @@ export function PlayerDirectory({
     [creating, setCreating] = useState(false),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
-    [team, setTeam] = useState(""),
     [position, setPosition] = useState(""),
     [minimum, setMinimum] = useState("");
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
     year: "numeric",
@@ -441,6 +442,7 @@ export function PlayerDirectory({
                   </option>
                 ))}
               </select>
+              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
             </label>
             {role === "player" && (
               <label>

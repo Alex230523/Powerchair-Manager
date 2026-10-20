@@ -10,6 +10,7 @@ import {
   type FormEvent,
 } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import { kinds, visibilities } from "@/domains/calendar/schema";
 import {
@@ -216,6 +217,7 @@ export function Calendar({
           };
   const t = calendarCopy[locale],
     kl = kindLabels[locale];
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [data, setData] = useState<View | null>(null),
     [anchor, setAnchorState] = useState(() =>
       localAt(new Date(), "Europe/Brussels").slice(0, 10),
@@ -225,7 +227,6 @@ export function Calendar({
     [editorOpen, setEditorOpen] = useState(false),
     [subscriptionOpen, setSubscriptionOpen] = useState(false),
     [offset, setOffset] = useState(0),
-    [team, setTeam] = useState(""),
     [place, setPlace] = useState(""),
     [selected, setSelected] = useState(eventId ?? ""),
     [placeEdit, setPlaceEdit] = useState(""),
@@ -499,6 +500,7 @@ export function Calendar({
                       </option>
                     ))}
                   </select>
+                <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
                 </Field>
                 <Field id="calendar-place" label={t.place}>
                   <select

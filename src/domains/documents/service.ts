@@ -1,3 +1,4 @@
+import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { Pool, type PoolClient } from "pg";
 import { randomUUID, createHash } from "node:crypto";
@@ -244,8 +245,11 @@ async function slot(
   }
   return d;
 }
-export async function documentView(db: Pool, p: Principal) {
+export async function documentView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
   return scope(db, p, async (s) => {
+    // The top bar's team (wave 12): documents of its current members only.
+    const chosen = (s.a as { kind?: string }).kind === "club" ? await resolveScope(s.c, { organization_id: s.a.organization_id, role: s.a.role, user_id: s.a.user_id, team_id: s.a.team_id }, raw) : { teamId: null };
+    const members = chosen.teamId ? new Set(await teamMembers(s.c, s.a.organization_id, chosen.teamId)) : null;
     const rows = (
       await s.c.query(
         "SELECT d.*,d.expires_on::text AS expires_on,c.full_name AS owner_name,se.name AS season_name,o.name AS organization_name FROM club_document d JOIN organization o ON o.id=d.organization_id JOIN season se ON se.id=d.season_id LEFT JOIN club_person c ON c.id=d.profile_id WHERE d.organization_id=$1 OR EXISTS(SELECT 1 FROM document_share sh WHERE sh.document_id=d.id AND sh.federation_id=$1 AND sh.revoked_at IS NULL) ORDER BY d.updated_at DESC LIMIT 300",
@@ -254,6 +258,7 @@ export async function documentView(db: Pool, p: Principal) {
     ).rows;
     const documents = [];
     for (const d of rows) {
+      if (members && d.profile_id && !members.has(d.profile_id)) continue;
       if (!(await docAccess(s.c, s.a, d))) continue;
       const foreign = d.organization_id !== s.a.organization_id;
       documents.push({

@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
+import { WholeClubNote, useScope } from "./use-scope";
 import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
 const copy = {
@@ -334,6 +335,12 @@ export function Dues({ locale }: { locale: Locale }) {
     [detailId, setDetailId] = useState(""),
     [payId, setPayId] = useState(""),
     [issuing, setIssuing] = useState(false);
+  // The season chosen in the top bar (wave 12) seeds the season filter.
+  const scope = useScope();
+  const globalSeason = scope.seasonId ?? "";
+  useEffect(() => {
+    setFilter(globalSeason);
+  }, [globalSeason]);
   const money = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
@@ -442,6 +449,7 @@ export function Dues({ locale }: { locale: Locale }) {
           </>
         }
       />
+      <WholeClubNote locale={locale} />
       {error && (
         <p role="alert">
           {error} <Link href={`/${locale}/access`}>{t.access}</Link>

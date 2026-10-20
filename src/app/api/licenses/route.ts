@@ -1,3 +1,4 @@
+import { parseScope } from "@/domains/scope/service";
 import { getDb } from "@/lib/db";
 import {
   clubLicensesView,
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     return Response.json(
-      await clubLicensesView(getDb(), await principalIn(request, "licenses")),
+      await clubLicensesView(getDb(), await principalIn(request, "licenses"), parseScope(new URL(request.url).searchParams)),
       {
         headers: noStore,
       },

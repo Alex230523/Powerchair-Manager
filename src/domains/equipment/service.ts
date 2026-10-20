@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -160,14 +161,20 @@ export async function chairsFor(
   });
 }
 
-export async function equipmentView(db: Pool, p: Principal) {
+export async function equipmentView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
   return scope(db, p, false, async (s) => {
     const org = s.a.organization_id;
     const visible = s.manage ? [] : [...(await readableProfiles(s.c, s.a))];
+    // The top bar's team (wave 12): chairs used by its members, plus the unassigned ones.
+    const chosen = await resolveScope(s.c, { organization_id: org, role: s.a.role, user_id: p.userId, team_id: s.a.team_id }, raw);
+    const members = chosen.teamId ? new Set(await teamMembers(s.c, org, chosen.teamId)) : null;
+    const chairs = (await chairsFor(s.c, org, visible, s.manage)).filter(
+      (ch) => !members || !ch.links.some((l) => !l.ends_on) || ch.links.some((l) => !l.ends_on && members.has(l.profile_id)),
+    );
     return {
       context: { organization_id: org, role: s.a.role },
       manage: s.manage,
-      chairs: await chairsFor(s.c, org, visible, s.manage),
+      chairs,
       players: s.manage
         ? (
             await s.c.query(
