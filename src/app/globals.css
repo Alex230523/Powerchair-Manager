@@ -3373,3 +3373,231 @@ input.narrow {
   gap: 10px 14px;
   margin: 10px 0 14px;
 }
+
+/* Trips, venues, offline book and care (wave 7). */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+.pre-line {
+  white-space: pre-line;
+}
+.trip-list,
+.vehicle-list,
+.venue-list,
+.book-people,
+.book-schedule,
+.care-items,
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.trip-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  margin-top: 16px;
+}
+.trip-card,
+.vehicle-card,
+.venue-card,
+.book-people > li {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.trip-card[data-status="cancelled"] {
+  opacity: 0.6;
+}
+.trip-card p,
+.vehicle-card p,
+.venue-card p,
+.book-people p {
+  margin: 4px 0 0;
+}
+.trip-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.trip-card-head h2,
+.book-people h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.trip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.trip-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.trip-facts div {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  gap: 10px;
+}
+.trip-facts dt {
+  font-weight: 700;
+  color: var(--muted);
+}
+.trip-facts dd {
+  margin: 0;
+}
+.access-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.access-badges > * {
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--line-strong);
+  color: var(--muted);
+}
+.access-badges > [data-ok="true"] {
+  border-style: solid;
+  border-color: #15803d;
+  color: #166534;
+  background: #f0fdf4;
+}
+.access-badges > [data-ok="false"] {
+  border-style: solid;
+  border-color: #b91c1c;
+  color: #991b1b;
+  background: #fef2f2;
+}
+.access-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px 14px;
+  margin: 10px 0;
+}
+.venue-filters {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+.venue-filters fieldset,
+.inline-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.people-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 2px 14px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 8px 0 12px;
+}
+.schedule-day h3 {
+  margin: 14px 0 6px;
+  font-size: 0.92rem;
+}
+.schedule-day ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.schedule-day li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+}
+.schedule-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.checklist li,
+.care-items li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.care-items li {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.care-items li[data-inactive] {
+  opacity: 0.6;
+}
+.care-form,
+.vehicle-form,
+.venue-form,
+.fleet-form,
+.trip-form {
+  display: grid;
+  gap: 10px;
+}
+.day-switch {
+  margin: 12px 0;
+  flex-wrap: wrap;
+  border-radius: var(--radius-sm);
+}
+.support-list {
+  margin: 8px 0 12px;
+}
+.offline-book .book-people {
+  margin-top: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .access-badges > [data-ok="true"] {
+    background: rgb(22 163 74 / 15%);
+    color: #86efac;
+    border-color: #22c55e;
+  }
+  :root:not([data-theme="light"]) .access-badges > [data-ok="false"] {
+    background: rgb(220 38 38 / 15%);
+    color: #fca5a5;
+    border-color: #ef4444;
+  }
+}
+:root[data-theme="dark"] .access-badges > [data-ok="true"] {
+  background: rgb(22 163 74 / 15%);
+  color: #86efac;
+  border-color: #22c55e;
+}
+:root[data-theme="dark"] .access-badges > [data-ok="false"] {
+  background: rgb(220 38 38 / 15%);
+  color: #fca5a5;
+  border-color: #ef4444;
+}
+@media (max-width: 560px) {
+  .trip-facts div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .schedule-day li {
+    grid-template-columns: 48px 1fr;
+  }
+}
+@media print {
+  .offline-book button {
+    display: none;
+  }
+}

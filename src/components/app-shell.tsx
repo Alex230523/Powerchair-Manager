@@ -71,6 +71,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             items: [
               { route: "/calendar", label: "calendar", icon: "calendar" },
               { route: "/matches", label: "matches", icon: "whistle" },
+              { route: "/trips", label: "trips", icon: "arrow" },
+              { route: "/venues", label: "venues", icon: "club" },
               {
                 route: "/federal-calendar",
                 label: "federalCalendar",
@@ -138,6 +140,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                       },
                     ]) satisfies NavItem[]),
                 { route: "/calendar", label: "calendar", icon: "calendar" },
+                { route: "/venues", label: "venues", icon: "club" },
                 { route: "/documents", label: "documents", icon: "document" },
                 { route: "/messages", label: "messages", icon: "message" },
               ],
@@ -182,6 +185,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
           : state
             ? ([registrations] satisfies NavItem[])
             : []),
+        ...(kind === "club" && !off.has("trips")
+          ? ([
+              { route: "/offline-book", label: "offlineBook", icon: "lock" },
+            ] satisfies NavItem[])
+          : []),
         { route: "/access", label: "access", icon: "user" },
       ],
     },

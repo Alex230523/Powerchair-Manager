@@ -1,4 +1,5 @@
 "use client";
+import { CareCard } from "./care-card";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -306,6 +307,16 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               </dl>
             )}
           </Card>
+        )}
+
+        {view.care && (
+          <CareCard
+            locale={locale}
+            care={view.care}
+            canEdit={view.can.editSupport}
+            busy={busy}
+            send={send}
+          />
         )}
 
         <Card

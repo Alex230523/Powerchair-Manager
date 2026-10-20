@@ -28,6 +28,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     notes: text(2000),
     /** Dues receivable paid by this income line (category "dues" only). */
     receivableId: z.uuid().nullable().optional(),
+    /** Trip this expense or income belongs to (budget against actual). */
+    tripId: z.uuid().nullable().optional(),
   }),
   z.object({
     action: z.literal("budget"),

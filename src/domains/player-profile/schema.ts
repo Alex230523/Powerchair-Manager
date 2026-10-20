@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { careMoments } from "../trips/schema";
 /** FIPFA sport classes. "pending" = assessment requested, not yet decided. */
 export const classifications = [
   "PF1",
@@ -42,6 +43,17 @@ export const commandSchema = z.discriminatedUnion("action", [
     version,
     impairment: text(2000),
     medicalNotes: text(2000),
+  }),
+  /** A care instruction (transfer, positioning, ventilation...), sealed at rest. */
+  z.object({
+    action: z.literal("care"),
+    id,
+    careId: z.uuid().optional(),
+    moment: z.enum(careMoments),
+    time: z.union([z.literal(""), z.string().regex(/^[0-2]\d:[0-5]\d$/)]),
+    title: text(120).min(2),
+    details: text(2000),
+    active: z.boolean(),
   }),
 ]);
 export type Command = z.infer<typeof commandSchema>;

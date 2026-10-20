@@ -16,6 +16,7 @@ import { chairsFor } from "../equipment/service";
 import { playerMatchStats } from "../competitions/service";
 import { seal, unseal } from "../notifications/crypto";
 import { logSensitiveAccess } from "../club/governance";
+import { careFor, saveCare } from "../trips/service";
 import {
   attendanceSummary,
   commandSchema,
@@ -220,6 +221,11 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
           sensitive: d.sensitive,
         });
 
+    // Care instructions travel with the support needs (coaches need them on the pitch).
+    const care = can.viewSupport ? await careFor(c, org, id) : null;
+    if (care?.length && !can.own && !can.guardian)
+      await logSensitiveAccess(c, org, s.p.userId, id, "player_health");
+
     const dues = can.viewMoney
       ? (
           await c.query(
@@ -303,6 +309,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
           }
         : null,
       supportVersion: supportRow?.version ?? 0,
+      care,
       confidential,
       chairs: await chairsFor(c, org, [id]),
       documents,
@@ -328,6 +335,19 @@ export async function playerProfileExecute(
       new AccessError(
         mfaSatisfied(!!s.user.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
       );
+    if (input.action === "care") {
+      if (!can.editSupport) throw forbidden();
+      const careId = await saveCare(c, org, p.userId, input.id, {
+        id: input.careId,
+        moment: input.moment,
+        time: input.time,
+        title: input.title,
+        details: input.details,
+        active: input.active,
+      });
+      await audit(c, org, p.userId, "player.care", input.id);
+      return { id: input.id, careId };
+    }
     let saved;
     if (input.action === "sport") {
       if (!can.editSport) throw forbidden();

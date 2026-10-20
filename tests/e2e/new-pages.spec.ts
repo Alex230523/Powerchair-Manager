@@ -126,8 +126,23 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/privacy",
       "/fr/settings",
       "/fr/statistics",
+      "/fr/trips",
+      "/fr/venues",
+      "/fr/offline-book",
     ])
       await check(page, path);
+    // A trip page with its sections (participants, transport, care, offline).
+    const tripId = (
+      await db.query(
+        "INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,created_by) VALUES($1,'Tournoi test','tournament',CURRENT_DATE+10,CURRENT_DATE+11,$2) RETURNING id",
+        [club, user],
+      )
+    ).rows[0].id;
+    await db.query(
+      "INSERT INTO trip_participant(trip_id,profile_id,role,status,chair) SELECT $1,id,'player','confirmed','powerchair' FROM club_person WHERE organization_id=$2",
+      [tripId, club],
+    );
+    await check(page, `/fr/trips/${tripId}`);
 
     await switchProfile(page, roles.federation_president);
     for (const path of [

@@ -131,6 +131,7 @@ export const optionalModules = [
   "reminders",
   "messages",
   "statistics",
+  "trips",
 ] as const;
 export type OptionalModule = (typeof optionalModules)[number];
 /** Menu routes and API paths owned by each optional module. */
@@ -143,6 +144,7 @@ export const moduleRoutes: Record<OptionalModule, string[]> = {
   reminders: ["/reminders", "/api/reminders"],
   messages: ["/messages", "/api/messages"],
   statistics: ["/statistics"],
+  trips: ["/trips", "/api/trips"],
 };
 /** The module a path belongs to, if it is an optional one. */
 export function moduleOfPath(path: string): OptionalModule | null {

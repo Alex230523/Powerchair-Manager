@@ -273,7 +273,12 @@ export async function logSensitiveAccess(
   org: string,
   actorId: string,
   profileId: string | null,
-  kind: "player_health" | "registration_confidential" | "sensitive_document" | "offline_book",
+  kind:
+    | "player_health"
+    | "registration_confidential"
+    | "sensitive_document"
+    | "offline_book"
+    | "trip_care",
   resourceId: string | null = null,
 ) {
   await c.query(

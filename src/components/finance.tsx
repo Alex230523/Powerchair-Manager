@@ -112,6 +112,7 @@ export function Finance({ locale }: { locale: Locale }) {
       direction: receivableId ? "in" : value("direction"),
       category: receivableId ? "dues" : value("category"),
       receivableId,
+      tripId: value("trip") || null,
       amountCents: Math.round(Number(value("amount").replace(",", ".")) * 100),
       method: value("method"),
       counterparty: value("counterparty"),
@@ -416,6 +417,19 @@ export function Finance({ locale }: { locale: Locale }) {
                     <span id="fin-receivable-hint" className="muted">
                       {x.paymentHint}
                     </span>
+                  </label>
+                )}
+                {view.trips.length > 0 && (
+                  <label htmlFor="fin-trip">
+                    {x.trip}
+                    <select id="fin-trip" name="trip" defaultValue="">
+                      <option value="">{x.tripNone}</option>
+                      {view.trips.map((tr) => (
+                        <option key={tr.id} value={tr.id}>
+                          {tr.title} · {day(tr.starts_on)}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 )}
                 <label htmlFor="fin-notes">
