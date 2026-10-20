@@ -20,6 +20,12 @@ const euro = (locale: Locale, cents: number) =>
 const cents = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? "0").replace(",", ".") || 0) * 100);
 const dateOrNull = (v: FormDataEntryValue | null) => (String(v ?? "") ? String(v) : null);
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+/** A day n days from now (no Date.now in render: the lint rule of purity). */
+const inDays = (n: number) => {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 function useFunding(locale: Locale) {
   const t = fundingCopy[locale] as (typeof fundingCopy)["fr"];
@@ -320,7 +326,7 @@ export function Partners({ locale }: { locale: Locale }) {
     );
   const rows = data.partners.filter((x) => !status || x.status === status);
   const active = data.partners.filter((x) => x.status === "active");
-  const soon = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
+  const soon = inDays(60);
   const renewals = active.filter((x) => x.ends_on && x.ends_on <= soon).length;
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

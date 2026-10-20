@@ -210,7 +210,7 @@ test("new club, federation and referee pages load and pass axe", async ({
     await okPlayers.fill("3");
     await page.getByLabel("Entraînements · Joueurs · Tendu à partir de", { exact: true }).fill("2");
     await page.getByRole("button", { name: "Enregistrer les seuils", exact: true }).click();
-    await expect(page.getByRole("status")).toContainText("Seuils enregistrés.");
+    await expect(page.getByRole("status").filter({ hasText: "Seuils enregistrés." })).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true })).toHaveValue("3");
     // The dashboard: to-do blocks, key figures on the left, the agenda on the right.
