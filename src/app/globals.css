@@ -4430,3 +4430,10 @@ input.narrow {
   .toolbar-field select { min-width: 0; }
   .page-actions { width: 100%; justify-content: flex-start; }
 }
+/* A scrolling table contains its own screen-reader text (an absolutely placed
+   sr-only span would otherwise stick out of the page on the right). */
+.table-scroll, .statistics-table-scroll, .attendance-grid { position: relative; }
+.stat-label { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .stat-row-grid[data-cols="4"], .stat-row-grid[data-cols="5"], .stat-row-grid[data-cols="2"] { grid-template-columns: minmax(0, 1fr); }
+}
