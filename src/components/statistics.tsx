@@ -1,4 +1,5 @@
 "use client";
+import { RetentionCard } from "./retention";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
@@ -431,6 +432,7 @@ export function Statistics({ locale }: { locale: Locale }) {
         </>
       )}
       <p className="notice">{t.future}</p>
+      <RetentionCard locale={locale} />
     </main>
   );
 }

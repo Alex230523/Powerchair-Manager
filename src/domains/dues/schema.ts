@@ -9,6 +9,13 @@ export const commandSchema = z.discriminatedUnion("action", [
     firstDue: z.iso.date(),
   }),
   z.object({ action: z.literal("archivePlan"), id: z.uuid() }),
+  /** Sibling discount of a plan; open dues without payment are recomputed. */
+  z.object({
+    action: z.literal("siblingRule"),
+    planId: z.uuid(),
+    secondPercent: z.number().int().min(0).max(100),
+    nextPercent: z.number().int().min(0).max(100),
+  }),
   z.object({
     action: z.literal("issue"),
     planId: z.uuid(),
@@ -58,4 +65,55 @@ export function schedule(cents: number, count: number, first: string) {
       amount_cents: Math.floor(cents / count) + (i < cents % count ? 1 : 0),
     };
   });
+}
+
+/**
+ * Siblings share at least one parent or representative. Among the children of
+ * a family who owe the same plan, the eldest is rank 1 (full price); the
+ * second gets `second` percent off, the following ones `next` percent.
+ */
+export function siblingRanks(
+  children: { id: string; birth_date: string | null; full_name: string }[],
+  guardiansOf: Map<string, Set<string>>,
+) {
+  // Families are the connected groups of children sharing a guardian.
+  const parent = new Map(children.map((c) => [c.id, c.id]));
+  const find = (x: string): string => {
+    const p = parent.get(x)!;
+    if (p === x) return x;
+    const root = find(p);
+    parent.set(x, root);
+    return root;
+  };
+  for (const a of children)
+    for (const b of children)
+      if (
+        a.id < b.id &&
+        [...(guardiansOf.get(a.id) ?? [])].some((g) => guardiansOf.get(b.id)?.has(g))
+      )
+        parent.set(find(a.id), find(b.id));
+  const families = new Map<string, typeof children>();
+  for (const c of children) {
+    const root = find(c.id);
+    families.set(root, [...(families.get(root) ?? []), c]);
+  }
+  const ranks = new Map<string, number>();
+  for (const family of families.values()) {
+    family.sort(
+      (a, b) =>
+        (a.birth_date ?? "9999").localeCompare(b.birth_date ?? "9999") ||
+        a.full_name.localeCompare(b.full_name),
+    );
+    family.forEach((c, i) => ranks.set(c.id, i + 1));
+  }
+  return ranks;
+}
+export function siblingDiscount(
+  amountCents: number,
+  rank: number,
+  second: number,
+  next: number,
+) {
+  const percent = rank <= 1 ? 0 : rank === 2 ? second : next;
+  return Math.round((amountCents * percent) / 100);
 }

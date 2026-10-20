@@ -3601,3 +3601,127 @@ input.narrow {
     display: none;
   }
 }
+
+/* Fundraising, attestations, rollover (wave 8). */
+.pot-list,
+.movement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.pot-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+}
+.pot-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: grid;
+  gap: 8px;
+}
+.pot-card[data-status="closed"] {
+  opacity: 0.75;
+}
+.pot-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.pot-progress progress {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--brand-500);
+}
+.pot-progress p {
+  margin: 4px 0 0;
+}
+.movement-list {
+  gap: 6px;
+  margin-top: 8px;
+}
+.movement-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 0.86rem;
+}
+.movement-list li[data-cancelled] {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.movement-form {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.pot-public {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+.public-pot {
+  max-width: 640px;
+}
+.sibling-rule {
+  margin-top: 6px;
+}
+.sibling-rule input {
+  width: 5.5rem;
+}
+.rollover-team {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.official {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 8px;
+}
+.attestation-sheet {
+  margin-top: 24px;
+  padding: 28px 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: #1c1917;
+  max-width: 720px;
+  line-height: 1.6;
+}
+.attestation-sheet h2 {
+  margin-top: 0;
+}
+.attestation-sign {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 28px 0 16px;
+}
+.signature-box {
+  min-width: 220px;
+  min-height: 80px;
+  border-bottom: 1px solid #1c1917;
+  text-align: right;
+  color: #57534e;
+}
+@media print {
+  .attestations .no-print,
+  .attestations .back-link {
+    display: none;
+  }
+  .attestation-sheet {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    break-after: page;
+  }
+  .attestation-sheet:last-of-type {
+    break-after: auto;
+  }
+}

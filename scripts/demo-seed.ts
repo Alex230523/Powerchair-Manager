@@ -17,6 +17,8 @@ import { execute, type Principal } from "../src/domains/access/service";
 import { calendarExecute } from "../src/domains/calendar/service";
 import { tripExecute } from "../src/domains/trips/service";
 import { venueExecute } from "../src/domains/venues/service";
+import { fundraisingExecute } from "../src/domains/fundraising/service";
+import { absenceExecute } from "../src/domains/absences/service";
 import { attendanceExecute } from "../src/domains/attendance/service";
 import {
   documentExecute,
@@ -1492,6 +1494,63 @@ try {
       { action: "schedule", tripId: trip.id, notes: "", ...item },
       org,
     );
+
+  // Wave 8: official details for attestations, a fundraising pot, an
+  // announced absence and the sibling discount on the dues plans.
+  await db.query(
+    "UPDATE organization SET address=$2,company_number=$3,signatory=$4 WHERE id=$1",
+    [org, "Rue du Stade 1, 1300 Wavre", "0712.345.678", "Alex Martin, président"],
+  );
+  await db.query(
+    "UPDATE dues_plan SET sibling_second_percent=20,sibling_next_percent=30 WHERE organization_id=$1",
+    [org],
+  );
+  const support = await fundraisingExecute(
+    db,
+    president,
+    { action: "group", name: "Comité de soutien", description: "Parents et amis du club.", archived: false },
+    org,
+  );
+  const chairs = await fundraisingExecute(
+    db,
+    president,
+    {
+      action: "pot",
+      groupId: support.id,
+      name: "Deux fauteuils de jeu",
+      description: "Deux fauteuils de powerchair football pour les jeunes qui commencent.",
+      goalCents: 3600000,
+      deadline: day(240),
+      status: "open",
+    },
+    org,
+  );
+  for (const [kind, label, amount, donor] of [
+    ["action", "Souper spaghetti", 284000, ""],
+    ["expense", "Courses du souper", 61000, ""],
+    ["sponsor", "Garage Dubois", 250000, "Garage Dubois"],
+    ["donation", "Don", 15000, "Famille Peeters"],
+  ] as const)
+    await fundraisingExecute(
+      db,
+      president,
+      { action: "movement", potId: chairs.id, occurredOn: day(-20), kind, label, amountCents: amount, donor, anonymous: false },
+      org,
+    );
+  await fundraisingExecute(db, president, { action: "publish", potId: chairs.id, public: true }, org);
+  await absenceExecute(
+    db,
+    president,
+    {
+      action: "declare",
+      profileId: people.yanis,
+      startsOn: day(1),
+      endsOn: day(15),
+      reason: "chair",
+      comment: "Fauteuil électrique en réparation chez le fournisseur.",
+    },
+    org,
+  );
 
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();

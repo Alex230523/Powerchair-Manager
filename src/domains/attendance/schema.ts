@@ -1,5 +1,14 @@
 import { z } from "zod";
 export const responses = ["none", "present", "absent", "uncertain"] as const;
+export const absenceReasons = [
+  "illness",
+  "injury",
+  "chair",
+  "transport",
+  "school_work",
+  "family",
+  "other",
+] as const;
 export const actuals = [
   "unchecked",
   "present",
@@ -28,6 +37,7 @@ export const commandSchema = z.discriminatedUnion("action", [
     expectedVersion: version,
     response: z.enum(responses),
     comment: z.string().trim().max(1000),
+    absenceReason: z.enum(absenceReasons).optional(),
   }),
   z.object({
     action: z.literal("mark"),

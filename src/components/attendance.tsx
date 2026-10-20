@@ -1,4 +1,5 @@
 "use client";
+import { AbsencesPanel, absenceCopy } from "./absences";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -408,6 +409,11 @@ export function Attendance({ locale }: { locale: Locale }) {
                   {t.responses[i.response as keyof typeof t.responses]} ·{" "}
                   {t.actual} : {t.actuals[i.actual as keyof typeof t.actuals]}
                 </p>
+                {i.response === "absent" && i.absence_reason && (
+                  <p className="muted small">
+                    {absenceCopy[locale].reason} : {(absenceCopy[locale].reasons as Record<string, string>)[i.absence_reason]}
+                  </p>
+                )}
                 {i.comment && <p>{i.comment}</p>}
                 {i.canRespond &&
                   r &&
@@ -423,6 +429,9 @@ export function Attendance({ locale }: { locale: Locale }) {
                           expectedVersion: i.version,
                           response: f.get("response"),
                           comment: f.get("comment"),
+                          ...(f.get("response") === "absent"
+                            ? { absenceReason: f.get("absenceReason") || "other" }
+                            : {}),
                         }))
                       }
                     >
@@ -436,6 +445,19 @@ export function Attendance({ locale }: { locale: Locale }) {
                           {responses.map((v) => (
                             <option key={v} value={v}>
                               {t.responses[v]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        {absenceCopy[locale].ifAbsent}
+                        <select
+                          name="absenceReason"
+                          defaultValue={i.absence_reason || "illness"}
+                        >
+                          {Object.entries(absenceCopy[locale].reasons).map(([k, v]) => (
+                            <option key={k} value={k}>
+                              {v}
                             </option>
                           ))}
                         </select>
@@ -640,6 +662,7 @@ export function Attendance({ locale }: { locale: Locale }) {
             ))}
           </ul>
         </Panel>
+        <AbsencesPanel locale={locale} />
       </main>
     </>
   );

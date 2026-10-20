@@ -149,6 +149,30 @@ const copy = {
     cancelAction: "Receivable cancelled",
   },
 };
+/** Sibling discount and attestation link (wave 8). */
+const siblingCopy = {
+  fr: {
+    title: "Réduction fratrie : l'aîné paie le plein tarif.",
+    second: "2e enfant (%)",
+    next: "3e et suivants (%)",
+    save: "Appliquer",
+    attestations: "Attestations pour la mutuelle",
+  },
+  nl: {
+    title: "Gezinskorting: het oudste kind betaalt het volle tarief.",
+    second: "2e kind (%)",
+    next: "3e en volgende (%)",
+    save: "Toepassen",
+    attestations: "Attesten voor het ziekenfonds",
+  },
+  en: {
+    title: "Sibling discount: the eldest pays the full price.",
+    second: "2nd child (%)",
+    next: "3rd and next (%)",
+    save: "Apply",
+    attestations: "Mutual insurance attestations",
+  },
+};
 type Plan = {
   id: string;
   season_id: string;
@@ -157,6 +181,8 @@ type Plan = {
   max_installments: number;
   first_due: string;
   archived: boolean;
+  sibling_second_percent: number;
+  sibling_next_percent: number;
 };
 type Debt = {
   id: string;
@@ -266,6 +292,11 @@ export function Dues({ locale }: { locale: Locale }) {
       <h1>{t.title}</h1>
       <p>{t.intro}</p>
       <p className="notice">{t.limits}</p>
+      <p>
+        <Link className="button secondary" href={`/${locale}/dues/attestations`}>
+          {siblingCopy[locale].attestations}
+        </Link>
+      </p>
       {view?.manage && (
         <p>
           <Link
@@ -373,6 +404,35 @@ export function Dues({ locale }: { locale: Locale }) {
                         >
                           {t.archive}
                         </button>
+                        {view.manage && (
+                          <form
+                            className="inline-form sibling-rule"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const f = new FormData(e.currentTarget);
+                              void command({
+                                action: "siblingRule",
+                                planId: p.id,
+                                secondPercent: Number(f.get("second") || 0),
+                                nextPercent: Number(f.get("next") || 0),
+                              });
+                            }}
+                          >
+                            <span className="muted small">{siblingCopy[locale].title}</span>
+                            <label>
+                              {siblingCopy[locale].second}
+                              <input name="second" type="number" min={0} max={100} defaultValue={p.sibling_second_percent ?? 0} />
+                            </label>
+                            <label>
+                              {siblingCopy[locale].next}
+                              <input name="next" type="number" min={0} max={100} defaultValue={p.sibling_next_percent ?? 0} />
+                            </label>
+                            <button className="button secondary" disabled={busy}>
+                              {siblingCopy[locale].save}
+                              <span className="sr-only"> : {p.category}</span>
+                            </button>
+                          </form>
+                        )}
                       </li>
                     ))}
                 </ul>
