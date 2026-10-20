@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { attendanceView } from "@/domains/attendance/service";
 import { gridCopy } from "./attendance-grid-copy";
@@ -37,7 +38,8 @@ export function AttendanceGrid({
   const people = new Map<string, string>();
   for (const e of shown) for (const i of e.invitations) if (!i.withdrawn_at) people.set(i.profile_id, i.full_name);
   const rows = [...people.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  const now = Date.now();
+  // Fixed at first render: a cell does not flip while the coach is looking at it.
+  const [now] = useState(() => Date.now());
   const day = (d: string | Date) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {
       day: "numeric",
