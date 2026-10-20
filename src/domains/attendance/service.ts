@@ -34,6 +34,9 @@ type Invitation = {
   withdrawn_at: Date | null;
   response: string;
   comment: string;
+  /** Reason of an "absent" answer ('' otherwise). */
+  absence_reason: string;
+  absence_period_id: string | null;
   actual: string;
   version: number;
   full_name: string;
@@ -225,6 +228,28 @@ async function notify(
     });
   }
 }
+/**
+ * Answers "absent" for every open invitation of a register whose event falls
+ * in an announced absence period, unless the person already answered.
+ */
+export async function applyAbsences(
+  c: Scope["c"],
+  org: string,
+  registerId: string | null,
+  profileId: string | null = null,
+) {
+  await c.query(
+    `UPDATE attendance_invitation i SET response='absent',absence_reason=a.reason,absence_period_id=a.id,comment=a.comment,responded_at=now(),responded_by=a.declared_by,version=i.version+1
+       FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id, absence_period a
+      WHERE i.register_id=r.id AND i.organization_id=$1 AND a.organization_id=$1
+        AND ($2::uuid IS NULL OR r.id=$2) AND ($3::uuid IS NULL OR i.profile_id=$3)
+        AND a.profile_id=i.profile_id AND a.cancelled_at IS NULL AND i.withdrawn_at IS NULL
+        AND r.closed_at IS NULL AND e.starts_at>now()
+        AND (e.starts_at AT TIME ZONE 'Europe/Brussels')::date BETWEEN a.starts_on AND a.ends_on
+        AND i.response IN ('none','uncertain')`,
+    [org, registerId, profileId],
+  );
+}
 export async function attendanceExecute(
   db: Pool,
   p: Principal,
@@ -291,6 +316,8 @@ export async function attendanceExecute(
             "INSERT INTO attendance_invitation(organization_id,register_id,profile_id) VALUES($1,$2,$3) ON CONFLICT(register_id,profile_id) DO UPDATE SET withdrawn_at=NULL,version=attendance_invitation.version+1,response='none',comment='',responded_at=NULL,responded_by=NULL WHERE attendance_invitation.withdrawn_at IS NOT NULL",
             [org, r.id, id],
           );
+        // Absences announced in advance answer for the person, with their reason.
+        await applyAbsences(s.c, org, r.id);
         const ids = (
           await s.c.query(
             "SELECT id FROM attendance_invitation WHERE register_id=$1 AND withdrawn_at IS NULL",
@@ -337,9 +364,16 @@ export async function attendanceExecute(
             e.starts_at <= new Date()
           )
             throw new AccessError("RESPONSE_CLOSED", 409);
+          // "Present" clears the reason: it would no longer describe anything.
           await s.c.query(
-            "UPDATE attendance_invitation SET response=$2,comment=$3,responded_at=now(),responded_by=$4,version=version+1 WHERE id=$1",
-            [i.id, cmd.response, cmd.comment, p.userId],
+            "UPDATE attendance_invitation SET response=$2,comment=$3,absence_reason=$5,absence_period_id=NULL,responded_at=now(),responded_by=$4,version=version+1 WHERE id=$1",
+            [
+              i.id,
+              cmd.response,
+              cmd.comment,
+              p.userId,
+              cmd.response === "absent" ? (cmd.absenceReason ?? "other") : "",
+            ],
           );
           await history(
             s,

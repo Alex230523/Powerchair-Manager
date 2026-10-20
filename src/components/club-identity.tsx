@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { clubView } from "@/domains/club/service";
@@ -81,6 +82,36 @@ const copy = {
   },
 };
 
+/** Details printed on official papers such as mutual insurance attestations. */
+const official = {
+  fr: {
+    title: "Pour les documents officiels",
+    hint: "Repris sur les attestations pour la mutuelle.",
+    address: "Adresse du siège",
+    company: "Numéro d'entreprise (BCE)",
+    signatory: "Signataire",
+    signatoryHint: "Ex. Alex Martin, président",
+    rollover: "Passage de saison",
+  },
+  nl: {
+    title: "Voor officiële documenten",
+    hint: "Overgenomen op de attesten voor het ziekenfonds.",
+    address: "Adres van de zetel",
+    company: "Ondernemingsnummer (KBO)",
+    signatory: "Ondertekenaar",
+    signatoryHint: "Bv. Alex Martin, voorzitter",
+    rollover: "Seizoensovergang",
+  },
+  en: {
+    title: "For official papers",
+    hint: "Printed on mutual insurance attestations.",
+    address: "Registered address",
+    company: "Company number (BCE/KBO)",
+    signatory: "Signatory",
+    signatoryHint: "E.g. Alex Martin, president",
+    rollover: "Season rollover",
+  },
+};
 export function ClubIdentity({ locale }: { locale: Locale }) {
   const t = copy[locale];
   const [view, setView] = useState<View | null>(null),
@@ -201,7 +232,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
           </div>
           {view.canEdit ? (
             <form
-              key={o.name + o.contact_email + (o.federation_id ?? "")}
+              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "")}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -212,6 +243,9 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                   ...(o.kind === "club"
                     ? {
                         federationId: String(f.get("federation") ?? "") || null,
+                        address: String(f.get("address") ?? "").trim(),
+                        companyNumber: String(f.get("company") ?? "").trim(),
+                        signatory: String(f.get("signatory") ?? "").trim(),
                       }
                     : {}),
                 });
@@ -255,6 +289,37 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                   </select>
                 </label>
               )}
+              {o.kind === "club" && (
+                <fieldset className="official">
+                  <legend>{official[locale].title}</legend>
+                  <p className="muted small">{official[locale].hint}</p>
+                  <label htmlFor="club-address">
+                    {official[locale].address}
+                    <input id="club-address" name="address" maxLength={300} defaultValue={o.address ?? ""} />
+                  </label>
+                  <label htmlFor="club-company">
+                    {official[locale].company}
+                    <input
+                      id="club-company"
+                      name="company"
+                      maxLength={12}
+                      pattern="[01][0-9]{3}\.[0-9]{3}\.[0-9]{3}"
+                      placeholder="0123.456.789"
+                      defaultValue={o.company_number ?? ""}
+                    />
+                  </label>
+                  <label htmlFor="club-signatory">
+                    {official[locale].signatory}
+                    <input
+                      id="club-signatory"
+                      name="signatory"
+                      maxLength={160}
+                      placeholder={official[locale].signatoryHint}
+                      defaultValue={o.signatory ?? ""}
+                    />
+                  </label>
+                </fieldset>
+              )}
               <button className="button" disabled={busy}>
                 {t.save}
               </button>
@@ -269,6 +334,12 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
             <p className="muted">{t.teamsIntro}</p>
             <p>
               <a href="#teams">{t.teams} ↓</a>
+              {view.canEdit && (
+                <>
+                  {" · "}
+                  <Link href={`/${locale}/club/rollover`}>{official[locale].rollover}</Link>
+                </>
+              )}
             </p>
             {view.teams.length ? (
               <ul className="team-cards">

@@ -96,3 +96,23 @@ export function statisticsCsv(rows: (string | number | null)[][]) {
       .join("\r\n")
   );
 }
+
+/**
+ * Retention from one season to the next: who stayed, who joined, who left.
+ * A person counts once per season, whatever their number of teams.
+ */
+export function retention(seasons: { name: string; members: string[] }[]) {
+  return seasons.map((s, i) => {
+    const now = new Set(s.members);
+    const before = i > 0 ? new Set(seasons[i - 1].members) : null;
+    const stayed = before ? [...now].filter((m) => before.has(m)).length : null;
+    return {
+      season: s.name,
+      members: now.size,
+      stayed,
+      joined: before ? now.size - (stayed ?? 0) : null,
+      left: before ? before.size - (stayed ?? 0) : null,
+      rate: before && before.size ? Math.round(((stayed ?? 0) * 100) / before.size) : null,
+    };
+  });
+}

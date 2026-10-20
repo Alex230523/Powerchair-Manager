@@ -10,7 +10,13 @@ import {
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { ownProfiles, today, type Actor } from "../calendar/access";
-import { commandSchema, schedule, type Command } from "./schema";
+import {
+  commandSchema,
+  schedule,
+  siblingDiscount,
+  siblingRanks,
+  type Command,
+} from "./schema";
 export { commandSchema };
 type Scope = {
   c: PoolClient;
@@ -101,6 +107,62 @@ async function log(
     "dues." + action,
     receivableId ?? planId,
   );
+}
+/**
+ * Applies the sibling rule of a plan to its open dues. Dues with a payment, or
+ * with a discount set by hand, are left as they are.
+ */
+async function recomputeSiblings(s: Scope, planId: string) {
+  const plan = (await s.c.query("SELECT *,first_due::text AS first_due FROM dues_plan WHERE id=$1", [planId])).rows[0];
+  if (!plan) return;
+  const open = (
+    await s.c.query(
+      `SELECT d.id,d.profile_id,d.discount_cents,d.sibling_rank,d.gross_cents,cp.birth_date::text AS birth_date,cp.full_name,
+              (SELECT count(*) FROM dues_installment i WHERE i.receivable_id=d.id)::int AS n,
+              (SELECT min(due_on)::text FROM dues_installment i WHERE i.receivable_id=d.id) AS first_due,
+              EXISTS(SELECT 1 FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL) AS paid
+         FROM dues_receivable d JOIN club_person cp ON cp.id=d.profile_id
+        WHERE d.plan_id=$1 AND d.status='open'`,
+      [planId],
+    )
+  ).rows;
+  if (!open.length) return;
+  const links = (
+    await s.c.query(
+      "SELECT subject_profile_id,guardian_profile_id FROM guardian_relationship WHERE organization_id=$1 AND revoked_at IS NULL AND subject_profile_id=ANY($2::uuid[])",
+      [plan.organization_id, open.map((r) => r.profile_id)],
+    )
+  ).rows;
+  const guardiansOf = new Map<string, Set<string>>();
+  for (const l of links)
+    guardiansOf.set(
+      l.subject_profile_id,
+      new Set([...(guardiansOf.get(l.subject_profile_id) ?? []), l.guardian_profile_id]),
+    );
+  const ranks = siblingRanks(
+    open.map((r) => ({ id: r.profile_id, birth_date: r.birth_date, full_name: r.full_name })),
+    guardiansOf,
+  );
+  for (const r of open) {
+    if (r.paid || (r.sibling_rank === null && r.discount_cents > 0)) continue;
+    const rank = ranks.get(r.profile_id) ?? 1;
+    const discount = siblingDiscount(
+      r.gross_cents,
+      rank,
+      plan.sibling_second_percent,
+      plan.sibling_next_percent,
+    );
+    const newRank = discount > 0 ? rank : null;
+    if (discount === r.discount_cents && newRank === r.sibling_rank) continue;
+    const after = (
+      await s.c.query(
+        "UPDATE dues_receivable SET discount_cents=$2,sibling_rank=$3,reason=$4,version=version+1 WHERE id=$1 RETURNING *",
+        [r.id, discount, newRank, discount > 0 ? `Réduction fratrie (${rank}e enfant)` : ""],
+      )
+    ).rows[0];
+    await writeSchedule(s, r.id, after.net_cents, Math.max(1, r.n), r.first_due ?? plan.first_due);
+    await log(s, "sibling", planId, r.id, { discount_cents: r.discount_cents }, { discount_cents: discount, sibling_rank: newRank });
+  }
 }
 async function writeSchedule(
   s: Scope,
@@ -251,6 +313,18 @@ export async function duesExecute(
         await log(s, "plan", row.id, null, null, row);
         return { id: row.id };
       }
+      if (cmd.action === "siblingRule") {
+        const row = (
+          await s.c.query(
+            "UPDATE dues_plan SET sibling_second_percent=$3,sibling_next_percent=$4,version=version+1 WHERE id=$1 AND organization_id=$2 AND NOT archived RETURNING *",
+            [cmd.planId, o, cmd.secondPercent, cmd.nextPercent],
+          )
+        ).rows[0];
+        if (!row) throw new AccessError("NOT_FOUND", 404);
+        await log(s, "siblingRule", row.id, null, null, row);
+        await recomputeSiblings(s, row.id);
+        return { id: row.id };
+      }
       if (cmd.action === "archivePlan") {
         const row = (
           await s.c.query(
@@ -333,6 +407,9 @@ export async function duesExecute(
           { ...d, installments },
           cmd.reason,
         );
+        // A new child of a family can change everybody's rank in the plan.
+        if (plan.sibling_second_percent > 0 || plan.sibling_next_percent > 0)
+          await recomputeSiblings(s, plan.id);
         return { id: d.id };
       }
       const d = (
@@ -367,6 +444,8 @@ export async function duesExecute(
           { status: "cancelled" },
           cmd.reason,
         );
+        // The siblings who remain may move up a rank.
+        await recomputeSiblings(s, d.plan_id);
       } else {
         if (cmd.installments > d.plan_snapshot.max_installments)
           throw new AccessError("INVALID_INPUT", 400);

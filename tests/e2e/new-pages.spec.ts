@@ -129,6 +129,9 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/trips",
       "/fr/venues",
       "/fr/offline-book",
+      "/fr/fundraising",
+      "/fr/dues/attestations",
+      "/fr/club/rollover",
     ])
       await check(page, path);
     // A trip page with its sections (participants, transport, care, offline).

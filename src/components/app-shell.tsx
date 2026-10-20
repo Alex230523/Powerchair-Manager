@@ -99,6 +99,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             items: [
               { route: "/funding", label: "funding", icon: "funding" },
               { route: "/dues", label: "dues", icon: "dues" },
+              { route: "/fundraising", label: "fundraising", icon: "chart" },
             ],
           },
         ]

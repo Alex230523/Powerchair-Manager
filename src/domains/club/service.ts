@@ -15,6 +15,12 @@ export const identitySchema = z.object({
   action: z.literal("identity"),
   name: z.string().trim().min(2).max(120),
   contactEmail: z.union([z.email().max(254), z.literal("")]),
+  /** For official papers (mutual insurance attestations). Omitted: unchanged. */
+  address: z.string().trim().max(300).optional(),
+  companyNumber: z
+    .union([z.literal(""), z.string().trim().regex(/^[01]\d{3}\.\d{3}\.\d{3}$/)])
+    .optional(),
+  signatory: z.string().trim().max(160).optional(),
   /** Club affiliation (in Belgium the BPCF). Omitted: unchanged. */
   federationId: z.uuid().nullable().optional(),
 });
@@ -54,7 +60,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -115,8 +121,15 @@ export async function clubExecute(
     );
     if (input.action === "identity") {
       await c.query(
-        "UPDATE organization SET name=$2,contact_email=$3 WHERE id=$1",
-        [a.organization_id, input.name, input.contactEmail || null],
+        "UPDATE organization SET name=$2,contact_email=$3,address=COALESCE($4,address),company_number=COALESCE($5,company_number),signatory=COALESCE($6,signatory) WHERE id=$1",
+        [
+          a.organization_id,
+          input.name,
+          input.contactEmail || null,
+          input.address ?? null,
+          input.companyNumber ?? null,
+          input.signatory ?? null,
+        ],
       );
       if (input.federationId !== undefined) {
         if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
