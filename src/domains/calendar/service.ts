@@ -380,6 +380,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       place_name: string | null;
       place_address: string | null;
       team_name: string | null;
+      team_color: string | null;
       responsible_name: string;
     })[];
     const events = [];

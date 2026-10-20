@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
+import { resolve } from "./resolve";
 
 /**
  * The season and team a club member is looking at (wave 12). The choice
@@ -64,20 +65,12 @@ export async function teamOptions(db: Db, a: ScopeActor): Promise<TeamOption[]> 
     mine.add(r.team_id as string);
   return all.filter((t) => mine.has(t.id));
 }
-/** The current season's id (or the latest one) when nothing valid was chosen. */
-export function defaultSeason(seasons: SeasonOption[]) {
-  return seasons.find((s) => s.current)?.id ?? seasons.find((s) => !s.archived)?.id ?? seasons[0]?.id ?? null;
-}
 /**
  * Validates a raw choice against what the actor may see. Returns the season
  * and team ids to use; an invalid value falls back without an error.
  */
 export async function resolveScope(db: Db, a: ScopeActor, raw: { season?: string; team?: string }): Promise<Scope> {
-  const seasons = await seasonOptions(db, a.organization_id);
-  const teams = await teamOptions(db, a);
-  const seasonId = raw.season && seasons.some((s) => s.id === raw.season) ? raw.season : defaultSeason(seasons);
-  const team = raw.team ? teams.find((t) => t.id === raw.team && t.season_id === seasonId) : undefined;
-  return { seasonId, teamId: team ? team.id : null };
+  return resolve(await seasonOptions(db, a.organization_id), await teamOptions(db, a), raw);
 }
 /** Profile ids currently in a team (players and staff), for indirect filters. */
 export async function teamMembers(db: Db, org: string, teamId: string) {

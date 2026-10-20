@@ -2,6 +2,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { SeasonOption, TeamOption } from "@/domains/scope/service";
+import { defaultSeasonId, isUuid, resolve } from "@/domains/scope/resolve";
+export { defaultSeasonId, resolve };
 
 /**
  * The season and team the member is looking at (wave 12). The choice lives
@@ -35,14 +37,13 @@ const empty: ScopeValue = {
   setTeam: () => {},
 };
 const ScopeContext = createContext<ScopeValue>(empty);
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const storageKey = (org: string) => `pfm-scope-${org}`;
 export function readStored(org: string): { season?: string; team?: string } {
   try {
     const v = JSON.parse(window.localStorage.getItem(storageKey(org)) ?? "{}");
     return {
-      season: uuid.test(v.season ?? "") ? v.season : undefined,
-      team: uuid.test(v.team ?? "") ? v.team : undefined,
+      season: isUuid(v.season) ? v.season : undefined,
+      team: isUuid(v.team) ? v.team : undefined,
     };
   } catch {
     return {};
@@ -55,21 +56,6 @@ function store(org: string, scope: { season: string | null; team: string | null 
     /* Private mode or quota: the URL still carries the choice. */
   }
 }
-/** The current season, or the latest open one, when nothing valid is chosen. */
-export function defaultSeasonId(seasons: SeasonOption[]) {
-  return seasons.find((s) => s.current)?.id ?? seasons.find((s) => !s.archived)?.id ?? seasons[0]?.id ?? null;
-}
-/** Pure resolution, shared with the tests: what the URL or the storage asked, checked against the lists. */
-export function resolve(
-  seasons: SeasonOption[],
-  teams: TeamOption[],
-  raw: { season?: string | null; team?: string | null },
-) {
-  const seasonId = raw.season && seasons.some((s) => s.id === raw.season) ? raw.season : defaultSeasonId(seasons);
-  const team = raw.team ? teams.find((t) => t.id === raw.team && t.season_id === seasonId && !t.archived) : undefined;
-  return { seasonId, teamId: team ? team.id : null };
-}
-
 type Raw = { season?: string | null; team?: string | null };
 /** Reads ?season= and ?team= (inside its own Suspense boundary, as Next asks). */
 function UrlReader({ onChange }: { onChange: (raw: Raw) => void }) {
