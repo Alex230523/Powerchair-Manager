@@ -257,7 +257,7 @@ it("answers absent for announced absences, also for sessions planned later, and 
         visibility: "organization",
         equipment: "",
         instructions: "",
-        participants: [],
+        participants: [emma, lucas],
         documents: [],
         intervalDays: 0,
         occurrences: 1,
