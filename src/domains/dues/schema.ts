@@ -9,6 +9,19 @@ export const commandSchema = z.discriminatedUnion("action", [
     firstDue: z.iso.date(),
   }),
   z.object({ action: z.literal("archivePlan"), id: z.uuid() }),
+  /**
+   * Changes a rate (wave 11, from Réglages). When dues were already issued on
+   * it this season the president must confirm: those dues keep their amounts.
+   */
+  z.object({
+    action: z.literal("updatePlan"),
+    id: z.uuid(),
+    category: z.string().trim().min(2).max(80),
+    amountCents: z.number().int().min(0).max(100000000),
+    maxInstallments: z.number().int().min(1).max(12),
+    firstDue: z.iso.date(),
+    confirm: z.boolean().optional(),
+  }),
   /** Sibling discount of a plan; open dues without payment are recomputed. */
   z.object({
     action: z.literal("siblingRule"),

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
 import type { notificationView } from "@/domains/notifications/service";
 import { editableKinds } from "@/domains/notifications/templates";
@@ -42,7 +42,8 @@ const variables: Record<string, string[]> = {
   registration_link: ["name", "organization", "url"],
   license_update: ["name", "person", "status", "organization", "url"],
 };
-export function Notifications({ locale }: { locale: Locale }) {
+/** `embedded`: rendered inside Réglages (wave 11) as a section instead of a page. */
+export function Notifications({ locale, embedded = false }: { locale: Locale; embedded?: boolean }) {
   const t = notificationCopy[locale];
   const [data, setData] = useState<View | null>(null),
     [loading, setLoading] = useState(true),
@@ -174,9 +175,8 @@ export function Notifications({ locale }: { locale: Locale }) {
                     : "Transportfout; raadpleeg de technische beheerder.";
   return (
     <>
-      <main id="main" className="access notifications">
-        <h1>{t.title}</h1>
-        <p>{t.intro}</p>
+      <Wrapper embedded={embedded} title={t.title}>
+        <p className="muted">{t.intro}</p>
         <div role="status" aria-live="polite">
           {loading ? t.loading : message}
         </div>
@@ -539,7 +539,21 @@ export function Notifications({ locale }: { locale: Locale }) {
         >
           {t.refresh}
         </button>
-      </main>
+      </Wrapper>
     </>
+  );
+}
+
+function Wrapper({ embedded, title, children }: { embedded: boolean; title: string; children: ReactNode }) {
+  return embedded ? (
+    <section className="panel settings-notifications" aria-labelledby="settings-notifications">
+      <h2 id="settings-notifications">{title}</h2>
+      {children}
+    </section>
+  ) : (
+    <main id="main" className="access notifications">
+      <h1>{title}</h1>
+      {children}
+    </main>
   );
 }

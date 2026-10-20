@@ -149,6 +149,16 @@ export const accessCopy = {
   en: english.accessCopy,
 };
 export const errors: Record<string, { fr: string; nl: string; en: string }> = {
+  SEASON_STARTED: {
+    fr: "La saison est lancée : des cotisations ont déjà été émises sur ce barème. Confirmez le changement pour continuer.",
+    nl: "Het seizoen is gestart: er is al lidgeld uitgegeven op dit tarief. Bevestig de wijziging om verder te gaan.",
+    en: "The season is underway: dues were already issued on this rate. Confirm the change to continue.",
+  },
+  INVALID_IMAGE: {
+    fr: "Image refusée : PNG, JPEG ou WebP seulement.",
+    nl: "Afbeelding geweigerd: enkel PNG, JPEG of WebP.",
+    en: "Image refused: PNG, JPEG or WebP only.",
+  },
   MODULE_OFF: {
     fr: "Ce module est désactivé pour votre club. Le président peut le réactiver dans Réglages, rubrique Modules : rien n'a été supprimé.",
     nl: "Deze module is uitgeschakeld voor uw club. De voorzitter kan ze opnieuw activeren in Instellingen, rubriek Modules: er werd niets verwijderd.",

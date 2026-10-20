@@ -264,6 +264,8 @@ const siblingCopy = {
     attestations: "Mutual insurance attestations",
   },
 };
+/** Rates moved to Réglages (wave 11); the page keeps a shortcut. */
+const settingsLabel = { fr: "Réglages des cotisations", nl: "Instellingen lidgeld", en: "Dues settings" };
 type Plan = {
   id: string;
   season_id: string;
@@ -331,8 +333,7 @@ export function Dues({ locale }: { locale: Locale }) {
     [q, setQ] = useState(""),
     [detailId, setDetailId] = useState(""),
     [payId, setPayId] = useState(""),
-    [issuing, setIssuing] = useState(false),
-    [planOpen, setPlanOpen] = useState(false);
+    [issuing, setIssuing] = useState(false);
   const money = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
@@ -429,6 +430,9 @@ export function Dues({ locale }: { locale: Locale }) {
               <>
                 <Link className="button secondary" href={`/${locale}/reminders?kind=dues`}>
                   {remindLabel[locale]}
+                </Link>
+                <Link className="button secondary" href={`/${locale}/settings#settings-dues-title`}>
+                  {settingsLabel[locale]}
                 </Link>
                 <button type="button" className="button" onClick={() => setIssuing(true)} disabled={!view.plans.some((p) => !p.archived)}>
                   {t.issue}
@@ -551,92 +555,7 @@ export function Dues({ locale }: { locale: Locale }) {
               </div>
             )}
           </Card>
-          {view.manage && (
-            <Card title={t.plans} subtitle={t.plansHint} id="dues-plans"
-              actions={<button type="button" className="button secondary" onClick={() => setPlanOpen(true)}>{t.newPlan}</button>}>
-              {!view.plans.some((p) => !p.archived) && <p className="muted">{t.empty}</p>}
-              <ul className="records">
-                {view.plans.filter((p) => !p.archived).map((p) => (
-                  <li key={p.id}>
-                    <div className="panel-head">
-                      <strong>{p.category} <span className="muted">· {view.seasons.find((s) => s.id === p.season_id)?.name} · {money(p.amount_cents)} · {t.max} {p.max_installments}</span></strong>
-                      <button className="text-button" disabled={busy} onClick={() => void command({ action: "archivePlan", id: p.id })}>
-                        {t.archive}<span className="sr-only"> : {p.category}</span>
-                      </button>
-                    </div>
-                    <form
-                      className="inline-form sibling-rule"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const f = new FormData(e.currentTarget);
-                        void command({ action: "siblingRule", planId: p.id, secondPercent: Number(f.get("second") || 0), nextPercent: Number(f.get("next") || 0) });
-                      }}
-                    >
-                      <span className="muted small">{siblingCopy[locale].title}</span>
-                      <label>
-                        {siblingCopy[locale].second}
-                        <input name="second" type="number" min={0} max={100} defaultValue={p.sibling_second_percent ?? 0} />
-                      </label>
-                      <label>
-                        {siblingCopy[locale].next}
-                        <input name="next" type="number" min={0} max={100} defaultValue={p.sibling_next_percent ?? 0} />
-                      </label>
-                      <button className="button secondary" disabled={busy}>
-                        {siblingCopy[locale].save}
-                        <span className="sr-only"> : {p.category}</span>
-                      </button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
         </>
-      )}
-      {view && planOpen && (
-        <Modal title={t.newPlan} close={() => setPlanOpen(false)}>
-          <form
-            onSubmit={(e) =>
-              submit(e, (d) => ({
-                action: "plan",
-                seasonId: d.get("season"),
-                category: d.get("category"),
-                amountCents: Math.round(Number(d.get("amount")) * 100),
-                maxInstallments: Number(d.get("count")),
-                firstDue: d.get("due"),
-              })).then((ok) => ok && setPlanOpen(false))
-            }
-          >
-            <label>
-              {t.season}
-              <select name="season" required>
-                {view.seasons.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t.category}
-              <input name="category" required minLength={2} maxLength={80} />
-            </label>
-            <label>
-              {t.amount}
-              <input name="amount" type="number" min="0" max="1000000" step="0.01" required />
-            </label>
-            <label>
-              {t.max}
-              <input name="count" type="number" min="1" max="12" defaultValue="4" required />
-            </label>
-            <label>
-              {t.due}
-              <input name="due" type="date" required />
-            </label>
-            <div className="actions">
-              <Button disabled={busy || !view.seasons.length}>{t.create}</Button>
-              <button type="button" className="button secondary" onClick={() => setPlanOpen(false)}>{t.close}</button>
-            </div>
-          </form>
-        </Modal>
       )}
       {view && issuing && (
         <Modal title={t.issue} close={() => setIssuing(false)}>

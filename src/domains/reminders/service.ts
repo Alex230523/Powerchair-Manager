@@ -9,8 +9,10 @@ import {
 } from "../access/service";
 import { permissions } from "../access/policy";
 import { brusselsToday } from "../people/service";
+import { duesRules, reminderDue } from "../dues/rules";
 import { publish, templateFor } from "../notifications/queue";
 import {
+  applyPayments,
   commandSchema,
   duesStatus,
   pendingDocumentStatuses,
@@ -348,4 +350,79 @@ export async function remindersExecute(
     },
     expected,
   );
+}
+
+/**
+ * Automatic dues reminders (wave 11), run by the worker. For each club that
+ * switched them on in Réglages: a mail a few days before an instalment, one
+ * once it is late, repeated every `repeatDays` while something stays due.
+ * The same recipients and wording as a reminder sent by hand; the log line
+ * carries no sender.
+ */
+export async function duesReminderTick(db: Pool) {
+  const today = brusselsToday();
+  const base = process.env.BETTER_AUTH_URL ?? "";
+  let sent = 0;
+  const clubs = (
+    await db.query(
+      "SELECT id,name,dues_rules FROM organization WHERE kind='club' AND dues_rules->>'auto'='true' AND NOT ('dues'=ANY(disabled_modules)) AND NOT ('reminders'=ANY(disabled_modules))",
+    )
+  ).rows as { id: string; name: string; dues_rules: unknown }[];
+  for (const club of clubs) {
+    const rules = duesRules(club.dues_rules);
+    const c = await db.connect();
+    try {
+      await c.query("BEGIN");
+      await c.query("SET LOCAL TIME ZONE 'Europe/Brussels'");
+      const s: Scope = { c, org: club.id, orgName: club.name, userId: "", dues: true, documents: false, templates: false };
+      const rows = await duesRows(s, today);
+      const last = await lastSent(s, "dues");
+      const due = rows.filter((r) => {
+        const open = applyPayments(r.installments, r.paid_cents).sort((a, b) => a.due_on.localeCompare(b.due_on));
+        const lastDay = last[r.profile_id] ? new Date(last[r.profile_id]).toISOString().slice(0, 10) : null;
+        return reminderDue(rules, open, lastDay, today) !== null;
+      });
+      const to = await recipients(s, due.map((r) => r.profile_id));
+      for (const profileId of new Set(due.map((r) => r.profile_id))) {
+        const mine = due.filter((r) => r.profile_id === profileId);
+        const targets = to.filter((x) => x.profile_id === profileId);
+        for (const t of targets) {
+          const owed = mine.reduce((n, r) => n + (r.overdueCents || r.upcomingCents), 0);
+          const next = mine.map((r) => r.next?.due_on).filter(Boolean).sort()[0];
+          await publish(s.c, {
+            organizationId: s.org,
+            userId: t.user_id,
+            email: t.email,
+            kind: "dues_reminder",
+            category: "administrative",
+            resourceType: "dues",
+            resourceId: profileId,
+            eventKey: `reminder:dues:auto:${profileId}:${today}`,
+            locale: t.locale,
+            variables: {
+              name: t.name,
+              organization: s.orgName,
+              url: `${base}/${t.locale}/dues`,
+              person: mine[0].full_name,
+              amount: euro(owed, t.locale),
+              due: next ? date(next, t.locale) : date(today, t.locale),
+              details: mine.map((r) => `${r.category} : ${euro(r.net_cents, t.locale)}`).join("\n"),
+            },
+          });
+          sent++;
+        }
+        await s.c.query(
+          "INSERT INTO reminder_log(organization_id,profile_id,kind,recipients,sent_by,automatic) VALUES($1,$2,'dues',$3,NULL,true)",
+          [s.org, profileId, targets.length],
+        );
+      }
+      await c.query("COMMIT");
+    } catch (e) {
+      await c.query("ROLLBACK");
+      throw e;
+    } finally {
+      c.release();
+    }
+  }
+  return sent;
 }
