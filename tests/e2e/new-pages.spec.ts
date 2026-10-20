@@ -224,10 +224,10 @@ test("new club, federation and referee pages load and pass axe", async ({
     // from the calendar; notifications inside settings; the photo corner opens Mon espace.
     for (const path of ["/fr/contacts", "/fr/funding/grants", "/fr/funding/partners"]) await check(page, path);
     for (const name of ["Déplacements", "Annuaire des salles", "Notifications", "Licences"])
-      await expect(page.locator("nav").getByRole("link", { name, exact: true })).toHaveCount(0);
+      await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
     // Menu groups are folded until opened: the entries exist, visible or not.
-    await expect(page.locator("nav").getByRole("link", { name: "Transferts", exact: true })).toHaveCount(1);
-    await expect(page.locator("nav").getByRole("link", { name: "Finance du club", exact: true })).toHaveCount(1);
+    await expect(page.locator("nav").getByRole("link", { name: "Transferts", exact: true, includeHidden: true })).toHaveCount(1);
+    await expect(page.locator("nav").getByRole("link", { name: "Finance du club", exact: true, includeHidden: true })).toHaveCount(1);
     await page.goto("/fr/calendar");
     await expect(page.getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
