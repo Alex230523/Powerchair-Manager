@@ -80,6 +80,18 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               },
               { route: "/documents", label: "documents", icon: "document" },
               { route: "/messages", label: "messages", icon: "message" },
+              // Club mails: newsletters (notifications.manage), event mails (planners).
+              ...(state?.permissions.includes("notifications.manage") ||
+              state?.permissions.includes("calendar.manage") ||
+              role === "coach"
+                ? [
+                    {
+                      route: "/communication",
+                      label: "communication",
+                      icon: "bell",
+                    } satisfies NavItem,
+                  ]
+                : []),
             ],
           },
           {

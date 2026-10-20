@@ -91,7 +91,24 @@ export const commandSchema = z.discriminatedUnion("action", [
     teamId: id.nullable(),
   }),
   z.object({ action: z.literal("revokeFeed"), id }),
+  /** Copies the scheduled events of one week to another (both Mondays). */
+  z.object({
+    action: z.literal("copyWeek"),
+    fromMonday: z.iso.date(),
+    toMonday: z.iso.date(),
+    teamId: id.nullable(),
+    requestId: id,
+  }),
 ]);
+/** Day difference between two YYYY-MM-DD dates. */
+export function daysBetween(from: string, to: string) {
+  return Math.round(
+    (Date.parse(to + "T12:00:00Z") - Date.parse(from + "T12:00:00Z")) / 86400000,
+  );
+}
+export function isMonday(day: string) {
+  return new Date(day + "T12:00:00Z").getUTCDay() === 1;
+}
 export type EventInput = z.infer<typeof eventFields>;
 export type Command = z.infer<typeof commandSchema>;
 export const rangeSchema = z

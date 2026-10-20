@@ -10,9 +10,10 @@ import {
 import { permissions } from "../access/policy";
 import { ownProfiles, type Actor } from "../calendar/access";
 import { commandSchema, type Command } from "./schema";
+import { stockExecute, stockView } from "./stock";
 export { commandSchema };
 
-type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean };
+export type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean };
 export type Chair = {
   id: string;
   name: string;
@@ -27,6 +28,7 @@ export type Chair = {
   last_service_on: string | null;
   next_service_on: string | null;
   notes: string;
+  storage: string;
   version: number;
 };
 export type ChairLink = {
@@ -39,7 +41,7 @@ export type ChairLink = {
   ends_on: string | null;
 };
 const chairColumns =
-  "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.version";
+  "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.storage,c.version";
 const linkColumns =
   "l.id,l.chair_id,l.profile_id,p.full_name,l.is_primary,l.starts_on::text,l.ends_on::text";
 
@@ -174,6 +176,7 @@ export async function equipmentView(db: Pool, p: Principal) {
             )
           ).rows
         : [],
+      ...(await stockView(s)),
       history: s.manage
         ? (
             await s.c.query(
@@ -224,6 +227,14 @@ export async function equipmentExecute(
     p,
     true,
     async (s) => {
+      if (
+        input.action === "item" ||
+        input.action === "wish" ||
+        input.action === "decideWish" ||
+        input.action === "boughtWish" ||
+        input.action === "cancelWish"
+      )
+        return stockExecute(s, input);
       if (!s.manage)
         throw new AccessError(
           mfaSatisfied(s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
@@ -248,11 +259,12 @@ export async function equipmentExecute(
           input.lastServiceOn,
           input.nextServiceOn,
           input.notes,
+          input.storage ?? "",
         ];
         if (!input.id) {
           const row = (
             await s.c.query(
-              `INSERT INTO equipment_chair(organization_id,name,brand,model,serial_number,ownership,status,max_speed_kmh,battery,acquired_on,last_service_on,next_service_on,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${chairColumns.replaceAll("c.", "")}`,
+              `INSERT INTO equipment_chair(organization_id,name,brand,model,serial_number,ownership,status,max_speed_kmh,battery,acquired_on,last_service_on,next_service_on,notes,storage) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING ${chairColumns.replaceAll("c.", "")}`,
               [o, ...values],
             )
           ).rows[0];
@@ -270,7 +282,7 @@ export async function equipmentExecute(
           throw new AccessError("STALE_VERSION", 409);
         const after = (
           await s.c.query(
-            `UPDATE equipment_chair SET name=$3,brand=$4,model=$5,serial_number=$6,ownership=$7,status=$8,max_speed_kmh=$9,battery=$10,acquired_on=$11,last_service_on=$12,next_service_on=$13,notes=$14,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING ${chairColumns.replaceAll("c.", "")}`,
+            `UPDATE equipment_chair SET name=$3,brand=$4,model=$5,serial_number=$6,ownership=$7,status=$8,max_speed_kmh=$9,battery=$10,acquired_on=$11,last_service_on=$12,next_service_on=$13,notes=$14,storage=$15,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING ${chairColumns.replaceAll("c.", "")}`,
             [input.id, o, ...values],
           )
         ).rows[0];

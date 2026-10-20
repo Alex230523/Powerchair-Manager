@@ -23,6 +23,8 @@ import {
 } from "./access";
 import {
   commandSchema,
+  daysBetween,
+  isMonday,
   type Command,
   type EventInput,
   type Range,
@@ -522,6 +524,14 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
     };
   });
 }
+export async function calendarCopyWeek(
+  db: Pool,
+  p: Principal,
+  input: Extract<Command, { action: "copyWeek" }>,
+  expectedOrg: string,
+) {
+  return scope(db, p, (s) => copyWeek(s, input), expectedOrg);
+}
 export async function calendarExecute(
   db: Pool,
   p: Principal,
@@ -532,6 +542,8 @@ export async function calendarExecute(
     db,
     p,
     async (s) => {
+      // Week copies go through calendarCopyWeek (their own result).
+      if (input.action === "copyWeek") throw new AccessError("INVALID_INPUT", 400);
       if (input.action === "sharedVenue") {
         needManage(s);
         const row = (
@@ -900,6 +912,133 @@ export async function calendarExecute(
     },
     expectedOrg,
   );
+}
+/**
+ * Copies a week of the calendar (wave 9). Each copied event goes through the
+ * same checks as a new one; an event that cannot be copied (place taken,
+ * outside the season, not yours) is skipped and reported, the others are kept.
+ */
+async function copyWeek(
+  s: Scope,
+  input: Extract<Command, { action: "copyWeek" }>,
+) {
+  if (!isMonday(input.fromMonday) || !isMonday(input.toMonday))
+    throw new AccessError("INVALID_DATE", 400);
+  const shift = daysBetween(input.fromMonday, input.toMonday);
+  if (shift === 0 || Math.abs(shift) > 371)
+    throw new AccessError("INVALID_DATE", 400);
+  const org = s.a.organization_id;
+  const done = (
+    await s.c.query(
+      "SELECT count(e.id)::int AS n,min(s.created_by) AS created_by FROM calendar_series s LEFT JOIN calendar_event e ON e.series_id=s.id WHERE s.copy_request=$1 AND s.organization_id=$2",
+      [input.requestId, org],
+    )
+  ).rows[0];
+  if (done.created_by) {
+    if (done.created_by !== s.p.userId) throw new AccessError("NOT_FOUND", 404);
+    return { created: done.n as number, skipped: [] };
+  }
+  const end = shiftLocal(input.fromMonday + "T00:00", 7).slice(0, 10);
+  const sources = (
+    await s.c.query(
+      eventSelect +
+        " WHERE e.organization_id=$1 AND e.status='scheduled' AND left(e.local_start,10)>=$2 AND left(e.local_start,10)<$3 AND ($4::uuid IS NULL OR e.team_id=$4) ORDER BY e.starts_at,e.id",
+      [org, input.fromMonday, end, input.teamId],
+    )
+  ).rows as (Event & { shared_venue_id: string | null; free_location: string })[];
+  if (!sources.length) throw new AccessError("NOTHING_TO_COPY", 409);
+  const created: Event[] = [],
+    skipped: { title: string; local_start: string; reason: string }[] = [];
+  for (const [n, e] of sources.entries()) {
+    if (!(await canWrite(s.c, s.a, e))) {
+      skipped.push({ title: e.title, local_start: e.local_start, reason: "FORBIDDEN" });
+      continue;
+    }
+    const documents: string[] = [];
+    for (const d of (
+      await s.c.query(
+        "SELECT d.*,d.expires_on::text AS expires_on FROM club_document d JOIN calendar_document l ON l.document_id=d.id WHERE l.event_id=$1",
+        [e.id],
+      )
+    ).rows)
+      if (await docAccess(s.c, s.a, d)) documents.push(d.id);
+    const item: EventInput = {
+      title: e.title,
+      kind: e.kind as EventInput["kind"],
+      customType: e.custom_type,
+      timezone: e.timezone,
+      localStart: shiftLocal(e.local_start, shift),
+      localEnd: shiftLocal(e.local_end, shift),
+      fold: "earlier",
+      teamId: e.team_id,
+      placeId: e.place_id,
+      sharedVenueId: e.shared_venue_id,
+      freeLocation: e.free_location ?? "",
+      responsibleId: e.responsible_user_id,
+      visibility: e.visibility as EventInput["visibility"],
+      equipment: e.equipment,
+      instructions: e.instructions,
+      participants: (
+        await s.c.query(
+          "SELECT p.profile_id FROM calendar_participant p JOIN club_person c ON c.id=p.profile_id WHERE p.event_id=$1 AND c.status='active'",
+          [e.id],
+        )
+      ).rows.map((r) => r.profile_id as string),
+      documents,
+    };
+    // Each copy is all or nothing on its own.
+    await s.c.query(`SAVEPOINT copy_${n}`);
+    try {
+      await validate(s, item);
+      await seasonDate(s, item);
+      const t = times(item);
+      await conflict(s, item.placeId, t.start, t.end, []);
+      const series = (
+        await s.c.query(
+          "INSERT INTO calendar_series(organization_id,interval_days,occurrences,created_by,copy_request) VALUES($1,0,1,$2,$3) RETURNING id",
+          [org, s.p.userId, input.requestId],
+        )
+      ).rows[0].id;
+      const copy = (
+        await s.c.query(
+          "INSERT INTO calendar_event(organization_id,series_id,ordinal,title,kind,custom_type,timezone,starts_at,ends_at,local_start,local_end,team_id,place_id,responsible_user_id,visibility,equipment,instructions,shared_venue_id,free_location,copied_from) VALUES($1,$2,0,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",
+          [
+            org,
+            series,
+            item.title,
+            item.kind,
+            item.customType,
+            item.timezone,
+            t.start,
+            t.end,
+            item.localStart,
+            item.localEnd,
+            item.teamId,
+            item.placeId,
+            item.responsibleId,
+            item.visibility,
+            item.equipment,
+            item.instructions,
+            item.sharedVenueId ?? null,
+            item.freeLocation ?? "",
+            e.id,
+          ],
+        )
+      ).rows[0] as Event;
+      await links(s, copy.id, item);
+      await capacity(s, copy);
+      await changeLog(s, copy, null, "created");
+      await s.c.query(`RELEASE SAVEPOINT copy_${n}`);
+      created.push(copy);
+    } catch (err) {
+      if (!(err instanceof AccessError)) throw err;
+      await s.c.query(`ROLLBACK TO SAVEPOINT copy_${n}`);
+      skipped.push({ title: e.title, local_start: e.local_start, reason: err.code });
+    }
+  }
+  if (created.length) await notify(s, created);
+  await audit(s.c, org, s.p.userId, "calendar.copyWeek", input.requestId);
+  return { created: created.length, skipped };
 }
 export async function calendarFeed(db: Pool, token: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))

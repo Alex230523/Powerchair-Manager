@@ -1,5 +1,6 @@
 import { mfaSatisfied } from "../../lib/security-policy";
 import { csvRows } from "./csv";
+import { defaultColumns, exportGrid, type ExportColumn } from "./export";
 import { Pool, PoolClient } from "pg";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
@@ -502,6 +503,24 @@ export async function peopleExport(
   filters: Filters,
   expectedOrganizationId: string,
 ) {
+  const { grid } = await peopleExportGrid(
+    db,
+    p,
+    filters,
+    expectedOrganizationId,
+    defaultColumns,
+  );
+  return csvRows(grid);
+}
+/** Selected columns, in the club's language or bilingual (historical CSV). */
+export async function peopleExportGrid(
+  db: Pool,
+  p: Principal,
+  filters: Filters,
+  expectedOrganizationId: string,
+  columns: ExportColumn[],
+  locale?: "fr" | "nl" | "en",
+) {
   return transaction(db, p, false, async (s) => {
     if (s.context.organization_id !== expectedOrganizationId)
       throw new AccessError("CONTEXT_CHANGED", 409);
@@ -519,32 +538,35 @@ export async function peopleExport(
       "people.export",
       s.context.organization_id,
     );
-    return csvRows([
-      [
-        "Nom / Naam",
-        "Naissance / Geboorte",
-        "Email",
-        "Téléphone / Telefoon",
-        "Entrée / Toetreding",
-        "Statut / Status",
-        "Équipes / Teams",
-      ],
-      ...view.profiles.map((person) => [
-        person.full_name,
-        person.birth_date,
-        person.email,
-        person.phone,
-        person.joined_on,
-        person.status,
-        [
-          ...new Set(
-            person.assignments.map(
-              (a) => view.teams.find((t) => t.id === a.team_id)?.name ?? "",
+    const day = today();
+    return {
+      organization: s.context.organization_name,
+      today: day,
+      grid: exportGrid(
+        view.profiles.map((person) => ({
+          full_name: person.full_name,
+          birth_date: person.birth_date ?? null,
+          email: person.email ?? null,
+          phone: person.phone ?? "",
+          joined_on: person.joined_on ?? "",
+          status: person.status,
+          directory_roles: person.directory_roles ?? [],
+          former_roles: person.former_roles ?? [],
+          jersey_number: person.jersey_number ?? null,
+          playing_position: person.playing_position ?? "",
+          teams: [
+            ...new Set(
+              person.assignments.map(
+                (a) => view.teams.find((t) => t.id === a.team_id)?.name ?? "",
+              ),
             ),
-          ),
-        ].join(", "),
-      ]),
-    ]);
+          ].filter(Boolean),
+        })),
+        columns,
+        day,
+        locale,
+      ),
+    };
   });
 }
 

@@ -707,6 +707,20 @@ it("keeps messages private to participants, checks recipients and revocations, a
     body: "Meet at 18:00",
     recipients: [player.userId],
   });
+  // The player profile is a minor without a representative account: refused
+  // (protection of minors, wave 9). As an adult the conversation is private.
+  await expect(messagesExecute(db, admin, cmd, org)).rejects.toMatchObject({
+    code: "MINOR_NEEDS_GUARDIAN",
+  });
+  const playerProfile = (
+    await db.query(
+      "SELECT c.id FROM club_person c JOIN person p ON p.id=c.person_id WHERE p.user_id=$1",
+      [player.userId],
+    )
+  ).rows[0].id;
+  await db.query("UPDATE club_person SET birth_date='2000-01-01' WHERE id=$1", [
+    playerProfile,
+  ]);
   const result = await messagesExecute(db, admin, cmd, org);
   expect(await messagesExecute(db, admin, cmd, org)).toEqual(result);
   expect((await messagesView(db, player, result.id)).messages).toHaveLength(1);
@@ -759,4 +773,7 @@ it("keeps messages private to participants, checks recipients and revocations, a
   await expect(messagesView(db, player, result.id)).rejects.toBeInstanceOf(
     Error,
   );
+  await db.query("UPDATE club_person SET birth_date='2015-01-01' WHERE id=$1", [
+    playerProfile,
+  ]);
 });

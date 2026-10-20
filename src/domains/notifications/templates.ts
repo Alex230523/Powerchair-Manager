@@ -16,10 +16,13 @@ export const editableKinds = [
   "registration_link",
   "license_update",
 ] as const;
+/** Club-written mails: the text comes from the club, not from a template. */
+export const clubWrittenKinds = ["club_newsletter", "event_mail"] as const;
 export const allKinds = [
   "auth_verify",
   "auth_reset",
   ...editableKinds,
+  ...clubWrittenKinds,
 ] as const;
 export type Kind = (typeof allKinds)[number];
 export type Variables = {
@@ -38,9 +41,31 @@ export type Variables = {
   status?: string;
   /** Matches and referee designations. */
   match?: string;
+  /** Club-written mails (newsletter, event mail): subject and text. */
+  title?: string;
+  message?: string;
 };
 export type Template = { subject: string; body: string };
 export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
+  club_newsletter: {
+    fr: {
+      subject: "{title}",
+      body: "{message}\n\n{organization}\nNe plus recevoir les nouvelles du club : {url}",
+    },
+    nl: {
+      subject: "{title}",
+      body: "{message}\n\n{organization}\nGeen clubnieuws meer ontvangen: {url}",
+    },
+    en: {
+      subject: "{title}",
+      body: "{message}\n\n{organization}\nStop receiving club news: {url}",
+    },
+  },
+  event_mail: {
+    fr: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+    nl: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+    en: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+  },
   dues_reminder: {
     fr: {
       subject: "Rappel de cotisation · {person}",
@@ -281,6 +306,8 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
   },
 };
 const allowed: Record<Kind, string[]> = {
+  club_newsletter: ["title", "message", "organization", "url"],
+  event_mail: ["title", "message", "organization", "url"],
   attendance_update: ["name", "organization", "url"],
   dues_reminder: [
     "name",

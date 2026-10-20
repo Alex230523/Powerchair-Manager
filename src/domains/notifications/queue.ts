@@ -23,13 +23,18 @@ export type ResourceType =
   | "dues"
   | "training"
   | "match"
-  | "license";
+  | "license"
+  | "newsletter"
+  | "event_mail";
 export type Envelope = {
   email: string;
   url: string;
   subject: string;
   text: string;
   html: string;
+  /** Display name of the sender (the club) and where replies go. */
+  fromName?: string;
+  replyTo?: string;
 };
 export type Publication = {
   organizationId: string | null;
@@ -43,7 +48,26 @@ export type Publication = {
   locale: "fr" | "nl" | "en";
   variables: Variables;
   inApp?: boolean;
+  /** Ready HTML for club-written mails (already escaped by its builder). */
+  html?: string;
 };
+/** Display name and reply address chosen by the club (wave 9). */
+export async function senderOf(db: Db, org: string | null) {
+  if (!org) return {};
+  const row = (
+    await db.query(
+      "SELECT name,mail_sender_name,COALESCE(mail_reply_to,contact_email) AS reply_to FROM organization WHERE id=$1",
+      [org],
+    )
+  ).rows[0] as
+    | { name: string; mail_sender_name: string; reply_to: string | null }
+    | undefined;
+  if (!row) return {};
+  return {
+    fromName: (row.mail_sender_name || row.name).replace(/[\r\n<>"]/g, "").slice(0, 80),
+    ...(row.reply_to ? { replyTo: row.reply_to } : {}),
+  };
+}
 export async function preferences(
   db: Db,
   org: string,
@@ -106,6 +130,7 @@ async function insert(client: PoolClient, input: Publication) {
       input.locale,
     ),
     rendered = renderTemplate(template, input.variables);
+  if (input.html) rendered.html = input.html;
   const pref =
     input.organizationId && input.userId
       ? await preferences(
@@ -132,7 +157,14 @@ async function insert(client: PoolClient, input: Publication) {
           template.id,
           template.version,
           seal(
-            { email: input.email, url: input.variables.url, ...rendered },
+            {
+              email: input.email,
+              url: input.variables.url,
+              ...rendered,
+              ...(input.category === "security"
+                ? {}
+                : await senderOf(client, input.organizationId)),
+            },
             key,
           ),
           key,
