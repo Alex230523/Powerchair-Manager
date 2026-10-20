@@ -252,7 +252,7 @@ test("new club, federation and referee pages load and pass axe", async ({
     await grant.getByLabel(/^Organisme/).fill("Commune de Schaerbeek");
     await grant.getByLabel("Montant demandé (€)", { exact: true }).fill("8000");
     await grant.getByLabel("Date limite de dépôt", { exact: true }).fill("2026-12-01");
-    await grant.getByLabel("Contact", { exact: true }).selectOption({ label: "Marc Dupont · Commune" });
+    await grant.getByLabel("Contact").selectOption({ label: "Marc Dupont · Commune" });
     await grant.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(page.locator("main table")).toContainText("Commune de Schaerbeek");
     await expect(page.locator("main table")).toContainText("Déposer le dossier");
