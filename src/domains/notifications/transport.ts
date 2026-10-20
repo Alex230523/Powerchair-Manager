@@ -86,8 +86,16 @@ export function createTransport(
     async send(jobId, envelope) {
       z.email().parse(envelope.email);
       try {
+        // Always the platform address (SPF/DKIM); the club only names it
+        // and receives the replies.
+        const replyTo = envelope.replyTo
+          ? z.email().safeParse(envelope.replyTo)
+          : null;
         const result = await transport.sendMail({
-          from,
+          from: envelope.fromName
+            ? { name: envelope.fromName, address: from }
+            : from,
+          ...(replyTo?.success ? { replyTo: replyTo.data } : {}),
           to: envelope.email,
           subject: envelope.subject,
           text: envelope.text,

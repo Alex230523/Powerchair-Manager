@@ -9,6 +9,71 @@ import {
   type Permission,
 } from "../access/policy";
 import { ageOn } from "../people/schema";
+import { emailHash } from "../communication/hash";
+
+/** The account is the person's own, or a current representative of them. */
+async function speaksFor(db: Db, org: string, profileId: string, userId: string) {
+  return !!(
+    await db.query(
+      `SELECT 1 FROM club_person c JOIN person p ON p.id=c.person_id
+        WHERE c.id=$1 AND c.organization_id=$2 AND c.status='active' AND p.user_id=$3
+       UNION ALL
+       SELECT 1 FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person p ON p.id=gp.person_id JOIN club_person c ON c.id=g.subject_profile_id
+        WHERE g.subject_profile_id=$1 AND g.organization_id=$2 AND c.status='active' AND gp.status='active' AND p.user_id=$3
+          AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE)`,
+      [profileId, org, userId],
+    )
+  ).rowCount;
+}
+/** Club news: the delivery exists, the address did not unsubscribe. */
+async function newsletterAllowed(db: Db, target: Target, envelope?: Envelope) {
+  if (!envelope || !target.organization_id) return false;
+  return !!(
+    await db.query(
+      `SELECT 1 FROM newsletter_delivery d JOIN organization o ON o.id=d.organization_id
+        WHERE d.id::text=$1 AND d.organization_id=$2 AND d.email_hash=$3 AND NOT ('messages'=ANY(o.disabled_modules))
+          AND NOT EXISTS(SELECT 1 FROM mail_unsubscribe u WHERE u.organization_id=d.organization_id AND u.email_hash=d.email_hash)`,
+      [target.resource_id, target.organization_id, emailHash(envelope.email)],
+    )
+  ).rowCount;
+}
+/** A prepared event mail goes out only while the event still takes place. */
+async function eventMailAllowed(db: Db, target: Target, userId: string | null, envelope?: Envelope) {
+  if (!target.organization_id || !envelope) return false;
+  const live = (
+    await db.query(
+      "SELECT 1 FROM event_mail m JOIN calendar_event e ON e.id=m.event_id WHERE m.id::text=$1 AND m.organization_id=$2 AND m.status<>'cancelled' AND e.status='scheduled'",
+      [target.resource_id, target.organization_id],
+    )
+  ).rowCount;
+  if (!live) return false;
+  // Still connected to the club: an active member account, or an address on an active profile.
+  return !!(
+    await db.query(
+      userId
+        ? `SELECT 1 FROM organization_membership WHERE organization_id=$1 AND user_id=$2 AND active
+           UNION ALL SELECT 1 FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.organization_id=$1 AND p.user_id=$2 AND c.status='active'`
+        : "SELECT 1 FROM club_person WHERE organization_id=$1 AND status='active' AND lower(email)=lower($2)",
+      [target.organization_id, userId ?? envelope.email],
+    )
+  ).rowCount;
+}
+/** Mails sent to the address recorded by the club, for people without an account. */
+async function addressAllowed(db: Db, target: Target, envelope?: Envelope) {
+  if (!envelope || !target.organization_id) return false;
+  if (target.kind === "dues_reminder" || target.kind === "document_reminder")
+    return !!(
+      await db.query(
+        "SELECT 1 FROM club_person WHERE id::text=$1 AND organization_id=$2 AND status='active' AND lower(email)=lower($3)",
+        [target.resource_id, target.organization_id, envelope.email],
+      )
+    ).rowCount;
+  if (target.resource_type === "newsletter")
+    return newsletterAllowed(db, target, envelope);
+  if (target.resource_type === "event_mail")
+    return eventMailAllowed(db, target, null, envelope);
+  return false;
+}
 export type Target = {
   organization_id: string | null;
   recipient_user_id: string | null;
@@ -47,6 +112,7 @@ export async function allowed(
         ),
     );
   }
+  if (!target.recipient_user_id) return addressAllowed(db, target, envelope);
   const result = await db.query(
     'SELECT id,email,active,"emailVerified" FROM "user" WHERE id=$1',
     [target.recipient_user_id],
@@ -69,6 +135,13 @@ export async function allowed(
     ).rowCount;
   }
   if (!target.organization_id) return false;
+  // Reminders point at the person concerned (resource = their profile).
+  if (target.kind === "dues_reminder" || target.kind === "document_reminder")
+    return speaksFor(db, target.organization_id, target.resource_id, user.id);
+  if (target.resource_type === "newsletter")
+    return newsletterAllowed(db, target, envelope);
+  if (target.resource_type === "event_mail")
+    return eventMailAllowed(db, target, user.id, envelope);
   if (target.resource_type === "attendance")
     return attendanceAllowed(db, user.id, target.resource_id);
   if (target.resource_type === "calendar")
@@ -78,7 +151,10 @@ export async function allowed(
   if (target.resource_type === "registration")
     return !!(
       await db.query(
-        "SELECT 1 FROM registration_application WHERE id=$1 AND organization_id=$2 AND applicant_user_id=$3 AND status<>'draft'",
+        target.kind === "registration_link"
+          ? // Link sent to someone registering without a password.
+            "SELECT 1 FROM registration_guest_link l JOIN registration_form f ON f.id=l.form_id WHERE l.id::text=$1 AND f.organization_id=$2 AND l.user_id=$3 AND l.expires_at>now()"
+          : "SELECT 1 FROM registration_application WHERE id::text=$1 AND organization_id=$2 AND applicant_user_id=$3 AND status<>'draft'",
         [target.resource_id, target.organization_id, user.id],
       )
     ).rowCount;
@@ -87,7 +163,12 @@ export async function allowed(
     [target.organization_id, user.id],
   );
   if (!roles.rowCount) return false;
-  if (target.resource_type === "membership") return true;
+  // Membership news and federation follow-ups (courses, matches, licences)
+  // go to accounts that still hold a current mandate in the organisation.
+  if (
+    ["membership", "training", "match", "license"].includes(target.resource_type)
+  )
+    return true;
   if (target.resource_type === "team") {
     return !!(
       await db.query(

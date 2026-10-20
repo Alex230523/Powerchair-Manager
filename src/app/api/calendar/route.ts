@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import {
   calendarExecute,
+  calendarCopyWeek,
   calendarView,
   commandSchema,
 } from "@/domains/calendar/service";
@@ -37,13 +38,12 @@ export async function POST(request: Request) {
       body = JSON.parse(
         new TextDecoder().decode(await bounded(request, 65000)),
       );
+    const command = commandSchema.parse(body),
+      org = z.uuid().parse(body.organizationId);
     return Response.json(
-      await calendarExecute(
-        getDb(),
-        p,
-        commandSchema.parse(body),
-        z.uuid().parse(body.organizationId),
-      ),
+      command.action === "copyWeek"
+        ? await calendarCopyWeek(getDb(), p, command, org)
+        : await calendarExecute(getDb(), p, command, org),
       { headers: noStore },
     );
   } catch (e) {
