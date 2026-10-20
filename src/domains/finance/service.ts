@@ -78,7 +78,7 @@ export async function financeView(db: Pool, p: Principal) {
       season = seasonOf(today);
     const entries = (
       await c.query(
-        `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,u.name AS author,
+        `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,t.trip_id,u.name AS author,
                 COALESCE((SELECT json_agg(json_build_object('id',r.id,'filename',r.filename) ORDER BY r.uploaded_at) FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL),'[]') AS receipts
            FROM finance_transaction t JOIN "user" u ON u.id=t.created_by WHERE t.organization_id=$1 ORDER BY t.occurred_on DESC,t.created_at DESC LIMIT 2000`,
         [org],
@@ -121,9 +121,17 @@ export async function financeView(db: Pool, p: Principal) {
     }[];
     const summary = ledgerSummary(entries, season.from, season.to);
     const budget = await budgetLines(c, org, season.label);
+    // Trips a line can be attached to (recent and upcoming).
+    const trips = (
+      await c.query(
+        "SELECT id,title,starts_on::text AS starts_on FROM trip WHERE organization_id=$1 AND status<>'cancelled' AND ends_on>=CURRENT_DATE-180 ORDER BY starts_on DESC LIMIT 50",
+        [org],
+      )
+    ).rows as { id: string; title: string; starts_on: string }[];
     return {
       organization_id: org,
       can_edit: edit,
+      trips,
       today,
       season,
       seasons: seasonsOf(entries, season.label),
@@ -200,9 +208,19 @@ export async function financeExecute(
           );
           if (!open.rowCount) throw new AccessError("NOT_FOUND", 404);
         }
+        if (
+          input.tripId &&
+          !(
+            await c.query("SELECT 1 FROM trip WHERE id=$1 AND organization_id=$2", [
+              input.tripId,
+              organization,
+            ])
+          ).rowCount
+        )
+          throw new AccessError("NOT_FOUND", 404);
         const row = (
           await c.query(
-            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id",
+            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id,trip_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id",
             [
               organization,
               input.occurredOn,
@@ -216,6 +234,7 @@ export async function financeExecute(
               input.notes,
               userId,
               input.receivableId ?? null,
+              input.tripId ?? null,
             ],
           )
         ).rows[0];

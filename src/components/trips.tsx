@@ -1,0 +1,530 @@
+"use client";
+import Link from "next/link";
+import { useCallback, useState, type FormEvent } from "react";
+import type { Locale } from "@/lib/locale";
+import type { tripsView, tripDetail } from "@/domains/trips/service";
+import { licenceCategories } from "@/domains/trips/schema";
+import { tripsCopy } from "./trips-copy";
+import { errors } from "./access-copy";
+import { useData, usePost } from "./use-api";
+import { TripDetailSections } from "./trip-detail";
+
+type List = Awaited<ReturnType<typeof tripsView>>;
+export type Detail = Awaited<ReturnType<typeof tripDetail>>;
+const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
+export const dayLabel = (l: Locale, d: string) =>
+  new Intl.DateTimeFormat(tag(l), {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(d + "T12:00:00Z"));
+export const timeLabel = (l: Locale, d: string) =>
+  new Intl.DateTimeFormat(tag(l), {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Brussels",
+  }).format(new Date(d));
+/** "2026-10-24T08:30" in the device's time zone, for datetime-local inputs. */
+export const toLocalInput = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+export const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
+export function useTripFailure(locale: Locale) {
+  const t = tripsCopy[locale];
+  return useCallback(
+    (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
+    [t, locale],
+  );
+}
+export function Countdown({
+  locale,
+  c,
+}: {
+  locale: Locale;
+  c: { left: number; urgent: boolean; past: boolean };
+}) {
+  const t = tripsCopy[locale];
+  return (
+    <span className="status-tag" data-tone={c.past ? undefined : c.urgent ? "warning" : "info"}>
+      {c.past ? t.past : c.left === 0 ? t.today : t.days.replace("{n}", String(c.left))}
+    </span>
+  );
+}
+
+/** Create or edit the main data of a trip. */
+export function TripForm({
+  locale,
+  list,
+  trip,
+  busy,
+  onSubmit,
+}: {
+  locale: Locale;
+  list: Pick<List, "venues" | "places">;
+  trip?: Detail["trip"];
+  busy: boolean;
+  onSubmit: (fields: Record<string, unknown>) => void;
+}) {
+  const t = tripsCopy[locale];
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const s = (k: string) => String(f.get(k) ?? "");
+    const acc = s("accommodationAccessible");
+    onSubmit({
+      title: s("title"),
+      kind: s("kind"),
+      startsOn: s("startsOn"),
+      endsOn: s("endsOn"),
+      sharedVenueId: s("sharedVenueId") || null,
+      placeId: s("placeId") || null,
+      destination: s("destination"),
+      meetingPoint: s("meetingPoint"),
+      departureAt: fromLocalInput(s("departureAt")),
+      returnAt: fromLocalInput(s("returnAt")),
+      returnPoint: s("returnPoint"),
+      accommodation: s("accommodation"),
+      accommodationAccessible: acc === "" ? null : acc === "yes",
+      emergency: s("emergency"),
+      contact: s("contact"),
+      notes: s("notes"),
+    });
+  }
+  const f = t.fields;
+  const id = trip?.id ?? "new";
+  return (
+    <form className="trip-form" onSubmit={submit}>
+      <div className="form-grid">
+        <label htmlFor={`${id}-title`}>
+          {f.title}
+          <input id={`${id}-title`} name="title" required minLength={2} maxLength={120} defaultValue={trip?.title} placeholder="Ex. Tournoi de Gand" />
+        </label>
+        <label htmlFor={`${id}-kind`}>
+          {f.kind}
+          <select id={`${id}-kind`} name="kind" defaultValue={trip?.kind ?? "tournament"}>
+            {Object.entries(t.kinds).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor={`${id}-starts`}>
+          {f.startsOn}
+          <input id={`${id}-starts`} name="startsOn" type="date" required defaultValue={trip?.starts_on} />
+        </label>
+        <label htmlFor={`${id}-ends`}>
+          {f.endsOn}
+          <input id={`${id}-ends`} name="endsOn" type="date" required defaultValue={trip?.ends_on} />
+        </label>
+        <label htmlFor={`${id}-venue`}>
+          {f.venue}
+          <select id={`${id}-venue`} name="sharedVenueId" defaultValue={trip?.shared_venue_id ?? ""}>
+            <option value="">{t.noneOption}</option>
+            {list.venues.map((v) => (
+              <option key={v.id} value={v.id}>{v.city ? `${v.name} (${v.city})` : v.name}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor={`${id}-place`}>
+          {f.place}
+          <select id={`${id}-place`} name="placeId" defaultValue={trip?.place_id ?? ""}>
+            <option value="">{t.noneOption}</option>
+            {list.places.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor={`${id}-dest`}>
+          {f.destination}
+          <input id={`${id}-dest`} name="destination" maxLength={300} defaultValue={trip?.destination} />
+        </label>
+        <label htmlFor={`${id}-meet`}>
+          {f.meetingPoint}
+          <input id={`${id}-meet`} name="meetingPoint" maxLength={300} defaultValue={trip?.meeting_point} placeholder="Ex. Parking du club" />
+        </label>
+        <label htmlFor={`${id}-dep`}>
+          {f.departureAt}
+          <input id={`${id}-dep`} name="departureAt" type="datetime-local" defaultValue={toLocalInput(trip?.departure_at ?? null)} />
+        </label>
+        <label htmlFor={`${id}-ret`}>
+          {f.returnAt}
+          <input id={`${id}-ret`} name="returnAt" type="datetime-local" defaultValue={toLocalInput(trip?.return_at ?? null)} />
+        </label>
+        <label htmlFor={`${id}-retp`}>
+          {f.returnPoint}
+          <input id={`${id}-retp`} name="returnPoint" maxLength={300} defaultValue={trip?.return_point} />
+        </label>
+        <label htmlFor={`${id}-contact`}>
+          {f.contact}
+          <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder="Ex. Sophie, 0470 12 34 56" />
+        </label>
+      </div>
+      <label htmlFor={`${id}-acc`}>
+        {f.accommodation}
+        <textarea id={`${id}-acc`} name="accommodation" maxLength={1000} rows={2} defaultValue={trip?.accommodation} />
+      </label>
+      <label htmlFor={`${id}-acca`}>
+        {f.accommodationAccessible}
+        <select
+          id={`${id}-acca`}
+          name="accommodationAccessible"
+          defaultValue={trip?.accommodation_accessible === true ? "yes" : trip?.accommodation_accessible === false ? "no" : ""}
+        >
+          <option value="">{t.unknown}</option>
+          <option value="yes">{t.yes}</option>
+          <option value="no">{t.no}</option>
+        </select>
+      </label>
+      <label htmlFor={`${id}-emerg`}>
+        {f.emergency}
+        <textarea id={`${id}-emerg`} name="emergency" maxLength={1000} rows={2} defaultValue={trip?.emergency} />
+      </label>
+      <label htmlFor={`${id}-notes`}>
+        {f.notes}
+        <textarea id={`${id}-notes`} name="notes" maxLength={2000} rows={2} defaultValue={trip?.notes} />
+      </label>
+      <button className="button" disabled={busy}>{t.save}</button>
+    </form>
+  );
+}
+
+export function TripsPage({ locale }: { locale: Locale }) {
+  const t = tripsCopy[locale];
+  const failure = useTripFailure(locale);
+  const { data, error, setError, denied, reload } = useData<List>("/api/trips", failure);
+  const { busy, message, post } = usePost("/api/trips", reload, setError, failure);
+  const [creating, setCreating] = useState(false);
+  if (!data)
+    return (
+      <main id="main" className="access trips">
+        <h1>{t.title}</h1>
+        {error || denied ? <p role="alert">{error || t.unavailable}</p> : <p role="status">{t.loading}</p>}
+      </main>
+    );
+  const org = data.organization_id;
+  return (
+    <main id="main" className="access trips">
+      <div className="directory-heading">
+        <div>
+          <h1>{t.title}</h1>
+          <p className="muted">{t.intro}</p>
+        </div>
+        {data.can.manage && (
+          <button type="button" className="button" aria-expanded={creating} onClick={() => setCreating(!creating)}>
+            {creating ? t.close : t.create}
+          </button>
+        )}
+      </div>
+      {error && <p role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      {creating && (
+        <section className="panel" aria-label={t.create}>
+          <TripForm
+            locale={locale}
+            list={data}
+            busy={busy}
+            onSubmit={(fields) =>
+              void post({ action: "create", locale, organizationId: org, ...fields }, t.saved).then(
+                (ok) => ok && setCreating(false),
+              )
+            }
+          />
+        </section>
+      )}
+      {data.trips.length ? (
+        <ul className="trip-list">
+          {data.trips.map((x) => (
+            <li key={x.id} className="trip-card" data-status={x.status}>
+              <div className="trip-card-head">
+                <Link href={`/${locale}/trips/${x.id}`}>
+                  <strong>{x.title}</strong>
+                </Link>
+                <Countdown locale={locale} c={x.countdown} />
+              </div>
+              <p className="muted">
+                {t.kinds[x.kind]} · {dayLabel(locale, x.starts_on)}
+                {x.ends_on !== x.starts_on && ` → ${dayLabel(locale, x.ends_on)}`}
+                {x.destination && ` · ${x.destination}`}
+              </p>
+              <p className="trip-meta">
+                <span className="status-tag">{t.statuses[x.status]}</span>
+                <span>{t.travelling.replace("{n}", String(x.travelling))}</span>
+                {x.powerchairs > 0 && <span>{t.powerchairs.replace("{n}", String(x.powerchairs))}</span>}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="empty-directory">{t.none}</p>
+      )}
+      {(data.can.manage || data.fleet.length > 0) && (
+        <Fleet locale={locale} data={data} busy={busy} post={post} />
+      )}
+      {data.can.manage && <Drivers locale={locale} data={data} busy={busy} post={post} />}
+    </main>
+  );
+}
+
+type Post = (body: Record<string, unknown>, done: string) => Promise<boolean>;
+function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy: boolean; post: Post }) {
+  const t = tripsCopy[locale];
+  const [editing, setEditing] = useState<string | null>(null);
+  const today = data.today;
+  function submit(e: FormEvent<HTMLFormElement>, id?: string) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const s = (k: string) => String(f.get(k) ?? "");
+    void post(
+      {
+        action: "fleet",
+        ...(id ? { id } : {}),
+        name: s("name"),
+        kind: s("kind"),
+        plate: s("plate"),
+        owner: s("owner"),
+        seats: Number(s("seats") || 0),
+        wheelchairPlaces: Number(s("wheelchairPlaces") || 0),
+        rampOrLift: f.get("rampOrLift") === "on",
+        licence: s("licence"),
+        insuranceUntil: s("insuranceUntil") || null,
+        inspectionUntil: s("inspectionUntil") || null,
+        notes: s("notes"),
+        archived: f.get("archived") === "on",
+        organizationId: data.organization_id,
+      },
+      t.saved,
+    ).then((ok) => ok && setEditing(null));
+  }
+  const form = (v?: List["fleet"][number]) => (
+    <form className="fleet-form" onSubmit={(e) => submit(e, v?.id)}>
+      <div className="form-grid">
+        <label>
+          {t.vehicleName}
+          <input name="name" required minLength={2} maxLength={80} defaultValue={v?.name} />
+        </label>
+        <label>
+          {t.kind}
+          <input name="kind" maxLength={60} defaultValue={v?.kind} placeholder="Ex. Minibus adapté" />
+        </label>
+        <label>
+          {t.plate}
+          <input name="plate" maxLength={20} defaultValue={v?.plate} />
+        </label>
+        <label>
+          {t.owner}
+          <input name="owner" maxLength={120} defaultValue={v?.owner} />
+        </label>
+        <label>
+          {t.seats}
+          <input name="seats" type="number" min={0} max={80} defaultValue={v?.seats ?? 8} />
+        </label>
+        <label>
+          {t.wheelchairPlaces}
+          <input name="wheelchairPlaces" type="number" min={0} max={20} defaultValue={v?.wheelchair_places ?? 0} />
+        </label>
+        <label>
+          {t.licenceNeeded}
+          <select name="licence" defaultValue={v?.licence ?? "B"}>
+            {licenceCategories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.insuranceUntil}
+          <input name="insuranceUntil" type="date" defaultValue={v?.insurance_until ?? ""} />
+        </label>
+        <label>
+          {t.inspectionUntil}
+          <input name="inspectionUntil" type="date" defaultValue={v?.inspection_until ?? ""} />
+        </label>
+      </div>
+      <label className="check">
+        <input type="checkbox" name="rampOrLift" defaultChecked={v?.ramp_or_lift} />
+        {t.rampOrLift}
+      </label>
+      {v && (
+        <label className="check">
+          <input type="checkbox" name="archived" defaultChecked={v.archived} />
+          {t.archived}
+        </label>
+      )}
+      <label>
+        {t.fields.notes}
+        <input name="notes" maxLength={1000} defaultValue={v?.notes} />
+      </label>
+      <div className="actions">
+        <button className="button" disabled={busy}>{t.save}</button>
+        <button type="button" className="button secondary" onClick={() => setEditing(null)}>{t.cancel}</button>
+      </div>
+    </form>
+  );
+  return (
+    <section className="panel" aria-labelledby="trips-fleet">
+      <div className="panel-head">
+        <h2 id="trips-fleet">{t.fleet}</h2>
+        {editing === null && (
+          <button type="button" className="button secondary" onClick={() => setEditing("new")}>{t.addFleet}</button>
+        )}
+      </div>
+      <p className="muted">{t.fleetIntro}</p>
+      {editing === "new" && form()}
+      <ul className="profile-list">
+        {data.fleet.map((v) => (
+          <li key={v.id} data-archived={v.archived || undefined}>
+            {editing === v.id ? (
+              form(v)
+            ) : (
+              <>
+                <div>
+                  <strong>{v.name}</strong>
+                  <p className="muted small">
+                    {[v.kind, v.plate, `${v.seats} ${t.seats.toLowerCase()}`, `${v.wheelchair_places} ${t.wheelchairPlaces.toLowerCase()}`, v.ramp_or_lift ? t.rampOrLift : "", `${t.licenceNeeded} ${v.licence}`]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  {v.insurance_until && v.insurance_until < today && (
+                    <p className="status-tag" data-tone="danger">{t.warnings.insurance}</p>
+                  )}
+                  {v.inspection_until && v.inspection_until < today && (
+                    <p className="status-tag" data-tone="danger">{t.warnings.inspection}</p>
+                  )}
+                </div>
+                {data.can.manage && (
+                  <button type="button" className="text-button" onClick={() => setEditing(v.id)}>
+                    {t.edit}
+                    <span className="sr-only"> : {v.name}</span>
+                  </button>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; busy: boolean; post: Post }) {
+  const t = tripsCopy[locale];
+  const [cats, setCats] = useState<string[]>([]);
+  return (
+    <section className="panel" aria-labelledby="trips-drivers">
+      <h2 id="trips-drivers">{t.drivers}</h2>
+      <p className="muted">{t.driversIntro}</p>
+      {data.drivers.length > 0 && (
+        <ul className="profile-list">
+          {data.drivers.map((d) => (
+            <li key={d.profile_id}>
+              <div>
+                <strong>{d.full_name}</strong>
+                <p className="muted small">
+                  {d.categories.join(", ")}
+                  {d.valid_until && ` · ${t.validUntil} ${dayLabel(locale, d.valid_until)}`}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="inline-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          void post(
+            {
+              action: "licence",
+              profileId: String(f.get("profileId")),
+              categories: cats,
+              validUntil: String(f.get("validUntil") ?? "") || null,
+              organizationId: data.organization_id,
+            },
+            t.saved,
+          );
+        }}
+      >
+        <label htmlFor="driver-person">
+          {t.person}
+          <select id="driver-person" name="profileId" required defaultValue="">
+            <option value="" disabled>{t.person}</option>
+            {data.people.map((p) => (
+              <option key={p.id} value={p.id}>{p.full_name}</option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="inline-checks">
+          <legend>{t.categories}</legend>
+          {licenceCategories.map((c) => (
+            <label key={c} className="check">
+              <input
+                type="checkbox"
+                checked={cats.includes(c)}
+                onChange={() => setCats(cats.includes(c) ? cats.filter((x) => x !== c) : [...cats, c])}
+              />
+              {c}
+            </label>
+          ))}
+        </fieldset>
+        <label htmlFor="driver-until">
+          {t.validUntil}
+          <input id="driver-until" name="validUntil" type="date" />
+        </label>
+        <button className="button secondary" disabled={busy}>{t.saveLicence}</button>
+      </form>
+    </section>
+  );
+}
+
+export function TripPage({ locale, id }: { locale: Locale; id: string }) {
+  const t = tripsCopy[locale];
+  const failure = useTripFailure(locale);
+  const detail = useData<Detail>(`/api/trips?id=${id}`, failure);
+  const list = useData<List>("/api/trips", failure);
+  const reload = useCallback(async () => {
+    await Promise.all([detail.reload(), list.reload()]);
+  }, [detail, list]);
+  const { busy, message, post } = usePost("/api/trips", reload, detail.setError, failure);
+  const d = detail.data;
+  if (!d)
+    return (
+      <main id="main" className="access trips">
+        <p className="back-link">
+          <Link href={`/${locale}/trips`}>{t.back}</Link>
+        </p>
+        <h1>{t.title}</h1>
+        {detail.error || detail.denied ? (
+          <p role="alert">{detail.error || t.unavailable}</p>
+        ) : (
+          <p role="status">{t.loading}</p>
+        )}
+      </main>
+    );
+  return (
+    <main id="main" className="access trips">
+      <p className="back-link">
+        <Link href={`/${locale}/trips`}>{t.back}</Link>
+      </p>
+      <div className="directory-heading">
+        <div>
+          <h1>{d.trip.title}</h1>
+          <p className="muted">
+            {t.kinds[d.trip.kind]} · {dayLabel(locale, d.trip.starts_on)}
+            {d.trip.ends_on !== d.trip.starts_on && ` → ${dayLabel(locale, d.trip.ends_on)}`}{" "}
+            <Countdown locale={locale} c={d.countdown} />{" "}
+            <span className="status-tag">{t.statuses[d.trip.status]}</span>
+          </p>
+        </div>
+      </div>
+      {detail.error && <p role="alert">{detail.error}</p>}
+      {message && <p role="status">{message}</p>}
+      <TripDetailSections locale={locale} d={d} list={list.data} busy={busy} post={post} />
+    </main>
+  );
+}

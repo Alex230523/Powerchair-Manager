@@ -1,3 +1,5 @@
+import { clearBooks } from "./offline-book";
+
 /**
  * Attendance taken without network: marks wait on the device and are sent when
  * the connection comes back. Only identifiers and the recorded presence are
@@ -72,4 +74,5 @@ export function clearOfflineData() {
   } catch {
     /* Nothing to clear. */
   }
+  clearBooks();
 }

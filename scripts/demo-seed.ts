@@ -15,6 +15,8 @@ import { randomUUID } from "node:crypto";
 import { createAuth } from "../src/lib/auth";
 import { execute, type Principal } from "../src/domains/access/service";
 import { calendarExecute } from "../src/domains/calendar/service";
+import { tripExecute } from "../src/domains/trips/service";
+import { venueExecute } from "../src/domains/venues/service";
 import { attendanceExecute } from "../src/domains/attendance/service";
 import {
   documentExecute,
@@ -1339,6 +1341,157 @@ try {
     },
     federation,
   );
+
+  // Wave 7: an adapted minibus, care instructions, a hall in the directory and
+  // an away tournament with its participants, vehicle and schedule.
+  const hall = await venueExecute(db, president, {
+    action: "save",
+    name: "Hall omnisports de Gand",
+    address: "Sportlaan 12",
+    city: "Gent",
+    phone: "09 000 00 00",
+    website: "",
+    stepFree: true,
+    adaptedToilets: true,
+    changingRooms: true,
+    showers: null,
+    lift: null,
+    hoist: false,
+    parking: true,
+    charging: true,
+    doorWidthCm: 95,
+    floor: "Parquet",
+    court: "28 x 15 m, lignes de basket",
+    notes: "Entrée par le parking arrière, rampe à droite.",
+    checkedOn: day(-30),
+  });
+  const minibus = await tripExecute(
+    db,
+    president,
+    {
+      action: "fleet",
+      name: "Minibus adapté",
+      kind: "Minibus avec lift",
+      plate: "1-PCM-007",
+      owner: "Club",
+      seats: 8,
+      wheelchairPlaces: 2,
+      rampOrLift: true,
+      licence: "D1",
+      insuranceUntil: day(300),
+      inspectionUntil: day(120),
+      notes: "Sangles de fixation dans le coffre.",
+      archived: false,
+    },
+    org,
+  );
+  await tripExecute(
+    db,
+    president,
+    { action: "licence", profileId: people.coach, categories: ["B", "D1"], validUntil: day(2000) },
+    org,
+  );
+  for (const [profile, care] of [
+    [people.camille, { moment: "morning", time: "08:00", title: "Transfert au lève-personne", details: "Toujours à deux. Sangle verte." }],
+    [people.camille, { moment: "after_play", time: "", title: "Hydratation et changement de position", details: "Toutes les deux heures en journée." }],
+    [people.lucas, { moment: "midday", time: "12:30", title: "Repas coupé en petits morceaux", details: "" }],
+  ] as const)
+    await playerProfileExecute(
+      db,
+      president,
+      { action: "care", id: profile, active: true, ...care },
+      org,
+    );
+  const trip = await tripExecute(
+    db,
+    president,
+    {
+      action: "create",
+      locale: "fr",
+      title: "Tournoi de Gand",
+      kind: "tournament",
+      startsOn: day(12),
+      endsOn: day(13),
+      sharedVenueId: hall.id,
+      placeId: null,
+      destination: "",
+      meetingPoint: "Parking du club",
+      departureAt: `${day(12)}T06:30:00Z`,
+      returnAt: `${day(13)}T18:00:00Z`,
+      returnPoint: "Parking du club",
+      accommodation: "Auberge de jeunesse De Draecke, chambres adaptées au rez-de-chaussée",
+      accommodationAccessible: true,
+      emergency: "112. Hôpital universitaire de Gand, C. Heymanslaan 10.",
+      contact: "Sam Leroy, 0470 12 34 56",
+      notes: "Prévoir les chargeurs des fauteuils de jeu.",
+    },
+    org,
+  );
+  await tripExecute(
+    db,
+    president,
+    {
+      action: "addParticipants",
+      tripId: trip.id,
+      people: [
+        { profileId: people.camille, role: "player" },
+        { profileId: people.lucas, role: "player" },
+        { profileId: people.yanis, role: "player" },
+        { profileId: people.coach, role: "coach" },
+        { profileId: people.nadia, role: "guardian" },
+      ],
+    },
+    org,
+  );
+  const travellers = (
+    await db.query(
+      "SELECT id,profile_id FROM trip_participant WHERE trip_id=$1",
+      [trip.id],
+    )
+  ).rows as { id: string; profile_id: string }[];
+  const pid = (profile: string) => travellers.find((r) => r.profile_id === profile)!.id;
+  for (const [profile, chair] of [
+    [people.camille, "powerchair"],
+    [people.lucas, "powerchair"],
+    [people.yanis, "manual"],
+  ] as const)
+    await tripExecute(
+      db,
+      president,
+      { action: "participant", participantId: pid(profile), status: "confirmed", chair, needs: profile === people.camille ? "Chargeur 24 V" : "" },
+      org,
+    );
+  await tripExecute(
+    db,
+    president,
+    {
+      action: "vehicle",
+      tripId: trip.id,
+      vehicleId: minibus.id,
+      name: "Minibus adapté",
+      legs: "both",
+      driverProfileId: people.coach,
+      driverPhone: "0470 12 34 56",
+      seats: 8,
+      wheelchairPlaces: 2,
+      notes: "",
+      passengers: [pid(people.camille), pid(people.lucas), pid(people.yanis)],
+    },
+    org,
+  );
+  for (const item of [
+    { day: day(12), time: "07:30", title: "Départ du club", place: "Parking du club" },
+    { day: day(12), time: "10:00", title: "Match contre Gand", place: "Terrain 1" },
+    { day: day(12), time: "15:00", title: "Match contre Liège", place: "Terrain 2" },
+    { day: day(13), time: "10:30", title: "Demi-finale", place: "Terrain 1" },
+    { day: day(13), time: "17:00", title: "Retour", place: "" },
+  ])
+    await tripExecute(
+      db,
+      president,
+      { action: "schedule", tripId: trip.id, notes: "", ...item },
+      org,
+    );
 
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();
