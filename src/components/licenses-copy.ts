@@ -1,7 +1,7 @@
 import type { Locale } from "../lib/locale";
 
 const fr = {
-  clubTitle: "Licences et classifications",
+  clubTitle: "Transferts, licences et classifications",
   clubIntro:
     "Demandez les licences de la saison et la validation des classifications à votre fédération.",
   fedTitle: "Licences, classifications et transferts",
@@ -90,7 +90,7 @@ const fr = {
 };
 type Copy = typeof fr;
 const nl: Copy = {
-  clubTitle: "Licenties en classificaties",
+  clubTitle: "Transfers, licenties en classificaties",
   clubIntro:
     "Vraag de licenties van het seizoen en de validatie van de classificaties aan bij uw federatie.",
   fedTitle: "Licenties, classificaties en transfers",
@@ -179,7 +179,7 @@ const nl: Copy = {
   },
 };
 const en: Copy = {
-  clubTitle: "Licences and classifications",
+  clubTitle: "Transfers, licences and classifications",
   clubIntro:
     "Ask your federation for this season's licences and for classification checks.",
   fedTitle: "Licences, classifications and transfers",

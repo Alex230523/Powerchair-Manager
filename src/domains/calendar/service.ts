@@ -490,6 +490,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       },
       manage: manager(s.a),
       canPlan,
+      // Modules the club switched off: the page hides their buttons (wave 11).
+      offModules: (s.a as { disabled_modules?: string[] }).disabled_modules ?? [],
       range,
       events,
       teams,

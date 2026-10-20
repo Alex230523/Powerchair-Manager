@@ -167,6 +167,10 @@ export function Documents({ locale }: { locale: Locale }) {
             {!data.mfa && <p>{t.mfa}</p>}
             <p className="muted">{t.sensitiveHint}</p>
             <div className="actions">
+              {/* Licences and transfers keep their own page; the documents page points to it (wave 11). */}
+              <Link className="button secondary" href={"/" + locale + "/licenses"}>
+                {locale === "fr" ? "Licences et transferts" : locale === "en" ? "Licences and transfers" : "Licenties en transfers"}
+              </Link>
               <Button
                 onClick={() => {
                   setCategory("training");
