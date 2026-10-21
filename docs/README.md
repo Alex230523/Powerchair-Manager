@@ -83,6 +83,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 16, I3 : espace fédération](evolutions/2026-10-21-zv-vague-16-i3-espace-federation.md) |
 | 21/10/2026 | [Vague 16, A : accueil du président](evolutions/2026-10-21-zw-vague-16-a-accueil-president.md) |
 | 21/10/2026 | [Vague 16, E1 : créer et gérer un événement](evolutions/2026-10-21-zx-vague-16-e1-evenements.md) |
+| 21/10/2026 | [Vague 16, E2 : bibliothèque de fiches exercices](evolutions/2026-10-21-zy-vague-16-e2-fiches-exercices.md) |
 
 ## Convention
 

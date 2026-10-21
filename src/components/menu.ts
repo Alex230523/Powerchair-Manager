@@ -91,6 +91,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                 ...(manager ? [registrations] : []),
                 ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
+                // Wave 16 (E2): the coaches' exercise sheets.
+                ...item("/exercises", "exercises", "clipboardList", true),
                 ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
                 ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
               ],
@@ -160,6 +162,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/teams", "teams", "team", has("people.read", "teams.manage") || role === "coach"),
                   ...(manager ? [registrations] : []),
                   ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
+                  ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
                   ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
                   ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
                 ],

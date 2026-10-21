@@ -31,6 +31,8 @@ import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui
 import { setupCopy } from "./setup-copy";
 import { eventCopy } from "./calendar-event-copy";
 import { InvitePicker, initialInvite } from "./event-invite";
+import { ProgramPicker } from "./program-picker";
+import { exercisesCopy } from "./exercises-copy";
 import { undoToast, showToast } from "./toast";
 type Place = {
   id: string;
@@ -93,6 +95,8 @@ type Item = {
   inviteGroups?: { kind: string; ref: string | null }[];
   register?: { id: string; version: number; deadline: string; closed: boolean; reminder_sent_at: string | null } | null;
   trip?: { id: string; title: string; status: string; departure_at: string | null; meeting_point: string; vehicles: number } | null;
+  /** Wave 16 (E2): the training's programme (notes for staff only). */
+  program?: { id: string; title: string; minutes: number; archived: boolean; notes?: string }[];
   documents: { id: string; name: string; versionId: string | null }[];
   history: {
     id: string;
@@ -127,6 +131,7 @@ type View = {
     archived: boolean;
   }[];
   recipientGroups?: { id: string; name: string }[];
+  exerciseOptions?: { id: string; title: string; duration_minutes: number; objective: string }[];
   trips?: { id: string; title: string; starts_on: string; calendar_event_id: string | null }[];
   teams: { id: string; name: string; color?: string | null }[];
   places: Place[];
@@ -858,6 +863,28 @@ export function Calendar({
                       </p>
                     )}
                   </section>
+                  {!!sheetEvent.program?.length && (
+                    <section aria-labelledby="event-sheet-program">
+                      <h3 id="event-sheet-program">{exercisesCopy[locale].program.title}</h3>
+                      <ol className="plain-list program-sheet">
+                        {sheetEvent.program.map((x) => (
+                          <li key={x.id}>
+                            <strong>{x.title}</strong> · {x.minutes} min
+                            {x.notes && <span className="muted small"> · {x.notes}</span>}
+                          </li>
+                        ))}
+                      </ol>
+                      <p>
+                        {exercisesCopy[locale].program.total(sheetEvent.program.reduce((n, x) => n + x.minutes, 0))}
+                        {sheetEvent.canEdit && (
+                          <>
+                            {" · "}
+                            <Link href={`/${locale}/exercises/program/${sheetEvent.id}`}>{exercisesCopy[locale].program.print}</Link>
+                          </>
+                        )}
+                      </p>
+                    </section>
+                  )}
                   <section aria-labelledby="event-sheet-invitations">
                     <h3 id="event-sheet-invitations">{p.invitations}</h3>
                     {sheetEvent.attendance.length > 0 && (
@@ -1016,6 +1043,8 @@ export function Calendar({
                           participants: [],
                           invite: JSON.parse(String(d.get("invite") ?? "null")) ?? undefined,
                           tripId: d.get("trip") === null ? undefined : String(d.get("trip")) || null,
+                          // Wave 16 (E2): the programme, for a training.
+                          exercises: d.get("exercises") === null ? undefined : JSON.parse(String(d.get("exercises"))),
                           documents: [
                             ...new Set([
                               ...d.getAll("documents"),
@@ -1223,6 +1252,9 @@ export function Calendar({
                         <textarea id="event-equipment" name="equipment" maxLength={2000} defaultValue={base?.equipment} />
                       </Field>
                     </fieldset>
+                    {types.find((x) => x.id === formType)?.family === "training" && (
+                      <ProgramPicker key={(event?.id ?? copyOf?.id ?? requestId) + ":program"} locale={locale} options={data.exerciseOptions ?? []} initial={base?.program ?? []} />
+                    )}
                     {!data.offModules?.includes("trips") && (
                       <fieldset className="event-section">
                         <legend>{ev.sections.transport}</legend>

@@ -15,6 +15,7 @@ import {
   ChevronUp,
   Handshake,
   ClipboardCheck,
+  ClipboardList,
   Clock,
   FileText,
   Flag,
@@ -103,6 +104,7 @@ const icons = {
   globe: Globe,
   logOut: LogOut,
   plus: Plus,
+  clipboardList: ClipboardList,
 } satisfies Record<string, LucideIcon>;
 export type IconName = keyof typeof icons;
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

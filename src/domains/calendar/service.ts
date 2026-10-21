@@ -36,6 +36,7 @@ import { moneyDeadlinesIn } from "../funding/service";
 import { groupProfiles } from "../communication/service";
 import { inviteForEvent } from "../attendance/service";
 import { offerUndo } from "../undo/service";
+import { setProgram, programOf, type ProgramItem } from "../exercises/service";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
 async function tx<T>(db: Pool, fn: (c: PoolClient) => Promise<T>) {
@@ -390,8 +391,10 @@ async function resolveInvite(s: Scope, input: EventInput): Promise<InvitePlan | 
   return { invited: [...invited], guardians: guardians.filter((id) => !invited.has(id)), groups: inv.groups, ask: inv.ask, deadline: inv.deadline };
 }
 /** After the event is written: parents, the groups kept, the invitations with answers, the trip. */
-async function afterLinks(s: Scope, e: Event, plan: InvitePlan | null, deadlineShift: number | null, tripId: string | null | undefined) {
+async function afterLinks(s: Scope, e: Event, plan: InvitePlan | null, deadlineShift: number | null, tripId: string | null | undefined, exercises?: ProgramItem[]) {
   const org = s.a.organization_id;
+  // Wave 16 (E2): the training's programme.
+  if (exercises !== undefined) await setProgram(s.c, org, s.p.userId, e.id, exercises);
   if (plan) {
     for (const id of plan.guardians)
       await s.c.query("INSERT INTO calendar_participant(event_id,organization_id,profile_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [e.id, org, id]);
@@ -501,6 +504,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
           : [],
         attendance: await attendanceRows(s, e),
         documents: docs,
+        // Wave 16 (E2): the programme; players see titles and minutes, staff the coach's notes too.
+        program: await programOf(s.c, e.id, staff),
         // Wave 16 (E1): the groups invited (to edit them), the register (to remind), the linked trip.
         inviteGroups: staff ? (await s.c.query("SELECT kind,ref FROM calendar_invite_group WHERE event_id=$1 ORDER BY kind,ref", [e.id])).rows as { kind: string; ref: string | null }[] : [],
         register: staff
@@ -614,6 +619,15 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
         version: number;
         used: number;
       }[],
+      // Wave 16 (E2): the sheets the planner may put in a training.
+      exerciseOptions: canPlan
+        ? ((
+            await s.c.query(
+              "SELECT id,title,duration_minutes,objective FROM exercise WHERE organization_id=$1 AND NOT archived AND (shared OR author_id=$2) ORDER BY lower(title) LIMIT 300",
+              [s.a.organization_id, s.p.userId],
+            )
+          ).rows as { id: string; title: string; duration_minutes: number; objective: string }[])
+        : [],
       recipientGroups: manager(s.a)
         ? ((await s.c.query("SELECT id,name FROM recipient_group WHERE organization_id=$1 AND NOT archived ORDER BY name", [s.a.organization_id])).rows as { id: string; name: string }[])
         : [],
@@ -966,7 +980,7 @@ export async function calendarExecute(
           ).rows[0] as Event;
           if (typed.eventTypeId !== undefined) await s.c.query("UPDATE calendar_event SET event_type_id=$2 WHERE id=$1", [e.id, typed.eventTypeId]);
           await links(s, e.id, item);
-          await afterLinks(s, e, plan, plan?.deadline ? instants[0].start.getTime() - Date.parse(plan.deadline) : null, i === 0 ? input.tripId : undefined);
+          await afterLinks(s, e, plan, plan?.deadline ? instants[0].start.getTime() - Date.parse(plan.deadline) : null, i === 0 ? input.tripId : undefined, input.exercises);
           await capacity(s, e);
           await changeLog(s, e, null, "created");
           events.push(e);
@@ -1212,7 +1226,7 @@ export async function calendarExecute(
           ).rows[0] as Event;
           if (typed.eventTypeId !== undefined) await s.c.query("UPDATE calendar_event SET event_type_id=$2 WHERE id=$1", [e.id, typed.eventTypeId]);
           await links(s, e.id, item);
-          await afterLinks(s, e, plan, plan?.deadline ? time.start.getTime() - Date.parse(plan.deadline) : null, old.id === anchor.id ? input.tripId : undefined);
+          await afterLinks(s, e, plan, plan?.deadline ? time.start.getTime() - Date.parse(plan.deadline) : null, old.id === anchor.id ? input.tripId : undefined, input.exercises);
           await capacity(s, e);
           await changeLog(s, e, before, "updated");
           changed.push(e);
