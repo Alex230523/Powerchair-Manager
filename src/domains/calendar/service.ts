@@ -522,7 +522,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
         : [{ id: s.p.userId, name: (await account(s.c, s.p)).name }],
       feeds: (
         await s.c.query(
-          "SELECT id,name,team_id,created_at,expires_at,revoked_at FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 ORDER BY created_at DESC",
+          "SELECT id,name,team_id,only_mine,include_money,created_at,expires_at,revoked_at FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 ORDER BY created_at DESC",
           [s.a.organization_id, s.p.userId, s.a.id],
         )
       ).rows,
@@ -671,7 +671,7 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
               [
                 s.a.organization_id,
                 p.userId,
@@ -680,6 +680,7 @@ export async function calendarExecute(
                 input.name,
                 input.teamId,
                 !!input.includeMoney,
+                !!input.mine && !input.teamId,
               ],
             )
           ).rows[0].id;
@@ -688,6 +689,25 @@ export async function calendarExecute(
           id,
           url: process.env.BETTER_AUTH_URL + "/api/calendar/feed/" + token,
         };
+      }
+      if (input.action === "renewFeed") {
+        // Same choices, a new secret: the old link stops at once (C9).
+        const old = (
+          await s.c.query(
+            "UPDATE calendar_feed SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 AND user_id=$3 AND mandate_id=$4 RETURNING name,team_id,include_money,only_mine",
+            [input.id, s.a.organization_id, p.userId, s.a.id],
+          )
+        ).rows[0];
+        if (!old) throw new AccessError("NOT_FOUND", 404);
+        const token = randomBytes(32).toString("base64url"),
+          id = (
+            await s.c.query(
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+              [s.a.organization_id, p.userId, s.a.id, createHash("sha256").update(token).digest("hex"), old.name, old.team_id, old.include_money, old.only_mine],
+            )
+          ).rows[0].id;
+        await audit(s.c, s.a.organization_id, p.userId, "calendar.feed.renewed", id);
+        return { id, url: process.env.BETTER_AUTH_URL + "/api/calendar/feed/" + token };
       }
       if (input.action === "revokeFeed") {
         const changed = await s.c.query(
@@ -1046,6 +1066,17 @@ async function copyWeek(
   await audit(s.c, org, s.p.userId, "calendar.copyWeek", input.requestId);
   return { created: created.length, skipped };
 }
+/** One of these profiles is in the event's audience (team or participant) or invited to it. */
+async function concerns(c: PoolClient, e: Event, own: string[]) {
+  if (!own.length) return false;
+  if ((await audience(c, e)).some((x) => own.includes(x.id))) return true;
+  return !!(
+    await c.query(
+      "SELECT 1 FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$1 AND i.profile_id=ANY($2::uuid[]) AND i.withdrawn_at IS NULL LIMIT 1",
+      [e.id, own],
+    )
+  ).rowCount;
+}
 export async function calendarFeed(db: Pool, token: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new AccessError("NOT_FOUND", 404);
@@ -1081,7 +1112,11 @@ export async function calendarFeed(db: Pool, token: string) {
       )
     ).rows as (Event & { location: string })[];
     const allowed = [];
-    for (const e of rows) if (await canRead(c, a, e)) allowed.push(e);
+    // "My events" (C9): those I lead, or where one of my profiles is invited or a participant.
+    const own = f.only_mine ? [...(await ownProfiles(c, a))] : [];
+    for (const e of rows)
+      if (await canRead(c, a, e))
+        if (!f.only_mine || e.responsible_user_id === a.user_id || (await concerns(c, e, own))) allowed.push(e);
     // Wave 15: money deadlines, when asked and while the person keeps money rights.
     let days: { uid: string; date: string; title: string }[] = [];
     if (f.include_money) {

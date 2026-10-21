@@ -1,6 +1,11 @@
 "use client";
 import Link from "next/link";
-import { CalendarBoard } from "./calendar-board";
+import { EventList, MonthBoard, WeekGrid, colorAttrs, dayName, kindName, type ColorBy } from "./calendar-board";
+import { SubscribePanel } from "./calendar-subscribe";
+import { plannerCopy } from "./calendar-planner-copy";
+import { Modal } from "./modal";
+import { Icon } from "./icons";
+import { movePeriod, planRange, type PlannerView } from "@/domains/calendar/planner";
 import { DeadlineChip, LayerToggle, useMoneyDeadlines } from "./money-layer";
 import { sponsorsCopy } from "./sponsors-copy";
 import { attendanceCopy } from "./attendance-copy";
@@ -22,7 +27,7 @@ import {
   calendarErrors,
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel, PageHeader } from "./ui";
+import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
 type Place = {
   id: string;
   name: string;
@@ -106,6 +111,9 @@ type View = {
   feeds: {
     id: string;
     name: string;
+    team_id: string | null;
+    only_mine: boolean;
+    include_money: boolean;
     expires_at: string;
     revoked_at: string | null;
   }[];
@@ -126,29 +134,19 @@ function Field({
     </div>
   );
 }
-function dates(anchor: string, view: string) {
-  if (view === "month") {
-    const from = anchor.slice(0, 7) + "-01",
-      d = new Date(from + "T12:00Z");
-    d.setUTCMonth(d.getUTCMonth() + 1);
-    return { from, to: d.toISOString().slice(0, 10) };
-  }
-  if (view === "week") {
-    const weekday = new Date(anchor + "T12:00Z").getUTCDay(),
-      from = shiftLocal(anchor + "T12:00", -(weekday + 6) % 7).slice(0, 10);
-    return { from, to: shiftLocal(from + "T12:00", 7).slice(0, 10) };
-  }
-  return { from: anchor, to: shiftLocal(anchor + "T12:00", 31).slice(0, 10) };
-}
+const fillText = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));
 export function Calendar({
   locale,
   eventId,
   create = false,
+  subscribe = false,
 }: {
   locale: Locale;
   eventId?: string;
   /** Opens the event editor at once (the "Créer" menu of the home page). */
   create?: boolean;
+  /** Opens the subscription window at once (wave 15, C9: "Bien démarrer" of players and parents). */
+  subscribe?: boolean;
 }) {
   const extra =
     locale === "fr"
@@ -228,10 +226,14 @@ export function Calendar({
     [anchor, setAnchorState] = useState(() =>
       localAt(new Date(), "Europe/Brussels").slice(0, 10),
     ),
-    // Opened on one event: the list view spans the coming year so it is found.
-    [view, setView] = useState(eventId ? "list" : "month"),
+    // Opened on one event: the list view spans the coming year so it is found. Under 760 px, the list too.
+    [narrow] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(max-width: 760px)").matches),
+    [view, setView] = useState<PlannerView>(() => (eventId || (typeof window !== "undefined" && window.matchMedia?.("(max-width: 760px)").matches) ? "list" : "month")),
+    [kindFilter, setKindFilter] = useState(""),
+    [colorBy, setColorBy] = useState<ColorBy>("team"),
+    [moreDay, setMoreDay] = useState<string | null>(null),
     [editorOpen, setEditorOpen] = useState(create),
-    [subscriptionOpen, setSubscriptionOpen] = useState(false),
+    [subscriptionOpen, setSubscriptionOpen] = useState(subscribe),
     [offset, setOffset] = useState(0),
     [place, setPlace] = useState(""),
     [selected, setSelected] = useState(eventId ?? ""),
@@ -251,7 +253,7 @@ export function Calendar({
   function setAnchor(value: string) {
     if (value >= "2000-01-01" && value <= "2099-12-31") setAnchorState(value);
   }
-  const range = dates(anchor, view),
+  const range = planRange(anchor, view),
     money = useMoneyDeadlines(range.from, range.to, moneyLayer),
     params =
       "all=" +
@@ -356,13 +358,6 @@ export function Calendar({
   function openEvent(id: string) {
     setSelected(id);
     setEditorOpen(false);
-    setTimeout(
-      () =>
-        document
-          .getElementById("event-details")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      0,
-    );
   }
   function newEvent(day = anchor) {
     setAnchor(day);
@@ -373,17 +368,7 @@ export function Calendar({
     setTimeout(() => document.getElementById("event-title")?.focus(), 0);
   }
   function move(direction: number) {
-    if (view === "month") {
-      const d = new Date(anchor.slice(0, 7) + "-01T12:00Z");
-      d.setUTCMonth(d.getUTCMonth() + direction);
-      setAnchor(d.toISOString().slice(0, 10));
-    } else
-      setAnchor(
-        shiftLocal(
-          anchor + "T12:00",
-          direction * (view === "week" ? 7 : 31),
-        ).slice(0, 10),
-      );
+    setAnchor(movePeriod(anchor, view, direction));
     setSelected("");
   }
   const when = (value: string) =>
@@ -395,56 +380,87 @@ export function Calendar({
         timeZone: "Europe/Brussels",
       },
     ).format(new Date(value));
+  const p = plannerCopy[locale];
+  const kindsShown = (data?.events ?? []).filter((e) => !kindFilter || e.kind === kindFilter);
+  const fmt = (o: Intl.DateTimeFormatOptions, d: string) => new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { ...o, timeZone: "UTC" }).format(new Date(d + "T12:00Z"));
+  const lastDay = shiftLocal(range.to + "T12:00", -1).slice(0, 10);
+  const period =
+    view === "month"
+      ? fmt({ month: "long", year: "numeric" }, range.from).replace(/^./, (c) => c.toUpperCase())
+      : fillText(p.weekTitle, {
+          from: range.from.slice(0, 7) === lastDay.slice(0, 7) ? String(Number(range.from.slice(8))) : fmt({ day: "numeric", month: "long" }, range.from),
+          to: fmt({ day: "numeric", month: "long", year: "numeric" }, lastDay),
+        });
+  const views: { id: PlannerView; label: string }[] = [
+    { id: "week", label: p.week },
+    ...(narrow ? [{ id: "days3" as PlannerView, label: p.threeDays }] : []),
+    { id: "month", label: p.month },
+    { id: "list", label: p.list },
+  ];
+  const sheetEvent = event && !editorOpen ? event : undefined;
   return (
     <>
       <main id="main" className="access calendar">
-        <PageHeader title={t.title} />
-
+        <PageHeader
+          title={t.title}
+          subtitle={data?.context.name}
+          actions={
+            data && (
+              <>
+                <Link className="button secondary" href={"/" + locale + "/documents"}>{extra.docs}</Link>
+                {/* Trips and halls left the menu (wave 11): they live here. */}
+                {!data.offModules?.includes("trips") && (
+                  <Link className="button secondary" href={"/" + locale + "/trips"}>{extra.trips}</Link>
+                )}
+                {data.canPlan && (
+                  <Link className="button secondary" href={"/" + locale + "/venues"}>{extra.venues}</Link>
+                )}
+              </>
+            )
+          }
+        />
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
           <p role="alert" className="error-message">
             {error}
           </p>
         )}
-        {!data && !loading && (
-          <Link href={"/" + locale + "/access"}>{t.access}</Link>
-        )}
+        {!data && !loading && <Link href={"/" + locale + "/access"}>{t.access}</Link>}
         {data && (
           <>
-            <p className="notice">{data.context.name}</p>
-            <div className="actions">
-              {data.canPlan && (
-                <Button onClick={() => newEvent()}>{extra.add}</Button>
-              )}
-              <a
-                href="#calendar-subscribe"
-                onClick={() => setSubscriptionOpen(true)}
-              >
-                {extra.subscribe}
-              </a>
-              <Link href={"/" + locale + "/documents"}>{extra.docs}</Link>
-              {/* Trips and halls left the menu (wave 11): they live here. */}
-              {!data.offModules?.includes("trips") && (
-                <Link className="button secondary" href={"/" + locale + "/trips"}>
-                  {extra.trips}
-                </Link>
-              )}
-              {data.canPlan && (
-                <Link className="button secondary" href={"/" + locale + "/venues"}>
-                  {extra.venues}
-                </Link>
-              )}
-            </div>
-            <Panel title={t.agenda}>
-              <h3 className="calendar-period">
-                {new Intl.DateTimeFormat(locale, {
-                  month: "long",
-                  year: "numeric",
-                  timeZone: "UTC",
-                }).format(new Date(anchor + "T12:00Z"))}
-              </h3>
-              <div className="calendar-toolbar">
-                <Field id="calendar-date" label={t.date}>
+            <Card
+              id="calendar-agenda"
+              className="calendar-card"
+              title={period}
+              actions={
+                <div className="calendar-controls">
+                  <Segmented
+                    label={p.view}
+                    items={views}
+                    value={view}
+                    onChange={(v) => {
+                      setView(v as PlannerView);
+                      setOffset(0);
+                      setSelected("");
+                    }}
+                  />
+                  <span className="calendar-arrows">
+                    <button type="button" className="icon-button round" aria-label={p.previous} title={p.previous} onClick={() => move(-1)}>
+                      <Icon name="back" size={16} />
+                    </button>
+                    <button type="button" className="icon-button round" aria-label={p.next} title={p.next} onClick={() => move(1)}>
+                      <Icon name="arrow" size={16} />
+                    </button>
+                  </span>
+                  <Button variant="secondary" onClick={() => setAnchor(localAt(new Date(), "Europe/Brussels").slice(0, 10))}>{p.today}</Button>
+                  <Button variant="secondary" icon="calendar" onClick={() => setSubscriptionOpen(true)}>{p.subscribe}</Button>
+                  {data.canPlan && <Button icon="plus" onClick={() => newEvent()}>{p.newEvent}</Button>}
+                </div>
+              }
+            >
+              <Toolbar label={p.filters}>
+                <div className="toolbar-field">
+                  <label htmlFor="calendar-date">{t.date}</label>
                   <input
                     id="calendar-date"
                     type="date"
@@ -459,41 +475,18 @@ export function Calendar({
                       }
                     }}
                   />
-                </Field>
-                <Field id="calendar-view" label={t.view}>
-                  <select
-                    id="calendar-view"
-                    value={view}
-                    onChange={(e) => {
-                      setView(e.target.value);
-                      setOffset(0);
-                      setSelected("");
-                    }}
-                  >
-                    {["list", "month", "week"].map((v) => (
-                      <option key={v} value={v}>
-                        {t[v as "list" | "month" | "week" | "agenda"]}
-                      </option>
+                </div>
+                <div className="toolbar-field">
+                  <label htmlFor="calendar-kind">{p.kinds}</label>
+                  <select id="calendar-kind" value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
+                    <option value="">{p.allKinds}</option>
+                    {kinds.map((k) => (
+                      <option key={k} value={k}>{kl[k]}</option>
                     ))}
                   </select>
-                </Field>
-                <div className="actions" hidden={view === "list"}>
-                  <Button
-                    aria-label={t.previous}
-                    title={t.previous}
-                    onClick={() => move(-1)}
-                  >
-                    ‹
-                  </Button>
-                  <Button
-                    aria-label={t.next}
-                    title={t.next}
-                    onClick={() => move(1)}
-                  >
-                    ›
-                  </Button>
                 </div>
-                <Field id="calendar-team" label={t.team}>
+                <div className="toolbar-field">
+                  <label htmlFor="calendar-team">{t.team}</label>
                   <select
                     id="calendar-team"
                     value={team}
@@ -504,14 +497,13 @@ export function Calendar({
                   >
                     <option value="">{t.all}</option>
                     {data.teams.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
+                      <option key={v.id} value={v.id}>{v.name}</option>
                     ))}
                   </select>
-                <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
-                </Field>
-                <Field id="calendar-place" label={t.place}>
+                  <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
+                </div>
+                <div className="toolbar-field">
+                  <label htmlFor="calendar-place">{t.place}</label>
                   <select
                     id="calendar-place"
                     value={place}
@@ -522,14 +514,21 @@ export function Calendar({
                   >
                     <option value="">{t.all}</option>
                     {data.places.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
+                      <option key={v.id} value={v.id}>{v.name}</option>
                     ))}
                   </select>
-                </Field>
+                </div>
+                <Segmented
+                  label={p.colorBy}
+                  items={[
+                    { id: "team", label: p.byTeam },
+                    { id: "kind", label: p.byKind },
+                  ]}
+                  value={colorBy}
+                  onChange={(v) => setColorBy(v as ColorBy)}
+                />
                 {money.available && <LayerToggle locale={locale} on={moneyLayer} onChange={setMoneyLayer} />}
-              </div>
+              </Toolbar>
               {view === "week" && data.canPlan && (
                 <details className="calendar-settings">
                   <summary>{w9.copyWeek}</summary>
@@ -604,17 +603,21 @@ export function Calendar({
                   )}
                 </details>
               )}
-              {view !== "list" && (
-                <CalendarBoard
+              {view === "month" && (
+                <MonthBoard
                   locale={locale}
-                  view={view}
                   from={range.from}
                   to={range.to}
-                  events={data.events}
+                  events={kindsShown}
+                  colorBy={colorBy}
                   onSelect={openEvent}
                   onCreate={data.canPlan ? newEvent : undefined}
+                  onMore={setMoreDay}
                   deadlines={money.items}
                 />
+              )}
+              {(view === "week" || view === "days3") && (
+                <WeekGrid locale={locale} from={range.from} days={view === "week" ? 7 : 3} events={kindsShown} colorBy={colorBy} onSelect={openEvent} deadlines={money.items} />
               )}
               {view === "list" && money.items.length > 0 && (
                 <ul className="deadline-list">
@@ -625,7 +628,9 @@ export function Calendar({
                   ))}
                 </ul>
               )}
-              {view !== "list" && data.teams.some((x) => x.color) && (
+              {view === "list" && <EventList locale={locale} events={kindsShown} colorBy={colorBy} onSelect={openEvent} emptyText={t.empty} />}
+              {view !== "list" && !kindsShown.length && <p className="muted">{t.empty}</p>}
+              {view !== "list" && colorBy === "team" && data.teams.some((x) => x.color) && (
                 <ul className="calendar-legend" aria-label={t.team}>
                   {data.teams.map((x) => (
                     <li key={x.id}>
@@ -639,235 +644,194 @@ export function Calendar({
                   </li>
                 </ul>
               )}
-              <ul
-                hidden={view !== "list"}
-                className={
-                  "records " + (view === "week" ? "calendar-week" : "")
-                }
-              >
-                {visible?.map((e) => (
-                  <li key={e.id}>
-                    <Button onClick={() => openEvent(e.id)}>
-                      {e.title} ·{" "}
-                      {e.status === "cancelled" ? t.cancelled : t.scheduled}
-                    </Button>
-                    <p>
-                      {when(e.starts_at)} → {when(e.ends_at)}
-                    </p>
-                    <p>
-                      {e.team_id && (
-                        <span className="team-chip" data-color={e.team_color ?? "none"}>
-                          <span className="team-dot" aria-hidden="true" />
-                          {e.team_name}
-                        </span>
-                      )}{" "}
-                      {e.place_name && " · " + e.place_name}
-                    </p>
-                    {e.is_exception && <p>{t.exception}</p>}
-                  </li>
-                ))}
-              </ul>
-              {!visible?.length && <p>{t.empty}</p>}
+              {view !== "list" && colorBy === "kind" && (
+                <ul className="calendar-legend" aria-label={p.kinds}>
+                  {kinds.map((k) => (
+                    <li key={k}>
+                      <span className="team-dot" data-kind={k} aria-hidden="true" />
+                      {kl[k]}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <div className="actions">
-                {offset > 0 && (
-                  <Button onClick={() => setOffset(Math.max(0, offset - 100))}>
-                    {extra.back}
-                  </Button>
-                )}
-                {data.hasMore && (
-                  <Button onClick={() => setOffset(offset + 100)}>
-                    {extra.more}
-                  </Button>
-                )}
+                {offset > 0 && <Button variant="secondary" onClick={() => setOffset(Math.max(0, offset - 100))}>{extra.back}</Button>}
+                {data.hasMore && <Button variant="secondary" onClick={() => setOffset(offset + 100)}>{extra.more}</Button>}
               </div>
-            </Panel>
-            {event && (
-              <div id="event-details">
-                <Panel title={event.title}>
-                  <div className="actions">
-                    {event.canEdit && (
-                      <Button onClick={() => setEditorOpen(true)}>
-                        {t.edit}
-                      </Button>
+            </Card>
+            {moreDay && (
+              <Modal title={fillText(p.dayEvents, { day: dayName(locale, moreDay) })} close={() => setMoreDay(null)}>
+                <EventList
+                  locale={locale}
+                  events={kindsShown.filter((e) => localAt(new Date(e.starts_at), "Europe/Brussels").slice(0, 10) <= moreDay && localAt(new Date(new Date(e.ends_at).getTime() - 1), "Europe/Brussels").slice(0, 10) >= moreDay)}
+                  colorBy={colorBy}
+                  onSelect={(id) => {
+                    setMoreDay(null);
+                    openEvent(id);
+                  }}
+                  emptyText={p.noDayEvents}
+                />
+              </Modal>
+            )}
+            {sheetEvent && (
+              <Modal title={sheetEvent.title} close={() => setSelected("")} className="player-dialog side-sheet event-sheet">
+                <div id="event-details">
+                  <p className="event-sheet-badges">
+                    <Badge tone={sheetEvent.status === "cancelled" ? "neutral" : "success"} dot>{sheetEvent.status === "cancelled" ? t.cancelled : t.scheduled}</Badge>{" "}
+                    <span className="team-chip" {...colorAttrs(sheetEvent, "kind")}>
+                      <span className="team-dot" aria-hidden="true" />
+                      {kindName(locale, sheetEvent)}
+                    </span>{" "}
+                    {sheetEvent.team_id && (
+                      <span className="team-chip" data-color={sheetEvent.team_color ?? "none"}>
+                        <span className="team-dot" aria-hidden="true" />
+                        {sheetEvent.team_name}
+                      </span>
                     )}
-                    {event.canEdit && data.canPlan && (
-                      <Button
-                        onClick={() => {
-                          setCopyOf(event);
-                          setSelected("");
-                          setRequestId(crypto.randomUUID());
-                          setEditorOpen(true);
-                          setTimeout(
-                            () => document.getElementById("event-title")?.focus(),
-                            0,
-                          );
-                        }}
-                      >
-                        {w9.duplicate}
-                      </Button>
+                    {sheetEvent.is_exception && <Badge tone="info">{t.exception}</Badge>}
+                  </p>
+                  <section aria-labelledby="event-sheet-details">
+                    <h3 id="event-sheet-details">{p.details}</h3>
+                    <dl className="sheet-facts">
+                      <div>
+                        <dt>{t.start}</dt>
+                        <dd>{when(sheetEvent.starts_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t.end}</dt>
+                        <dd>{when(sheetEvent.ends_at)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t.place}</dt>
+                        <dd>{[sheetEvent.place_name ?? sheetEvent.free_location, sheetEvent.place_address].filter(Boolean).join(" · ") || "…"}</dd>
+                      </div>
+                      <div>
+                        <dt>{t.responsible}</dt>
+                        <dd>{sheetEvent.responsible_name}</dd>
+                      </div>
+                    </dl>
+                    {sheetEvent.instructions && (
+                      <p>
+                        <strong>{t.instructions}</strong> : {sheetEvent.instructions}
+                      </p>
                     )}
-                    {event.canEdit && event.status === "scheduled" && (
-                      <Link href={`/${locale}/communication?event=${event.id}`}>
-                        {w9.mail}
-                      </Link>
+                    {sheetEvent.equipment && (
+                      <p>
+                        <strong>{t.equipment}</strong> : {sheetEvent.equipment}
+                      </p>
                     )}
-                    <Button onClick={() => setSelected("")}>
-                      {locale === "fr"
-                        ? "Fermer"
-                        : locale === "en"
-                          ? "Close"
-                          : "Sluiten"}
-                    </Button>
-                  </div>
-                  <p>
-                    {event.status === "cancelled" ? t.cancelled : t.scheduled} ·{" "}
-                    {event.kind === "custom"
-                      ? event.custom_type
-                      : kl[event.kind]}
-                  </p>
-                  <p>
-                    {when(event.starts_at)} → {when(event.ends_at)}
-                  </p>
-
-                  <p>
-                    {event.place_name} · {event.place_address}
-                  </p>
-                  <p>
-                    {t.responsible} : {event.responsible_name}
-                  </p>
-                  <p>
-                    {t.instructions} : {event.instructions}
-                  </p>
-                  <p>
-                    {t.equipment} : {event.equipment}
-                  </p>
-                  <div className="calendar-presences">
-                    {(["coach", "player"] as const).map((role) => (
-                      <section key={role}>
-                        <h3>
-                          {role === "coach" ? extra.coaches : extra.players}
-                        </h3>
-                        {event.attendance.filter((i) => i.role === role)
-                          .length ? (
-                          <ul>
-                            {event.attendance
-                              .filter((i) => i.role === role)
-                              .map((i) => (
-                                <li key={i.id}>
-                                  <strong>{i.name}</strong> ·{" "}
-                                  {attendanceCopy[locale].response}:{" "}
-                                  {
-                                    attendanceCopy[locale].responses[
-                                      i.response as "none"
-                                    ]
-                                  }{" "}
-                                  · {attendanceCopy[locale].actual}:{" "}
-                                  {
-                                    attendanceCopy[locale].actuals[
-                                      i.actual as "unchecked"
-                                    ]
-                                  }
-                                </li>
-                              ))}
-                          </ul>
-                        ) : (
-                          <p>{extra.empty}</p>
-                        )}
-                      </section>
-                    ))}
-                  </div>
-                  <Link href={"/" + locale + "/attendance"}>
-                    {extra.attendance}
-                  </Link>
-                  <ul>
-                    {event.participants.map((p) => (
-                      <li key={p.id}>{p.name}</li>
-                    ))}
-                  </ul>
-                  <ul>
-                    {event.documents.map((d) => (
-                      <li key={d.id}>
-                        {d.versionId ? (
-                          <a
-                            href={
-                              "/api/documents/file/" +
-                              d.versionId +
-                              "?organizationId=" +
-                              data.context.organization_id
-                            }
-                          >
-                            {d.name}
-                          </a>
-                        ) : (
-                          d.name
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  {event.canEdit && (
-                    <>
-                      <Button onClick={() => newEvent()}>{t.newEvent}</Button>
-                      <form
-                        onSubmit={(e) =>
-                          form(e, async (d) => {
-                            await send({
-                              action: "cancel",
-                              id: event.id,
-                              expectedVersion: event.version,
-                              scope: d.get("scope"),
-                              reason: d.get("reason"),
-                            });
-                          })
-                        }
-                      >
-                        <Field id="cancel-scope" label={t.scope}>
-                          <select id="cancel-scope" name="scope">
-                            {scopes}
-                          </select>
-                        </Field>
-                        <Field id="cancel-reason" label={t.reason}>
-                          <textarea
-                            id="cancel-reason"
-                            name="reason"
-                            required
-                            minLength={5}
-                            maxLength={1000}
-                          />
-                        </Field>
-                        <Button disabled={busy || event.status === "cancelled"}>
-                          {t.cancelButton}
+                    <div className="row-actions">
+                      {sheetEvent.canEdit && <Button size="sm" onClick={() => setEditorOpen(true)}>{t.edit}</Button>}
+                      {sheetEvent.canEdit && data.canPlan && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setCopyOf(sheetEvent);
+                            setSelected("");
+                            setRequestId(crypto.randomUUID());
+                            setEditorOpen(true);
+                            setTimeout(() => document.getElementById("event-title")?.focus(), 0);
+                          }}
+                        >
+                          {w9.duplicate}
                         </Button>
-                      </form>
-                      <h3>{t.history}</h3>
-                      <ol>
-                        {event.history.map((h) => (
-                          <li key={h.id}>
-                            {h.action === "created"
-                              ? t.create
-                              : h.action === "cancelled"
-                                ? t.cancelled
-                                : h.action === "venue.updated"
-                                  ? t.place
-                                  : t.edit}{" "}
-                            · {h.actor}
-                            <p>
-                              {String(h.before_data?.local_start ?? "—")} →{" "}
-                              {String(h.after_data.local_start)} ·{" "}
-                              {String(h.before_data?.place_name ?? "")} →{" "}
-                              {String(h.after_data.place_name ?? "")}
-                            </p>
-                            {h.after_data.reason !== "" &&
-                              !!h.after_data.reason && (
-                                <p>{String(h.after_data.reason)}</p>
-                              )}
+                      )}
+                      {sheetEvent.canEdit && sheetEvent.status === "scheduled" && (
+                        <Link className="button secondary sm" href={`/${locale}/communication?event=${sheetEvent.id}`}>{w9.mail}</Link>
+                      )}
+                    </div>
+                  </section>
+                  <section aria-labelledby="event-sheet-invitations">
+                    <h3 id="event-sheet-invitations">{p.invitations}</h3>
+                    <div className="calendar-presences">
+                      {(["coach", "player"] as const).map((role) => {
+                        const rows = sheetEvent.attendance.filter((i) => i.role === role);
+                        return (
+                          <div key={role}>
+                            <h4>{role === "coach" ? extra.coaches : extra.players}</h4>
+                            {rows.length ? (
+                              <ul className="plain-list">
+                                {rows.map((i) => (
+                                  <li key={i.id}>
+                                    <strong>{i.name}</strong> · {attendanceCopy[locale].response} : {attendanceCopy[locale].responses[i.response as "none"]} · {attendanceCopy[locale].actual} : {attendanceCopy[locale].actuals[i.actual as "unchecked"]}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="muted">{extra.empty}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <Link href={"/" + locale + "/attendance"}>{extra.attendance}</Link>
+                    {sheetEvent.participants.length > 0 && (
+                      <ul className="plain-list">
+                        {sheetEvent.participants.map((x) => (
+                          <li key={x.id}>{x.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {sheetEvent.documents.length > 0 && (
+                      <ul className="plain-list">
+                        {sheetEvent.documents.map((d) => (
+                          <li key={d.id}>
+                            {d.versionId ? <a href={"/api/documents/file/" + d.versionId + "?organizationId=" + data.context.organization_id}>{d.name}</a> : d.name}
                           </li>
                         ))}
-                      </ol>
+                      </ul>
+                    )}
+                  </section>
+                  {sheetEvent.canEdit && (
+                    <>
+                      <section aria-labelledby="event-sheet-cancel">
+                        <h3 id="event-sheet-cancel">{t.cancel}</h3>
+                        <form
+                          onSubmit={(e) =>
+                            form(e, async (d) => {
+                              await send({
+                                action: "cancel",
+                                id: sheetEvent.id,
+                                expectedVersion: sheetEvent.version,
+                                scope: d.get("scope"),
+                                reason: d.get("reason"),
+                              });
+                            })
+                          }
+                        >
+                          <Field id="cancel-scope" label={t.scope}>
+                            <select id="cancel-scope" name="scope">
+                              {scopes}
+                            </select>
+                          </Field>
+                          <Field id="cancel-reason" label={t.reason}>
+                            <textarea id="cancel-reason" name="reason" required minLength={5} maxLength={1000} />
+                          </Field>
+                          <Button variant="danger" disabled={busy || sheetEvent.status === "cancelled"}>{t.cancelButton}</Button>
+                        </form>
+                      </section>
+                      <section aria-labelledby="event-sheet-history">
+                        <h3 id="event-sheet-history">{t.history}</h3>
+                        <ol className="history-list">
+                          {sheetEvent.history.map((h) => (
+                            <li key={h.id}>
+                              <strong>{h.action === "created" ? t.create : h.action === "cancelled" ? t.cancelled : h.action === "venue.updated" ? t.place : t.edit}</strong> · {h.actor}
+                              <p className="muted small">
+                                {String(h.before_data?.local_start ?? "…")} → {String(h.after_data.local_start)}
+                                {!!(h.before_data?.place_name || h.after_data.place_name) && ` · ${String(h.before_data?.place_name ?? "")} → ${String(h.after_data.place_name ?? "")}`}
+                              </p>
+                              {!!h.after_data.reason && <p>{String(h.after_data.reason)}</p>}
+                            </li>
+                          ))}
+                        </ol>
+                      </section>
                     </>
                   )}
-                </Panel>
-              </div>
+                </div>
+              </Modal>
             )}
+
             {data.canPlan && editorOpen && (!selected || event?.canEdit) && (
               <div id="event-editor">
                 <Panel title={event ? t.edit : t.create}>
@@ -908,22 +872,24 @@ export function Calendar({
                             ]),
                           ],
                         };
-                        const result = event
-                          ? await send({
+                        if (event)
+                          await send({
                               ...body,
                               action: "update",
                               id: event.id,
                               expectedVersion: event.version,
                               scope: d.get("scope"),
-                            })
-                          : await send({
+                            });
+                        else
+                          await send({
                               ...body,
                               action: "create",
                               intervalDays: Number(d.get("repeat")),
                               occurrences: Number(d.get("count")),
                               requestId,
                             });
-                        setSelected(result.id);
+                        // Saved: back to the calendar, the event in its place (its sheet stays closed).
+                        setSelected("");
                         setEditorOpen(false);
                         if (!event) {
                           setRequestId(crypto.randomUUID());
@@ -1036,7 +1002,7 @@ export function Calendar({
                         <option value="">{t.none}</option>
                         {data.sharedVenues.map((v) => (
                           <option key={v.id} value={v.id}>
-                            {v.name} — {v.address}
+                            {v.name} · {v.address}
                           </option>
                         ))}
                       </select>
@@ -1421,92 +1387,40 @@ export function Calendar({
                 </Panel>
               </details>
             )}
-            <details
-              id="calendar-subscribe"
-              className="calendar-settings"
-              open={subscriptionOpen}
-              onToggle={(e) => setSubscriptionOpen(e.currentTarget.open)}
-            >
-              <summary>{extra.subscribe}</summary>
-              <Panel title={t.feeds}>
-                <p>{t.feedHint}</p>
-                <form
-                  onSubmit={(e) =>
-                    form(e, async (d) => {
-                      const result = await send({
-                        action: "feed",
-                        name: d.get("name"),
-                        teamId: d.get("team") || null,
-                        ...(money.available ? { includeMoney: d.has("includeMoney") } : {}),
-                      });
+            {subscriptionOpen && (
+              <Modal title={p.subscribeTitle} close={() => setSubscriptionOpen(false)} className="player-dialog subscribe-dialog">
+                <SubscribePanel
+                  locale={locale}
+                  teams={data.teams}
+                  feeds={data.feeds}
+                  money={money.available}
+                  busy={busy}
+                  url={feedUrl}
+                  create={(body) =>
+                    task(async () => {
+                      const result = await send({ action: "feed", ...body });
                       setFeedUrl(result.url ?? "");
                     })
                   }
-                >
-                  <Field id="feed-name" label={t.feedName}>
-                    <input
-                      id="feed-name"
-                      name="name"
-                      required
-                      minLength={2}
-                      maxLength={80}
-                    />
-                  </Field>
-                  <Field id="feed-team" label={t.team}>
-                    <select id="feed-team" name="team">
-                      <option value="">{t.all}</option>
-                      {data.teams.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  {money.available && (
-                    <label className="check">
-                      <input type="checkbox" name="includeMoney" />
-                      {sponsorsCopy[locale].icsMoney}
-                    </label>
-                  )}
-                  <Button disabled={busy}>{t.feedCreate}</Button>
-                </form>
-                {feedUrl && (
-                  <Field id="feed-url" label={t.feedUrl}>
-                    <input
-                      id="feed-url"
-                      readOnly
-                      value={feedUrl}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </Field>
-                )}
-                <ul>
-                  {data.feeds.map((f) => (
-                    <li key={f.id}>
-                      {f.name} · {t.validUntil} : {f.expires_at.slice(0, 10)}{" "}
-                      {f.revoked_at ? (
-                        t.revoked
-                      ) : (
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            void task(async () => {
-                              await send({ action: "revokeFeed", id: f.id });
-                              setFeedUrl("");
-                            })
-                          }
-                        >
-                          {t.revoke}
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
-            </details>
+                  renew={(id) =>
+                    task(async () => {
+                      const result = await send({ action: "renewFeed", id });
+                      setFeedUrl(result.url ?? "");
+                    })
+                  }
+                  revoke={(id) =>
+                    task(async () => {
+                      await send({ action: "revokeFeed", id });
+                      setFeedUrl("");
+                    })
+                  }
+                />
+              </Modal>
+            )}
+
           </>
         )}
-        <Button disabled={busy} onClick={() => void task(load)}>
+        <Button variant="secondary" disabled={busy} onClick={() => void task(load)}>
           {t.refresh}
         </Button>
       </main>

@@ -1,4 +1,5 @@
 "use client";
+import { plannerCopy } from "./calendar-planner-copy";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { labels, type Role } from "@/domains/access/policy";
@@ -214,6 +215,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {t.noContext} <Link href={href("/access")}>{t.chooseProfile}</Link>
         </p>
       )}
+      {data.start && !data.start.calendarSubscribed && <StartCard locale={locale} href={href("/calendar?subscribe=1")} />}
       <section className="dash-section" aria-labelledby="dash-todo">
         <h2 id="dash-todo" className="dash-section-title">
           {t.todo}
@@ -474,7 +476,7 @@ function AgendaRow({
     new Intl.DateTimeFormat(tag(locale), { timeZone: zone, ...o });
   const time = part({ hour: "2-digit", minute: "2-digit" });
   const details = [
-    `${part({ weekday: "long" }).format(start)} ${time.format(start)}–${time.format(end)}`,
+    `${part({ weekday: "long" }).format(start)} ${time.format(start)}-${time.format(end)}`,
     event.place,
   ].filter(Boolean);
   const r = event.readiness;
@@ -564,5 +566,26 @@ function DeadlineRow({
         </span>
       </Link>
     </li>
+  );
+}
+
+/** "Bien démarrer" of players and parents (wave 15, C9): add the trainings to the phone's calendar. */
+function StartCard({ locale, href }: { locale: Locale; href: string }) {
+  const p = plannerCopy[locale];
+  return (
+    <Card className="start-card dash-section" title={p.startTitle} id="dash-start">
+      <ul className="start-steps">
+        <li>
+          <IconTile icon="calendar" tone="primary" />
+          <span className="start-step-text">
+            <strong>{p.startCalendar}</strong>
+            <span className="muted small">{p.startCalendarText}</span>
+          </span>
+          <Link className="button" href={href}>
+            {p.start}
+          </Link>
+        </li>
+      </ul>
+    </Card>
   );
 }
