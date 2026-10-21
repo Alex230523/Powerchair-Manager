@@ -25,6 +25,8 @@ import { publish } from "../notifications/queue";
 import { seal, unseal } from "../notifications/crypto";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { fillDues, seasonFeeSql } from "./templates";
+import { permissions } from "../access/policy";
+import { inviteProfile } from "../access/invite";
 
 /** Confidential answers are sealed with the application id as associated data. */
 const secretAad = (applicationId: string) => "registration:" + applicationId;
@@ -846,6 +848,12 @@ export async function registrationExecute(
           "INSERT INTO registration_followup(application_id,kind) VALUES($1,'documents'),($1,'dues') ON CONFLICT DO NOTHING",
           [a.id],
         );
+        await inviteApplicant(c, org, p.userId, permissions(context!.role, context!.grants).includes("invitations.create"), {
+          applicant: a.applicant_user_id,
+          self: a.subject_kind === "self",
+          profileId: profileId!,
+          teamId: input.teamId ?? null,
+        });
       }
     }
     const updated = (
@@ -864,6 +872,44 @@ export async function registrationExecute(
     if (updated.submitted_at) await notify(c, updated);
     return { id: a.id };
   });
+}
+/**
+ * Wave 16 (I2): accepting a registration opens the club to the applicant.
+ * Someone without a profile in this club yet gets the invitation (player for
+ * themselves, parent for a child) by email, the same as an invited member.
+ * Only when the decider may invite; an applicant already in the club is left as is.
+ */
+async function inviteApplicant(
+  c: PoolClient,
+  org: string,
+  actor: string,
+  allowed: boolean,
+  i: { applicant: string; self: boolean; profileId: string; teamId: string | null },
+) {
+  if (!allowed) return;
+  if ((await c.query("SELECT 1 FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND revoked_at IS NULL", [org, i.applicant])).rowCount) return;
+  const who = (await c.query('SELECT u.email,u.name,p.id AS person FROM "user" u JOIN person p ON p.user_id=u.id WHERE u.id=$1', [i.applicant])).rows[0] as
+    | { email: string; name: string; person: string }
+    | undefined;
+  if (!who) return;
+  if ((await c.query("SELECT 1 FROM invitation WHERE organization_id=$1 AND lower(email)=lower($2) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>now()", [org, who.email])).rowCount) return;
+  const greeting = (who.name ?? "").trim().split(/\s+/)[0] ?? "";
+  if (i.self) {
+    await inviteProfile(c, org, actor, { email: who.email, role: "player", profileId: i.profileId, teamId: i.teamId, greeting });
+    return;
+  }
+  // The parent's own file in this club, created if needed (no access until the invitation is accepted).
+  const parent =
+    ((await c.query("SELECT id FROM club_person WHERE organization_id=$1 AND person_id=$2", [org, who.person])).rows[0]?.id as string | undefined) ??
+    ((
+      await c.query("INSERT INTO club_person(organization_id,person_id,full_name,email) VALUES($1,$2,$3,lower($4)) RETURNING id", [
+        org,
+        who.person,
+        (who.name ?? "").trim().length >= 2 ? who.name.trim() : who.email,
+        who.email,
+      ])
+    ).rows[0].id as string);
+  await inviteProfile(c, org, actor, { email: who.email, role: "guardian", profileId: parent, teamId: i.teamId, guardianOf: i.profileId, greeting });
 }
 export async function attachmentUpload(
   db: Pool,

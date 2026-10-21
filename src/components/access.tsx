@@ -62,6 +62,8 @@ type State = {
     expires_at: string;
     accepted_at: string | null;
     revoked_at: string | null;
+    disputed_at?: string | null;
+    disputed_note?: string | null;
   }[];
   audit: { id: string; action: string; name: string; created_at: string }[];
   preferences: { locale: Locale; notifications_enabled: boolean };
@@ -735,10 +737,26 @@ export function Access({ locale }: { locale: Locale }) {
                           ? t.used
                           : i.revoked_at
                             ? t.revoked
-                            : new Date(i.expires_at) < new Date()
-                              ? t.expired
-                              : t.pending}
+                            : i.disputed_at
+                              ? t.disputed
+                              : new Date(i.expires_at) < new Date()
+                                ? t.expired
+                                : t.pending}
                       </p>
+                      {i.disputed_at && !i.revoked_at && i.disputed_note && <p className="muted">« {i.disputed_note} »</p>}
+                      {!i.accepted_at && !i.revoked_at && (
+                        <Button
+                          variant="secondary"
+                          disabled={busy}
+                          onClick={() =>
+                            void task(async () => {
+                              await command({ action: "resendInvitation", id: i.id });
+                            })
+                          }
+                        >
+                          {t.resend}
+                        </Button>
+                      )}
                       {!i.accepted_at &&
                         !i.revoked_at &&
                         state.permissions.includes("mandates.manage") && (

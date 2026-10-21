@@ -646,9 +646,10 @@ it("accepts renewal using the same profile and cannot substitute a different ide
   ).rejects.toMatchObject({ code: "IDENTITY_MISMATCH" });
   await decide(next);
   expect((await row(next)).profile_id).toBe(oldProfile);
+  // One player file; since wave 16 (I2) the parent invited at acceptance has their own file too.
   expect(
     (
-      await db.query("SELECT id FROM club_person WHERE organization_id=$1", [
+      await db.query("SELECT id FROM club_person WHERE organization_id=$1 AND 'player'=ANY(directory_roles)", [
         org,
       ])
     ).rowCount,

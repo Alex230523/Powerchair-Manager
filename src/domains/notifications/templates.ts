@@ -261,15 +261,15 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
   invitation: {
     en: {
       subject: "Invitation · {organization}",
-      body: "You are invited to {organization} as {role}. Use an account with this email address to accept the invitation. The link is valid for seven days.\n{url}",
+      body: "Hello {name},\n{organization} invites you to Powerchair Manager as {role}{team}.\nCreate your account: {url}\nThe link is valid for seven days.",
     },
     fr: {
       subject: "Invitation · {organization}",
-      body: "Vous êtes invité à rejoindre {organization} avec le rôle {role}.\nCréez ou utilisez un compte avec cette adresse, puis acceptez l’invitation.\n{url}\nLe lien est valable sept jours.",
+      body: "Bonjour {name},\n{organization} vous invite sur Powerchair Manager comme {role}{team}.\nCréer mon compte : {url}\nLe lien est valable sept jours.",
     },
     nl: {
       subject: "Uitnodiging · {organization}",
-      body: "U bent uitgenodigd voor {organization} als {role}.\nMaak of gebruik een account met dit adres en accepteer de uitnodiging.\n{url}\nDe link is zeven dagen geldig.",
+      body: "Hallo {name},\n{organization} nodigt u uit op Powerchair Manager als {role}{team}.\nMijn account aanmaken: {url}\nDe link is zeven dagen geldig.",
     },
   },
   access_changed: {
@@ -361,7 +361,7 @@ const allowed: Record<Kind, string[]> = {
   registration_update: ["name", "organization", "url"],
   auth_verify: ["name", "url"],
   auth_reset: ["name", "url"],
-  invitation: ["organization", "role", "url"],
+  invitation: ["name", "organization", "role", "team", "url"],
   access_changed: ["organization", "url"],
   team_assignment: ["organization", "url"],
   family_access: ["organization", "url"],

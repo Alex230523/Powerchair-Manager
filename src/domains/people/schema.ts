@@ -82,6 +82,10 @@ export const peopleCommand = z.discriminatedUnion("action", [
       .array(z.enum(["player", "coach"]))
       .max(2)
       .optional(),
+    /** Wave 16 (I2): « Envoyer une invitation par email »; for a minor it goes to the parent. */
+    invite: z.boolean().optional(),
+    guardianName: text(120).optional(),
+    guardianEmail: email.optional(),
   }),
   z.object({
     action: z.literal("updatePerson"),
@@ -138,6 +142,8 @@ export const peopleCommand = z.discriminatedUnion("action", [
     teamId: id.nullable(),
     role: z.enum(["player", "coach"]).optional(),
     rows: z.array(importRow).min(1).max(importLimit),
+    /** Wave 16 (I2): one invitation per line with an address (the parent's for a minor). */
+    invite: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("coachScope"),

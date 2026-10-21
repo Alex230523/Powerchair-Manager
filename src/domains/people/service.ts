@@ -13,6 +13,7 @@ import {
   type Principal,
 } from "../access/service";
 import { offerUndo } from "../undo/service";
+import { inviteProfile } from "../access/invite";
 import { permissions, type Permission } from "../access/policy";
 import {
   ageOn,
@@ -131,6 +132,40 @@ function relationAllows(r: Relation, subject: Profile, edit = false) {
     !!subject.birth_date &&
     (r.kind !== "legal_verified" || ageOn(subject.birth_date, today()) < 18)
   );
+}
+/**
+ * Wave 16 (I2): the invitation that goes with a new file. An adult gets it at
+ * their own address; for a minor player it goes to the parent, whose account
+ * will be linked to the child. Without an address nothing is sent (false).
+ */
+async function inviteWith(
+  s: Scope,
+  i: { profileId: string; role: "player" | "coach"; fullName: string; birthDate: string | null; email: string; teamId?: string | null; guardian?: { id: string; name: string; email: string } },
+) {
+  const org = s.context.organization_id;
+  const minor = !!i.birthDate && ageOn(i.birthDate, today()) < 18;
+  const to = minor ? (i.role === "player" ? i.guardian?.email : "") : i.email;
+  if (!to) return false;
+  const profileId = minor ? i.guardian!.id : i.profileId;
+  // One live invitation per file and address is enough.
+  if (
+    (
+      await s.client.query(
+        "SELECT 1 FROM invitation WHERE organization_id=$1 AND profile_id=$2 AND lower(email)=lower($3) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>now()",
+        [org, profileId, to],
+      )
+    ).rowCount
+  )
+    return false;
+  await inviteProfile(s.client, org, s.p.userId, {
+    email: to,
+    role: minor ? "guardian" : i.role,
+    profileId,
+    teamId: i.teamId ?? null,
+    guardianOf: minor ? i.profileId : null,
+    greeting: (minor ? i.guardian!.name : i.fullName).trim().split(/\s+/)[0] ?? "",
+  });
+  return true;
 }
 function adult(profile: Profile) {
   return !!profile.birth_date && ageOn(profile.birth_date, today()) >= 18;
@@ -454,6 +489,8 @@ async function readPeople(s: Scope, filters: Filters) {
       canExport: s.rights.includes("people.export") && v.full,
       peopleRead: v.full,
       teamsManage: s.rights.includes("teams.manage"),
+      /** Wave 16 (I2): a new file can come with an invitation. */
+      invite: s.rights.includes("invitations.create"),
     },
     profiles,
     teams: all.teams.filter((t) => teamIds.has(t.id)),
@@ -648,6 +685,8 @@ export async function peopleExecute(
   skipped?: number;
   guardians?: number;
   unknownTeams?: number;
+  /** Wave 16 (I2): invitations sent with an import. */
+  invited?: number;
   /** Wave 15, C10: what to send to /api/undo to put it back. */
   undo?: string;
 }> {
@@ -762,6 +801,7 @@ export async function peopleExecute(
         target = command.id;
       } else if (command.action === "createPerson") {
         validateProfile(command);
+        if (command.invite) right(s, "invitations.create");
         const personId = command.accountUserId
           ? await linkedPerson(s, command.accountUserId)
           : (await c.query("INSERT INTO person DEFAULT VALUES RETURNING id"))
@@ -781,6 +821,32 @@ export async function peopleExecute(
             ],
           )
         ).rows[0].id;
+        if (command.invite) {
+          const role = (command.directoryRoles ?? []).includes("player") || !(command.directoryRoles ?? []).length ? "player" : "coach";
+          let guardian: { id: string; name: string; email: string } | undefined;
+          const minor = !!command.birthDate && ageOn(command.birthDate, today()) < 18;
+          if (minor && role === "player") {
+            const name = (command.guardianName ?? "").trim();
+            if (name.length < 2 || !command.guardianEmail) throw new AccessError("GUARDIAN_REQUIRED", 400);
+            const guardianPerson = (await c.query("INSERT INTO person DEFAULT VALUES RETURNING id")).rows[0].id;
+            const guardianId = (
+              await c.query("INSERT INTO club_person(organization_id,person_id,full_name,email,joined_on) VALUES($1,$2,$3,$4,$5) RETURNING id", [
+                org,
+                guardianPerson,
+                name,
+                command.guardianEmail,
+                command.joinedOn,
+              ])
+            ).rows[0].id as string;
+            // Declared now; the parent's acceptance turns it into a verified link.
+            await c.query(
+              "INSERT INTO guardian_relationship(organization_id,guardian_profile_id,subject_profile_id,kind,can_view,can_edit,starts_on,authorization_note,verified_by) VALUES($1,$2,$3,'declared',false,false,$4,'',$5)",
+              [org, guardianId, target, command.joinedOn, p.userId],
+            );
+            guardian = { id: guardianId, name, email: command.guardianEmail };
+          }
+          await inviteWith(s, { profileId: target, role, fullName: command.fullName, birthDate: command.birthDate, email: command.email, guardian });
+        }
       } else if (
         command.action === "updatePerson" ||
         command.action === "contacts"
@@ -999,6 +1065,8 @@ export async function peopleExecute(
         const usesTeams =
           !!command.teamId || command.rows.some((r) => r.team?.trim());
         if (usesTeams) right(s, "teams.manage");
+        if (command.invite) right(s, "invitations.create");
+        let invited = 0;
         const day = today();
         // Team names of the file, matched case-insensitively with active teams.
         const teams = (
@@ -1060,6 +1128,7 @@ export async function peopleExecute(
               day,
             );
           const guardianName = (row.guardianName ?? "").trim();
+          let guardianLine: { id: string; name: string; email: string } | undefined;
           if (role === "player" && guardianName.length >= 2) {
             // Recorded as a declared contact: it gives no access until the club
             // verifies the relationship in the people module.
@@ -1093,7 +1162,9 @@ export async function peopleExecute(
               [org, guardianId, profileId, day, p.userId],
             );
             guardians++;
+            guardianLine = { id: guardianId, name: guardianName, email: row.guardianEmail ?? "" };
           }
+          if (command.invite && (await inviteWith(s, { profileId, role, fullName: row.fullName, birthDate: row.birthDate, email: row.email, teamId, guardian: guardianLine }))) invited++;
           created++;
         }
         await audit(
@@ -1103,7 +1174,7 @@ export async function peopleExecute(
           "people.importPlayers",
           command.teamId ?? org,
         );
-        return { ok: true, created, skipped, guardians, unknownTeams };
+        return { ok: true, created, skipped, guardians, unknownTeams, invited };
       } else if (command.action === "coachScope") {
         if (
           command.teamId &&

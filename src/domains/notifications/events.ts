@@ -17,7 +17,7 @@ export async function publishInvitation(
 ) {
   const row = (
     await db.query(
-      "SELECT i.*,o.name AS organization FROM invitation i JOIN organization o ON o.id=i.organization_id WHERE i.id=$1 AND i.organization_id=$2",
+      "SELECT i.*,o.name AS organization,t.name AS team FROM invitation i JOIN organization o ON o.id=i.organization_id LEFT JOIN team t ON t.id=i.team_id WHERE i.id=$1 AND i.organization_id=$2",
       [id, org],
     )
   ).rows[0];
@@ -40,15 +40,13 @@ export async function publishInvitation(
     locale,
     inApp: false,
     variables: {
-      name: user?.name ?? "",
+      name: row.greeting || user?.name || "",
       organization: row.organization,
-      role: labels[row.role as Role][locale],
-      url:
-        process.env.BETTER_AUTH_URL +
-        "/" +
-        locale +
-        "/access#invitation=" +
-        token,
+      role: labels[row.role as Role][locale].toLowerCase(),
+      // « de l'Équipe A » (wave 16, I2), or nothing.
+      team: row.team ? ` (${row.team})` : "",
+      // Wave 16 (I2): the guided account creation; an existing account accepts from « Mon espace ».
+      url: process.env.BETTER_AUTH_URL + "/" + locale + "/welcome/" + token,
     },
   });
 }
@@ -63,7 +61,12 @@ export async function publishAuditEvent(
     kind: Publication["kind"] | undefined,
     resourceType: Publication["resourceType"] = "membership",
     resourceId = target;
-  if (
+  if (action === "invitation.disputed") {
+    // « Ce n'est pas mon rôle » (wave 16, I2): the person who invited is told.
+    userId = (await db.query("SELECT created_by FROM invitation WHERE id=$1 AND organization_id=$2", [target, org])).rows[0]?.created_by;
+    kind = "access_changed";
+    resourceType = "membership";
+  } else if (
     ["mandate.revoke", "mandate.renew", "invitation.accepted"].includes(action)
   ) {
     const row = (
