@@ -11,6 +11,7 @@
  * Never run against a production database: the passwords below are public.
  */
 import { Pool } from "pg";
+import { seedTournaments } from "./demo-tournaments";
 import { randomUUID } from "node:crypto";
 import { createAuth } from "../src/lib/auth";
 import { execute, type Principal } from "../src/domains/access/service";
@@ -146,8 +147,11 @@ try {
     (await db.query("SELECT 1 FROM organization WHERE name=$1", [CLUB]))
       .rowCount
   ) {
-    console.log(`« ${CLUB} » existe déjà : rien à faire.`);
+    console.log(`« ${CLUB} » existe déjà.`);
+    // Tournaments came later (21/10/2026): added to an existing demo once.
+    await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
     printAccounts();
+    await db.end();
     process.exit(0);
   }
 
@@ -1586,6 +1590,7 @@ try {
     org,
   );
 
+  await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();
 } finally {

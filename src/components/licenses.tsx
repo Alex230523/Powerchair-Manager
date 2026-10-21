@@ -6,7 +6,6 @@ import { useScope } from "./use-scope";
 import type {
   clubLicensesView,
   federationLicensesView,
-  federalCalendarView,
 } from "@/domains/federation/service";
 import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
@@ -581,59 +580,4 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
   );
 }
 
-export function FederalCalendar({ locale }: { locale: Locale }) {
-  const t = licensesCopy[locale];
-  const failure = useCallback(
-    (code: string) => errors[code]?.[locale] ?? t.unavailable,
-    [t, locale],
-  );
-  const { data, error, denied } = useData<
-    Awaited<ReturnType<typeof federalCalendarView>>
-  >("/api/federal-calendar", failure);
-  const when = (d: string) =>
-    new Intl.DateTimeFormat(tag(locale), {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Europe/Brussels",
-    }).format(new Date(d));
-  return (
-    <main id="main" className="access federal-calendar">
-      <PageHeader title={t.calendarTitle} subtitle={t.calendarIntro} />
-      {error && <p role="alert">{error}</p>}
-      {denied && <p className="notice">{t.denied}</p>}
-      {!data && !denied && !error && <p role="status">{t.loading}</p>}
-      {data && !data.federation && <p className="notice">{t.noFederation}</p>}
-      {data?.federation &&
-        (data.events.length ? (
-          <ul className="agenda">
-            {data.events.map((e) => (
-              <li key={e.id}>
-                <span className="agenda-body">
-                  <strong>
-                    {e.title}
-                    {e.status === "cancelled" && (
-                      <Badge tone="danger">
-                        ×
-                      </Badge>
-                    )}
-                  </strong>
-                  <span>
-                    {when(e.starts_at)} · {e.custom_type || t.kinds[e.kind]}
-                    {e.location ? ` · ${e.location}` : ""}
-                  </span>
-                  {e.instructions && (
-                    <span className="muted">{e.instructions}</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState title={t.noEvent} />
-        ))}
-    </main>
-  );
-}
+

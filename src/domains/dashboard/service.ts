@@ -434,7 +434,7 @@ export async function computeFor(
   if (club && on("finance")) {
     const until = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     for (const d of await moneyDeadlinesIn(c, org, today(), until, moneyPeople, own))
-      if (d.kind !== "grant" && d.kind !== "grantReport")
+      if (d.kind !== "grant" && d.kind !== "grantReport" && d.source !== "tournament")
         push({ kind: d.source, date: d.date, title: d.title, count: 1, href: d.href, ...(d.kind === "condition" || d.kind === "task" ? { task: true } : {}) });
     // Conditions to deliver within 14 days (late ones too): all for the president, one's own otherwise.
     counts.sponsorTasks = await openTasksCount(c, org, "partner", 14, a.role === "club_president" && moneyPeople, own);

@@ -158,7 +158,7 @@ const fr = {
   // Calendar layer
   layer: "Échéances",
   layerHint: "Conditions de sponsors, paiements, relances et dates des subsides.",
-  layerKinds: { condition: "Condition", payment: "Paiement", renewal: "Relance", grant: "Date limite", grantReport: "Justificatif", grantEnd: "Fin de la période", grantRecheck: "À revérifier", task: "Tâche", accountsAssembly: "Comptes annuels : assemblée générale", accountsFiling: "Comptes annuels : dépôt au greffe" } as Record<string, string>,
+  layerKinds: { condition: "Condition", payment: "Paiement", renewal: "Relance", grant: "Date limite", grantReport: "Justificatif", grantEnd: "Fin de la période", grantRecheck: "À revérifier", task: "Tâche", accountsAssembly: "Comptes annuels : assemblée générale", accountsFiling: "Comptes annuels : dépôt au greffe", tournamentDay: "Journée de tournoi" } as Record<string, string>,
   icsMoney: "Inclure les échéances d’argent dans ce lien",
   // Fundraising link
   followAsPartner: "Suivre comme partenaire",
@@ -314,7 +314,7 @@ const nl: Copy = {
   tasksSource: "Dossier",
   layer: "Vervaldagen",
   layerHint: "Sponsorvoorwaarden, betalingen, opvolgingen en subsidiedatums.",
-  layerKinds: { condition: "Voorwaarde", payment: "Betaling", renewal: "Opvolging", grant: "Uiterste datum", grantReport: "Verantwoording", grantEnd: "Einde van de periode", grantRecheck: "Opnieuw na te kijken", task: "Taak", accountsAssembly: "Jaarrekening: algemene vergadering", accountsFiling: "Jaarrekening: neerlegging ter griffie" } as Record<string, string>,
+  layerKinds: { condition: "Voorwaarde", payment: "Betaling", renewal: "Opvolging", grant: "Uiterste datum", grantReport: "Verantwoording", grantEnd: "Einde van de periode", grantRecheck: "Opnieuw na te kijken", task: "Taak", accountsAssembly: "Jaarrekening: algemene vergadering", accountsFiling: "Jaarrekening: neerlegging ter griffie", tournamentDay: "Toernooispeeldag" } as Record<string, string>,
   icsMoney: "De geldvervaldagen in deze link opnemen",
   followAsPartner: "Als partner opvolgen",
 };
@@ -468,7 +468,7 @@ const en: Copy = {
   tasksSource: "File",
   layer: "Deadlines",
   layerHint: "Sponsor conditions, payments, renewals and grant dates.",
-  layerKinds: { condition: "Condition", payment: "Payment", renewal: "Renewal", grant: "Deadline", grantReport: "Report due", grantEnd: "End of the period", grantRecheck: "Check again", task: "Task", accountsAssembly: "Annual accounts: general assembly", accountsFiling: "Annual accounts: filing with the registry" } as Record<string, string>,
+  layerKinds: { condition: "Condition", payment: "Payment", renewal: "Renewal", grant: "Deadline", grantReport: "Report due", grantEnd: "End of the period", grantRecheck: "Check again", task: "Task", accountsAssembly: "Annual accounts: general assembly", accountsFiling: "Annual accounts: filing with the registry", tournamentDay: "Tournament match day" } as Record<string, string>,
   icsMoney: "Include the money deadlines in this link",
   followAsPartner: "Follow as a partner",
 };
