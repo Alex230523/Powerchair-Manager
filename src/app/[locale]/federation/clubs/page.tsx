@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/locale";
 import { FederationClubs } from "@/components/federation-clubs";
 export const metadata = {
-  title: "Clubs affiliés · Powerchair Football Manager",
+  title: "Clubs et présidents · Powerchair Football Manager",
 };
 export default async function Page({
   params,

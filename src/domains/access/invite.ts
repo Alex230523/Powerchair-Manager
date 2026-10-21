@@ -33,6 +33,8 @@ export type InvitationRow = {
   guardian_of: string | null;
   greeting: string;
   disputed_at: string | null;
+  issued_by_federation: string | null;
+  succession: boolean;
   kind: "club" | "federation";
 };
 
@@ -41,17 +43,44 @@ export async function inviteProfile(
   c: PoolClient,
   org: string,
   actor: string,
-  i: { email: string; role: Role; grants?: Permission[]; profileId: string | null; teamId?: string | null; guardianOf?: string | null; greeting?: string; resentFrom?: string | null },
+  i: {
+    email: string;
+    role: Role;
+    grants?: Permission[];
+    profileId: string | null;
+    teamId?: string | null;
+    guardianOf?: string | null;
+    greeting?: string;
+    resentFrom?: string | null;
+    /** Wave 16 (I3): sent by the club's federation (a president). */
+    issuedByFederation?: string | null;
+    succession?: boolean;
+  },
 ) {
   const token = randomBytes(32).toString("hex");
   const id = (
     await c.query(
-      `INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,created_by,valid_from,profile_id,team_id,guardian_of,greeting,resent_from)
-       VALUES($1,lower($2),$3,$11,$4,now()+interval '7 days',$5,now(),$6,$7,$8,$9,$10) RETURNING id`,
-      [org, i.email, i.role, hashToken(token), actor, i.profileId, i.teamId ?? null, i.guardianOf ?? null, (i.greeting ?? "").slice(0, 120), i.resentFrom ?? null, i.grants ?? []],
+      `INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,created_by,valid_from,profile_id,team_id,guardian_of,greeting,resent_from,issued_by_federation,succession)
+       VALUES($1,lower($2),$3,$11,$4,now()+interval '7 days',$5,now(),$6,$7,$8,$9,$10,$12,$13) RETURNING id`,
+      [
+        org,
+        i.email,
+        i.role,
+        hashToken(token),
+        actor,
+        i.profileId,
+        i.teamId ?? null,
+        i.guardianOf ?? null,
+        (i.greeting ?? "").slice(0, 120),
+        i.resentFrom ?? null,
+        i.grants ?? [],
+        i.issuedByFederation ?? null,
+        i.succession ?? false,
+      ],
     )
   ).rows[0].id as string;
-  await audit(c, org, actor, "invitation.created", id);
+  // The federation's journal keeps what its people did in a club.
+  await audit(c, i.issuedByFederation ?? org, actor, "invitation.created", id);
   const { publishInvitation } = await import("../notifications/events");
   await publishInvitation(c, org, id, token);
   return { id, token };
@@ -78,7 +107,17 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
   if (invite.email.toLowerCase() !== user.email.toLowerCase()) throw new AccessError("INVITATION_INVALID", 404);
   if (invite.disputed_at) throw new AccessError("INVITATION_DISPUTED", 409);
   // A revoked or demoted issuer cannot leave usable privileged invitations behind.
-  const issuers = await c.query(
+  if (invite.issued_by_federation) {
+    // Sent by the club's federation: its president, still in office, of the federation the club belongs to.
+    const fromFederation = await c.query(
+      `SELECT 1 FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id
+         JOIN organization club ON club.id=$3 AND club.federation_id=r.organization_id
+        WHERE r.organization_id=$1 AND r.user_id=$2 AND r.role='federation_president' AND ${current}`,
+      [invite.issued_by_federation, invite.created_by, invite.organization_id],
+    );
+    if (!fromFederation.rowCount || invite.role !== "club_president" || invite.grants.length) throw new AccessError("INVITATION_INVALID", 404);
+  }
+  const issuers = invite.issued_by_federation ? { rows: [{ role: "club_president" as Role, grants: [] as Permission[] }] } : await c.query(
     `SELECT r.role,r.grants FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=$1 AND r.user_id=$2 AND ${current}`,
     [invite.organization_id, invite.created_by],
   );
@@ -107,6 +146,12 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
     ])
   ).rows[0].id as string;
   await c.query("UPDATE invitation SET accepted_at=now() WHERE id=$1", [invite.id]);
+  if (invite.succession)
+    // A new president: the other presidents' mandates end now, after the new one exists.
+    await c.query("UPDATE role_assignment SET revoked_at=now() WHERE organization_id=$1 AND role='club_president' AND id<>$2 AND revoked_at IS NULL", [
+      invite.organization_id,
+      mandate,
+    ]);
   if (invite.profile_id) await takeOverFile(c, invite.organization_id, invite.profile_id, user.id);
   if (invite.profile_id && invite.guardian_of) {
     // The club invited this parent for this child: a declared link becomes a verified one.
@@ -285,5 +330,7 @@ export async function resendInvitation(c: PoolClient, org: string, actor: string
     guardianOf: old.guardian_of,
     greeting: old.greeting,
     resentFrom: old.id,
+    issuedByFederation: old.issued_by_federation,
+    succession: old.succession,
   });
 }

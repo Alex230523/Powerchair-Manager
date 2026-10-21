@@ -1071,7 +1071,8 @@ try {
     [federation, fedUser],
   );
   // The demo club is affiliated with the BPCF: its coaches see the federation's courses.
-  await db.query("UPDATE organization SET federation_id=$1 WHERE id=$2", [
+  // Wave 16 (I3): its affiliation number, shown in « Clubs et présidents ».
+  await db.query("UPDATE organization SET federation_id=$1,affiliation_number='BPCF-001',legal_form='asbl' WHERE id=$2", [
     federation,
     org,
   ]);
