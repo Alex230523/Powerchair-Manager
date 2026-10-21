@@ -80,7 +80,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await bellButton.click();
     const panel = page.getByRole("dialog", { name: "Notifications" });
     await expect(panel).toBeVisible();
-    await expect(panel.getByText(/^Message test/)).toBeVisible();
+    await expect(panel.getByText(/^Test de notification/)).toBeVisible();
     await expect(panel.getByRole("link", { name: /Tout voir/ })).toHaveAttribute("href", "/fr/notifications");
     await axe(page, "bell panel");
     await page.keyboard.press("Escape");
