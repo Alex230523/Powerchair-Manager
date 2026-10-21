@@ -30,9 +30,11 @@ test("federation space: clubs and presidents, teams, referees", async ({ page })
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The menu in the order of the federation's day.
-    const nav = page.getByRole("navigation").first();
-    for (const label of ["Clubs et présidents", "Équipes", "Tournois", "Arbitres et désignations", "Licences et classifications", "Formations des coachs"])
-      await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
+    // The group is folded on the home page: the links are there, in this order.
+    const links = (await page.locator(".sidebar nav a").allTextContents()).map((x) => x.trim());
+    const order = ["Clubs et présidents", "Équipes", "Tournois", "Arbitres et désignations", "Licences et classifications", "Formations des coachs"].map((l) => links.indexOf(l));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((x, y) => x - y));
 
     // 2. A new club and its president's invitation.
     await page.goto("/fr/federation/clubs");
