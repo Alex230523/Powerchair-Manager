@@ -137,7 +137,7 @@ export const optionalModules = [
 export type OptionalModule = (typeof optionalModules)[number];
 /** Menu routes and API paths owned by each optional module. */
 export const moduleRoutes: Record<OptionalModule, string[]> = {
-  finance: ["/funding", "/api/finance", "/api/funding", "/tasks"],
+  finance: ["/funding", "/api/finance", "/api/funding", "/api/accounts", "/tasks"],
   dues: ["/dues", "/api/dues"],
   equipment: ["/equipment", "/api/equipment"],
   matches: ["/matches", "/api/matches"],

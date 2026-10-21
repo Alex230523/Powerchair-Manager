@@ -1125,7 +1125,12 @@ export async function calendarFeed(db: Pool, token: string) {
       if (mfaSatisfied(!!a.twoFactorEnabled) && (rights.includes("dues.read") || rights.includes("dues.manage")) && !off.includes("finance")) {
         const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
           to = new Date(Date.now() + 366 * 86400000).toISOString().slice(0, 10);
-        days = (await moneyDeadlinesIn(c, f.organization_id, from, to, true, [])).map((d) => ({ uid: d.id.replace(":", "-"), date: d.date, title: d.title }));
+        days = (await moneyDeadlinesIn(c, f.organization_id, from, to, true, [])).map((d) => ({
+          uid: d.id.replace(":", "-"),
+          date: d.date,
+          // The feed has no language: the accounts' dates carry their kind in the club's default language (French).
+          title: d.source === "accounts" ? `${d.kind === "accountsAssembly" ? "Comptes annuels : assemblée générale" : "Comptes annuels : dépôt au greffe"} ${d.title}` : d.title,
+        }));
       }
     }
     return calendarIcs(allowed, process.env.BETTER_AUTH_URL!, days);

@@ -51,8 +51,9 @@ export function DeadlineChip({ locale, d }: { locale: Locale; d: MoneyDeadline }
   const s = sponsorsCopy[locale];
   return (
     <Link className="board-deadline" data-source={d.source} href={`/${locale}${d.href}`}>
-      <Icon name={d.source === "partner" ? "handshake" : "landmark"} size={14} />
-      <span className="sr-only">{s.layerKinds[d.kind]} · </span>
+      <Icon name={d.source === "partner" ? "handshake" : d.source === "accounts" ? "document" : "landmark"} size={14} />
+      {/* The accounts' title is only the year: their kind is written out. */}
+      <span className={d.source === "accounts" ? undefined : "sr-only"}>{s.layerKinds[d.kind]} · </span>
       <span>{d.title}</span>
     </Link>
   );
