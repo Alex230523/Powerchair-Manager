@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { teamsView, teamDetail, TeamCard, RosterRow } from "@/domains/teams/service";
-import { teamColors } from "@/domains/teams/service";
+import { teamColors } from "@/domains/teams/colors";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { useScope, scopedHref } from "./use-scope";

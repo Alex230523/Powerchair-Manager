@@ -4,6 +4,7 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { AccessError, account, active, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { resolveScope, seasonOptions, teamOptions } from "../scope/service";
+import { teamColors, type TeamColor } from "./colors";
 
 /**
  * Wave 12: the president's view of all teams (one card per team), a team
@@ -11,8 +12,7 @@ import { resolveScope, seasonOptions, teamOptions } from "../scope/service";
  * transaction. Reading follows the same rule as the top bar (a coach sees
  * the teams they supervise); changing needs teams.manage.
  */
-export const teamColors = ["blue", "teal", "green", "amber", "coral", "plum", "slate", "sand"] as const;
-export type TeamColor = (typeof teamColors)[number];
+export { teamColors, type TeamColor };
 const text = (n: number) => z.string().trim().max(n);
 export const teamsCommand = z.discriminatedUnion("action", [
   z.object({
