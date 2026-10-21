@@ -13,7 +13,7 @@ export function DesignGallery({ locale }: { locale: Locale }) {
       <PageHeader title={t.title} subtitle={t.subtitle} />
       <div className="design-themes">
         {(["light", "dark"] as const).map((theme) => (
-          <section key={theme} className="theme-scope design-theme" style={{ colorScheme: theme }} aria-label={t[theme]}>
+          <section key={theme} className="theme-scope design-theme" data-scheme={theme} aria-label={t[theme]}>
             <h2 className="design-theme-title">{t[theme]}</h2>
             <Samples locale={locale} theme={theme} />
           </section>

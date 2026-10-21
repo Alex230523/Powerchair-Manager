@@ -70,6 +70,21 @@ export function FinanceReport({
       {!report && !error && <p role="status">…</p>}
       {report && (
         <>
+          <header className="print-only report-letterhead">
+            {report.organization.logo_version && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/api/club/logo?org=${report.organization.id}&v=${report.organization.logo_version}`} alt="" />
+            )}
+            <div>
+              <strong>{report.club}</strong>
+              {(report.organization.company_number || report.organization.address) && (
+                <span>{[report.organization.company_number, report.organization.address].filter(Boolean).join(" · ")}</span>
+              )}
+              <span>
+                {x.reportSeason} {report.season.label}
+              </span>
+            </div>
+          </header>
           <div className="report-head">
             <div>
               <h1>

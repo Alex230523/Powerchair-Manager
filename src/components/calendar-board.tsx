@@ -8,6 +8,7 @@ import { DeadlineChip } from "./money-layer";
 import { kindLabels } from "./calendar-copy";
 import { plannerCopy } from "./calendar-planner-copy";
 import { Badge } from "./ui";
+import { cssVars } from "./css-vars";
 
 export type BoardEvent = {
   id: string;
@@ -176,7 +177,7 @@ export function WeekGrid({
   const banded = days.some((d) => allDay.some((e) => covers(e, d)) || deadlines.some((x) => x.date === d));
   return (
     <div className="planner-scroll">
-      <div className="planner" style={{ ["--planner-days" as string]: count }} onKeyDown={arrows} aria-describedby="planner-keys">
+      <div className="planner" style={cssVars({ "planner-days": count })} onKeyDown={arrows} aria-describedby="planner-keys">
         <p id="planner-keys" className="sr-only">{t.gridKeys}</p>
         <div className="planner-head">
           <div className="planner-corner" aria-hidden="true" />
@@ -207,10 +208,10 @@ export function WeekGrid({
             ))}
           </div>
         )}
-        <div className="planner-body" style={{ height }}>
+        <div className="planner-body" style={cssVars({ height: `${height}px` })}>
           <div className="planner-hours" aria-hidden="true">
             {Array.from({ length: bounds.to - bounds.from }, (_, i) => (
-              <span key={i} style={{ top: i * HOUR }}>
+              <span key={i} style={cssVars({ top: `${i * HOUR}px` })}>
                 {String(bounds.from + i).padStart(2, "0")}:00
               </span>
             ))}
@@ -220,7 +221,7 @@ export function WeekGrid({
             return (
               <div key={d} className="planner-col" data-today={d === today || undefined} aria-label={dayName(locale, d)} role="group">
                 {Array.from({ length: bounds.to - bounds.from }, (_, i) => (
-                  <span key={i} className="planner-line" style={{ top: i * HOUR }} aria-hidden="true" />
+                  <span key={i} className="planner-line" style={cssVars({ top: `${i * HOUR}px` })} aria-hidden="true" />
                 ))}
                 {placed.map(({ e, start, end, col, cols }) => {
                   const original = events.find((x) => x.id === e.id) as BoardEvent;
@@ -234,7 +235,7 @@ export function WeekGrid({
                       data-event=""
                       data-start={e.local_start.slice(11, 16)}
                       aria-label={eventName(locale, original)}
-                      style={{ top: y(start), height: Math.max(y(end) - y(start) - 2, 22), left: `calc(${(col / cols) * 100}% + 2px)`, width: `calc(${100 / cols}% - 4px)` }}
+                      style={cssVars({ top: `${y(start)}px`, height: `${Math.max(y(end) - y(start) - 2, 22)}px`, col, cols })}
                       onClick={() => onSelect(e.id)}
                     >
                       <span className="week-event-title" aria-hidden="true">{e.title}</span>
@@ -251,7 +252,7 @@ export function WeekGrid({
                   );
                 })}
                 {d === today && nowMinutes >= bounds.from * 60 && nowMinutes <= bounds.to * 60 && (
-                  <span className="planner-now" style={{ top: y(nowMinutes) }} role="img" aria-label={`${t.now} ${now.slice(11, 16)}`} />
+                  <span className="planner-now" style={cssVars({ top: `${y(nowMinutes)}px` })} role="img" aria-label={`${t.now} ${now.slice(11, 16)}`} />
                 )}
               </div>
             );

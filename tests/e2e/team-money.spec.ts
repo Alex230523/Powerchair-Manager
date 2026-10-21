@@ -95,7 +95,7 @@ test("dues, trips and pots follow the team chosen in the top bar", async ({ page
     await axe(page, "dues team B");
     // The home's money card gives the same figures for the team.
     await page.goto("/fr");
-    await expect(page.locator(".finance-dues-text")).toContainText("250,00");
+    await expect(page.locator(".finance-card .collection-bar")).toContainText("250,00");
 
     // Trips: the form offers the team; the list keeps whole-club trips and the chosen team's.
     await page.goto("/fr/trips");

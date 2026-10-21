@@ -101,7 +101,7 @@ test("calendar: week grid, views, colours, event sheet and subscription", async 
     // 2. The training from 18 h to 20 h at its place, the meeting beside it, the tournament in the band.
     const a = page.getByRole("button", { name: /^Entraînement Lions, lundi .* de 18 h à 20 h/ });
     await expect(a).toBeVisible();
-    expect(await a.evaluate((e) => [(e as HTMLElement).style.top, (e as HTMLElement).style.height])).toEqual(["528px", "94px"]);
+    expect(await a.evaluate((e) => [getComputedStyle(e).top, getComputedStyle(e).height])).toEqual(["528px", "94px"]);
     const b = page.getByRole("button", { name: /^Réunion du bureau, lundi .* de 19 h à 21 h/ });
     const [boxA, boxB] = [await a.boundingBox(), await b.boundingBox()];
     expect(boxA && boxB && boxB.x > boxA.x + boxA.width - 4 && Math.abs(boxA.width - boxB.width) < 2).toBe(true);
