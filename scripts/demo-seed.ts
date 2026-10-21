@@ -100,7 +100,12 @@ const refereeAccount = {
   profile: "Arbitre · BPCF (démo)",
 };
 
-if (process.env.NODE_ENV === "production" && !process.argv.includes("--force"))
+// Never in a Vercel production deployment. Elsewhere in production mode (a
+// Vercel preview builds with NODE_ENV=production), only with the project's
+// own secret password, never the public one written above.
+if (process.env.VERCEL_ENV === "production")
+  throw new Error("Refusing to create demo accounts in production.");
+if (process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
 // The seed acts through the services as the president; MFA is not set up for demo accounts.
 process.env.PFM_MFA_SUSPENDED = "true";

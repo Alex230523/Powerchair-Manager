@@ -39,5 +39,8 @@ describe("build and demo accounts", () => {
     expect(seed).toContain("process.env.VERCEL_ENV && (!ownPassword || ownPassword.length < 12)");
     expect(seed).toContain("celui de PFM_DEMO_PASSWORD");
     expect(seed).toContain('throw new Error("Refusing to create public demo accounts in production.")');
+    // Production mode accepts only the project's own password; a Vercel production deployment never.
+    expect(seed).toContain('process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force")');
+    expect(seed).toContain('if (process.env.VERCEL_ENV === "production")');
   });
 });
