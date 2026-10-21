@@ -228,6 +228,10 @@ test("real account without email verification, MFA, contexts, invitation, revoca
     await row
       .getByRole("button", { name: "Révoquer l’accès", exact: true })
       .click();
+    // The revocation is recorded before the member's page is reloaded.
+    await expect(
+      row.getByRole("button", { name: "Révoquer l’accès", exact: true }),
+    ).toHaveCount(0);
     await memberPage.reload();
     await expect(
       memberPage.getByText(

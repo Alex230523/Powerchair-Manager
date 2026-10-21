@@ -73,7 +73,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await expect(bellButton).toHaveAccessibleName(/Aucune notification non lue/);
     await page.goto("/fr/notifications");
     await page.getByRole("button", { name: "Tester mes notifications", exact: true }).click();
-    await expect(page.getByRole("heading", { name: /^Message test/, level: 3 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Test de notification/, level: 3 })).toBeVisible();
     await page.goto("/fr");
     await expect(bellButton).toHaveAccessibleName(/1 notification non lue/);
     await expect(bellButton.locator(".bell-count")).toHaveText("1");
