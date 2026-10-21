@@ -9,10 +9,12 @@ import {
   type Variables,
 } from "./templates";
 export type Db = Pool | PoolClient;
-export type Category = "security" | "administrative" | "sport";
+/** "digest": the weekly digest (wave 15, C7), switched on and off on its own. */
+export type Category = "security" | "administrative" | "sport" | "digest";
 export type ResourceType =
   | "auth"
   | "funding"
+  | "digest"
   | "invitation"
   | "membership"
   | "team"
@@ -76,6 +78,11 @@ export async function preferences(
   category: Category,
 ) {
   if (category === "security") return { email: true, inApp: true };
+  // The digest's own switch is read when it is built; only the global switch applies here.
+  if (category === "digest") {
+    const row = (await db.query("SELECT notifications_enabled FROM person WHERE user_id=$1", [userId])).rows[0];
+    return { email: !!row?.notifications_enabled, inApp: false };
+  }
   const result = await db.query(
     "SELECT p.notifications_enabled,COALESCE(n.email_enabled,true) AS email,COALESCE(n.in_app_enabled,true) AS app FROM person p LEFT JOIN notification_preference n ON n.user_id=p.user_id AND n.organization_id=$2 AND n.category=$3 WHERE p.user_id=$1",
     [userId, org, category],

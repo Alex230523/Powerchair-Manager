@@ -13,7 +13,11 @@ import { permissions } from "../access/policy";
 import { allowed } from "./eligibility";
 import { publish, templateFor } from "./queue";
 import { editableKinds, validateTemplate, renderTemplate } from "./templates";
+import { digestCommand } from "../digest/schema";
+import { digestExecute, digestSettings } from "../digest/service";
 export const notificationCommand = z.discriminatedUnion("action", [
+  // The weekly digest (wave 15, C7): personal choice, club moment, preview.
+  ...digestCommand.options,
   z.object({ action: z.literal("read"), id: z.uuid() }),
   z.object({ action: z.literal("readAll") }),
   z.object({
@@ -179,6 +183,7 @@ export async function notificationView(db: Pool, p: Principal) {
       templates,
       jobs,
       attempts,
+      digest: await digestSettings(s.c, s.context),
     };
   });
 }
@@ -212,6 +217,10 @@ export async function notificationExecute(
           "INSERT INTO notification_preference(organization_id,user_id,category,email_enabled,in_app_enabled) VALUES($1,$2,$3,$4,$5) ON CONFLICT(organization_id,user_id,category) DO UPDATE SET email_enabled=EXCLUDED.email_enabled,in_app_enabled=EXCLUDED.in_app_enabled",
           [org, p.userId, command.category, command.email, command.inApp],
         );
+      } else if (command.action === "digest" || command.action === "digestClub" || command.action === "digestPreview") {
+        const result = await digestExecute(s.c, { ...s.context, twoFactorEnabled: !!s.user.twoFactorEnabled }, command);
+        if (command.action === "digestClub") await audit(s.c, org, p.userId, "notifications.digestClub", org);
+        return result;
       } else if (command.action === "testSelf") {
         const locale =
           (

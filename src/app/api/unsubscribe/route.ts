@@ -3,14 +3,30 @@ import {
   unsubscribeInfo,
   unsubscribeExecute,
 } from "@/domains/communication/service";
+import { digestUnsubscribe, digestUnsubscribeInfo } from "@/domains/digest/service";
+import { AccessError } from "@/domains/access/service";
 import { origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
-/** Public: the private link received in a newsletter is the only key. */
+/**
+ * Public: the private link received in a newsletter or at the bottom of a
+ * weekly digest (wave 15, C7) is the only key.
+ */
+async function info(id: string) {
+  const digest = await digestUnsubscribeInfo(getDb(), id);
+  if (digest) return { ...digest, kind: "digest" as const };
+  return { ...(await unsubscribeInfo(getDb(), id)), kind: "news" as const };
+}
+async function execute(id: string, stop: boolean) {
+  const digest = await digestUnsubscribe(getDb(), id, stop);
+  if (digest) return digest;
+  if (await digestUnsubscribeInfo(getDb(), id)) throw new AccessError("NOT_FOUND", 404);
+  return unsubscribeExecute(getDb(), id, stop);
+}
 export async function GET(request: Request) {
   try {
     const id = z.uuid().parse(new URL(request.url).searchParams.get("id"));
-    return Response.json(await unsubscribeInfo(getDb(), id), {
+    return Response.json(await info(id), {
       headers: noStore,
     });
   } catch (e) {
@@ -23,7 +39,7 @@ export async function POST(request: Request) {
     const body = z
       .object({ id: z.uuid(), stop: z.boolean() })
       .parse(JSON.parse(new TextDecoder().decode(await bounded(request, 2000))));
-    return Response.json(await unsubscribeExecute(getDb(), body.id, body.stop), {
+    return Response.json(await execute(body.id, body.stop), {
       headers: noStore,
     });
   } catch (e) {

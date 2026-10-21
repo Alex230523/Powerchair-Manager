@@ -52,6 +52,7 @@ export const settingsEntries = [
   { id: "selfCoach", category: "account", anchor: "settings-self" },
   { id: "inbox", category: "notifications", anchor: "notif-inbox" },
   { id: "notifPreferences", category: "notifications", anchor: "notif-preferences" },
+  { id: "digest", category: "notifications", anchor: "notif-digest" },
   { id: "templates", category: "notifications", anchor: "notif-templates" },
   { id: "queue", category: "notifications", anchor: "notif-queue" },
   { id: "identity", category: "club", anchor: "club-identity-title" },

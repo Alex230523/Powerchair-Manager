@@ -65,7 +65,31 @@ export async function dashboardView(db: Pool, p: Principal, raw: DashboardQuery 
 }
 
 async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promise<Dashboard> {
-  const user = await account(c, p);
+  const user = (await account(c, p)) as DashboardUser;
+  let context: DashboardContext | null = null;
+  try {
+    context = await active(c, p);
+  } catch (e) {
+    if (!(e instanceof AccessError && e.code === "CONTEXT_REQUIRED")) throw e;
+  }
+  return computeFor(c, user, context, raw);
+}
+
+export type DashboardUser = { id: string; name: string; twoFactorEnabled: boolean | null };
+export type DashboardContext = Awaited<ReturnType<typeof active>>;
+/**
+ * The dashboard of one account in one mandate. The page resolves them from
+ * the session; the weekly digest (wave 15, C7) from the mandate itself, so
+ * both apply exactly the same rights. `limits` widens the agenda and the
+ * dates for the digest (the home keeps 8 of each).
+ */
+export async function computeFor(
+  c: PoolClient,
+  user: DashboardUser,
+  context: DashboardContext | null,
+  raw: DashboardQuery,
+  limits: { agenda: number; deadlines: number } = { agenda: 8, deadlines: 8 },
+): Promise<Dashboard> {
   const counts: Partial<Record<TodoKey, number>> = {};
   const metrics: Metric[] = [];
   const scopes: string[] = [];
@@ -73,25 +97,19 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
   counts.myApplications = await count(
     c,
     "SELECT count(*) FROM registration_application WHERE applicant_user_id=$1 AND status='incomplete'",
-    [p.userId],
+    [user.id],
   );
-  let context;
-  try {
-    context = await active(c, p);
-  } catch (e) {
-    if (e instanceof AccessError && e.code === "CONTEXT_REQUIRED")
-      return {
-        generatedAt: new Date().toISOString(),
-        user: { name: user.name },
-        context: null,
-        todos: buildTodos(counts),
-        metrics,
-        agenda: [],
-        deadlines: [],
-        scopes,
-      };
-    throw e;
-  }
+  if (!context)
+    return {
+      generatedAt: new Date().toISOString(),
+      user: { name: user.name },
+      context: null,
+      todos: buildTodos(counts),
+      metrics,
+      agenda: [],
+      deadlines: [],
+      scopes,
+    };
   const a: Actor = { ...context, twoFactorEnabled: !!user.twoFactorEnabled };
   const org = a.organization_id;
   const rights = permissions(a.role, a.grants);
@@ -103,7 +121,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
   const own = [...(await ownProfiles(c, a))];
   // The team chosen in the top bar (wave 12): validated here, never trusted from the URL.
   const scope = club
-    ? await resolveScope(c, { organization_id: org, role: a.role, user_id: p.userId, team_id: a.team_id }, raw)
+    ? await resolveScope(c, { organization_id: org, role: a.role, user_id: user.id, team_id: a.team_id }, raw)
     : { seasonId: null, teamId: null };
   const teamId = scope.teamId;
   const members = teamId ? await teamMembers(c, org, teamId) : null;
@@ -318,7 +336,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
   for (const e of events) {
     if (!(await canRead(c, a, e))) continue;
     if (e.status === "scheduled") upcoming++;
-    if (agenda.length < 8) {
+    if (agenda.length < limits.agenda) {
       // Who answered "present": coaches are the team's coaches (or listed as
       // coach in the directory), everyone else counts as a player.
       const present = (
@@ -415,7 +433,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
     const until = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     for (const d of await moneyDeadlinesIn(c, org, today(), until, moneyPeople, own))
       if (d.kind !== "grant" && d.kind !== "grantReport")
-        push({ kind: d.source, date: d.date, title: d.title, count: 1, href: d.href });
+        push({ kind: d.source, date: d.date, title: d.title, count: 1, href: d.href, ...(d.kind === "condition" || d.kind === "task" ? { task: true } : {}) });
     // Conditions to deliver within 14 days (late ones too): all for the president, one's own otherwise.
     counts.sponsorTasks = await openTasksCount(c, org, "partner", 14, a.role === "club_president" && moneyPeople, own);
     // Grant check-lists (wave 15, C2): same rule, the person in charge sees their own steps.
@@ -480,7 +498,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
     club && (a.role === "player" || a.role === "guardian")
       ? {
           calendarSubscribed: !!(
-            await c.query("SELECT 1 FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 AND revoked_at IS NULL AND expires_at>now() LIMIT 1", [org, p.userId, a.id])
+            await c.query("SELECT 1 FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 AND revoked_at IS NULL AND expires_at>now() LIMIT 1", [org, user.id, a.id])
           ).rowCount,
         }
       : undefined;
@@ -504,7 +522,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
     todos: buildTodos(counts),
     metrics,
     agenda,
-    deadlines: deadlines.slice(0, 8),
+    deadlines: deadlines.slice(0, limits.deadlines),
     scopes,
     ...(finance ? { finance } : {}),
     ...(week ? { week } : {}),
