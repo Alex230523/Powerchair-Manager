@@ -1,7 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
-import { totp } from "../support/totp";
 import { localAt, shiftLocal } from "../../src/domains/calendar/time";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
@@ -47,22 +46,6 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     }
     const admin = await signup(page, "Calendar President"),
       player = await signup(playerPage, "Calendar Player");
-    const enabled = await page.request.post("/api/auth/two-factor/enable", {
-      headers: { origin },
-      data: { password },
-    });
-    expect(enabled.status()).toBe(200);
-    const secret = new URL((await enabled.json()).totpURI).searchParams.get(
-      "secret",
-    )!;
-    expect(
-      (
-        await page.request.post("/api/auth/two-factor/verify-totp", {
-          headers: { origin },
-          data: { code: totp(secret) },
-        })
-      ).status(),
-    ).toBe(200);
     const org = (
       await db.query(
         "INSERT INTO organization(name,kind) VALUES('Club Planning','club') RETURNING id",

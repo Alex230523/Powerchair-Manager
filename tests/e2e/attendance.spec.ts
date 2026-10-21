@@ -1,7 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
-import { totp } from "../support/totp";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
   expect(
@@ -53,23 +52,7 @@ test("invitation response, offline refusal, independent pointage, closure and tr
     }
     const admin = await signup(page, "Attendance President"),
       player = await signup(playerPage, "Attendance Player");
-    const enabled = await page.request.post("/api/auth/two-factor/enable", {
-      headers: { origin },
-      data: { password },
-    });
-    expect(enabled.status()).toBe(200);
-    const secret = new URL((await enabled.json()).totpURI).searchParams.get(
-      "secret",
-    )!;
-    expect(
-      (
-        await page.request.post("/api/auth/two-factor/verify-totp", {
-          headers: { origin },
-          data: { code: totp(secret) },
-        })
-      ).status(),
-    ).toBe(200);
-    // Exercise the login policy for an already enrolled account, without erasing its MFA secret.
+    // Sign out and back in: email and password only, no second factor (removed 21/10/2026).
     expect(
       (
         await page.request.post("/api/auth/sign-out", {
@@ -83,21 +66,7 @@ test("invitation response, offline refusal, independent pointage, closure and tr
       data: { email: admin.email, password },
     });
     expect(login.status()).toBe(200);
-    const loginBody = await login.json();
-    const suspended = process.env.PFM_MFA_SUSPENDED === "true";
-    if (suspended) {
-      expect(loginBody.twoFactorRedirect).not.toBe(true);
-    } else {
-      expect(loginBody.twoFactorRedirect).toBe(true);
-      expect(
-        (
-          await page.request.post("/api/auth/two-factor/verify-totp", {
-            headers: { origin },
-            data: { code: totp(secret) },
-          })
-        ).status(),
-      ).toBe(200);
-    }
+    expect((await login.json()).twoFactorRedirect).not.toBe(true);
     const org = (
       await db.query(
         "INSERT INTO organization(name,kind) VALUES('Club Presence','club') RETURNING id",
@@ -126,10 +95,6 @@ test("invitation response, offline refusal, independent pointage, closure and tr
         ).status(),
       ).toBe(200);
     }
-    if (suspended)
-      await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
-        admin.id,
-      ]);
     const year = new Date().getUTCFullYear(),
       season = (
         await db.query(
@@ -381,18 +346,16 @@ test("invitation response, offline refusal, independent pointage, closure and tr
       ).toBeVisible();
       await accessible(page);
     }
-    if (suspended) {
-      await page.goto("/fr/access");
-      await expect(
-        page.getByText("Activez la double authentification", { exact: false }),
-      ).toHaveCount(0);
-      await expect(
-        page.getByRole("heading", {
-          name: "Membres et profils d’accès",
-          exact: true,
-        }),
-      ).toBeVisible();
-    }
+    await page.goto("/fr/access");
+    await expect(
+      page.getByText("double authentification", { exact: false }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", {
+        name: "Membres et profils d’accès",
+        exact: true,
+      }),
+    ).toBeVisible();
   } finally {
     await playerContext.close().catch(() => {});
     await db.end();

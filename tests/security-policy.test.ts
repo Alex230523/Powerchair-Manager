@@ -2,20 +2,12 @@ import { afterEach, it, expect, vi } from "vitest";
 import { mfaRequired, mfaSatisfied } from "../src/lib/security-policy";
 import { commandSchema } from "../src/domains/attendance/schema";
 afterEach(() => vi.unstubAllEnvs());
-it("requires MFA by default and for unrecognized override values", () => {
-  for (const value of ["", "false", "TRUE"]) {
-    vi.stubEnv("PFM_MFA_SUSPENDED", value);
-    expect(mfaRequired()).toBe(true);
-    expect(mfaSatisfied(false)).toBe(false);
-    expect(mfaSatisfied(true)).toBe(true);
+it("never asks for a second factor: MFA was removed (21/10/2026)", () => {
+  for (const value of [undefined, "", "false", "true"]) {
+    vi.stubEnv("PFM_MFA_SUSPENDED", value as string);
+    expect(mfaRequired()).toBe(false);
+    expect(mfaSatisfied(false)).toBe(true);
   }
-});
-it("temporarily suspends MFA without changing enrollment and restores strict enforcement", () => {
-  vi.stubEnv("PFM_MFA_SUSPENDED", "true");
-  expect(mfaRequired()).toBe(false);
-  expect(mfaSatisfied(false)).toBe(true);
-  vi.stubEnv("PFM_MFA_SUSPENDED", "false");
-  expect(mfaSatisfied(false)).toBe(false);
 });
 it("rejects duplicate invitees, unbounded lists and malformed deadlines", () => {
   const id = "4abe9298-004d-4211-91df-104e8db75696",
@@ -56,7 +48,7 @@ it("keeps response and observed status commands distinct", () => {
     }).success,
   ).toBe(false);
 });
-it("preserves explicit sensitive-document authorization while MFA is suspended", async () => {
+it("keeps sensitive documents behind their explicit habilitation", async () => {
   const { Pool } = await import("pg");
   const { docAccess } = await import("../src/domains/documents/access");
   const db = new Pool();
@@ -85,15 +77,10 @@ it("preserves explicit sensitive-document authorization while MFA is suspended",
     category: "fitness",
   };
   try {
-    vi.stubEnv("PFM_MFA_SUSPENDED", "true");
     expect(await docAccess(db, actor, doc)).toBe(false);
     expect(
       await docAccess(db, { ...actor, grants: ["documents.sensitive"] }, doc),
     ).toBe(true);
-    vi.stubEnv("PFM_MFA_SUSPENDED", "false");
-    expect(
-      await docAccess(db, { ...actor, grants: ["documents.sensitive"] }, doc),
-    ).toBe(false);
   } finally {
     await db.end();
   }

@@ -37,7 +37,7 @@ npm run dev -- --hostname 127.0.0.1
 Ouvrir http://127.0.0.1:3000/fr/access (ou /nl/access, /en/access).
 Utiliser la même adresse que BETTER_AUTH_URL, notamment 127.0.0.1 plutôt que localhost.
 Le répertoire du club se trouve à http://127.0.0.1:3000/fr/club, après sélection du profil.
-La vérification email a été retirée à votre demande. La double authentification est temporairement suspendue sur ce pilote (`PFM_MFA_SUSPENDED=true`).
+La vérification email a été retirée à votre demande. La double authentification a aussi été retirée (21/10/2026) : connexion par email et mot de passe uniquement.
 L’accueil affiche le tableau de bord du profil actif (ou une présentation si l’on n’est pas connecté).
 
 Dans un troisième terminal, démarrer le traitement local des emails :
@@ -181,7 +181,7 @@ npm run attendance:worker -- --once
 
 Les notifications passent par le worker email existant. Garder le transport local pour la recette.
 
-La suspension MFA est un réglage serveur temporaire, sans effacement des secrets existants. Pour rétablir connexion à deux facteurs et exigences sur les actions sensibles : mettre `PFM_MFA_SUSPENDED=false` dans `.env.local`, puis redémarrer Next.js et tous les workers. La valeur par défaut est false. Les droits d’organisation, de rôle, de famille et sur les documents restent contrôlés pendant la suspension.
+La double authentification a été retirée le 21/10/2026 : il n’y a plus de réglage à prévoir. Les droits d’organisation, de rôle, de famille et sur les documents restent contrôlés.
 
 - [Périmètre, décisions et limites du lot 07](lots/LOT-07.md)
 - [Rapport de recette du lot 07](recette/VERIFICATION-07.md)
