@@ -223,8 +223,10 @@ export function Access({ locale }: { locale: Locale }) {
       window.location.assign(/^\/(fr|nl|en)(\/[A-Za-z0-9_\-/]*)?$/.test(next) && !next.includes("//") ? next : `/${locale}`);
       return;
     }
-    await load();
-    if (mode === "signup") setMessage(t.verifyHint);
+    // With an invitation link: a full reload too, so the layout shows the signed-in
+    // menus; the link (#invitation=…) is put back in the address and the card offers to accept.
+    history.replaceState(null, "", `${window.location.pathname}#invitation=${invitationToken}`);
+    window.location.reload();
   }
   async function confirm(id: string, body: Record<string, unknown>) {
     if (confirmation !== id) {

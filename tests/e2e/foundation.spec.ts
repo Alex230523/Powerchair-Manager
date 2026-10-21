@@ -26,12 +26,11 @@ for (const locale of ["fr", "nl", "en"])
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    await expect(page.locator("header select")).toHaveCount(0);
-    await expect(
-      page.locator("nav").getByRole("link", { name: "English", exact: true }),
-    ).toHaveCount(0);
+    // Wave 16 (I1): a visitor has no menu, only the brand, the language and « Se connecter ».
+    await expect(page.locator("header select")).toHaveCount(1);
+    await expect(page.locator(".sidebar, .bottom-nav")).toHaveCount(0);
     await page.goto(`/${locale}/access`);
-    await page.locator("main select").selectOption("en");
+    await page.locator("header select").selectOption("en");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
   });
 test("root redirects and unsupported locale is rejected", async ({ page }) => {
