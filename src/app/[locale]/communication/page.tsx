@@ -7,12 +7,12 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ event?: string }>;
+  searchParams: Promise<{ event?: string; create?: string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const { event } = await searchParams;
+  const { event, create } = await searchParams;
   const eventId =
     event && /^[0-9a-f-]{36}$/.test(event) ? event : undefined;
-  return <Communication locale={locale} eventId={eventId} />;
+  return <Communication locale={locale} eventId={eventId} create={create === "1"} />;
 }

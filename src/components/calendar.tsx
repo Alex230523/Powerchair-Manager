@@ -141,9 +141,12 @@ function dates(anchor: string, view: string) {
 export function Calendar({
   locale,
   eventId,
+  create = false,
 }: {
   locale: Locale;
   eventId?: string;
+  /** Opens the event editor at once (the "Créer" menu of the home page). */
+  create?: boolean;
 }) {
   const extra =
     locale === "fr"
@@ -225,7 +228,7 @@ export function Calendar({
     ),
     // Opened on one event: the list view spans the coming year so it is found.
     [view, setView] = useState(eventId ? "list" : "month"),
-    [editorOpen, setEditorOpen] = useState(false),
+    [editorOpen, setEditorOpen] = useState(create),
     [subscriptionOpen, setSubscriptionOpen] = useState(false),
     [offset, setOffset] = useState(0),
     [place, setPlace] = useState(""),

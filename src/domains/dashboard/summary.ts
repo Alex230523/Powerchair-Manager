@@ -98,6 +98,26 @@ export type Deadline = {
   cents?: number;
   href: string;
 };
+/** The money card of the president's home (wave 14): club-wide figures of the season in view. */
+export type FinanceCard = {
+  /** Null when the finance module is off (the dues figures stay). */
+  treasury: number | null;
+  income: number;
+  expenses: number;
+  dues: { due: number; collected: number; late: number; playersLate: number; rate: number | null } | null;
+};
+/** One event of the week view (wave 14): the calendar's own visibility rules apply. */
+export type WeekEvent = {
+  id: string;
+  title: string;
+  kind: string;
+  status: string;
+  startsAt: string;
+  endsAt: string;
+  team: string | null;
+  teamColor: string | null;
+  place: string | null;
+};
 export type Dashboard = {
   /** Server time of the snapshot; the page renders dates from it, not from the client clock. */
   generatedAt: string;
@@ -109,12 +129,20 @@ export type Dashboard = {
     /** False when the club switched the statistics module off. */
     statistics?: boolean;
   };
+  /** The season in view (top bar choice, else the current one). */
+  season?: { id: string; name: string } | null;
+  /** What the "Créer" menu may offer this actor. */
+  can?: { event: boolean; player: boolean; operation: boolean; mail: boolean };
   todos: Todo[];
   metrics: Metric[];
   agenda: AgendaItem[];
   deadlines: Deadline[];
   /** Modules whose figures were computed for this actor; others are hidden, not zero. */
   scopes: string[];
+  /** Only for people trusted with the club's money, with the modules on. */
+  finance?: FinanceCard;
+  /** The week asked for (?week=YYYY-MM-DD, a Monday), with its events. */
+  week?: { from: string; to: string; events: WeekEvent[] };
 };
 export function formatCents(cents: number, locale: string) {
   return new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {
