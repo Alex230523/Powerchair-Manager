@@ -7,7 +7,8 @@ import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
 import { shellCopy } from "./shell-copy";
-import { CommandPalette } from "./command-palette";
+import { CommandPalette, scopeFocusEvent } from "./command-palette";
+import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
 import { ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
@@ -491,6 +492,15 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                 enabled={!!state?.selected}
                 variant="field"
                 pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                actions={paletteActions({
+                  kind: state?.selected?.kind,
+                  role,
+                  permissions: state?.permissions ?? [],
+                  disabled: state?.selected?.disabled_modules ?? [],
+                  seasons: state?.seasons?.length ?? 0,
+                  teams: state?.teams?.length ?? 0,
+                })}
+                collect={club && !(state?.selected?.disabled_modules ?? []).includes("dues") && (state?.permissions ?? []).includes("dues.manage")}
               />
             </div>
             <div className="topbar-tools">
@@ -595,6 +605,23 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
 /** Season and team capsules of the top bar (wave 12): the choice every page follows. */
 function ScopeBar({ t }: { t: Copy }) {
   const scope = useScope();
+  const season = useRef<HTMLSelectElement>(null),
+    team = useRef<HTMLSelectElement>(null);
+  // "Changer de saison" and "Changer d'équipe" of the Ctrl+K window (wave 15, C6) land here.
+  useEffect(() => {
+    const focus = (e: Event) => {
+      const target = (e as CustomEvent<string>).detail === "team" ? team.current : season.current;
+      if (!target) return;
+      target.focus();
+      try {
+        target.showPicker();
+      } catch {
+        /* Some browsers only open a picker on a click; the focus is enough. */
+      }
+    };
+    window.addEventListener(scopeFocusEvent, focus);
+    return () => window.removeEventListener(scopeFocusEvent, focus);
+  }, []);
   if (!scope.organizationId || !scope.seasons.length) return null;
   const open = scope.seasons.filter((s) => !s.archived),
     archived = scope.seasons.filter((s) => s.archived);
@@ -602,7 +629,7 @@ function ScopeBar({ t }: { t: Copy }) {
     <div className="scope-bar">
       <label className="capsule">
         <span className="capsule-label">{t.season}</span>
-        <select aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
+        <select ref={season} aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
           {open.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -623,7 +650,7 @@ function ScopeBar({ t }: { t: Copy }) {
         <label className="capsule">
           <span className="team-dot" data-color={scope.team?.color ?? "none"} aria-hidden="true" />
           <span className="capsule-label">{t.team}</span>
-          <select aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
+          <select ref={team} aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
             <option value="">{t.allTeams}</option>
             {scope.seasonTeams.map((x) => (
               <option key={x.id} value={x.id}>

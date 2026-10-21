@@ -147,12 +147,15 @@ export function PlayerDirectory({
   role = "player",
   former = false,
   create = false,
+  importing = false,
 }: {
   locale: Locale;
   role?: "player" | "coach";
   former?: boolean;
   /** Opens the creation window at once (the "Créer" menu of the home page). */
   create?: boolean;
+  /** Opens the Excel import at once (Ctrl+K action, wave 15). */
+  importing?: boolean;
 }) {
   const t = copy[locale],
     p = peopleCopy[locale],
@@ -383,6 +386,7 @@ export function PlayerDirectory({
             <PlayerImport
               locale={locale}
               role={role}
+              initiallyOpen={importing}
               organizationId={data.context.id}
               teams={data.teams.filter(
                 (x) => !x.archived && !x.season_archived,

@@ -274,10 +274,10 @@ export function Toast({
 }
 
 /* ---------- Icon tile, badge ---------- */
-export function IconTile({ icon, tone = "primary", size = 36 }: { icon: IconName; tone?: Tone; size?: 36 | 44 }) {
+export function IconTile({ icon, tone = "primary", size = 36 }: { icon: IconName; tone?: Tone; size?: 28 | 36 | 44 }) {
   return (
-    <span className="icon-tile" data-tone={toneName(tone)} data-size={size === 44 ? "lg" : undefined} aria-hidden="true">
-      <Icon name={icon} size={size === 44 ? 22 : 18} />
+    <span className="icon-tile" data-tone={toneName(tone)} data-size={size === 44 ? "lg" : size === 28 ? "sm" : undefined} aria-hidden="true">
+      <Icon name={icon} size={size === 44 ? 22 : size === 28 ? 16 : 18} />
     </span>
   );
 }

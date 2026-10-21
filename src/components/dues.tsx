@@ -370,6 +370,13 @@ export function Dues({ locale }: { locale: Locale }) {
     () => "",
   );
   const [stateFilter, setStateFilter] = useSeeded(urlState);
+  // ?pay=<player> (Ctrl+K "Encaisser la cotisation de …", wave 15 C6) opens that player's payment once.
+  const urlPay = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("pay") ?? "",
+    () => "",
+  );
+  const [autoPay, setAutoPay] = useState(true);
   const money = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
@@ -450,8 +457,14 @@ export function Dues({ locale }: { locale: Locale }) {
   const teams = view?.teams ?? [];
   const teamColumn = !team && teams.length > 0;
   const detail = view?.debts.find((d) => d.id === detailId);
-  const paying = view?.debts.find((d) => d.id === payId);
   const nextOpen = (d: Debt) => d.settled.find((i) => i.left_cents > 0);
+  const paying =
+    view?.debts.find((d) => d.id === payId) ??
+    (autoPay && urlPay && view?.manage ? view.debts.find((d) => d.profile_id === urlPay && d.status === "open" && nextOpen(d)) : undefined);
+  const closePay = () => {
+    setPayId("");
+    setAutoPay(false);
+  };
   const b = bulkCopy[locale];
   return (
     <main id="main" className="access dues">
@@ -762,7 +775,7 @@ export function Dues({ locale }: { locale: Locale }) {
         </Modal>
       )}
       {paying && (
-        <Modal title={`${t.payTitle} · ${paying.full_name}`} close={() => setPayId("")}>
+        <Modal title={`${t.payTitle} · ${paying.full_name}`} close={closePay}>
           <p className="muted">{t.payHint}</p>
           <form
             onSubmit={(e) =>
@@ -773,7 +786,7 @@ export function Dues({ locale }: { locale: Locale }) {
                 method: d.get("method"),
                 occurredOn: d.get("date"),
                 reference: d.get("reference"),
-              })).then((ok) => ok && setPayId(""))
+              })).then((ok) => ok && closePay())
             }
           >
             <div className="form-pair">
@@ -802,7 +815,7 @@ export function Dues({ locale }: { locale: Locale }) {
             </div>
             <div className="actions">
               <Button disabled={busy}>{t.pay}</Button>
-              <button type="button" className="button secondary" onClick={() => setPayId("")}>{t.close}</button>
+              <button type="button" className="button secondary" onClick={closePay}>{t.close}</button>
             </div>
           </form>
         </Modal>
