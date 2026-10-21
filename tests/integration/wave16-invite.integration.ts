@@ -169,7 +169,8 @@ it("sends one invitation per line with an address when importing", async () => {
     clubA,
   );
   expect(r.invited).toBe(2);
-  expect((await db.query("SELECT role FROM invitation WHERE email IN ('imp1@example.test','imp-parent@example.test') ORDER BY email")).rows.map((x) => x.role)).toEqual(["guardian", "player"]);
+  const sent = Object.fromEntries((await db.query("SELECT email,role FROM invitation WHERE email IN ('imp1@example.test','imp-parent@example.test')")).rows.map((x) => [x.email, x.role]));
+  expect(sent).toEqual({ "imp1@example.test": "player", "imp-parent@example.test": "guardian" });
 });
 
 it("invites the applicant when a registration is accepted", async () => {
