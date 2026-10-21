@@ -179,14 +179,14 @@ try {
   ).rows[0].id as string;
   const team = (
     await db.query(
-      "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc') RETURNING id",
+      "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc','blue') RETURNING id",
       [org, season],
     )
   ).rows[0].id as string;
   // A second team: one club can run several teams in the same season.
   const teamB = (
     await db.query(
-      "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,'Équipe B','Powerchair','Loisir','Hall sportif du Parc') RETURNING id",
+      "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color) VALUES($1,$2,'Équipe B','Powerchair','Loisir','Hall sportif du Parc','amber') RETURNING id",
       [org, season],
     )
   ).rows[0].id as string;
@@ -293,6 +293,29 @@ try {
     "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'coach',$4)",
     [org, team, people.coach, `${year}-07-01`],
   );
+  // Two earlier seasons, so the headcount chart and the retention rate have a history (wave 15).
+  for (const [back, who] of [
+    [2, [people.camille, people.yanis, people.thomas]],
+    [1, [people.camille, people.yanis, people.thomas, people.emma]],
+  ] as const) {
+    const past = (
+      await db.query(
+        "INSERT INTO season(organization_id,name,starts_on,ends_on,archived) VALUES($1,$2,$3,$4,true) RETURNING id",
+        [org, `${year - back}-${String(year - back + 1).slice(2)}`, `${year - back}-07-01`, `${year - back + 1}-06-30`],
+      )
+    ).rows[0].id as string;
+    const pastTeam = (
+      await db.query(
+        "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color,archived) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc','blue',true) RETURNING id",
+        [org, past],
+      )
+    ).rows[0].id as string;
+    for (const id of who)
+      await db.query(
+        "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on,ends_on) VALUES($1,$2,$3,'player',$4,$5)",
+        [org, pastTeam, id, `${year - back}-07-01`, `${year - back + 1}-06-30`],
+      );
+  }
   await db.query(
     "INSERT INTO guardian_relationship(organization_id,guardian_profile_id,subject_profile_id,kind,can_view,can_edit,starts_on,authorization_note,verified_by) VALUES($1,$2,$3,'legal_verified',true,true,$4,'Données de démonstration',$5)",
     [org, people.nadia, people.lucas, `${year}-07-01`, users.president],

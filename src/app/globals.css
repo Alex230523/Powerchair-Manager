@@ -1217,18 +1217,6 @@ caption {
   width: 100%;
   margin-bottom: 0;
 }
-.statistics-bar {
-  display: grid;
-  grid-template-columns: 160px minmax(80px, 1fr) 65px 65px;
-  gap: 12px;
-  align-items: center;
-  padding-block: 12px;
-  border-bottom: 1px solid var(--line);
-}
-.statistics-bar meter {
-  width: 100%;
-  height: 22px;
-}
 .statistics-table-scroll {
   overflow: auto;
   border: 1px solid var(--line);
@@ -2896,9 +2884,6 @@ caption {
   .directory-actions {
     gap: 8px;
   }
-  .statistics-bar {
-    grid-template-columns: 1fr 1fr;
-  }
   .calendar-toolbar > div {
     flex-basis: 45%;
   }
@@ -3482,14 +3467,6 @@ input.narrow {
   }
 }
 @media (max-width: 560px) {
-  /* Monthly bars: the month on its own line, then the bar and both figures. */
-  .statistics-bar {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 4px 10px;
-  }
-  .statistics-bar > :first-child {
-    grid-column: 1 / -1;
-  }
   /* Action rows stack full width so buttons stay easy to reach. */
   .actions > .button,
   .actions > button {
@@ -5494,4 +5471,113 @@ ul.task-list {
 .chairs-form .chair-value input {
   width: 9rem;
   min-height: 44px;
+}
+
+/* ---------- Wave 15 (2.6): charts ---------- */
+.chart-frame {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.chart-tools {
+  display: flex;
+  justify-content: flex-end;
+}
+.chart {
+  position: relative;
+  min-width: 0;
+  /* The drawing follows the card's width a frame later: nothing may stick out meanwhile. */
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+.chart svg {
+  display: block;
+  overflow: visible;
+  touch-action: pan-y;
+}
+.chart:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+.chart-tooltip {
+  position: absolute;
+  top: 8px;
+  z-index: 2;
+  min-width: 150px;
+  max-width: min(240px, 80%);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-size: var(--text-xs);
+  pointer-events: none;
+}
+.chart-tooltip p {
+  margin: 0;
+}
+.chart-tooltip-title {
+  color: var(--muted);
+  margin-bottom: 4px !important;
+}
+.chart-tooltip-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: 2px;
+}
+.chart-tooltip-row strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--heading);
+}
+.chart-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  border-top: 3px solid;
+  border-radius: 2px;
+}
+.chart-swatch[data-dashed] {
+  border-top-style: dashed;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.chart-legend-item input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.headcount-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 260px);
+  gap: var(--card-gap);
+  align-items: start;
+  margin-top: var(--card-gap);
+}
+@media (max-width: 960px) {
+  .headcount-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.design-charts {
+  display: grid;
+  gap: var(--card-gap);
 }
