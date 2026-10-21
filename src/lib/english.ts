@@ -1,4 +1,5 @@
 export const englishErrors: Record<string, string> = {
+  INVITATION_REQUIRED: "An invitation is required to create an account. Ask the person in charge of your club or federation.",
   TEAM_FULL: "This team is full: put the application on the waiting list, or tick « Accept even if the team is full ».",
   LAST_ADMIN:
     "Add a successor before removing or limiting the last permanent active president.",
@@ -95,6 +96,8 @@ export const english = {
     password: "Password (at least 12 characters)",
     name: "Full name",
     login: "Sign in",
+    noAccount: "No account yet?",
+    invitedHint: "You were invited: create your account with the email address that received the invitation.",
     signup: "Create my account",
     forgot: "Recover access",
     reset: "Set password",

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 test("player listing, personal then sporting profile, former players and dedicated management screens", async ({
   page,
 }) => {
@@ -10,7 +11,7 @@ test("player listing, personal then sporting profile, former players and dedicat
     origin = "http://127.0.0.1:3100";
   try {
     await db.query('DELETE FROM "rateLimit"');
-    const signup = await page.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(page, db, {
       headers: { origin },
       data: {
         email: `player-list-${Date.now()}@example.test`,

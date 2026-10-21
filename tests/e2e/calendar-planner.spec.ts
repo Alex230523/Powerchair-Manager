@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn, signUpVia } from "../support/session";
 
 /**
  * Wave 15 (2.7 and C9): the week grid (an 18 h to 20 h training at its place,
@@ -24,14 +25,10 @@ test("calendar: week grid, views, colours, event sheet and subscription", async 
     anon = await browser.newContext();
   const email = `planner-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Planner president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Planner president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -42,7 +39,7 @@ test("calendar: week grid, views, colours, event sheet and subscription", async 
     }
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     await db.query('DELETE FROM "rateLimit"');
-    const signup = await playerPage.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(playerPage, db, {
       headers: { origin },
       data: { name: "Planner Player", email: `planner-player-${Date.now()}@example.test`, password: "Browser-test-passphrase-2026!" },
     });

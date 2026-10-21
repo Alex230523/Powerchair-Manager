@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 // Menu groups unfold on click; open the one holding the link if it is closed.
 async function openMenuGroup(page: Page, name: string) {
   const group = page
@@ -17,19 +18,9 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `dues-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
+    await prepareSignIn(page, db, "Dues test president", email, "Browser-test-passphrase-2026!");
     await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
-    await page
-      .getByLabel("Nom complet", { exact: true })
-      .fill("Dues test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page
-      .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
-      .fill("Browser-test-passphrase-2026!");
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
+      .getByRole("button", { name: "Se connecter", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Se déconnecter" }),

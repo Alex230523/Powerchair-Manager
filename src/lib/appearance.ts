@@ -18,14 +18,29 @@ const read = (row: { theme_palette?: string; theme_tint?: string } | undefined):
   row ? { palette: (row.theme_palette ?? "night") as Appearance["palette"], tint: (row.theme_tint ?? "light") as Appearance["tint"] } : defaultAppearance;
 
 export async function sessionAppearance(): Promise<Appearance> {
+  return (await sessionShell()).appearance;
+}
+
+/**
+ * Appearance and whether someone is signed in (wave 16, I1): a visitor gets
+ * the page without any menu from the first paint.
+ */
+export async function sessionShell(): Promise<{ appearance: Appearance; signedIn: boolean }> {
   try {
     const session = await getAuth().api.getSession({ headers: await headers() });
-    if (!session) return defaultAppearance;
+    if (!session) return { appearance: defaultAppearance, signedIn: false };
+    return { signedIn: true, appearance: await clubAppearance(session.session.id, session.user.id) };
+  } catch {
+    return { appearance: defaultAppearance, signedIn: false };
+  }
+}
+async function clubAppearance(sessionId: string, userId: string): Promise<Appearance> {
+  try {
     return read(
       (
         await getDb().query(
           "SELECT o.theme_palette,o.theme_tint FROM active_context c JOIN organization o ON o.id=c.organization_id WHERE c.session_id=$1 AND c.user_id=$2 AND o.kind='club'",
-          [session.session.id, session.user.id],
+          [sessionId, userId],
         )
       ).rows[0],
     );

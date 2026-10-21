@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
   expect(
@@ -31,7 +32,7 @@ test("real registration builder, family application, attachment, complement, adm
     await db.query('DELETE FROM "rateLimit"');
     const password = "Registration-fixture-2026!";
     async function signup(target: Page, name: string) {
-      const r = await target.request.post("/api/auth/sign-up/email", {
+      const r = await signUpVia(target, db, {
         headers: { origin },
         data: {
           name,

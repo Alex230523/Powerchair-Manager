@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn, signUpVia } from "../support/session";
 
 /**
  * Wave 15 (C2): an ADEPS grant, the standard check-list, a step given to the
@@ -21,14 +22,10 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     coachPage = await coachContext.newPage();
   const email = `grants-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Grants president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Grants president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -38,7 +35,7 @@ test("grant file: standard check-list, a step for the coach, his home, next year
       }
     }
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
-    const r = await coachPage.request.post("/api/auth/sign-up/email", {
+    const r = await signUpVia(coachPage, db, {
       headers: { origin },
       data: { name: "Sam Coach", email: `grants-coach-${Date.now()}@example.test`, password: "Browser-test-passphrase-2026!" },
     });

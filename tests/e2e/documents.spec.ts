@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 test("unverified accounts, document requests, deposit, review, versions and generated template", async ({
   page,
@@ -14,7 +15,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
   try {
     await db.query('DELETE FROM "rateLimit"');
     const password = "Documents-test-fixture-2026!";
-    const signup = await page.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(page, db, {
       headers: { origin },
       data: {
         name: "Document President",
@@ -25,9 +26,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
     expect(signup.status()).toBe(200);
     const admin = (await signup.json()).user;
     expect(admin.emailVerified).toBe(false);
-    const playerSignup = await playerPage.request.post(
-      "/api/auth/sign-up/email",
-      {
+    const playerSignup = await signUpVia(playerPage, db, {
         headers: { origin },
         data: {
           name: "Autonomous Player",

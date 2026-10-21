@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (2.8): budget lines with their percentage and colour, the ledger
@@ -19,14 +20,10 @@ test("finance and dues: budget progress, ledger, collection bar, overdue icon, r
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `finance-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Finance president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Finance president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
