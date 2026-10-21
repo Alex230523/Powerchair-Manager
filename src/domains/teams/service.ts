@@ -24,6 +24,8 @@ export const teamsCommand = z.discriminatedUnion("action", [
     level: text(80),
     homeLocation: text(160),
     color: z.enum(teamColors).nullable(),
+    /** Places in the team (wave 16, R1); null: no limit. */
+    capacity: z.number().int().min(1).max(100).nullable().default(null),
   }),
   z.object({
     action: z.literal("settings"),
@@ -35,6 +37,12 @@ export const teamsCommand = z.discriminatedUnion("action", [
     color: z.enum(teamColors).nullable(),
     staffContactId: z.uuid().nullable(),
     archived: z.boolean(),
+    capacity: z.number().int().min(1).max(100).nullable().default(null),
+  }),
+  /** Settings > Activities > Places per team: every team of the season at once. */
+  z.object({
+    action: z.literal("capacities"),
+    items: z.array(z.object({ id: z.uuid(), capacity: z.number().int().min(1).max(100).nullable() })).min(1).max(100),
   }),
   /** Moves a player: closes the current assignment the day before, opens the new one. */
   z.object({
@@ -46,7 +54,8 @@ export const teamsCommand = z.discriminatedUnion("action", [
     keep: z.boolean(),
   }),
 ]);
-export type TeamsCommand = z.infer<typeof teamsCommand>;
+/** Input shape: a caller may leave out the places (no limit). */
+export type TeamsCommand = z.input<typeof teamsCommand>;
 
 type Scope = { c: PoolClient; org: string; userId: string; role: string; teamId: string | null; manage: boolean; mfa: boolean };
 async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) => Promise<T>, expected?: string) {
@@ -99,6 +108,8 @@ export type TeamCard = {
   archived: boolean;
   staff_contact_id: string | null;
   staff_contact_name: string | null;
+  /** Places (wave 16, R1), null: no limit. */
+  capacity: number | null;
   players: number;
   /** Attendance over the last 30 days on closed registers, in percent, or null. */
   attendance: number | null;
@@ -106,8 +117,10 @@ export type TeamCard = {
   next_event: { id: string; title: string; kind: string; starts_at: string } | null;
   coaches: { id: string; full_name: string; role: string }[];
 };
+/** Current players of team t (one per person), the figure the places are compared with. */
+export const playersSql = `(SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=t.id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active')`;
 const cardSql = `
-  SELECT t.id,t.name,t.season_id,t.category,t.level,t.home_location,t.color,t.archived,t.staff_contact_id,sc.full_name AS staff_contact_name,
+  SELECT t.id,t.name,t.season_id,t.category,t.level,t.home_location,t.color,t.archived,t.staff_contact_id,sc.full_name AS staff_contact_name,t.capacity,
     (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=t.id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active') AS players,
     (SELECT CASE WHEN count(*)=0 THEN NULL ELSE round(100.0*count(*) FILTER (WHERE i.actual IN ('present','late','early'))/count(*))::int END
        FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id JOIN calendar_event e ON e.id=r.event_id
@@ -179,8 +192,11 @@ export async function teamDetail(db: Pool, p: Principal, id: string) {
       )
     ).rows as { membership_id: string; profile_id: string; full_name: string; role: string; starts_on: string }[];
     const others = (
-      await s.c.query("SELECT id,name,color FROM team WHERE organization_id=$1 AND season_id=$2 AND id<>$3 AND NOT archived ORDER BY name", [s.org, team.season_id, id])
-    ).rows as { id: string; name: string; color: TeamColor | null }[];
+      await s.c.query(
+        `SELECT t.id,t.name,t.color,t.capacity,${playersSql} AS players FROM team t WHERE t.organization_id=$1 AND t.season_id=$2 AND t.id<>$3 AND NOT t.archived ORDER BY t.name`,
+        [s.org, team.season_id, id],
+      )
+    ).rows as { id: string; name: string; color: TeamColor | null; capacity: number | null; players: number }[];
     const people = s.manage
       ? ((await s.c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' ORDER BY full_name", [s.org])).rows as { id: string; full_name: string }[])
       : [];
@@ -200,8 +216,8 @@ export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, ex
             throw new AccessError("NOT_FOUND", 404);
           const id = (
             await s.c.query(
-              "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
-              [s.org, cmd.seasonId, cmd.name, cmd.category, cmd.level, cmd.homeLocation, cmd.color],
+              "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color,capacity) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+              [s.org, cmd.seasonId, cmd.name, cmd.category, cmd.level, cmd.homeLocation, cmd.color, cmd.capacity ?? null],
             )
           ).rows[0].id as string;
           await audit(s, "team.create", id, { name: cmd.name, color: cmd.color });
@@ -211,12 +227,20 @@ export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, ex
           if (cmd.staffContactId && !(await s.c.query("SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2", [cmd.staffContactId, s.org])).rowCount)
             throw new AccessError("NOT_FOUND", 404);
           const changed = await s.c.query(
-            "UPDATE team SET name=$3,category=$4,level=$5,home_location=$6,color=$7,staff_contact_id=$8,archived=$9 WHERE id=$1 AND organization_id=$2",
-            [cmd.id, s.org, cmd.name, cmd.category, cmd.level, cmd.homeLocation, cmd.color, cmd.staffContactId, cmd.archived],
+            "UPDATE team SET name=$3,category=$4,level=$5,home_location=$6,color=$7,staff_contact_id=$8,archived=$9,capacity=$10 WHERE id=$1 AND organization_id=$2",
+            [cmd.id, s.org, cmd.name, cmd.category, cmd.level, cmd.homeLocation, cmd.color, cmd.staffContactId, cmd.archived, cmd.capacity ?? null],
           );
           if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
-          await audit(s, "team.settings", cmd.id, { name: cmd.name, color: cmd.color, archived: cmd.archived });
+          await audit(s, "team.settings", cmd.id, { name: cmd.name, color: cmd.color, archived: cmd.archived, capacity: cmd.capacity ?? null });
           return { id: cmd.id };
+        }
+        case "capacities": {
+          for (const item of cmd.items) {
+            const changed = await s.c.query("UPDATE team SET capacity=$3 WHERE id=$1 AND organization_id=$2", [item.id, s.org, item.capacity]);
+            if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
+          }
+          await audit(s, "team.capacities", s.org, { items: cmd.items });
+          return { id: s.org };
         }
         case "move": {
           // Destination: a team of this club, open, in the same season as the current one.
@@ -250,6 +274,8 @@ export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, ex
             )
           ).rows[0].id as string;
           await audit(s, "team.move", cmd.profileId, { from: cmd.fromTeamId, to: to.id, effectiveOn: cmd.effectiveOn, keep: cmd.keep });
+          // Over its places after the move (wave 16, R1): said, never blocked.
+          const fill = (await s.c.query(`SELECT t.capacity,${playersSql} AS players FROM team t WHERE t.id=$1`, [to.id])).rows[0] as { capacity: number | null; players: number };
           const undo = await offerUndo(s.c, s.org, s.userId, "move", cmd.profileId, {
             created: id,
             previous:
@@ -257,7 +283,7 @@ export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, ex
                 ? { id: current.id, ends_on: current.ends_on, closed_at: current.closed_at ? new Date(current.closed_at).toISOString() : null, cancelled: current.cancelled }
                 : null,
           });
-          return { id, undo };
+          return { id, undo, over: fill.capacity !== null && fill.players > fill.capacity };
         }
       }
     },

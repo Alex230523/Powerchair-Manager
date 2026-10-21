@@ -6989,6 +6989,52 @@ ul.task-list {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* ---------- Places per team (wave 16, R1) ---------- */
+.team-places {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.team-places-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.team-places-text .badge {
+  margin-left: 0;
+}
+.places-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.places-bar > span {
+  display: block;
+  height: 100%;
+  width: var(--fill, 0%);
+  background: var(--primary);
+}
+.places-bar[data-state="last"] > span {
+  background: var(--warning);
+}
+.places-bar[data-state="full"] > span {
+  background: var(--danger);
+}
+.team-sheet-meta .team-places {
+  margin-top: var(--space-2);
+  max-width: 280px;
+}
+.places-input {
+  width: 5rem;
+  min-height: 2.25rem;
+  margin: 0;
+  text-align: right;
+}
+
 /* ---------- Tournaments (21/10/2026) ---------- */
 .year-picker {
   display: inline-flex;

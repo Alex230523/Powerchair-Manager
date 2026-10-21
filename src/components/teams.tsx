@@ -16,11 +16,42 @@ import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
+import { cssVars } from "./css-vars";
 
 type View = Awaited<ReturnType<typeof teamsView>>;
 type Detail = Awaited<ReturnType<typeof teamDetail>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const todayIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+const fillIn = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));
+/** The places field of a team form: a number, or nothing for no limit. */
+const capacityOf = (f: FormData) => {
+  const v = String(f.get("capacity") ?? "").trim();
+  return v ? Number(v) : null;
+};
+
+/** "8 sur 10 places", a fine bar, and a badge at one place left or when full (wave 16, R1). */
+export function TeamPlaces({ locale, players, capacity }: { locale: Locale; players: number; capacity: number | null }) {
+  const p = (teamsCopy[locale] as (typeof teamsCopy)["fr"]).places;
+  if (capacity === null) return null;
+  const free = capacity - players;
+  return (
+    <span className="team-places">
+      <span className="team-places-text">
+        {fillIn(p.of, { n: players, max: capacity })}
+        {free < 0 ? (
+          <Badge tone="danger">{fillIn(p.over, { n: -free })}</Badge>
+        ) : free === 0 ? (
+          <Badge tone="danger">{p.full}</Badge>
+        ) : free === 1 ? (
+          <Badge tone="warning">{p.lastOne}</Badge>
+        ) : null}
+      </span>
+      <span className="places-bar" aria-hidden="true" data-state={free <= 0 ? "full" : free === 1 ? "last" : "ok"}>
+        <span style={cssVars({ fill: `${Math.min(100, Math.round((100 * players) / capacity))}%` })} />
+      </span>
+    </span>
+  );
+}
 
 function ColorPicker({ name, value, labels, noColor }: { name: string; value: string | null; labels: Record<string, string>; noColor: string }) {
   const [chosen, setChosen] = useState(value ?? "");
@@ -79,6 +110,12 @@ function TeamForm({
         <label>
           {t.place}
           <input name="homeLocation" maxLength={160} defaultValue={team?.home_location ?? ""} />
+        </label>
+      </div>
+      <div className="form-pair">
+        <label>
+          {(teamsCopy[locale] as (typeof teamsCopy)["fr"]).places.capacity}
+          <input name="capacity" type="number" min={1} max={100} inputMode="numeric" defaultValue={team?.capacity ?? ""} />
         </label>
       </div>
       <p className="muted small">{t.color}</p>
@@ -156,6 +193,7 @@ export function Teams({ locale }: { locale: Locale }) {
                 </span>
                 <span className="team-card-sub">{[team.category, team.level].filter(Boolean).join(" · ") || " "}</span>
               </Link>
+              <TeamPlaces locale={locale} players={team.players} capacity={team.capacity} />
               <dl className="team-stats">
                 <div>
                   <dt>{t.players}</dt>
@@ -220,6 +258,7 @@ export function Teams({ locale }: { locale: Locale }) {
                   level: String(f.get("level") ?? ""),
                   homeLocation: String(f.get("homeLocation") ?? ""),
                   color: String(f.get("color") ?? "") || null,
+                  capacity: capacityOf(f),
                 },
                 t.saved,
               ).then((ok) => ok && setCreating(false))
@@ -268,6 +307,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
               {team.players} {t.players.toLowerCase()}
             </span>
             {team.staff_contact_name && <span> · {sh.contact} : {team.staff_contact_name}</span>}
+            <TeamPlaces locale={locale} players={team.players} capacity={team.capacity} />
           </span>
         }
       />
@@ -355,6 +395,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
                   color: String(f.get("color") ?? "") || null,
                   staffContactId: String(f.get("staffContactId") ?? "") || null,
                   archived: f.get("archived") === "on",
+                  capacity: capacityOf(f),
                 },
                 t.saved,
               )
@@ -374,7 +415,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
             postFor({ organizationId: data.organization_id, action: "move", ...body }, sh.moved).then((r) => {
               if (!r) return;
               setMoving(null);
-              undoToast(locale, toastCopy[locale].moved, r.undo, data.organization_id, reload);
+              undoToast(locale, (r as { over?: boolean }).over ? t.places.movedOver : toastCopy[locale].moved, r.undo, data.organization_id, reload);
             })
           }
         />
@@ -396,12 +437,17 @@ export function MoveDialog({
   locale: Locale;
   player: { profile_id: string; full_name: string };
   fromTeamId: string | null;
-  others: { id: string; name: string; color?: string | null }[];
+  others: { id: string; name: string; color?: string | null; capacity?: number | null; players?: number }[];
   busy: boolean;
   close: () => void;
   move: (body: { profileId: string; fromTeamId: string | null; toTeamId: string; effectiveOn: string; keep: boolean }) => Promise<unknown>;
 }) {
   const sh = (teamsCopy[locale] as (typeof teamsCopy)["fr"]).sheet;
+  const places = (teamsCopy[locale] as (typeof teamsCopy)["fr"]).places;
+  const [to, setTo] = useState(others[0]?.id ?? "");
+  const target = others.find((o) => o.id === to);
+  // A full destination is said, never blocked (wave 16, R1).
+  const full = target && target.capacity != null && (target.players ?? 0) >= target.capacity;
   return (
     <Modal title={sh.moveTitle.replace("{name}", player.full_name)} close={close}>
       {others.length ? (
@@ -421,12 +467,17 @@ export function MoveDialog({
         >
           <label>
             {sh.destination}
-            <select name="to" required defaultValue={others[0].id}>
+            <select name="to" required value={to} onChange={(e) => setTo(e.target.value)}>
               {others.map((o) => (
                 <option key={o.id} value={o.id}>{o.name}</option>
               ))}
             </select>
           </label>
+          {full && (
+            <p className="notice" role="status">
+              {fillIn(places.moveFull, { team: target.name, n: target.players ?? 0, max: target.capacity ?? 0 })}
+            </p>
+          )}
           <label>
             {sh.effectiveOn}
             <input name="date" type="date" required defaultValue={todayIso()} />

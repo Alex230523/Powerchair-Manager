@@ -132,6 +132,7 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   coursesExpiring: "badgeCheck",
   documentsMissing: "document",
   documentsExpiring: "document",
+  teamsOverCapacity: "team",
 };
 /** The four figures a president reads first; the rest unfolds behind "Tous les chiffres". */
 const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendingResponses", "waitingList"];

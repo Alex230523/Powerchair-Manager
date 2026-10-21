@@ -236,6 +236,15 @@ export async function computeFor(
     );
   }
 
+  // Teams over their places (wave 16, R1): only for those who manage teams.
+  if (club && has("teams.manage"))
+    counts.teamsOverCapacity = await count(
+      c,
+      `SELECT count(*) FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT s.archived AND s.starts_on<=CURRENT_DATE AND s.ends_on>=CURRENT_DATE AND t.capacity IS NOT NULL
+         AND t.capacity<(SELECT count(DISTINCT m.profile_id) FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=t.id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active')`,
+      [org],
+    );
+
   // Equipment: chairs in maintenance or due for service within 14 days.
   if (club && on("equipment") && has("equipment.manage")) {
     scopes.push("equipment");

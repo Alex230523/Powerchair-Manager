@@ -204,7 +204,8 @@ async function records(s: Scope) {
   ).rows as Relation[];
   const teams = (
     await s.client.query(
-      "SELECT t.*,s.starts_on::text,s.ends_on::text,s.archived AS season_archived FROM team t JOIN season s ON s.id=t.season_id AND s.organization_id=t.organization_id WHERE t.organization_id=$1 ORDER BY s.starts_on DESC,t.name",
+      // Current players of each team, compared with its places when moving someone (wave 16, R1).
+      "SELECT t.*,s.starts_on::text,s.ends_on::text,s.archived AS season_archived,(SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=t.id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active') AS players FROM team t JOIN season s ON s.id=t.season_id AND s.organization_id=t.organization_id WHERE t.organization_id=$1 ORDER BY s.starts_on DESC,t.name",
       [org],
     )
   ).rows as Team[];

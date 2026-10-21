@@ -18,6 +18,7 @@ import { errors } from "./access-copy";
 import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
+import { teamsCopy } from "./teams-copy";
 import { Badge, Tabs, EmptyState } from "./ui";
 import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
@@ -818,7 +819,8 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
             };
             await refresh();
             setMessage(t.saved);
-            undoToast(locale, toastCopy[locale].moved, v.undo, view.context.id, refresh);
+            // Over its places after the move (wave 16, R1): said, never blocked.
+            undoToast(locale, v.over ? teamsCopy[locale].places.movedOver : toastCopy[locale].moved, v.undo, view.context.id, refresh);
           }}
         />
       )}
