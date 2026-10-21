@@ -241,6 +241,22 @@ export function PackagesPanel({ locale, data, busy, post }: { locale: Locale; da
 }
 
 /* ---------- A task line (sponsor condition or grant check-list) ---------- */
+/** A ticked box shows at once; the file catches up when the server answers (or the box goes back). */
+function useTick() {
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  const ticked = (x: { id: string; status: string }) => pending[x.id] ?? x.status === "done";
+  const tick = (id: string, done: boolean, send: () => Promise<unknown>) => {
+    setPending((p) => ({ ...p, [id]: done }));
+    void send().finally(() =>
+      setPending((p) => {
+        const next = { ...p };
+        delete next[id];
+        return next;
+      }),
+    );
+  };
+  return { ticked, tick };
+}
 export function TaskList({
   locale,
   tasks,
@@ -271,6 +287,7 @@ export function TaskList({
   const s = sponsorsCopy[locale],
     t = fundingCopy[locale] as (typeof fundingCopy)["fr"];
   const [editing, setEditing] = useState<TaskRow | "new" | null>(null);
+  const { ticked, tick } = useTick();
   async function upload(task: string, file: File) {
     const d = new FormData();
     d.set("file", file);
@@ -313,9 +330,9 @@ export function TaskList({
                 <label className="check task-check">
                   <input
                     type="checkbox"
-                    checked={x.status === "done"}
+                    checked={ticked(x)}
                     disabled={busy}
-                    onChange={(e) => void post({ organizationId, action: "taskDone", id: x.id, done: e.target.checked }, t.saved)}
+                    onChange={(e) => tick(x.id, e.target.checked, () => post({ organizationId, action: "taskDone", id: x.id, done: e.target.checked }, t.saved))}
                   />
                   <span className="task-title">{x.title}</span>
                 </label>
@@ -605,6 +622,7 @@ export function FundingTasks({ locale }: { locale: Locale }) {
   const { busy, message, post } = usePost("/api/funding", reload, setError, failure);
   const [mine, setMine] = useState(false),
     [show, setShow] = useState<"todo" | "done">("todo");
+  const { ticked, tick } = useTick();
   if (!data)
     return (
       <main id="main" className="access funding-tasks">
@@ -639,7 +657,7 @@ export function FundingTasks({ locale }: { locale: Locale }) {
               return (
                 <li key={x.id} data-status={x.status}>
                   <label className="check task-check">
-                    <input type="checkbox" checked={x.status === "done"} disabled={busy} onChange={(e) => void post({ organizationId: data.organization_id, action: "taskDone", id: x.id, done: e.target.checked }, t.saved)} />
+                    <input type="checkbox" checked={ticked(x)} disabled={busy} onChange={(e) => tick(x.id, e.target.checked, () => post({ organizationId: data.organization_id, action: "taskDone", id: x.id, done: e.target.checked }, t.saved))} />
                     <span className="task-title">{x.title}</span>
                   </label>
                   <p className="task-meta muted small">
