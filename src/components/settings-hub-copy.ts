@@ -24,6 +24,7 @@ type Copy = {
   languageIntro: string;
   themeTitle: string;
   themeIntro: string;
+  displayIntro: string;
   privacyTitle: string;
   privacyText: string;
   privacyLink: string;
@@ -53,6 +54,7 @@ const fr: Copy = {
   languageIntro: "La langue de l’application et des emails que vous recevez.",
   themeTitle: "Thème",
   themeIntro: "Clair ou sombre, mémorisé sur cet appareil.",
+  displayIntro: "Texte plus grand et contraste renforcé, appliqués tout de suite et mémorisés sur cet appareil.",
   privacyTitle: "Confidentialité",
   privacyText: "Demandes d’accès, d’export et d’effacement, durées de conservation des données.",
   privacyLink: "Ouvrir la page Confidentialité",
@@ -69,6 +71,7 @@ const fr: Copy = {
     photo: { title: "Photo de profil", keywords: "avatar image portrait" },
     language: { title: "Langue", keywords: "français néerlandais anglais langue emails" },
     theme: { title: "Thème clair ou sombre", keywords: "mode sombre couleurs apparence" },
+    display: { title: "Taille du texte et contraste", keywords: "grand texte lisibilité malvoyant contraste police" },
     selfCoach: { title: "Je suis aussi coach", keywords: "président entraîneur coach" },
     inbox: { title: "Boîte de réception", keywords: "notifications messages non lues" },
     notifPreferences: { title: "Préférences de notification", keywords: "email application recevoir catégories" },
@@ -110,6 +113,7 @@ const nl: Copy = {
   languageIntro: "De taal van de applicatie en van de e-mails die je ontvangt.",
   themeTitle: "Thema",
   themeIntro: "Licht of donker, onthouden op dit toestel.",
+  displayIntro: "Grotere tekst en verhoogd contrast, meteen toegepast en onthouden op dit toestel.",
   privacyTitle: "Privacy",
   privacyText: "Verzoeken tot inzage, export en wissing, bewaartermijnen van gegevens.",
   privacyLink: "De privacypagina openen",
@@ -126,6 +130,7 @@ const nl: Copy = {
     photo: { title: "Profielfoto", keywords: "avatar foto portret" },
     language: { title: "Taal", keywords: "frans nederlands engels taal e-mails" },
     theme: { title: "Licht of donker thema", keywords: "donkere modus kleuren weergave" },
+    display: { title: "Tekstgrootte en contrast", keywords: "grote tekst leesbaarheid slechtziend contrast lettertype" },
     selfCoach: { title: "Ik ben ook coach", keywords: "voorzitter trainer coach" },
     inbox: { title: "Inbox", keywords: "meldingen berichten ongelezen" },
     notifPreferences: { title: "Meldingsvoorkeuren", keywords: "e-mail applicatie ontvangen categorieën" },
@@ -167,6 +172,7 @@ const en: Copy = {
   languageIntro: "The language of the application and of the emails you receive.",
   themeTitle: "Theme",
   themeIntro: "Light or dark, remembered on this device.",
+  displayIntro: "Larger text and stronger contrast, applied at once and remembered on this device.",
   privacyTitle: "Privacy",
   privacyText: "Access, export and erasure requests, data retention periods.",
   privacyLink: "Open the Privacy page",
@@ -183,6 +189,7 @@ const en: Copy = {
     photo: { title: "Profile photo", keywords: "avatar picture portrait" },
     language: { title: "Language", keywords: "french dutch english language emails" },
     theme: { title: "Light or dark theme", keywords: "dark mode colours appearance" },
+    display: { title: "Text size and contrast", keywords: "large text readability low vision contrast font" },
     selfCoach: { title: "I also coach", keywords: "president trainer coach" },
     inbox: { title: "Inbox", keywords: "notifications messages unread" },
     notifPreferences: { title: "Notification preferences", keywords: "email application receive categories" },

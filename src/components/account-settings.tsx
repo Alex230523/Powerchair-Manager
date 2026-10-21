@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { accessCopy, errors } from "./access-copy";
-import { contextChanged, initials, shellCopy, ThemeChoice } from "./app-shell";
+import { contextChanged, DisplayChoice, initials, shellCopy, ThemeChoice } from "./app-shell";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { Button, Card } from "./ui";
 
@@ -134,6 +134,9 @@ export function AccountPanels({ locale }: { locale: Locale }) {
       </Card>
       <Card title={h.themeTitle} subtitle={h.themeIntro} labelledBy="settings-theme" headingId="settings-theme">
         <ThemeChoice t={shellCopy[locale]} />
+      </Card>
+      <Card title={shellCopy[locale].textSize} subtitle={h.displayIntro} labelledBy="settings-display" headingId="settings-display">
+        <DisplayChoice t={shellCopy[locale]} />
       </Card>
     </>
   );

@@ -36,7 +36,8 @@ export function contextChanged() {
   }
 }
 // Runs before paint (see layout) so the stored theme never flashes.
-export const themeScript = `try{var t=localStorage.getItem("pfm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+// Text size and contrast (wave 15, C4) are applied the same way.
+export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast");if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
 const darkQuery = "(prefers-color-scheme: dark)";
 function subscribeTheme(change: () => void) {
   const media = window.matchMedia(darkQuery);
@@ -72,6 +73,58 @@ export function ThemeChoice({ t }: { t: Copy }) {
       <button type="button" aria-pressed={dark} onClick={() => setTheme("dark")}>
         <Icon name="moon" size={16} /> {t.themeDark}
       </button>
+    </div>
+  );
+}
+/* Text size and contrast (wave 15, C4): kept on this device, applied before paint by themeScript. */
+const textSizes = ["normal", "large", "xlarge"] as const;
+type TextSize = (typeof textSizes)[number];
+const contrastQuery = "(prefers-contrast: more)";
+function subscribeDisplay(change: () => void) {
+  const media = window.matchMedia(contrastQuery);
+  media.addEventListener("change", change);
+  window.addEventListener("pfm-display", change);
+  return () => {
+    media.removeEventListener("change", change);
+    window.removeEventListener("pfm-display", change);
+  };
+}
+function displayState() {
+  const d = document.documentElement.dataset;
+  const size = (textSizes as readonly string[]).includes(d.textSize ?? "") ? (d.textSize as TextSize) : "normal";
+  const more = d.contrast ? d.contrast === "more" : window.matchMedia(contrastQuery).matches;
+  return `${size}|${more ? "more" : "normal"}`;
+}
+function setDisplay(key: "textSize" | "contrast", value: string) {
+  const d = document.documentElement.dataset;
+  if (key === "textSize" && value === "normal") delete d.textSize;
+  else d[key] = value;
+  try {
+    window.localStorage.setItem(key === "textSize" ? "pfm-text-size" : "pfm-contrast", value);
+  } catch {
+    /* Kept for this page only. */
+  }
+  window.dispatchEvent(new Event("pfm-display"));
+}
+/** Text size and stronger contrast, in the account menu and in Settings > My account. */
+export function DisplayChoice({ t }: { t: Copy }) {
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
+  if (state === null) return null;
+  const [size, contrast] = state.split("|");
+  const label: Record<TextSize, string> = { normal: t.textNormal, large: t.textLarge, xlarge: t.textXLarge };
+  return (
+    <div className="display-choice">
+      <div className="segmented text-size" role="group" aria-label={t.textSize}>
+        {textSizes.map((s) => (
+          <button key={s} type="button" aria-pressed={size === s} onClick={() => setDisplay("textSize", s)}>
+            {label[s]}
+          </button>
+        ))}
+      </div>
+      <label className="check">
+        <input type="checkbox" data-nodirty="" checked={contrast === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
+        {t.contrast}
+      </label>
     </div>
   );
 }
@@ -390,6 +443,10 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
               <div className="menu-row">
                 <span className="menu-heading">{t.theme}</span>
                 <ThemeChoice t={t} />
+              </div>
+              <div className="menu-row">
+                <span className="menu-heading">{t.textSize}</span>
+                <DisplayChoice t={t} />
               </div>
               {state && (
                 <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
