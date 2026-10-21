@@ -52,11 +52,21 @@ test("display: very large text and stronger contrast", async ({ page }) => {
     const base = await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
     expect(base).toBe(14);
     await page.locator(".profile-menu > summary").click();
-    await page.getByRole("group", { name: "Taille du texte" }).getByRole("button", { name: "Très grand" }).click();
+    // Wave 16 (M1): a compact list in the account menu, and a small contrast box.
+    await page.locator(".profile-menu-body").getByLabel("Taille du texte", { exact: true }).selectOption("xlarge");
     await expect(page.locator("html")).toHaveAttribute("data-text-size", "xlarge");
     expect(await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize))).toBe(17.5);
     await page.getByRole("checkbox", { name: "Contraste renforcé" }).check();
     await expect(page.locator("html")).toHaveAttribute("data-contrast", "more");
+    const box = (await page.locator(".profile-menu-body").getByRole("checkbox", { name: "Contraste renforcé" }).boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(20);
+    // In very large text the open menu still fits the sidebar, at 1440 and 1024 px.
+    for (const width of [1440, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect((await page.locator(".profile-menu-body").boundingBox())!.width, `menu at ${width}`).toBeLessThanOrEqual(240);
+    }
+    await axe(page, "account menu open, very large text");
+    await page.setViewportSize({ width: 1280, height: 900 });
 
     // 2. Kept on this device and applied before paint on the next page.
     await page.reload();

@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
-import { shellCopy } from "./shell-copy";
+import { languageNames, shellCopy } from "./shell-copy";
 import { CommandPalette, scopeFocusEvent } from "./command-palette";
 import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
@@ -62,19 +62,38 @@ function setTheme(next: "light" | "dark") {
   }
   window.dispatchEvent(new Event("pfm-theme"));
 }
-/** Light or dark, as a segmented pair in the account menu. */
+/** Light or dark: two round icon buttons (wave 16, M1), each named for screen readers and in a tooltip. */
 export function ThemeChoice({ t }: { t: Copy }) {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => null);
   if (dark === null) return null;
   return (
-    <div className="segmented account-theme" role="group" aria-label={t.theme}>
-      <button type="button" aria-pressed={!dark} onClick={() => setTheme("light")}>
-        <Icon name="sun" size={16} /> {t.themeLight}
+    <div className="theme-icons" role="group" aria-label={t.theme}>
+      <button type="button" className="theme-icon" aria-pressed={!dark} aria-label={t.themeLightName} title={t.themeLightName} onClick={() => setTheme("light")}>
+        <Icon name="sun" size={16} />
       </button>
-      <button type="button" aria-pressed={dark} onClick={() => setTheme("dark")}>
-        <Icon name="moon" size={16} /> {t.themeDark}
+      <button type="button" className="theme-icon" aria-pressed={dark} aria-label={t.themeDarkName} title={t.themeDarkName} onClick={() => setTheme("dark")}>
+        <Icon name="moon" size={16} />
       </button>
     </div>
+  );
+}
+/** The language as a compact list (wave 16, M1): choosing one opens the same page in that language. */
+export function LanguageChoice({ t, locale, id }: { t: Copy; locale: Locale; id: string }) {
+  const path = usePathname(),
+    router = useRouter();
+  return (
+    <select
+      id={id}
+      className="compact-select"
+      value={locale}
+      onChange={(e) => router.push(path.replace(/^\/(fr|nl|en)(?=\/|$)/, `/${e.target.value}`))}
+    >
+      {(["fr", "nl", "en"] as const).map((l) => (
+        <option key={l} value={l} lang={l}>
+          {languageNames[l]}
+        </option>
+      ))}
+    </select>
   );
 }
 /* Text size and contrast (wave 15, C4): kept on this device, applied before paint by themeScript. */
@@ -107,25 +126,45 @@ function setDisplay(key: "textSize" | "contrast", value: string) {
   }
   window.dispatchEvent(new Event("pfm-display"));
 }
-/** Text size and stronger contrast, in the account menu and in Settings > My account. */
-export function DisplayChoice({ t }: { t: Copy }) {
+/** Text size as a compact list (wave 16, M1). */
+export function TextSizeChoice({ t, id }: { t: Copy; id: string }) {
   const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
   if (state === null) return null;
-  const [size, contrast] = state.split("|");
+  const size = state.split("|")[0];
   const label: Record<TextSize, string> = { normal: t.textNormal, large: t.textLarge, xlarge: t.textXLarge };
   return (
+    <select id={id} className="compact-select" data-nodirty="" value={size} onChange={(e) => setDisplay("textSize", e.target.value)}>
+      {textSizes.map((s) => (
+        <option key={s} value={s}>
+          {label[s]}
+        </option>
+      ))}
+    </select>
+  );
+}
+/** Stronger contrast: an 18 px box; the whole label is the 44 px target (wave 16, M1). */
+export function ContrastChoice({ t }: { t: Copy }) {
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
+  if (state === null) return null;
+  return (
+    <label className="check small-check">
+      <input type="checkbox" data-nodirty="" checked={state.split("|")[1] === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
+      {t.contrast}
+    </label>
+  );
+}
+/** Text size and stronger contrast together, in Settings > My account. */
+export function DisplayChoice({ t }: { t: Copy }) {
+  const id = useId();
+  return (
     <div className="display-choice">
-      <div className="segmented text-size" role="group" aria-label={t.textSize}>
-        {textSizes.map((s) => (
-          <button key={s} type="button" aria-pressed={size === s} onClick={() => setDisplay("textSize", s)}>
-            {label[s]}
-          </button>
-        ))}
+      <div className="menu-row">
+        <label className="menu-heading" htmlFor={id}>
+          {t.textSize}
+        </label>
+        <TextSizeChoice t={t} id={id} />
       </div>
-      <label className="check">
-        <input type="checkbox" data-nodirty="" checked={contrast === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
-        {t.contrast}
-      </label>
+      <ContrastChoice t={t} />
     </div>
   );
 }
@@ -436,38 +475,37 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                   <Icon name="userRound" size={16} /> {t.myAccount}
                 </Link>
               )}
-              <Link className="menu-link" href={`/${locale}/access`}>
-                <Icon name="lock" size={16} /> {t.access}
-              </Link>
               {state && (
                 <Link className="menu-link" href={`/${locale}/settings`}>
                   <Icon name="settings" size={16} /> {t.settings}
                 </Link>
               )}
+              {/* Wave 16 (M1): one line per setting, label left, compact control right. */}
+              <hr className="menu-separator" />
               <div className="menu-row">
-                <span className="menu-heading">
+                <label className="menu-heading" htmlFor="account-language">
                   <Icon name="globe" size={16} /> {t.language}
-                </span>
-                <span className="menu-langs">
-                  {(["fr", "nl", "en"] as const).map((l) => (
-                    <Link key={l} href={localePath(l)} aria-current={l === locale ? "true" : undefined} lang={l}>
-                      {l.toUpperCase()}
-                    </Link>
-                  ))}
-                </span>
+                </label>
+                <LanguageChoice t={t} locale={locale} id="account-language" />
               </div>
               <div className="menu-row">
                 <span className="menu-heading">{t.theme}</span>
                 <ThemeChoice t={t} />
               </div>
               <div className="menu-row">
-                <span className="menu-heading">{t.textSize}</span>
-                <DisplayChoice t={t} />
+                <label className="menu-heading" htmlFor="account-text-size">
+                  {t.textSize}
+                </label>
+                <TextSizeChoice t={t} id="account-text-size" />
               </div>
+              <ContrastChoice t={t} />
               {state && (
-                <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
-                  <Icon name="logOut" size={16} /> {t.signOut}
-                </button>
+                <>
+                  <hr className="menu-separator" />
+                  <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
+                    <Icon name="logOut" size={16} /> {t.signOut}
+                  </button>
+                </>
               )}
               {error && <p role="alert">{error}</p>}
             </div>
