@@ -51,6 +51,9 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     const sidebar = page.getByRole("complementary", { name: "Menu principal" });
     await expect(sidebar.locator(".brand-name")).toHaveText("Powerchair Manager");
     await expect(sidebar.locator(".brand-org")).toHaveText("Shell club");
+    // Wide screen: the drawer buttons stay hidden.
+    await expect(page.getByRole("button", { name: "Ouvrir le menu", exact: true })).toBeHidden();
+    await expect(sidebar.getByRole("button", { name: "Fermer le menu", exact: true })).toBeHidden();
     for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"]) await expect(sidebar.locator("nav summary").filter({ hasText: name })).toBeVisible();
     await expect(sidebar.locator("nav").getByRole("link", { name: "Mon espace", exact: true, includeHidden: true })).toHaveCount(0);
     await expect(page.locator("header select")).toHaveCount(1);

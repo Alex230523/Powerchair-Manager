@@ -1832,7 +1832,8 @@ caption {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.drawer-close {
+/* The drawer buttons: hidden on wide screens (the class pair wins over .icon-button, written later). */
+.icon-button.drawer-close {
   display: none;
 }
 .sidebar nav {
@@ -2088,7 +2089,7 @@ caption {
   border-bottom: 1px solid var(--border);
   font-size: var(--text-base);
 }
-.drawer-open,
+.icon-button.drawer-open,
 .topbar-mark {
   display: none;
 }
@@ -2294,13 +2295,13 @@ caption {
   body[data-drawer="open"] {
     overflow: hidden;
   }
-  .drawer-close {
+  .icon-button.drawer-close {
     display: inline-grid;
   }
   .app-content {
     margin-left: 0;
   }
-  .drawer-open,
+  .icon-button.drawer-open,
   .topbar-mark {
     display: inline-grid;
     place-items: center;
