@@ -119,7 +119,9 @@ test("statistics, Club tab: tiles, periods, weeks, ages, rings, storage and Hall
     const menu = attendance.getByRole("group", { name: "Options du graphique" });
     await expect(menu.getByRole("radio", { name: "Saison en cours" })).toBeChecked();
     await axe(page, "chart menu");
-    await menu.getByRole("radio", { name: "3 dernières saisons" }).check();
+    // Choosing a period applies it and closes the menu.
+    await menu.getByRole("radio", { name: "3 dernières saisons" }).click();
+    await expect(menu).toHaveCount(0);
     await expect(page).toHaveURL(/p-attendance=last3/);
     await expect(attendance.locator(".card-subtitle")).toHaveText("Saisons 2025-26 à 2026-27");
     await attendance.getByRole("button", { name: "Options du graphique" }).click();
