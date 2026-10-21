@@ -128,7 +128,8 @@ it("copies the places with the team into the next season", async () => {
       endsOn: new Date(Date.now() + 600 * 86400000).toISOString().slice(0, 10),
       teams: [{ teamId: lions, profiles: [] }],
       copyPlans: false,
-    } as Parameters<typeof rolloverExecute>[2],
+      archiveOld: false,
+    },
     clubA,
   );
   expect((await db.query("SELECT capacity,color FROM team WHERE organization_id=$1 AND name='Lions' AND id<>$2", [clubA, lions])).rows[0]).toEqual({ capacity: 2, color: "blue" });
