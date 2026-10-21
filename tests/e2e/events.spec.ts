@@ -32,7 +32,9 @@ test("events: button in the header, a training for Équipe A with answers, a tri
       )
     ).rows[0].id;
     await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'player',CURRENT_DATE-1)", [club, team, zoe]);
-    await db.query("INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,created_by) VALUES($1,'Bus du mardi','other',CURRENT_DATE+3,CURRENT_DATE+3,$2)", [club, user]);
+    // Brussels' day in three days, the day the form shows (UTC differs from 22:00).
+    const start = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date(Date.now() + 3 * 86400000));
+    await db.query("INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,created_by) VALUES($1,'Bus du mardi','other',$3::date,$3::date,$2)", [club, user, start]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
@@ -51,7 +53,6 @@ test("events: button in the header, a training for Équipe A with answers, a tri
     const editor = page.locator("#event-editor");
     await editor.getByLabel("Titre", { exact: true }).fill("Entraînement du mardi");
     await expect(editor.getByLabel("Type", { exact: true })).toHaveValue(/.+/);
-    const start = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date(Date.now() + 3 * 86400000));
     await editor.getByLabel("Début (heure locale)").fill(`${start}T18:00`);
     await editor.getByLabel("Fin (heure locale)").fill(`${start}T20:00`);
     await editor.getByLabel("Équipe", { exact: true }).selectOption({ label: "Équipe A" });
