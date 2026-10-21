@@ -119,7 +119,7 @@ test("statistics: monthly lines, legend, table view, headcount per season", asyn
     await monthly.getByRole("group", { name: "Voir les données" }).getByRole("button", { name: "Graphique" }).click();
 
     // 4. A team chosen: its line and the club's average dashed.
-    await page.getByLabel("Équipe", { exact: true }).selectOption(lions);
+    await page.locator("#stats-team").selectOption(lions);
     await page.getByRole("button", { name: "Afficher", exact: true }).click();
     await expect(monthly.getByRole("checkbox", { name: "Moyenne du club" })).toBeVisible();
     await expect(chart.locator("svg path[stroke-dasharray]")).toHaveCount(1);
