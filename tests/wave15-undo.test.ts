@@ -25,10 +25,10 @@ describe("undo", () => {
     expect(people).not.toContain('confirm("team"');
     expect(people).not.toContain('confirm("season"');
   });
-  it("shows the toast as a status, pauses it on hover and focus, for 8 seconds", () => {
+  it("announces the toast politely, pauses it on hover and focus, for 8 seconds", () => {
     const host = readFileSync("src/components/toast.tsx", "utf8"),
       ui = readFileSync("src/components/ui.tsx", "utf8");
-    expect(host).toContain('role="status"');
+    expect(host).toContain('aria-live="polite"');
     expect(host).toContain("const duration = 8000");
     expect(ui).toMatch(/export function Toast[\s\S]*onMouseEnter=\{onPause\}[\s\S]*onFocus=\{onPause\}/);
   });

@@ -5,7 +5,7 @@ Migration `0039_undo.sql` (ajout) : table `undo_action` (club, auteur, type, cib
 ## Messages courts (toasts)
 
 - `Toast` dans `src/components/ui.tsx` : carte inversée (`--heading` en fond, texte `--on-primary`, donc sombre en thème clair et claire en thème sombre), texte 14 px, icône, bouton texte « Annuler », bouton de fermeture.
-- `ToastHost` (`src/components/toast.tsx`), monté une fois dans la coque de l’application : en bas à droite (au-dessus de la future barre mobile grâce à `--bottom-nav-space`), dernier message seul, 8 secondes, minuterie en pause au survol et au focus, zone `role="status"` annoncée par les lecteurs d’écran, masqué à l’impression. Pleine largeur moins 16 px de marge sur téléphone, cibles de 44 px.
+- `ToastHost` (`src/components/toast.tsx`), monté une fois dans la coque de l’application : en bas à droite (au-dessus de la future barre mobile grâce à `--bottom-nav-space`), dernier message seul, 8 secondes, minuterie en pause au survol et au focus, zone `aria-live="polite"` annoncée par les lecteurs d’écran (comme un statut, sans doubler la ligne de statut de la page), masqué à l’impression. Pleine largeur moins 16 px de marge sur téléphone, cibles de 44 px.
 - `showToast()` et `undoToast()` utilisables par toute page.
 
 ## Annulation côté serveur

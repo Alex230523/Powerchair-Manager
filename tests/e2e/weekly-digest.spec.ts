@@ -88,7 +88,7 @@ test("weekly digest: settings, club moment, preview and stop link", async ({ pag
     await page.goto(`/fr/desinscription/${send}`);
     await expect(page.getByRole("heading", { name: "Résumé hebdomadaire" })).toBeVisible();
     await page.getByRole("button", { name: "Ne plus le recevoir" }).click();
-    await expect(page.getByRole("status")).toContainText("vous ne recevrez plus le résumé hebdomadaire de Digest club");
+    await expect(page.locator("main").getByRole("status")).toContainText("vous ne recevrez plus le résumé hebdomadaire de Digest club");
     await axe(page, "digest stop");
     expect((await db.query("SELECT email_enabled FROM notification_preference WHERE user_id=$1 AND category='digest'", [user])).rows[0].email_enabled).toBe(false);
   } finally {

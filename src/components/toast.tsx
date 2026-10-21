@@ -78,7 +78,8 @@ export function ToastHost({ locale }: { locale: Locale }) {
     };
   }, [toast, paused]);
   return (
-    <div className="toast-region" role="status" aria-live="polite">
+    // A polite live region (not role="status", so it never doubles a page's own status line).
+    <div className="toast-region" aria-live="polite" aria-atomic="true">
       {toast && (
         <Toast
           key={toast.key}

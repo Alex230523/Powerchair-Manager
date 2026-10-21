@@ -77,8 +77,8 @@ export async function undoExecute(db: Pool, p: Principal, input: z.infer<typeof 
     if (row.expired) throw new AccessError("UNDO_EXPIRED", 410);
     if (!allowed(row.kind, a.role, a.grants, mfaSatisfied(!!user.twoFactorEnabled))) throw new AccessError("FORBIDDEN");
     // A module switched off since: nothing comes back through it.
-    const module = { payment: "dues", chairRetire: "equipment", messageHide: "messages" }[row.kind as string];
-    if (module && (a.disabled_modules ?? []).includes(module)) throw new AccessError("MODULE_OFF");
+    const owner = ({ payment: "dues", chairRetire: "equipment", messageHide: "messages" } as Record<string, string>)[row.kind];
+    if (owner && (a.disabled_modules ?? []).includes(owner)) throw new AccessError("MODULE_OFF");
     await revert(c, a.organization_id, p.userId, row.kind, row.target_id, row.payload as never);
     await c.query("UPDATE undo_action SET used_at=now() WHERE id=$1", [row.id]);
     await audit(c, a.organization_id, p.userId, "undo." + row.kind, row.target_id);

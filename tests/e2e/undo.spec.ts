@@ -41,7 +41,8 @@ test("undo: archive a team, cancel it, too late, hover pause", async ({ page }) 
 
     // 1. One click archives (no confirmation), the message offers "Annuler".
     await page.goto("/fr/club/manage");
-    const lions = page.locator("li").filter({ has: page.getByText("Lions", { exact: true }) }).first();
+    // The team's own line in the Teams panel (a team selector elsewhere also says "Lions").
+    const lions = page.locator("#teams li").filter({ has: page.locator("strong", { hasText: /^Lions$/ }) });
     await lions.getByRole("button", { name: "Archiver", exact: true }).click();
     const toast = page.locator(".toast");
     await expect(toast).toContainText("Équipe archivée");
