@@ -2332,10 +2332,11 @@ caption {
   .search-field kbd {
     display: none;
   }
+  /* The bell stays on the first row next to the search; the capsules take a row of their own and scroll sideways. */
   .topbar-tools {
-    margin-left: 0;
+    display: contents;
   }
-  .scope-bar {
+  .topbar .scope-bar {
     order: 10;
     width: 100%;
     flex-wrap: nowrap;
