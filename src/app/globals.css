@@ -2438,6 +2438,9 @@ caption {
   gap: var(--card-gap);
 }
 /* A to-do: a small white card, tile, figure, text and chevron. */
+.todo-list > li {
+  display: grid;
+}
 .todo-card .card-body {
   padding: var(--space-4);
   height: 100%;
@@ -2504,9 +2507,18 @@ caption {
 .dash-side .stat-row-grid {
   margin-bottom: 0;
 }
+/* The side column is narrow: tighter stat cards, the tile only when there is room for it. */
 .dash-side .stat-card {
-  min-height: 112px;
-  padding: var(--space-4);
+  min-height: 104px;
+  padding: var(--space-4) var(--space-3);
+}
+.dash-side .stat-label {
+  font-size: var(--text-xs);
+}
+@media (max-width: 1440px) and (min-width: 1101px) {
+  .dash-side .stat-top .icon-tile {
+    display: none;
+  }
 }
 @media (max-width: 1100px) {
   .dash-grid {

@@ -220,19 +220,21 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
         {data.todos.length ? (
           <ul className="todo-list">
             {data.todos.slice(0, 6).map((item) => (
-              <Card as="li" key={item.key} className="todo-card" href={href(item.href)} data={{ tone: item.tone }}>
-                <span className="todo-row">
+              <li key={item.key}>
+                <Card className="todo-card" href={href(item.href)} data={{ tone: item.tone }}>
+                  <span className="todo-row">
                   <IconTile icon={todoIcons[item.key]} tone={item.tone === "info" ? "neutral" : item.tone} />
                   <span className="todo-count">{item.count}</span>
                   <span className="todo-text">
                     <strong>{t.todos[item.key].title}</strong>
                     <span>{t.todos[item.key].text}</span>
                   </span>
-                  <span className="todo-arrow" aria-hidden="true">
-                    <Icon name="arrow" size={16} />
+                    <span className="todo-arrow" aria-hidden="true">
+                      <Icon name="arrow" size={16} />
+                    </span>
                   </span>
-                </span>
-              </Card>
+                </Card>
+              </li>
             ))}
           </ul>
         ) : (
