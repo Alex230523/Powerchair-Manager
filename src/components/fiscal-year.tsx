@@ -1,5 +1,5 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import { accountsCopy } from "./accounts-copy";
 import { errors } from "./access-copy";
@@ -12,6 +12,8 @@ export function FiscalYearPanel({ locale }: { locale: Locale }) {
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? a.empty, [locale, a.empty]);
   const { data, error, setError, reload, denied } = useData<{ organization_id: string; fiscalStart: string; can: { manage: boolean } }>("/api/accounts", failure);
   const { busy, message, post } = usePost("/api/accounts", reload, setError, failure);
+  // The choice shows at once; the server's answer (or a reload) confirms it.
+  const [choice, setChoice] = useState<string | null>(null);
   if (denied || !data) return error ? <p role="alert">{error}</p> : null;
   return (
     <Card title={a.fiscalStart} labelledBy="settings-fiscal-title" headingId="settings-fiscal-title" subtitle={a.fiscalStartHint}>
@@ -29,8 +31,11 @@ export function FiscalYearPanel({ locale }: { locale: Locale }) {
               name="fiscal-start"
               value={value}
               data-nodirty=""
-              checked={data.fiscalStart === value}
-              onChange={() => void post({ organizationId: data.organization_id, action: "fiscalStart", start: value }, a.saved)}
+              checked={(choice ?? data.fiscalStart) === value}
+              onChange={() => {
+                setChoice(value);
+                void post({ organizationId: data.organization_id, action: "fiscalStart", start: value }, a.saved).finally(() => setChoice(null));
+              }}
             />
             {label}
           </label>
