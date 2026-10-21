@@ -530,7 +530,14 @@ export async function duesExecute(
           )
         ).rows,
       };
-      if (cmd.action === "cancel") {
+      if (cmd.action === "exempt") {
+        if ((await s.c.query("SELECT 1 FROM finance_transaction WHERE receivable_id=$1 AND cancelled_at IS NULL AND direction='in'", [d.id])).rowCount)
+          throw new AccessError("ALREADY_PAID", 409);
+        // Full discount and no sibling rank: the sibling rule leaves it alone afterwards.
+        await s.c.query("UPDATE dues_receivable SET discount_cents=gross_cents,sibling_rank=NULL,reason=$2,version=version+1 WHERE id=$1", [d.id, cmd.reason]);
+        await s.c.query("UPDATE dues_installment SET amount_cents=0 WHERE receivable_id=$1", [d.id]);
+        await log(s, "exempt", d.plan_id, d.id, before, { discount_cents: d.gross_cents, net_cents: 0 }, cmd.reason);
+      } else if (cmd.action === "cancel") {
         await s.c.query(
           "UPDATE dues_receivable SET status='cancelled',cancelled_at=now(),version=version+1 WHERE id=$1",
           [d.id],

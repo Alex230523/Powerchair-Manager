@@ -5,6 +5,9 @@ import type { equipmentView } from "@/domains/equipment/service";
 import { itemCategories } from "@/domains/equipment/schema";
 import { stockCopy } from "./equipment-stock-copy";
 import { Badge, EmptyState, Card } from "./ui";
+import { DataGrid, downloadCsv, postCommand } from "./data-grid";
+import { eachRow } from "./table-state";
+import { bulkCopy } from "./bulk-copy";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Item = View["items"][number];
@@ -27,16 +30,20 @@ export function Stock({
   view,
   busy,
   send,
+  reload,
 }: {
   locale: Locale;
   view: View;
   busy: boolean;
   send: (body: Record<string, unknown>) => Promise<{ id: string } | null>;
+  /** After a grouped action (wave 15, C8). */
+  reload: () => Promise<void>;
 }) {
   const t = stockCopy[locale] as Copy;
   const [editing, setEditing] = useState<string | null>(null);
   const [proposing, setProposing] = useState(false);
   const can = view.stockCan;
+  const b = bulkCopy[locale];
   if (!can.seeItems && !can.propose && !can.decide) return null;
   const day = (d: string) =>
     new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d.slice(0, 10) + "T12:00:00Z"));
@@ -136,61 +143,95 @@ export function Stock({
           {alerts > 0 && <p className="notice">{t.alerts.replace("{n}", String(alerts))}</p>}
           {editing === "new" && itemForm()}
           {!view.items.length && <EmptyState title={t.noItem} />}
+          {editing && editing !== "new" && itemForm(view.items.find((i) => i.id === editing))}
           {view.items.length > 0 && (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">{t.name}</th>
-                    <th scope="col">{t.category}</th>
-                    <th scope="col">{t.quantity}</th>
-                    <th scope="col">{t.storage}</th>
-                    <th scope="col">{t.expires}</th>
-                    {can.items && (
-                      <th scope="col">
-                        <span className="sr-only">{t.edit}</span>
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.items.map((i) =>
-                    editing === i.id ? (
-                      <tr key={i.id}>
-                        <td colSpan={can.items ? 6 : 5}>{itemForm(i)}</td>
-                      </tr>
-                    ) : (
-                      <tr key={i.id} className={i.archived ? "muted" : undefined}>
-                        <th scope="row">
-                          {i.name}
-                          {i.archived && <span className="muted small"> · {t.archived}</span>}
-                          {i.notes && <span className="muted small"> · {i.notes}</span>}
-                        </th>
-                        <td>{t.categories[i.category]}</td>
-                        <td>{i.quantity}</td>
-                        <td>{i.storage || "…"}</td>
-                        <td>
-                          {i.expires_on ? day(i.expires_on) : "…"}{" "}
-                          {i.expiry !== "none" && !i.archived && (
-                            <Badge tone={tones[i.expiry]}>
-                              {t.expiry[i.expiry]}
-                            </Badge>
-                          )}
-                        </td>
-                        {can.items && (
-                          <td>
-                            <button type="button" className="text-button" onClick={() => setEditing(i.id)}>
-                              {t.edit}
-                              <span className="sr-only"> : {i.name}</span>
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <DataGrid
+              locale={locale}
+              label={t.items}
+              storageKey="stock"
+              rows={view.items}
+              rowId={(i) => i.id}
+              rowName={(i) => i.name}
+              rowClassName={(i) => (i.archived ? "muted" : undefined)}
+              onDone={reload}
+              columns={[
+                {
+                  key: "name",
+                  header: t.name,
+                  rowHeader: true,
+                  hideable: false,
+                  sort: (i) => i.name,
+                  cell: (i) => (
+                    <>
+                      {i.name}
+                      {i.archived && <span className="muted small"> · {t.archived}</span>}
+                      {i.notes && <span className="muted small"> · {i.notes}</span>}
+                    </>
+                  ),
+                },
+                { key: "category", header: t.category, sort: (i) => t.categories[i.category], cell: (i) => t.categories[i.category] },
+                { key: "quantity", header: t.quantity, className: "num", sort: (i) => i.quantity, cell: (i) => i.quantity },
+                { key: "storage", header: t.storage, sort: (i) => i.storage, cell: (i) => i.storage || "…" },
+                {
+                  key: "expires",
+                  header: t.expires,
+                  sort: (i) => i.expires_on,
+                  cell: (i) => (
+                    <>
+                      {i.expires_on ? day(i.expires_on) : "…"}{" "}
+                      {i.expiry !== "none" && !i.archived && <Badge tone={tones[i.expiry]}>{t.expiry[i.expiry]}</Badge>}
+                    </>
+                  ),
+                },
+                ...(can.items
+                  ? [
+                      {
+                        key: "edit",
+                        header: t.edit,
+                        hideable: false,
+                        cell: (i: Item) => (
+                          <button type="button" className="text-button" onClick={() => setEditing(i.id)}>
+                            {t.edit}
+                            <span className="sr-only"> : {i.name}</span>
+                          </button>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+              actions={[
+                {
+                  id: "archive",
+                  label: b.archiveItems,
+                  icon: "document",
+                  hidden: !can.items,
+                  confirm: b.archiveItemsConfirm,
+                  run: (rows) =>
+                    eachRow(rows, (i) => i.id, async (i) => {
+                      await postCommand("/api/equipment", {
+                        organizationId: view.context.organization_id,
+                        action: "item",
+                        id: i.id,
+                        expectedVersion: i.version,
+                        name: i.name,
+                        category: i.category,
+                        quantity: i.quantity,
+                        storage: i.storage,
+                        expiresOn: i.expires_on,
+                        notes: i.notes,
+                        archived: true,
+                      });
+                    }),
+                },
+                {
+                  id: "export",
+                  label: b.export,
+                  icon: "document",
+                  run: async (rows) =>
+                    downloadCsv(`stock-${today}`, [t.name, t.category, t.quantity, t.storage, t.expires], rows.map((i) => [i.name, t.categories[i.category], i.quantity, i.storage, i.expires_on ?? ""])),
+                },
+              ]}
+            />
           )}
         </Card>
       )}

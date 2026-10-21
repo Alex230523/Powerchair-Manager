@@ -1313,7 +1313,7 @@ caption {
   gap: 8px;
   margin: 24px 0 12px;
 }
-.directory-table {
+.directory-table > .table-scroll {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -4690,6 +4690,175 @@ input.narrow {
 
 .data-table {
   position: relative;
+}
+/* Data tables with sorting, selection and grouped actions (wave 15, C8). */
+.data-grid {
+  position: relative;
+}
+.dg-columns {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+.dg-columns > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.dg-columns > summary::-webkit-details-marker {
+  display: none;
+}
+.dg-columns[open] > fieldset {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 6;
+  display: grid;
+  gap: 2px;
+  min-width: 200px;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+}
+.dg-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.dg-sort:hover {
+  color: var(--primary);
+}
+.dg-sort-icon {
+  display: inline-flex;
+  color: var(--primary);
+}
+.dg-sort-icon.idle {
+  color: var(--muted);
+  opacity: 0.5;
+}
+.dg-sort:hover .dg-sort-icon.idle,
+.dg-sort:focus-visible .dg-sort-icon.idle {
+  opacity: 1;
+}
+.dg-select {
+  width: 3rem;
+  text-align: center;
+}
+.dg-select input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.data-grid tr[data-selected] > * {
+  background: var(--accent-soft);
+}
+/* Right under the table, in the flow: it never hides a row nor the focus (WCAG 2.4.11). */
+.dg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: var(--space-3);
+  padding: 10px 16px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+}
+.dg-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+.dg-bar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--on-primary) 45%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--on-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.dg-bar-button:hover {
+  background: color-mix(in srgb, var(--on-primary) 14%, transparent);
+}
+.dg-bar-button:focus-visible {
+  outline: 3px solid var(--on-primary);
+  outline-offset: 2px;
+}
+.dg-bar-button.quiet {
+  border-color: transparent;
+  text-decoration: underline;
+}
+.dg-bar-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+.dg-bar-choice select {
+  min-height: 36px;
+  margin: 0;
+  color: var(--text);
+  background: var(--surface);
+}
+.dg-status:empty {
+  display: none;
+}
+.data-grid .row-actions {
+  gap: 8px;
+}
+.data-grid .row-actions .text-button {
+  min-height: 32px;
+  padding-inline: 4px;
+}
+.card.flush .card-body > .data-grid > .dg-columns {
+  padding: 8px 12px 0;
+}
+.card.flush .card-body > .data-grid > .dg-bar {
+  margin: 12px;
+}
+.card.flush .card-body > .data-grid > .dg-status,
+.card.flush .card-body > .data-grid > .show-more {
+  padding-inline: 16px;
+}
+@media (max-width: 760px) {
+  /* The first column stays in view when the table scrolls sideways. */
+  .data-grid tr > :first-child,
+  .data-grid.selectable tr > :nth-child(2) {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+  }
+  .data-grid.selectable tr > :nth-child(2) {
+    left: 3rem;
+  }
+  .data-grid thead tr > :first-child,
+  .data-grid.selectable thead tr > :nth-child(2) {
+    z-index: 3;
+    background: var(--surface-soft);
+  }
+  .dg-bar-button {
+    min-height: 44px;
+  }
 }
 .field {
   display: grid;

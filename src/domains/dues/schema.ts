@@ -56,6 +56,13 @@ export const commandSchema = z.discriminatedUnion("action", [
     version: z.number().int().positive(),
     reason: z.string().trim().min(5).max(500),
   }),
+  /** The club waives the whole amount (wave 15, C8): only while nothing has been paid. */
+  z.object({
+    action: z.literal("exempt"),
+    id: z.uuid(),
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(5).max(500),
+  }),
   /** Money received for a receivable: written in the ledger (income, dues). */
   z.object({
     action: z.literal("pay"),
