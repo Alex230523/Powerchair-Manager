@@ -234,7 +234,8 @@ test("real account without email verification, contexts, invitation, revocation 
       .getByRole("button", { name: "Se connecter", exact: true })
       .click();
     const signed = await signing;
-    expect(signed.status(), await signed.text()).toBe(200);
+    // The page leaves for the home right away: the body is gone, the status stays.
+    expect(signed.status()).toBe(200);
     // Signed in: straight to the home page, no code asked.
     await expect(page).toHaveURL(/\/fr$/);
     await page.goto("/fr/access");
