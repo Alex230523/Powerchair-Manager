@@ -5486,6 +5486,8 @@ ul.task-list {
 .chart {
   position: relative;
   min-width: 0;
+  /* The drawing follows the card's width a frame later: nothing may stick out meanwhile. */
+  overflow: hidden;
   border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
 }
