@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { parseScope } from "@/domains/scope/service";
 import {
   documentView,
   documentExecute,
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     return Response.json(
-      await documentView(getDb(), await principal(request)),
+      await documentView(getDb(), await principal(request), parseScope(new URL(request.url).searchParams)),
       { headers: noStore },
     );
   } catch (e) {

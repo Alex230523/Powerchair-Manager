@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type { equipmentView } from "@/domains/equipment/service";
 import {
   chairStatuses,
@@ -11,9 +12,10 @@ import {
 } from "@/domains/equipment/schema";
 import { equipmentCopy } from "./equipment-copy";
 import { errors } from "./access-copy";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { Stock } from "./equipment-stock";
+import { Badge, EmptyState, PageHeader, Card, KpiCard } from "./ui";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Chair = View["chairs"][number];
@@ -59,15 +61,17 @@ export function Equipment({ locale }: { locale: Locale }) {
   const failure = (code: string) =>
     t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
 
+  const scope = useScope();
+  const scopedUrl = "/api/equipment" + (scope.teamId ? `?team=${scope.teamId}` : "");
   async function load() {
-    const r = await fetch("/api/equipment", { cache: "no-store" });
+    const r = await fetch(scopedUrl, { cache: "no-store" });
     const v = await r.json();
     if (!r.ok) throw new Error(v.error);
     setView(v);
   }
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/equipment", { cache: "no-store" })
+    fetch(scopedUrl, { cache: "no-store" })
       .then(async (r) => {
         const v = await r.json();
         if (!r.ok) throw new Error(v.error);
@@ -81,7 +85,7 @@ export function Equipment({ locale }: { locale: Locale }) {
     };
     // The copy only changes with the locale, which reloads the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scopedUrl]);
   async function send(body: Record<string, unknown>) {
     setBusy(true);
     setError("");
@@ -150,12 +154,7 @@ export function Equipment({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access equipment">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p>{t.intro}</p>
-        </div>
-        {view?.manage && (
+      <PageHeader title={t.title} subtitle={t.intro} actions={<>{view?.manage && (
           <button
             className="button"
             type="button"
@@ -166,8 +165,7 @@ export function Equipment({ locale }: { locale: Locale }) {
           >
             {t.add}
           </button>
-        )}
-      </div>
+        )}</>} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {!view && !error && <p>{t.loading}</p>}
@@ -175,31 +173,21 @@ export function Equipment({ locale }: { locale: Locale }) {
       {view && (
         <>
           {view.manage && (
-            <ul className="metric-grid">
-              {[
-                [t.summaryActive, live.length],
+            <ul className="stat-row-grid" data-cols="4">
+              {(
                 [
-                  t.summaryInUse,
-                  live.filter((c) => c.status === "in_use").length,
-                ],
-                [
-                  t.summaryAvailable,
-                  live.filter((c) => c.status === "available").length,
-                ],
-                [
-                  t.summaryService,
-                  live.filter((c) =>
-                    ["soon", "due"].includes(
-                      serviceState(c.next_service_on, today, c.status),
-                    ),
-                  ).length,
-                ],
-              ].map(([label, value]) => (
+                  [t.summaryActive, live.length, "wheelchair"],
+                  [t.summaryInUse, live.filter((c) => c.status === "in_use").length, "players"],
+                  [t.summaryAvailable, live.filter((c) => c.status === "available").length, "check"],
+                  [
+                    t.summaryService,
+                    live.filter((c) => ["soon", "due"].includes(serviceState(c.next_service_on, today, c.status))).length,
+                    "wrench",
+                  ],
+                ] as [string, number, IconName][]
+              ).map(([label, value, icon]) => (
                 <li key={label}>
-                  <div className="metric">
-                    <span className="metric-label">{label}</span>
-                    <span className="metric-value">{value}</span>
-                  </div>
+                  <KpiCard label={label} value={String(value)} icon={icon} tone={icon === "wrench" && value ? "warning" : "primary"} />
                 </li>
               ))}
             </ul>
@@ -234,8 +222,7 @@ export function Equipment({ locale }: { locale: Locale }) {
             </label>
           </form>
           {editing === "new" && (
-            <section className="panel chair-editor" aria-labelledby="new-chair">
-              <h2 id="new-chair">{t.newChair}</h2>
+            <Card title={t.newChair} labelledBy="new-chair" headingId="new-chair" className="chair-editor">
               <ChairForm
                 t={t}
                 storages={view.storages}
@@ -243,7 +230,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                 onSubmit={(e) => saveChair(e)}
                 onCancel={() => setEditing("")}
               />
-            </section>
+            </Card>
           )}
           {chairs.length ? (
             <ul className="chair-grid">
@@ -254,7 +241,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                   c.status,
                 );
                 return (
-                  <li key={c.id} className="chair-card" data-status={c.status}>
+                  <Card as="li" key={c.id} className="chair-card" data={{ status: c.status }}>
                     <div className="chair-head">
                       <span className="feature-icon">
                         <Icon name="wheelchair" />
@@ -266,12 +253,9 @@ export function Equipment({ locale }: { locale: Locale }) {
                             "—"}
                         </p>
                       </div>
-                      <span
-                        className="status-tag"
-                        data-tone={tones[c.status as keyof typeof tones]}
-                      >
+                      <Badge tone={tones[c.status as keyof typeof tones]}>
                         {t.statuses[c.status as keyof typeof t.statuses]}
-                      </span>
+                      </Badge>
                     </div>
                     <dl className="chair-facts">
                       <dt>{t.ownership}</dt>
@@ -284,9 +268,9 @@ export function Equipment({ locale }: { locale: Locale }) {
                           ? `${Number(c.max_speed_kmh)} km/h`
                           : "—"}
                         {overMatchSpeed(c.max_speed_kmh) && (
-                          <span className="status-tag" data-tone="warning">
+                          <Badge tone="warning">
                             {t.overSpeed}
-                          </span>
+                          </Badge>
                         )}
                       </dd>
                       {c.storage && (
@@ -299,12 +283,9 @@ export function Equipment({ locale }: { locale: Locale }) {
                       <dd>
                         {date(c.next_service_on)}
                         {c.status !== "retired" && (
-                          <span
-                            className="status-tag"
-                            data-tone={serviceTones[service]}
-                          >
+                          <Badge tone={serviceTones[service]}>
                             {t.service[service]}
-                          </span>
+                          </Badge>
                         )}
                       </dd>
                     </dl>
@@ -324,19 +305,16 @@ export function Equipment({ locale }: { locale: Locale }) {
                                   </span>
                                   {l.full_name}
                                   {l.is_primary && (
-                                    <span
-                                      className="status-tag"
-                                      data-tone="success"
-                                    >
+                                    <Badge tone="success">
                                       {t.primary}
-                                    </span>
+                                    </Badge>
                                   )}
                                 </Link>
                               </li>
                             ))}
                         </ul>
                       ) : (
-                        <p className="muted">{t.noPlayers}</p>
+                        <EmptyState title={t.noPlayers} />
                       )}
                       {c.others > 0 && (
                         <p className="muted">
@@ -357,14 +335,12 @@ export function Equipment({ locale }: { locale: Locale }) {
                         {editing === c.id ? t.close : `${t.manage} · ${c.name}`}
                       </button>
                     )}
-                  </li>
+                  </Card>
                 );
               })}
             </ul>
           ) : (
-            <p className="empty-directory">
-              {view.manage ? t.empty : t.emptyOwn}
-            </p>
+            <EmptyState title={view.manage ? t.empty : t.emptyOwn} />
           )}
           {view.manage && current && (
             <section
@@ -395,9 +371,9 @@ export function Equipment({ locale }: { locale: Locale }) {
                             <strong>{l.full_name}</strong> · {t.since}{" "}
                             {date(l.starts_on)}
                             {l.is_primary && (
-                              <span className="status-tag" data-tone="success">
+                              <Badge tone="success">
                                 {t.primary}
-                              </span>
+                              </Badge>
                             )}
                           </span>
                           <button

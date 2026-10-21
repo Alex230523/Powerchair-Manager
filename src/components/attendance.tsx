@@ -3,7 +3,8 @@ import { AbsencesPanel, absenceCopy } from "./absences";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { Button, Panel } from "./ui";
+import { useScopedTeam, ApplyScope } from "./use-scope";
+import { Button, Panel, PageHeader } from "./ui";
 import { attendanceCopy } from "./attendance-copy";
 import { AttendanceGrid, gridCopy } from "./attendance-grid";
 import { actuals, responses } from "@/domains/attendance/schema";
@@ -41,9 +42,9 @@ const offlineCopy = {
 export function Attendance({ locale }: { locale: Locale }) {
   const t = attendanceCopy[locale],
     today = localAt(new Date(), "Europe/Brussels");
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [from, setFrom] = useState(shiftLocal(today, -30).slice(0, 10)),
     [to, setTo] = useState(shiftLocal(today, 60).slice(0, 10)),
-    [team, setTeam] = useState(""),
     [data, setData] = useState<View | null>(null),
     [selected, setSelected] = useState(""),
     [busy, setBusy] = useState(false),
@@ -194,8 +195,7 @@ export function Attendance({ locale }: { locale: Locale }) {
   return (
     <>
       <main id="main" className="access attendance">
-        <h1>{t.title}</h1>
-        <p>{t.intro}</p>
+        <PageHeader title={t.title} subtitle={t.intro} />
         {error && (
           <p role="alert">
             {error} <Link href={`/${locale}/access`}>{t.access}</Link>
@@ -250,6 +250,7 @@ export function Attendance({ locale }: { locale: Locale }) {
                   </option>
                 ))}
               </select>
+              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
             </label>
             <label>
               {t.season}

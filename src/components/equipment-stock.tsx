@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { equipmentView } from "@/domains/equipment/service";
 import { itemCategories } from "@/domains/equipment/schema";
 import { stockCopy } from "./equipment-stock-copy";
+import { Badge, EmptyState, Card } from "./ui";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Item = View["items"][number];
@@ -126,19 +127,15 @@ export function Stock({
   return (
     <>
       {can.seeItems && (
-        <section className="panel" aria-labelledby="stock-items">
-          <div className="panel-head">
-            <h2 id="stock-items">{t.items}</h2>
-            {can.items && editing !== "new" && (
+        <Card title={t.items} labelledBy="stock-items" headingId="stock-items" actions={can.items && editing !== "new" && (
               <button type="button" className="button secondary" onClick={() => setEditing("new")}>
                 {t.addItem}
               </button>
-            )}
-          </div>
+            )}>
           <p className="muted">{t.itemsIntro}</p>
           {alerts > 0 && <p className="notice">{t.alerts.replace("{n}", String(alerts))}</p>}
           {editing === "new" && itemForm()}
-          {!view.items.length && <p className="empty-directory">{t.noItem}</p>}
+          {!view.items.length && <EmptyState title={t.noItem} />}
           {view.items.length > 0 && (
             <div className="table-scroll">
               <table>
@@ -175,9 +172,9 @@ export function Stock({
                         <td>
                           {i.expires_on ? day(i.expires_on) : "…"}{" "}
                           {i.expiry !== "none" && !i.archived && (
-                            <span className="status-tag" data-tone={tones[i.expiry]}>
+                            <Badge tone={tones[i.expiry]}>
                               {t.expiry[i.expiry]}
-                            </span>
+                            </Badge>
                           )}
                         </td>
                         {can.items && (
@@ -195,18 +192,14 @@ export function Stock({
               </table>
             </div>
           )}
-        </section>
+        </Card>
       )}
       {(can.propose || can.decide) && (
-        <section className="panel" aria-labelledby="stock-wishes">
-          <div className="panel-head">
-            <h2 id="stock-wishes">{t.wishes}</h2>
-            {can.propose && !proposing && (
+        <Card title={t.wishes} labelledBy="stock-wishes" headingId="stock-wishes" actions={can.propose && !proposing && (
               <button type="button" className="button secondary" onClick={() => setProposing(true)}>
                 {t.propose}
               </button>
-            )}
-          </div>
+            )}>
           <p className="muted">{t.wishesIntro}</p>
           {proposing && (
             <form
@@ -258,7 +251,7 @@ export function Stock({
               </div>
             </form>
           )}
-          {!view.wishes.length && <p className="empty-directory">{t.noWish}</p>}
+          {!view.wishes.length && <EmptyState title={t.noWish} />}
           <ul className="records">
             {view.wishes.map((w) => (
               <li key={w.id}>
@@ -268,9 +261,9 @@ export function Stock({
                     {w.title}
                     {w.estimated_cents !== null && <span className="muted"> · {money(w.estimated_cents)}</span>}
                   </h3>
-                  <span className="status-tag" data-tone={tones[w.status]}>
+                  <Badge tone={tones[w.status]}>
                     {t.statuses[w.status]}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="muted small">
                   {t.askedBy.replace("{name}", w.requested_by)} · {day(w.created_at)}
@@ -334,7 +327,7 @@ export function Stock({
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
     </>
   );

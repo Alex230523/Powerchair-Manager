@@ -78,6 +78,8 @@ export type AgendaItem = {
   startsAt: string;
   endsAt: string;
   team: string | null;
+  /** The team's palette key (wave 12), for the chip. */
+  teamColor?: string | null;
   place: string | null;
   responseNeeded: boolean;
   /** Players and coaches who answered "present", against the club thresholds. */
@@ -86,7 +88,7 @@ export type AgendaItem = {
 /** An administrative date shown with the events: documents, dues, fundraising, trips. */
 export type Deadline = {
   id: string;
-  kind: "documents" | "dues" | "fundraising" | "trip";
+  kind: "documents" | "dues" | "fundraising" | "trip" | "grant" | "partner";
   /** YYYY-MM-DD */
   date: string;
   title: string;

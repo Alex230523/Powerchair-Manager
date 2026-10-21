@@ -17,7 +17,9 @@ import {
 import { governanceCopy } from "./governance-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
-import { Badge, Card } from "./ui";
+import { Notifications } from "./notifications";
+import { DuesSettingsPanel } from "./dues-settings";
+import { Badge, Card, PageHeader, EmptyState } from "./ui";
 
 type Member = {
   id: string;
@@ -148,7 +150,7 @@ export function Settings({ locale }: { locale: Locale }) {
   if (!ws)
     return (
       <main id="main" className="access settings">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -194,21 +196,21 @@ export function Settings({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access settings">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {!manage && <p className="notice">{t.presidentOnly}</p>}
+      {/* Notifications live here since wave 11, for every profile. */}
+      <Notifications locale={locale} embedded />
 
       {manage && ws.selected?.role === "club_president" && people && (
-        <section className="panel" aria-labelledby="settings-self">
-          <h2 id="settings-self">{t.selfTitle}</h2>
+        <Card title={t.selfTitle} labelledBy="settings-self" headingId="settings-self">
           <p className="muted">{t.selfIntro}</p>
           {isCoach && (
             <p>
-              <span className="status-tag" data-tone="success">
+              <Badge tone="success">
                 {t.selfDone}
-              </span>
+              </Badge>
               {coachedTeams.length > 0 && (
                 <span className="muted">
                   {" "}
@@ -241,7 +243,7 @@ export function Settings({ locale }: { locale: Locale }) {
               </Link>
             )}
           </form>
-        </section>
+        </Card>
       )}
 
       {manage && (
@@ -286,7 +288,7 @@ export function Settings({ locale }: { locale: Locale }) {
               </table>
             </div>
           ) : (
-            <p className="muted">{t.noMember}</p>
+            <EmptyState title={t.noMember} />
           )}
           {others.length > 0 && (
             <details className="others-box">
@@ -399,6 +401,9 @@ export function Settings({ locale }: { locale: Locale }) {
       )}
       {gov?.can.presence && (
         <PresencePanel locale={locale} gov={gov} busy={busy} post={post} />
+      )}
+      {gov?.can.presence && !gov.disabled.includes("dues") && (
+        <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
       )}
       {gov?.can.modules && (
         <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />

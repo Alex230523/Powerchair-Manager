@@ -14,6 +14,8 @@ export default defineConfig({
         "test-only-secret-at-least-32-characters-long",
       PFM_LOCAL_MAIL: "true",
       PFM_MAIL_DIR: ".local/mail-e2e",
+      // The internal design gallery is opened by the suite (hidden in production otherwise).
+      PFM_DESIGN_PAGE: "true",
       DATABASE_URL:
         process.env.PFM_E2E_DATABASE_URL ??
         "postgresql://127.0.0.1:1/unavailable",

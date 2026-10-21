@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { absencesView } from "@/domains/absences/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
+import { Card, EmptyState } from "./ui";
 
 export const absenceCopy = {
   fr: {
@@ -121,8 +122,7 @@ export function AbsencesPanel({ locale }: { locale: Locale }) {
     ).then((ok) => ok && form.reset());
   }
   return (
-    <section className="panel" aria-labelledby="absences-title">
-      <h2 id="absences-title">{t.title}</h2>
+    <Card title={t.title} labelledBy="absences-title" headingId="absences-title">
       <p className="muted">{t.intro}</p>
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -153,7 +153,7 @@ export function AbsencesPanel({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <p className="muted">{t.none}</p>
+        <EmptyState title={t.none} />
       )}
       {data.profiles.length > 0 && (
         <form className="inline-form" onSubmit={submit}>
@@ -188,6 +188,6 @@ export function AbsencesPanel({ locale }: { locale: Locale }) {
           <button className="button secondary" disabled={busy}>{t.declare}</button>
         </form>
       )}
-    </section>
+    </Card>
   );
 }

@@ -17,6 +17,9 @@ import { documentStatuses } from "./documents-copy";
 import { errors } from "./access-copy";
 import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
+import { MoveDialog } from "./teams";
+import { Badge, Tabs, EmptyState } from "./ui";
+const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
 type Tab = "personal" | "sport";
@@ -68,6 +71,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const [moving, setMoving] = useState(false);
   async function send(body: Record<string, unknown>) {
     setBusy(true);
     setError("");
@@ -117,6 +121,9 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
   const currentTeams = view.teams.filter(
     (a) => a.current && a.role === "player",
   );
+  const moveTargets = currentTeams.length
+    ? view.otherTeams.filter((o) => o.season_id === currentTeams[0].season_id && o.id !== currentTeams[0].team_id)
+    : [];
   const former = p.status !== "active" || p.former_roles.includes("player");
   const kinds = kindLabels[locale] as Record<string, string>;
   const statuses = documentStatuses[locale] as Record<string, string>;
@@ -189,30 +196,15 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <div className="tabs" role="tablist" aria-label={p.full_name}>
-        {(["personal", "sport"] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            id={`tab-${key}`}
-            aria-selected={tab === key}
-            aria-controls={`panel-${key}`}
-            tabIndex={tab === key ? 0 : -1}
-            onClick={() => setTab(key)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                const next = tab === "personal" ? "sport" : "personal";
-                setTab(next);
-                document.getElementById(`tab-${next}`)?.focus();
-              }
-            }}
-          >
-            <Icon name={key === "personal" ? "user" : "chart"} />
-            {key === "personal" ? t.personalTab : t.sportTab}
-          </button>
-        ))}
-      </div>
+      <Tabs label={p.full_name} items={(["personal", "sport"] as const).map((key) => ({
+          id: key,
+          label: (
+            <>
+              <Icon name={key === "personal" ? "user" : "chart"} />
+              {key === "personal" ? t.personalTab : t.sportTab}
+            </>
+          ),
+        }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
 
       <section
         id="panel-personal"
@@ -241,7 +233,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               <dd>{p.has_account ? t.yes : t.no}</dd>
             </dl>
           ) : (
-            <p className="muted">{t.noDetails}</p>
+            <EmptyState title={t.noDetails} />
           )}
         </Card>
 
@@ -400,29 +392,39 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noGuardians}</p>
+              <EmptyState title={t.noGuardians} />
             )}
           </Card>
         )}
 
-        <Card title={t.history}>
+        <Card
+          title={t.history}
+          action={
+            view.can.editPosition && currentTeams.length > 0 && view.otherTeams.some((o) => o.season_id === currentTeams[0].season_id && o.id !== currentTeams[0].team_id) && (
+              <button type="button" className="button secondary" onClick={() => setMoving(true)}>
+                {moveCopy[locale]}
+              </button>
+            )
+          }
+        >
           <ol className="timeline">
             {view.teams.map((a) => (
               <li key={a.id} data-current={a.current || undefined}>
                 <strong>
-                  {a.team} · {a.season}
+                  <span className="team-chip" data-color={a.team_color ?? "none"}>
+                    <span className="team-dot" aria-hidden="true" />
+                    {a.team}
+                  </span>{" "}
+                  · {a.season}
                 </strong>
                 <span>
                   {t.roles[a.role] ?? a.role}
                   {a.position ? ` · ${a.position}` : ""} · {day(a.starts_on)}
                   {a.ends_on ? ` → ${day(a.ends_on)}` : ""}
                 </span>
-                <span
-                  className="status-tag"
-                  data-tone={a.current ? "success" : ""}
-                >
+                <Badge tone={a.current ? "success" : ""}>
                   {a.current ? t.current : t.ended}
-                </span>
+                </Badge>
               </li>
             ))}
             {p.joined_on && (
@@ -460,9 +462,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                         · {day(String(r.starts_at))} · {kinds[r.kind] ?? r.kind}
                       </span>
                     </span>
-                    <span
-                      className="status-tag"
-                      data-tone={
+                    <Badge tone={
                         r.status === "cancelled"
                           ? "danger"
                           : r.closed
@@ -472,20 +472,19 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                             : r.response === "none"
                               ? "warning"
                               : ""
-                      }
-                    >
+                      }>
                       {r.status === "cancelled"
                         ? t.cancelled
                         : r.closed
                           ? t.actuals[r.actual as keyof typeof t.actuals]
                           : t.responses[r.response as keyof typeof t.responses]}
-                    </span>
+                    </Badge>
                   </li>
                 ))}
               </ul>
             </>
           ) : (
-            <p className="muted">{t.noAttendance}</p>
+            <EmptyState title={t.noAttendance} />
           )}
         </Card>
 
@@ -495,19 +494,16 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               {view.documents.map((d) => (
                 <li key={d.id}>
                   <span>{d.name}</span>
-                  <span
-                    className="status-tag"
-                    data-tone={
+                  <Badge tone={
                       ["valid"].includes(d.status)
                         ? "success"
                         : ["expired", "refused", "missing"].includes(d.status)
                           ? "danger"
                           : "warning"
-                    }
-                  >
+                    }>
                     {statuses[d.status] ?? d.status}
                     {d.expires_on ? ` · ${day(d.expires_on)}` : ""}
-                  </span>
+                  </Badge>
                 </li>
               ))}
             </ul>
@@ -640,9 +636,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                 }
                 {view.sport.classification_valid_until &&
                   ` · ${t.validUntil.toLocaleLowerCase()} ${day(view.sport.classification_valid_until)}`}{" "}
-                <span
-                  className="status-tag"
-                  data-tone={
+                <Badge tone={
                     view.sport.classification_status === "validated"
                       ? "success"
                       : view.sport.classification_status === "refused"
@@ -650,14 +644,13 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                         : view.sport.classification_status === "requested"
                           ? "warning"
                           : ""
-                  }
-                >
+                  }>
                   {
                     licensesCopy[locale].classStatus[
                       view.sport.classification_status ?? "unverified"
                     ]
                   }
-                </span>
+                </Badge>
               </dd>
               <dt>{licensesCopy[locale].license}</dt>
               <dd>
@@ -688,9 +681,9 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                   <li key={c.id}>
                     <strong>{c.name}</strong>
                     {link?.is_primary && (
-                      <span className="status-tag" data-tone="success">
+                      <Badge tone="success">
                         {t.primary}
-                      </span>
+                      </Badge>
                     )}
                     <span className="muted">
                       {[c.brand, c.model].filter(Boolean).join(" · ") || "—"}
@@ -699,16 +692,16 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                       {c.others > 0 && ` · ${t.shared} ${c.others}`}
                     </span>
                     {overMatchSpeed(c.max_speed_kmh) && (
-                      <span className="status-tag" data-tone="warning">
+                      <Badge tone="warning">
                         &gt; 10 km/h
-                      </span>
+                      </Badge>
                     )}
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="muted">{t.noChair}</p>
+            <EmptyState title={t.noChair} />
           )}
           <Link href={`/${locale}/equipment`}>{t.equipmentLink} →</Link>
         </Card>
@@ -797,7 +790,33 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
           <Link href={`/${locale}/matches`}>{matchCopy[locale].link} →</Link>
         </Card>
       </section>
-    </main>
+    {moving && currentTeams.length > 0 && (
+        <MoveDialog
+          locale={locale}
+          player={{ profile_id: p.id, full_name: p.full_name }}
+          fromTeamId={currentTeams[0].team_id}
+          others={moveTargets}
+          busy={busy}
+          close={() => setMoving(false)}
+          move={async (body) => {
+            const r = await fetch("/api/teams", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ organizationId: view.context.id, action: "move", ...body }),
+            });
+            const v = await r.json();
+            if (!r.ok) {
+              setError(failure(v.error));
+              return;
+            }
+            setMoving(false);
+            const fresh = await fetch("/api/player-profile?id=" + encodeURIComponent(id), { cache: "no-store" });
+            if (fresh.ok) setView(await fresh.json());
+            setMessage(t.saved);
+          }}
+        />
+      )}
+      </main>
   );
 }
 
@@ -844,17 +863,15 @@ export function Stat({
   hint: string;
 }) {
   return (
-    <div className="stat">
-      <span className="metric-label">{label}</span>
-      <span className="metric-value">
-        {value === null ? "—" : `${value} %`}
-      </span>
+    <div className="stat stat-card">
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value === null ? "…" : `${value} %`}</span>
       {value !== null && (
         <meter min={0} max={100} value={value} aria-label={label}>
           {value} %
         </meter>
       )}
-      <span className="metric-hint">{hint}</span>
+      <span className="stat-hint">{hint}</span>
     </div>
   );
 }

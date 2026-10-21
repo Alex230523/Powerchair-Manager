@@ -10,6 +10,7 @@ import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { initials } from "./app-shell";
 import { Card, Stat } from "./player-profile";
+import { Badge, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof coachProfileView>>;
 const record = {
@@ -189,7 +190,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
               <dd>{c.has_account ? t.yes : t.no}</dd>
             </dl>
           ) : (
-            <p className="muted">{t.noDetails}</p>
+            <EmptyState title={t.noDetails} />
           )}
         </Card>
 
@@ -205,17 +206,14 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
                     {t.roles[x.role] ?? x.role} · {day(x.starts_on)}
                     {x.ends_on ? ` → ${day(x.ends_on)}` : ""}
                   </span>
-                  <span
-                    className="status-tag"
-                    data-tone={x.current ? "success" : ""}
-                  >
+                  <Badge tone={x.current ? "success" : ""}>
                     {x.current ? t.current : t.ended}
-                  </span>
+                  </Badge>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="muted">{t.noTeam}</p>
+            <EmptyState title={t.noTeam} />
           )}
           {view.results.played > 0 && (
             <p className="team-record">
@@ -256,9 +254,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
                     · {when(e.starts_at)} · {kinds[e.kind] ?? e.kind}
                     {e.team ? ` · ${e.team}` : ""}
                   </span>
-                  <span
-                    className="status-tag"
-                    data-tone={
+                  <Badge tone={
                       e.response === "present"
                         ? "success"
                         : e.response === "absent"
@@ -266,15 +262,14 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
                           : e.response === "uncertain"
                             ? "warning"
                             : ""
-                    }
-                  >
+                    }>
                     {e.response ? t.responses[e.response] : t.noAnswer}
-                  </span>
+                  </Badge>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">{t.noUpcoming}</p>
+            <EmptyState title={t.noUpcoming} />
           )}
         </Card>
 
@@ -295,9 +290,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
                     {f.valid_until &&
                       ` · ${t.validUntil} ${day(f.valid_until)}`}
                   </span>
-                  <span
-                    className="status-tag"
-                    data-tone={
+                  <Badge tone={
                       f.status === "approved"
                         ? "success"
                         : f.status === "refused"
@@ -305,10 +298,9 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
                           : f.status === "requested"
                             ? "warning"
                             : ""
-                    }
-                  >
+                    }>
                     {t.statuses[f.status] ?? f.status}
-                  </span>
+                  </Badge>
                   {f.decision_note && (
                     <span className="muted"> · {f.decision_note}</span>
                   )}
@@ -331,7 +323,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
               ))}
             </ul>
           ) : (
-            <p className="muted">{t.noFormation}</p>
+            <EmptyState title={t.noFormation} />
           )}
           {view.can.request &&
             (view.courses.length ? (

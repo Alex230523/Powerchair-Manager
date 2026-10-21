@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { coursesView } from "@/domains/coaches/service";
 import { coursesCopy } from "./courses-copy";
 import { errors } from "./access-copy";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof coursesView>>;
 type Course = View["courses"][number];
@@ -197,16 +198,14 @@ export function Courses({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access courses">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.federationOnly}</p>}
       {!view && !denied && !error && <p role="status">{t.loading}</p>}
       {view && (
         <div className="grid">
-          <section className="panel" aria-labelledby="courses-catalogue">
-            <h2 id="courses-catalogue">{t.catalogue}</h2>
+          <Card title={t.catalogue} labelledBy="courses-catalogue" headingId="courses-catalogue">
             {!view.can.manage && <p className="notice">{t.readOnly}</p>}
             {view.courses.length ? (
               <ul className="records course-list">
@@ -221,12 +220,9 @@ export function Courses({ locale }: { locale: Locale }) {
                         : ""}
                       {` · ${k.approved} ${t.approvedCount} · ${k.pending} ${t.pendingCount}`}
                     </span>
-                    <span
-                      className="status-tag"
-                      data-tone={k.active ? "success" : ""}
-                    >
+                    <Badge tone={k.active ? "success" : ""}>
                       {k.active ? t.active : t.inactive}
-                    </span>
+                    </Badge>
                     {k.description && (
                       <p className="message-text">{k.description}</p>
                     )}
@@ -277,7 +273,7 @@ export function Courses({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noCourse}</p>
+              <EmptyState title={t.noCourse} />
             )}
             {view.can.manage && (
               <form
@@ -292,10 +288,9 @@ export function Courses({ locale }: { locale: Locale }) {
                 </button>
               </form>
             )}
-          </section>
+          </Card>
 
-          <section className="panel" aria-labelledby="courses-requests">
-            <h2 id="courses-requests">{t.requests}</h2>
+          <Card title={t.requests} labelledBy="courses-requests" headingId="courses-requests">
             <p className="muted">{t.requestsHint}</p>
             {view.requests.length ? (
               <ul className="records">
@@ -307,18 +302,15 @@ export function Courses({ locale }: { locale: Locale }) {
                     <span className="muted">
                       {` · ${t.club} ${q.club} · ${t.requestedBy} ${q.requested_by}`}
                     </span>
-                    <span
-                      className="status-tag"
-                      data-tone={
+                    <Badge tone={
                         q.status === "approved"
                           ? "success"
                           : q.status === "refused"
                             ? "danger"
                             : "warning"
-                      }
-                    >
+                      }>
                       {t.statuses[q.status] ?? q.status}
-                    </span>
+                    </Badge>
                     {q.note && <p className="message-text">{q.note}</p>}
                     {q.status === "approved" && q.completed_on && (
                       <p className="muted">
@@ -386,9 +378,9 @@ export function Courses({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noRequest}</p>
+              <EmptyState title={t.noRequest} />
             )}
-          </section>
+          </Card>
         </div>
       )}
     </main>

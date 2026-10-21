@@ -1,3 +1,4 @@
+import { parseScope } from "@/domains/scope/service";
 import { getDb } from "@/lib/db";
 import {
   equipmentView,
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     return Response.json(
-      await equipmentView(getDb(), await principalIn(request, "equipment")),
+      await equipmentView(getDb(), await principalIn(request, "equipment"), parseScope(new URL(request.url).searchParams)),
       {
         headers: noStore,
       },

@@ -8,7 +8,9 @@ import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
-import { PageHeader } from "./ui";
+import { PageHeader, Badge, EmptyState, Card, KpiCard } from "./ui";
+import { shellCopy } from "./shell-copy";
+import { useScope } from "./use-scope";
 import { Modal } from "./modal";
 
 type View = Awaited<ReturnType<typeof financeView>>;
@@ -42,15 +44,18 @@ export function Finance({ locale }: { locale: Locale }) {
       timeZone: "UTC",
     }).format(new Date(d + "T12:00:00Z"));
 
+  // The team chosen in the top bar (wave 12) narrows the ledger, the budget and the figures.
+  const scope = useScope();
+  const scopedUrl = "/api/finance" + (scope.teamId ? `?team=${scope.teamId}` : "");
   async function load() {
-    const r = await fetch("/api/finance", { cache: "no-store" });
+    const r = await fetch(scopedUrl, { cache: "no-store" });
     const v = await r.json();
     if (!r.ok) throw new Error(v.error);
     setView(v);
   }
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/finance", { cache: "no-store" })
+    fetch(scopedUrl, { cache: "no-store" })
       .then(async (r) => {
         const v = await r.json();
         if (cancelled) return;
@@ -73,7 +78,7 @@ export function Finance({ locale }: { locale: Locale }) {
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, scopedUrl]);
 
   async function send(body: Record<string, unknown>) {
     setBusy(true);
@@ -115,6 +120,7 @@ export function Finance({ locale }: { locale: Locale }) {
       category: receivableId ? "dues" : value("category"),
       receivableId,
       tripId: value("trip") || null,
+      teamId: value("team") || null,
       amountCents: Math.round(Number(value("amount").replace(",", ".")) * 100),
       method: value("method"),
       counterparty: value("counterparty"),
@@ -160,7 +166,7 @@ export function Finance({ locale }: { locale: Locale }) {
         ),
       })),
     );
-    void send({ action: "budget", season: view?.season.label, lines }).then(
+    void send({ action: "budget", season: view?.season.label, teamId: view?.teamId ?? null, lines }).then(
       (ok) => {
         if (ok) {
           setEditingBudget(false);
@@ -239,6 +245,12 @@ export function Finance({ locale }: { locale: Locale }) {
               <Link className="button secondary" href={`/${locale}/dues`}>
                 {t.dues}
               </Link>
+              <Link className="button secondary" href={`/${locale}/funding/grants`}>
+                {shellCopy[locale].grants}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/funding/partners`}>
+                {shellCopy[locale].partners}
+              </Link>
               <Link className="button secondary" href={`/${locale}/funding/report?season=${view.season.label}`}>
                 {x.report}
               </Link>
@@ -261,38 +273,23 @@ export function Finance({ locale }: { locale: Locale }) {
 
       {view && s && (
         <>
-          <ul className="finance-cards">
-            <li data-tone={s.balance < 0 ? "danger" : "accent"}>
-              <span className="metric-label">{t.balance}</span>
-              <span className="metric-value">{money(s.balance)}</span>
-              <span className="metric-hint">{t.balanceHint}</span>
-            </li>
-            <li data-tone="success">
-              <span className="metric-label">
-                {t.income} · {t.season} {view.season.label}
-              </span>
-              <span className="metric-value">{money(s.income)}</span>
-            </li>
-            <li data-tone="danger">
-              <span className="metric-label">
-                {t.expenses} · {t.season} {view.season.label}
-              </span>
-              <span className="metric-value">{money(s.expenses)}</span>
-              <span className="metric-hint">
-                {s.result >= 0 ? "+" : ""}
-                {money(s.result)}
-              </span>
+          <ul className="stat-row-grid" data-cols="4">
+            <li>
+              <KpiCard label={t.balance} value={money(s.balance)} description={t.balanceHint} icon="funding" tone={s.balance < 0 ? "danger" : "primary"} />
             </li>
             <li>
-              <span className="metric-label">
-                {t.duesPlanned} · {t.season} {view.season.label}
-              </span>
-              <span className="metric-value">{money(view.dues.season)}</span>
-              <span className="metric-hint">
-                {t.duesHint.replace("{amount}", money(view.dues.next30))}
-                {view.dues.collected > 0 &&
-                  ` · ${x.collected.replace("{amount}", money(view.dues.collected))}`}
-              </span>
+              <KpiCard label={`${t.income} · ${t.season} ${view.season.label}`} value={money(s.income)} icon="arrow" tone="success" />
+            </li>
+            <li>
+              <KpiCard label={`${t.expenses} · ${t.season} ${view.season.label}`} value={money(s.expenses)} description={`${s.result >= 0 ? "+" : ""}${money(s.result)}`} icon="dues" tone="danger" />
+            </li>
+            <li>
+              <KpiCard
+                label={`${t.duesPlanned} · ${t.season} ${view.season.label}`}
+                value={money(view.dues.season)}
+                description={`${t.duesHint.replace("{amount}", money(view.dues.next30))}${view.dues.collected > 0 ? ` · ${x.collected.replace("{amount}", money(view.dues.collected))}` : ""}`}
+                icon="dues"
+              />
             </li>
           </ul>
           <p className="notice">{t.bankNote}</p>
@@ -416,6 +413,17 @@ export function Finance({ locale }: { locale: Locale }) {
                     </span>
                   </label>
                 )}
+                {view.teams.length > 0 && (
+                  <label htmlFor="fin-team">
+                    {x.team}
+                    <select id="fin-team" name="team" defaultValue={view.teamId ?? ""}>
+                      <option value="">{x.wholeClub}</option>
+                      {view.teams.map((tm) => (
+                        <option key={tm.id} value={tm.id}>{tm.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {view.trips.length > 0 && (
                   <label htmlFor="fin-trip">
                     {x.trip}
@@ -441,10 +449,7 @@ export function Finance({ locale }: { locale: Locale }) {
           )}
 
           {categoryRows.length > 0 && (
-            <section className="panel" aria-labelledby="finance-categories">
-              <h2 id="finance-categories">
-                {t.byCategory} · {t.season} {view.season.label}
-              </h2>
+            <Card title={<>{t.byCategory} · {t.season} {view.season.label}</>} labelledBy="finance-categories" headingId="finance-categories">
               <ul className="category-bars">
                 {categoryRows.map(([key, v]) => (
                   <li key={key}>
@@ -470,15 +475,11 @@ export function Finance({ locale }: { locale: Locale }) {
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           )}
 
-          <section className="panel" aria-labelledby="finance-budget">
-            <div className="panel-head">
-              <h2 id="finance-budget">
-                {x.budget} · {view.season.label}
-              </h2>
-              {view.can_edit && (
+          <Card title={<>{x.budget} · {view.season.label}
+                {view.teamId && <span className="muted"> · {view.teams.find((tm) => tm.id === view.teamId)?.name}</span>}</>} labelledBy="finance-budget" headingId="finance-budget" actions={view.can_edit && (
                 <button
                   type="button"
                   className="button secondary"
@@ -487,8 +488,7 @@ export function Finance({ locale }: { locale: Locale }) {
                 >
                   {editingBudget ? t.close : x.editBudget}
                 </button>
-              )}
-            </div>
+              )}>
             <p className="muted">{x.budgetIntro}</p>
             {editingBudget ? (
               <form className="budget-form" onSubmit={saveBudget}>
@@ -575,9 +575,9 @@ export function Finance({ locale }: { locale: Locale }) {
                 </table>
               </div>
             ) : (
-              <p className="muted">{x.noBudget}</p>
+              <EmptyState title={x.noBudget} />
             )}
-          </section>
+          </Card>
 
           <section aria-labelledby="finance-history">
             <h2 id="finance-history">{t.history}</h2>
@@ -651,6 +651,15 @@ export function Finance({ locale }: { locale: Locale }) {
                         <td>{day(e.occurred_on)}</td>
                         <td>
                           <strong>{e.label}</strong>
+                          {e.team_name && (
+                            <>
+                              {" "}
+                              <span className="team-chip" data-color={e.team_color ?? "none"}>
+                                <span className="team-dot" aria-hidden="true" />
+                                {e.team_name}
+                              </span>
+                            </>
+                          )}
                           {(e.counterparty || e.reference) && (
                             <span className="muted">
                               {" "}
@@ -661,9 +670,9 @@ export function Finance({ locale }: { locale: Locale }) {
                             </span>
                           )}
                           {e.cancelled_at && (
-                            <span className="status-tag" data-tone="danger">
+                            <Badge tone="danger">
                               {t.cancelled}
-                            </span>
+                            </Badge>
                           )}
                         </td>
                         <td>{t.categories[e.category] ?? e.category}</td>
@@ -784,15 +793,14 @@ export function Finance({ locale }: { locale: Locale }) {
             {entries.length ? (
               <ShowMore locale={locale} {...moreEntries} />
             ) : (
-              <p className="empty-directory">{t.empty}</p>
+              <EmptyState title={t.empty} />
             )}
           </section>
         </>
       )}
 
       {view && (
-        <section className="panel" aria-labelledby="finance-report">
-          <h2 id="finance-report">{x.report}</h2>
+        <Card title={x.report} labelledBy="finance-report" headingId="finance-report">
           <p className="muted">{x.reportIntro}</p>
           <div className="inline-form">
             <label htmlFor="report-season">
@@ -822,19 +830,16 @@ export function Finance({ locale }: { locale: Locale }) {
               {x.csv}
             </a>
           </div>
-        </section>
+        </Card>
       )}
 
-      <section className="panel" aria-labelledby="finance-dues">
-        <h2 id="finance-dues">
-          <Icon name="dues" size={18} />
-          {t.dues}
-        </h2>
+      <Card title={<><Icon name="dues" size={18} />
+          {t.dues}</>} labelledBy="finance-dues" headingId="finance-dues">
         <p>{t.duesText}</p>
         <Link className="button secondary" href={`/${locale}/dues`}>
           {t.openDues}
         </Link>
-      </section>
+      </Card>
     </main>
   );
 }

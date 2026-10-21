@@ -1,3 +1,4 @@
+import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
 import { mfaSatisfied, mfaRequired } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { Pool, PoolClient } from "pg";
@@ -62,9 +63,32 @@ export const commandSchema = z.discriminatedUnion("action", [
     locale: z.enum(["fr", "nl", "en"]),
     notificationsEnabled: z.boolean(),
   }),
+  /** Profile photo (wave 11): PNG, JPEG or WebP, 256 KB at most, base64. */
+  z.object({
+    action: z.literal("avatar"),
+    mediaType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+    data: z.string().max(360000),
+  }),
+  z.object({ action: z.literal("removeAvatar") }),
 ]);
 export type Command = z.infer<typeof commandSchema>;
 type Db = Pool | PoolClient;
+/** Checks the file signature, not only the declared type. */
+export function validImage(type: string, b: Buffer, max: number) {
+  if (!b.length || b.length > max) return false;
+  if (type === "image/png") return b.subarray(0, 8).toString("hex") === "89504e470d0a1a0a";
+  if (type === "image/jpeg") return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  if (type === "image/webp")
+    return b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP";
+  return false;
+}
+/** The signed-in account's photo, or null. */
+export async function userAvatar(db: Db, p: Principal) {
+  await account(db, p);
+  return (await db.query("SELECT media_type,content FROM user_avatar WHERE user_id=$1", [p.userId])).rows[0] as
+    | { media_type: string; content: Buffer }
+    | undefined;
+}
 const current = `r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active AND u.active`;
 async function account(db: Db, p: Principal) {
   const result = await db.query(
@@ -160,8 +184,20 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: unknown[];
     audit: unknown[];
     fundraisingOpen: boolean;
+    /** Changes with every new photo: the menu refreshes its picture. */
+    avatarVersion: string | null;
+    /** Seasons and teams the top bar offers (wave 12), already filtered for the actor. */
+    seasons: SeasonOption[];
+    teams: TeamOption[];
   } = {
     user,
+    avatarVersion:
+      (
+        await db.query(
+          "SELECT extract(epoch FROM updated_at)::bigint::text AS v FROM user_avatar WHERE user_id=$1",
+          [p.userId],
+        )
+      ).rows[0]?.v ?? null,
     mfaRequired: mfaRequired(),
     contexts: contexts.rows,
     profiles: (
@@ -177,7 +213,18 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: [],
     audit: [],
     fundraisingOpen: false,
+    seasons: [],
+    teams: [],
   };
+  if (selected && selected.kind === "club") {
+    result.seasons = await seasonOptions(db, selected.organization_id);
+    result.teams = await teamOptions(db, {
+      organization_id: selected.organization_id,
+      role: selected.role,
+      user_id: p.userId,
+      team_id: selected.team_id,
+    });
+  }
   // Members see "Levée de fonds" only while a pot open to the players exists.
   if (selected && selected.kind === "club")
     result.fundraisingOpen =
@@ -291,6 +338,16 @@ export async function execute(
         "UPDATE person SET locale=$2,notifications_enabled=$3 WHERE user_id=$1",
         [p.userId, command.locale, command.notificationsEnabled],
       );
+    } else if (command.action === "avatar") {
+      const bytes = Buffer.from(command.data, "base64");
+      if (!validImage(command.mediaType, bytes, 262144))
+        throw new AccessError("INVALID_IMAGE", 400);
+      await client.query(
+        "INSERT INTO user_avatar(user_id,media_type,content) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,updated_at=now()",
+        [p.userId, command.mediaType, bytes],
+      );
+    } else if (command.action === "removeAvatar") {
+      await client.query("DELETE FROM user_avatar WHERE user_id=$1", [p.userId]);
     } else if (command.action === "context") {
       const mandate = await client.query(
         `SELECT r.organization_id FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND r.user_id=$2 AND ${current}`,

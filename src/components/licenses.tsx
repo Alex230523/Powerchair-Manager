@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type {
   clubLicensesView,
   federationLicensesView,
@@ -10,6 +11,7 @@ import type {
 import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 export function ClubLicenses({ locale }: { locale: Locale }) {
@@ -18,9 +20,10 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
     [t, locale],
   );
+  const scope = useScope();
   const { data, error, setError, denied, reload } = useData<
     Awaited<ReturnType<typeof clubLicensesView>>
-  >("/api/licenses", failure);
+  >("/api/licenses" + (scope.teamId ? `?team=${scope.teamId}` : ""), failure);
   const { busy, message, post } = usePost(
     "/api/licenses",
     reload,
@@ -37,8 +40,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access licenses">
-      <h1>{t.clubTitle}</h1>
-      <p className="muted">{t.clubIntro}</p>
+      <PageHeader title={t.clubTitle} subtitle={t.clubIntro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.denied}</p>}
@@ -119,9 +121,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
                         </td>
                         <td>{x.birth_year ?? ""}</td>
                         <td>
-                          <span
-                            className="status-tag"
-                            data-tone={
+                          <Badge tone={
                               x.license_status === "active"
                                 ? "success"
                                 : x.license_status === "requested"
@@ -129,10 +129,9 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
                                   : x.license_status
                                     ? "danger"
                                     : ""
-                            }
-                          >
+                            }>
                             {t.licenseStatus[x.license_status ?? "none"]}
-                          </span>
+                          </Badge>
                           {x.license_number && (
                             <span className="muted"> · {x.license_number}</span>
                           )}
@@ -168,9 +167,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
                               · {t.until} {x.classification_valid_until}
                             </span>
                           )}{" "}
-                          <span
-                            className="status-tag"
-                            data-tone={
+                          <Badge tone={
                               x.classification_status === "validated"
                                 ? "success"
                                 : x.classification_status === "requested"
@@ -178,10 +175,9 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
                                   : x.classification_status === "refused"
                                     ? "danger"
                                     : ""
-                            }
-                          >
+                            }>
                             {t.classStatus[x.classification_status]}
-                          </span>
+                          </Badge>
                           {x.classification_note && (
                             <span className="muted">
                               {" "}
@@ -225,7 +221,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
               </table>
             </div>
           ) : (
-            <p className="muted">{t.noPlayer}</p>
+            <EmptyState title={t.noPlayer} />
           )}
           {data.can.manage && data.federation && (
             <p>
@@ -285,18 +281,14 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access licenses">
-      <h1>{t.fedTitle}</h1>
-      <p className="muted">{t.fedIntro}</p>
+      <PageHeader title={t.fedTitle} subtitle={t.fedIntro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.denied}</p>}
       {!data && !denied && !error && <p role="status">{t.loading}</p>}
       {data && (
         <>
-          <section className="panel" aria-labelledby="fed-licenses">
-            <h2 id="fed-licenses">
-              {t.licenses} · {t.pending} ({pending.length})
-            </h2>
+          <Card title={<>{t.licenses} · {t.pending} ({pending.length})</>} labelledBy="fed-licenses" headingId="fed-licenses">
             {pending.length ? (
               <>
                 <ul className="records">
@@ -376,7 +368,7 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 )}
               </>
             ) : (
-              <p className="muted">{t.none}</p>
+              <EmptyState title={t.none} />
             )}
             {decided.length > 0 && (
               <details>
@@ -451,10 +443,9 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 </div>
               </details>
             )}
-          </section>
+          </Card>
 
-          <section className="panel" aria-labelledby="fed-classes">
-            <h2 id="fed-classes">{t.classifications}</h2>
+          <Card title={t.classifications} labelledBy="fed-classes" headingId="fed-classes">
             {data.classifications.length ? (
               <ul className="records">
                 {data.classifications.map((x) => (
@@ -466,18 +457,15 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                       {t.classes[x.classification] ?? x.classification}
                       {x.valid_until ? ` · ${t.until} ${x.valid_until}` : ""}
                     </span>{" "}
-                    <span
-                      className="status-tag"
-                      data-tone={
+                    <Badge tone={
                         x.status === "validated"
                           ? "success"
                           : x.status === "refused"
                             ? "danger"
                             : "warning"
-                      }
-                    >
+                      }>
                       {t.classStatus[x.status]}
-                    </span>
+                    </Badge>
                     {x.note && <span className="muted"> · {x.note}</span>}
                     {x.status === "requested" && data.can.manage && (
                       <form
@@ -552,12 +540,11 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.none}</p>
+              <EmptyState title={t.none} />
             )}
-          </section>
+          </Card>
 
-          <section className="panel" aria-labelledby="fed-transfers">
-            <h2 id="fed-transfers">{t.transfers}</h2>
+          <Card title={t.transfers} labelledBy="fed-transfers" headingId="fed-transfers">
             {data.transfers.length ? (
               <div className="table-scroll">
                 <table className="ledger">
@@ -585,9 +572,9 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 </table>
               </div>
             ) : (
-              <p className="muted">{t.none}</p>
+              <EmptyState title={t.none} />
             )}
-          </section>
+          </Card>
         </>
       )}
     </main>
@@ -614,8 +601,7 @@ export function FederalCalendar({ locale }: { locale: Locale }) {
     }).format(new Date(d));
   return (
     <main id="main" className="access federal-calendar">
-      <h1>{t.calendarTitle}</h1>
-      <p className="muted">{t.calendarIntro}</p>
+      <PageHeader title={t.calendarTitle} subtitle={t.calendarIntro} />
       {error && <p role="alert">{error}</p>}
       {denied && <p className="notice">{t.denied}</p>}
       {!data && !denied && !error && <p role="status">{t.loading}</p>}
@@ -629,9 +615,9 @@ export function FederalCalendar({ locale }: { locale: Locale }) {
                   <strong>
                     {e.title}
                     {e.status === "cancelled" && (
-                      <span className="status-tag" data-tone="danger">
+                      <Badge tone="danger">
                         ×
-                      </span>
+                      </Badge>
                     )}
                   </strong>
                   <span>
@@ -646,7 +632,7 @@ export function FederalCalendar({ locale }: { locale: Locale }) {
             ))}
           </ul>
         ) : (
-          <p className="muted">{t.noEvent}</p>
+          <EmptyState title={t.noEvent} />
         ))}
     </main>
   );

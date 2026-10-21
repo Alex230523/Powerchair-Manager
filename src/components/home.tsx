@@ -11,6 +11,8 @@ import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
+import { useScope } from "./use-scope";
+import { Badge, Card, EmptyState, KpiCard } from "./ui";
 type State =
   | { kind: "loading" }
   | { kind: "visitor"; failed: boolean }
@@ -24,10 +26,16 @@ export function Home({ locale }: { locale: Locale }) {
   const t = homeCopy[locale];
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
+  // The season and team chosen in the top bar (wave 12) shape every figure.
+  const scope = useScope();
+  const query = new URLSearchParams();
+  if (scope.seasonId) query.set("season", scope.seasonId);
+  if (scope.teamId) query.set("team", scope.teamId);
+  const url = "/api/dashboard" + (query.toString() ? "?" + query.toString() : "");
   useEffect(() => {
     let cancelled = false;
     const load = () =>
-      fetch("/api/dashboard", { cache: "no-store" })
+      fetch(url, { cache: "no-store" })
         .then(async (r) => {
           const next: State = r.ok
             ? { kind: "ready", data: (await r.json()) as Dashboard }
@@ -44,7 +52,7 @@ export function Home({ locale }: { locale: Locale }) {
       cancelled = true;
       window.removeEventListener("pfm-workspace", load);
     };
-  }, [attempt]);
+  }, [attempt, url]);
   if (state.kind === "loading")
     return (
       <main id="main" aria-busy="true">
@@ -147,9 +155,9 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
         <h2 id="dash-todo">
           {t.todo}
           {data.todos.length > 0 && (
-            <span className="count-pill">
+            <Badge tone="primary">
               {data.todos.reduce((n, item) => n + item.count, 0)}
-            </span>
+            </Badge>
           )}
         </h2>
         {data.todos.length ? (
@@ -174,10 +182,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
             ))}
           </ul>
         ) : (
-          <p className="all-clear">
-            <Icon name="check" />
-            {t.allClear}
-          </p>
+          <EmptyState icon="check" tone="success" title={t.allClear} />
         )}
       </section>
       {data.context && (
@@ -185,7 +190,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {data.metrics.length > 0 && (
             <section aria-labelledby="dash-figures">
               <h2 id="dash-figures">{t.figures}</h2>
-              <ul className="dash-figures">
+              <ul className="dash-figures stat-row-grid" data-cols="2">
                 {data.metrics.map((m) => (
                   <li key={m.key}>
                     <MetricCard locale={locale} metric={m} />
@@ -194,8 +199,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
               </ul>
             </section>
           )}
-          <section className="panel" aria-labelledby="dash-agenda">
-            <h2 id="dash-agenda">{t.agenda}</h2>
+          <Card title={t.agenda} labelledBy="dash-agenda" headingId="dash-agenda">
             {timeline.length ? (
               <ul className="agenda">
                 {timeline.map((row) =>
@@ -212,12 +216,24 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
             <p>
               <Link href={href("/calendar")}>{t.openCalendar}</Link>
             </p>
-          </section>
+          </Card>
         </div>
       )}
     </main>
   );
 }
+const metricIcons: Record<Metric["key"], IconName> = {
+  activeMembers: "club",
+  activePlayers: "players",
+  activeTeams: "team",
+  upcomingEvents: "calendar",
+  pendingResponses: "attendance",
+  waitingList: "inbox",
+  acceptedRecently: "check",
+  duesNext30: "dues",
+  treasury: "funding",
+  myNextDue: "dues",
+};
 function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
   const t = homeCopy[locale].metrics[metric.key];
   const value =
@@ -231,20 +247,7 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
         timeZone: "UTC",
       }).format(new Date(metric.date + "T12:00:00Z"))
     : t.hint;
-  const body = (
-    <>
-      <span className="metric-label">{t.label}</span>
-      <span className="metric-value">{value}</span>
-      {hint && <span className="metric-hint">{hint}</span>}
-    </>
-  );
-  return metric.href ? (
-    <Link className="metric" href={`/${locale}${metric.href}`}>
-      {body}
-    </Link>
-  ) : (
-    <div className="metric">{body}</div>
-  );
+  return <KpiCard label={t.label} value={value} description={hint || undefined} icon={metricIcons[metric.key]} href={metric.href ? `/${locale}${metric.href}` : undefined} />;
 }
 function AgendaRow({
   locale,
@@ -261,7 +264,6 @@ function AgendaRow({
   const time = part({ hour: "2-digit", minute: "2-digit" });
   const details = [
     `${part({ weekday: "long" }).format(start)} ${time.format(start)}–${time.format(end)}`,
-    event.team,
     event.place,
   ].filter(Boolean);
   const r = event.readiness;
@@ -276,14 +278,14 @@ function AgendaRow({
           <strong>
             {event.title}
             {event.status === "cancelled" && (
-              <span className="status-tag" data-tone="danger">
+              <Badge tone="danger">
                 {t.cancelled}
-              </span>
+              </Badge>
             )}
             {event.responseNeeded && event.status !== "cancelled" && (
-              <span className="status-tag" data-tone="warning">
+              <Badge tone="warning">
                 {t.responseNeeded}
-              </span>
+              </Badge>
             )}
           </strong>
           <span>
@@ -291,6 +293,15 @@ function AgendaRow({
               {part({ day: "numeric", month: "long" }).format(start)},{" "}
             </span>
             {details.join(" · ")}
+            {event.team && (
+              <>
+                {" "}
+                <span className="team-chip" data-color={event.teamColor ?? "none"}>
+                  <span className="team-dot" aria-hidden="true" />
+                  {event.team}
+                </span>
+              </>
+            )}
           </span>
           {r && (
             <span className="readiness" title={t.readiness[r.tone]}>

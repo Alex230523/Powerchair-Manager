@@ -45,6 +45,11 @@ export const accessCopy = {
     activate: "Réactiver dans cette organisation",
     accept: "Accepter l’invitation",
     token: "Jeton d’invitation",
+    photo: "Photo de profil",
+    photoIntro: "Votre photo apparaît en bas du menu, à côté de votre nom. PNG, JPEG ou WebP, 256 Ko au plus.",
+    choosePhoto: "Choisir une photo",
+    removePhoto: "Retirer la photo",
+    invalidPhoto: "Photo refusée : PNG, JPEG ou WebP, 256 Ko au plus.",
     preferences: "Préférences",
     notifications: "Activer les notifications ordinaires (hors sécurité)",
     save: "Enregistrer",
@@ -113,6 +118,11 @@ export const accessCopy = {
     activate: "Heractiveren in deze organisatie",
     accept: "Uitnodiging accepteren",
     token: "Uitnodigingstoken",
+    photo: "Profielfoto",
+    photoIntro: "Uw foto verschijnt onderaan het menu, naast uw naam. PNG, JPEG of WebP, hoogstens 256 kB.",
+    choosePhoto: "Een foto kiezen",
+    removePhoto: "Foto verwijderen",
+    invalidPhoto: "Foto geweigerd: PNG, JPEG of WebP, hoogstens 256 kB.",
     preferences: "Voorkeuren",
     notifications: "Gewone meldingen inschakelen (behalve beveiliging)",
     save: "Opslaan",
@@ -139,6 +149,16 @@ export const accessCopy = {
   en: english.accessCopy,
 };
 export const errors: Record<string, { fr: string; nl: string; en: string }> = {
+  SEASON_STARTED: {
+    fr: "La saison est lancée : des cotisations ont déjà été émises sur ce barème. Confirmez le changement pour continuer.",
+    nl: "Het seizoen is gestart: er is al lidgeld uitgegeven op dit tarief. Bevestig de wijziging om verder te gaan.",
+    en: "The season is underway: dues were already issued on this rate. Confirm the change to continue.",
+  },
+  INVALID_IMAGE: {
+    fr: "Image refusée : PNG, JPEG ou WebP seulement.",
+    nl: "Afbeelding geweigerd: enkel PNG, JPEG of WebP.",
+    en: "Image refused: PNG, JPEG or WebP only.",
+  },
   MODULE_OFF: {
     fr: "Ce module est désactivé pour votre club. Le président peut le réactiver dans Réglages, rubrique Modules : rien n'a été supprimé.",
     nl: "Deze module is uitgeschakeld voor uw club. De voorzitter kan ze opnieuw activeren in Instellingen, rubriek Modules: er werd niets verwijderd.",

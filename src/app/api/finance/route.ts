@@ -1,3 +1,4 @@
+import { parseScope } from "@/domains/scope/service";
 import { getDb } from "@/lib/db";
 import {
   financeView,
@@ -9,7 +10,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    return Response.json(await financeView(getDb(), await principalIn(request, "finance")), {
+    return Response.json(await financeView(getDb(), await principalIn(request, "finance"), parseScope(new URL(request.url).searchParams)), {
       headers: noStore,
     });
   } catch (e) {

@@ -108,6 +108,8 @@ test("real account without email verification, MFA, contexts, invitation, revoca
       orgs.push(org.id);
     }
     await page.reload();
+    // The profile select lives in the sidebar foot menu (wave 12): open it first.
+    await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
       page
@@ -151,6 +153,8 @@ test("real account without email verification, MFA, contexts, invitation, revoca
       ),
     ).toBe(true);
     await page.setViewportSize({ width: 1280, height: 720 });
+    // The profile select lives in the sidebar foot menu (wave 12): open it first.
+    await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
       page
@@ -159,6 +163,8 @@ test("real account without email verification, MFA, contexts, invitation, revoca
     ]);
 
     await expect(page.locator("header")).toContainText("Club test B");
+    // The profile select lives in the sidebar foot menu (wave 12): open it first.
+    await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
       page
@@ -199,6 +205,8 @@ test("real account without email verification, MFA, contexts, invitation, revoca
     await memberPage
       .getByRole("button", { name: "Accepter l’invitation", exact: true })
       .click();
+    // The profile select lives in the sidebar foot menu (wave 12): open it first.
+    await memberPage.locator(".profile-menu > summary").click();
     await Promise.all([
       memberPage.waitForEvent("load"),
       memberPage

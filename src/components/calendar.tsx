@@ -10,6 +10,7 @@ import {
   type FormEvent,
 } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import { kinds, visibilities } from "@/domains/calendar/schema";
 import {
@@ -19,7 +20,7 @@ import {
   calendarErrors,
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel } from "./ui";
+import { Button, Panel, PageHeader } from "./ui";
 type Place = {
   id: string;
   name: string;
@@ -69,6 +70,7 @@ type Item = {
   place_name: string | null;
   place_address: string | null;
   team_name: string | null;
+  team_color?: string | null;
   participants: { id: string; name: string }[];
   explicitParticipants: string[];
   documents: { id: string; name: string; versionId: string | null }[];
@@ -92,8 +94,9 @@ type View = {
   sharedVenues: { id: string; name: string; address: string }[];
   manage: boolean;
   canPlan: boolean;
+  offModules?: string[];
   events: Item[];
-  teams: { id: string; name: string }[];
+  teams: { id: string; name: string; color?: string | null }[];
   places: Place[];
   profiles: { id: string; full_name: string }[];
   documentOptions: { id: string; name: string; category: string }[];
@@ -155,6 +158,8 @@ export function Calendar({
           exercise:
             "Fiches d’exercice : sélectionnez les documents à joindre à l’entraînement.",
           docs: "Gérer les documents",
+          trips: "Déplacements",
+          venues: "Annuaire des salles",
           coaches: "Présences des coachs",
           players: "Présences des joueurs",
           attendance: "Gérer les convocations et présences",
@@ -177,6 +182,8 @@ export function Calendar({
             exercise:
               "Exercise sheets: select documents to attach to the training session.",
             docs: "Manage documents",
+            trips: "Trips",
+            venues: "Hall directory",
             coaches: "Coach attendance",
             players: "Player attendance",
             attendance: "Manage invitations and attendance",
@@ -197,6 +204,8 @@ export function Calendar({
               "Naam en adres zijn zichtbaar voor clubs en federatie. Geen privécontactgegevens.",
             exercise: "Oefenfiches: selecteer documenten voor de training.",
             docs: "Documenten beheren",
+            trips: "Verplaatsingen",
+            venues: "Zalengids",
             coaches: "Aanwezigheid coaches",
             players: "Aanwezigheid spelers",
             attendance: "Oproepen en aanwezigheid beheren",
@@ -209,6 +218,7 @@ export function Calendar({
           };
   const t = calendarCopy[locale],
     kl = kindLabels[locale];
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [data, setData] = useState<View | null>(null),
     [anchor, setAnchorState] = useState(() =>
       localAt(new Date(), "Europe/Brussels").slice(0, 10),
@@ -218,7 +228,6 @@ export function Calendar({
     [editorOpen, setEditorOpen] = useState(false),
     [subscriptionOpen, setSubscriptionOpen] = useState(false),
     [offset, setOffset] = useState(0),
-    [team, setTeam] = useState(""),
     [place, setPlace] = useState(""),
     [selected, setSelected] = useState(eventId ?? ""),
     [placeEdit, setPlaceEdit] = useState(""),
@@ -381,7 +390,7 @@ export function Calendar({
   return (
     <>
       <main id="main" className="access calendar">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
 
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
@@ -406,6 +415,17 @@ export function Calendar({
                 {extra.subscribe}
               </a>
               <Link href={"/" + locale + "/documents"}>{extra.docs}</Link>
+              {/* Trips and halls left the menu (wave 11): they live here. */}
+              {!data.offModules?.includes("trips") && (
+                <Link className="button secondary" href={"/" + locale + "/trips"}>
+                  {extra.trips}
+                </Link>
+              )}
+              {data.canPlan && (
+                <Link className="button secondary" href={"/" + locale + "/venues"}>
+                  {extra.venues}
+                </Link>
+              )}
             </div>
             <Panel title={t.agenda}>
               <h3 className="calendar-period">
@@ -481,6 +501,7 @@ export function Calendar({
                       </option>
                     ))}
                   </select>
+                <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
                 </Field>
                 <Field id="calendar-place" label={t.place}>
                   <select
@@ -585,6 +606,20 @@ export function Calendar({
                   onCreate={data.canPlan ? newEvent : undefined}
                 />
               )}
+              {view !== "list" && data.teams.some((x) => x.color) && (
+                <ul className="calendar-legend" aria-label={t.team}>
+                  {data.teams.map((x) => (
+                    <li key={x.id}>
+                      <span className="team-dot" data-color={x.color ?? "none"} aria-hidden="true" />
+                      {x.name}
+                    </li>
+                  ))}
+                  <li>
+                    <span className="team-dot" data-color="none" aria-hidden="true" />
+                    {t.all}
+                  </li>
+                </ul>
+              )}
               <ul
                 hidden={view !== "list"}
                 className={
@@ -601,7 +636,13 @@ export function Calendar({
                       {when(e.starts_at)} → {when(e.ends_at)}
                     </p>
                     <p>
-                      {e.team_name} {e.place_name && " · " + e.place_name}
+                      {e.team_id && (
+                        <span className="team-chip" data-color={e.team_color ?? "none"}>
+                          <span className="team-dot" aria-hidden="true" />
+                          {e.team_name}
+                        </span>
+                      )}{" "}
+                      {e.place_name && " · " + e.place_name}
                     </p>
                     {e.is_exception && <p>{t.exception}</p>}
                   </li>

@@ -128,7 +128,7 @@ test("player listing, personal then sporting profile, former players and dedicat
     for (const [url, title] of [
       ["/en/coaches", "Coach management"],
       ["/fr/club/manage", "Gestion du club"],
-      ["/nl/funding", "Financiering"],
+      ["/nl/funding", "Clubfinanciën"],
       ["/fr/settings", "Réglages"],
     ]) {
       await page.goto(url);

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { attendanceView } from "@/domains/attendance/service";
 import { gridCopy } from "./attendance-grid-copy";
+import { EmptyState } from "./ui";
 export { gridCopy };
 
 type View = Awaited<ReturnType<typeof attendanceView>>;
@@ -36,7 +37,7 @@ export function AttendanceGrid({
   // Fixed at first render: a cell does not flip while the coach is looking at it.
   const [now] = useState(() => Date.now());
   const shown = events.filter((e) => e.status !== "cancelled" && e.register);
-  if (!shown.length) return <p className="muted">{t.empty}</p>;
+  if (!shown.length) return <EmptyState title={t.empty} />;
   const people = new Map<string, string>();
   for (const e of shown) for (const i of e.invitations) if (!i.withdrawn_at) people.set(i.profile_id, i.full_name);
   const rows = [...people.entries()].sort((a, b) => a[1].localeCompare(b[1]));

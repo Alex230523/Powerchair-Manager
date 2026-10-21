@@ -1,3 +1,4 @@
+import { parseScope } from "@/domains/scope/service";
 import { getDb } from "@/lib/db";
 import { financeReport } from "@/domains/finance/service";
 import { principalIn, noStore, failure } from "@/lib/http";
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
       getDb(),
       await principalIn(request, "finance"),
       url.searchParams.get("season") ?? "",
+      parseScope(url.searchParams),
     );
     if (url.searchParams.get("format") !== "csv")
       return Response.json(report, { headers: noStore });

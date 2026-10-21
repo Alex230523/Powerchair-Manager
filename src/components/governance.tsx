@@ -11,15 +11,18 @@ import {
   type Grant,
   type Level,
 } from "@/domains/access/rights";
+import type { DuesRules } from "@/domains/dues/rules";
 import type { PresenceRules } from "@/domains/dashboard/presence";
 import { governanceCopy } from "./governance-copy";
 import { settingsCopy } from "./settings-copy";
 import { errors } from "./access-copy";
+import { Card, EmptyState } from "./ui";
 
 export type Governance = {
   organizationId: string;
   disabled: string[];
   presence: PresenceRules;
+  dues: DuesRules;
   can: {
     modules: boolean;
     presence: boolean;
@@ -149,10 +152,7 @@ export function ProfilesPanel({
     ).then(() => setEditing(null));
   }
   return (
-    <section className="panel" aria-labelledby="settings-profiles">
-      <div className="panel-head">
-        <h2 id="settings-profiles">{g.clubProfiles}</h2>
-        {gov.can.profiles && !editing && (
+    <Card title={g.clubProfiles} labelledBy="settings-profiles" headingId="settings-profiles" actions={<>{gov.can.profiles && !editing && (
           <button
             type="button"
             className="button secondary"
@@ -160,8 +160,7 @@ export function ProfilesPanel({
           >
             {g.newProfile}
           </button>
-        )}
-      </div>
+        )}</>}>
       <p className="muted">{g.clubProfilesIntro}</p>
       {gov.profiles.length ? (
         <ul className="profile-list">
@@ -210,7 +209,7 @@ export function ProfilesPanel({
           ))}
         </ul>
       ) : (
-        <p className="muted">{g.noProfile}</p>
+        <EmptyState title={g.noProfile} />
       )}
       {editing && (
         <form className="profile-form" onSubmit={save}>
@@ -247,7 +246,7 @@ export function ProfilesPanel({
           </div>
         </form>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -265,8 +264,7 @@ export function ModulesPanel({
   const g = governanceCopy[locale];
   const [off, setOff] = useState<string[]>(gov.disabled);
   return (
-    <section className="panel" aria-labelledby="settings-modules">
-      <h2 id="settings-modules">{g.modulesTitle}</h2>
+    <Card title={g.modulesTitle} labelledBy="settings-modules" headingId="settings-modules">
       <p className="muted">{g.modulesIntro}</p>
       <form
         onSubmit={(e) => {
@@ -304,7 +302,7 @@ export function ModulesPanel({
           {g.saveModules}
         </button>
       </form>
-    </section>
+    </Card>
   );
 }
 
@@ -335,8 +333,7 @@ export function PresencePanel({
       },
     });
   return (
-    <section className="panel" aria-labelledby="settings-presence">
-      <h2 id="settings-presence">{g.presenceTitle}</h2>
+    <Card title={g.presenceTitle} labelledBy="settings-presence" headingId="settings-presence">
       <p className="muted">{g.presenceIntro}</p>
       <form
         onSubmit={(e) => {
@@ -391,7 +388,7 @@ export function PresencePanel({
           {g.savePresence}
         </button>
       </form>
-    </section>
+    </Card>
   );
 }
 
@@ -475,8 +472,7 @@ export function Journal({
   const heading = kind === "rights" ? g.rightsJournal : g.healthJournal;
   const hid = `journal-${kind}`;
   return (
-    <section className="panel" aria-labelledby={hid}>
-      <h2 id={hid}>{heading}</h2>
+    <Card title={heading} labelledBy={hid} headingId={hid}>
       <p className="muted">
         {kind === "rights" ? g.rightsJournalIntro : g.healthJournalIntro}
       </p>
@@ -548,8 +544,8 @@ export function Journal({
             </table>
           </div>
         ) : (
-          <p className="muted">{g.empty}</p>
+          <EmptyState title={g.empty} />
         ))}
-    </section>
+    </Card>
   );
 }

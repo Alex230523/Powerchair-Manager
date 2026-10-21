@@ -13,6 +13,7 @@ import {
   timeLabel,
   type Detail,
 } from "./trips";
+import { Badge, Card } from "./ui";
 
 type List = Awaited<ReturnType<typeof tripsView>>;
 type Post = (body: Record<string, unknown>, done: string) => Promise<boolean>;
@@ -71,15 +72,11 @@ function Summary({ locale, d, list, busy, send }: Props & { list: List | null })
   const destination = trip.venue_name ?? trip.place_name ?? trip.destination;
   const address = trip.venue_address || trip.place_address;
   return (
-    <section className="panel" aria-labelledby="trip-summary">
-      <div className="panel-head">
-        <h2 id="trip-summary">{t.tabs.summary}</h2>
-        {d.can.manage && list && (
+    <Card title={t.tabs.summary} labelledBy="trip-summary" headingId="trip-summary" actions={d.can.manage && list && (
           <button type="button" className="button secondary" aria-expanded={editing} onClick={() => setEditing(!editing)}>
             {editing ? t.close : t.edit}
           </button>
-        )}
-      </div>
+        )}>
       {editing && list ? (
         <TripForm
           locale={locale}
@@ -184,15 +181,14 @@ function Summary({ locale, d, list, busy, send }: Props & { list: List | null })
           </button>
         </div>
       )}
-    </section>
+    </Card>
   );
 }
 
 function MyAnswer({ locale, d, busy, send }: Props) {
   const t = tripsCopy[locale];
   return (
-    <section className="panel" aria-labelledby="trip-mine">
-      <h2 id="trip-mine">{t.yourAnswer}</h2>
+    <Card title={t.yourAnswer} labelledBy="trip-mine" headingId="trip-mine">
       <ul className="profile-list">
         {d.participants.map((p) => (
           <li key={p.id}>
@@ -222,7 +218,7 @@ function MyAnswer({ locale, d, busy, send }: Props) {
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }
 
@@ -252,17 +248,11 @@ function Participants({ locale, d, list, busy, send }: Props & { list: List | nu
     }).then((ok) => ok && setEditing(null));
   }
   return (
-    <section className="panel" aria-labelledby="trip-participants">
-      <div className="panel-head">
-        <h2 id="trip-participants">
-          {t.participants} <span className="muted">({d.participants.filter((p) => p.status !== "declined").length})</span>
-        </h2>
-        {d.can.manage && (
+    <Card title={<>{t.participants} <span className="muted">({d.participants.filter((p) => p.status !== "declined").length})</span></>} labelledBy="trip-participants" headingId="trip-participants" actions={d.can.manage && (
           <button type="button" className="button secondary" aria-expanded={adding} onClick={() => setAdding(!adding)}>
             {adding ? t.close : t.addPeople}
           </button>
-        )}
-      </div>
+        )}>
       {adding && (
         <form
           className="add-people"
@@ -386,7 +376,7 @@ function Participants({ locale, d, list, busy, send }: Props & { list: List | nu
           </tbody>
         </table>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -410,13 +400,9 @@ function Transport({ locale, d, list, busy, send, name }: Props & { list: List |
   }
   if (!d.vehicles.length && !d.can.manage) return null;
   return (
-    <section className="panel" aria-labelledby="trip-transport">
-      <div className="panel-head">
-        <h2 id="trip-transport">{t.tabs.transport}</h2>
-        {d.can.manage && editing === null && (
+    <Card title={t.tabs.transport} labelledBy="trip-transport" headingId="trip-transport" actions={d.can.manage && editing === null && (
           <button type="button" className="button secondary" onClick={() => setEditing("new")}>{t.addVehicle}</button>
-        )}
-      </div>
+        )}>
       {d.can.full && (d.unassigned.out.length > 0 || d.unassigned.back.length > 0) && (
         <div className="notice">
           {d.unassigned.out.length > 0 && (
@@ -437,10 +423,10 @@ function Transport({ locale, d, list, busy, send, name }: Props & { list: List |
           editing === v.id ? (
             <li key={v.id}>{form(v as Detail["vehicles"][number])}</li>
           ) : (
-            <li key={v.id} className="vehicle-card">
+            <Card as="li" key={v.id} className="vehicle-card">
               <div className="trip-card-head">
                 <strong>{v.name}</strong>
-                <span className="status-tag">{t.legsLabels[v.legs]}</span>
+                <Badge>{t.legsLabels[v.legs]}</Badge>
               </div>
               {(v.driver_name || v.phone) && (
                 <p>
@@ -455,13 +441,13 @@ function Transport({ locale, d, list, busy, send, name }: Props & { list: List |
                     .replace("{chairs}", String(v.load.chairs))
                     .replace("{wheel}", String(v.wheelchair_places))}
                   {(v.load.seatsOver > 0 || v.load.chairsOver > 0) && (
-                    <span className="status-tag" data-tone="danger"> {t.over}</span>
+                    <Badge tone="danger"> {t.over}</Badge>
                   )}
                 </p>
               )}
               {"warnings" in v &&
                 v.warnings.map((w: string) => (
-                  <p key={w} className="status-tag" data-tone="warning">{t.warnings[w]}</p>
+                  <p key={w}><Badge tone="warning">{t.warnings[w]}</Badge></p>
                 ))}
               <p className="small">
                 {t.passengers} : {v.passengers.map(name).filter(Boolean).join(", ") || "—"}
@@ -478,11 +464,11 @@ function Transport({ locale, d, list, busy, send, name }: Props & { list: List |
                   </button>
                 </div>
               )}
-            </li>
+            </Card>
           ),
         )}
       </ul>
-    </section>
+    </Card>
   );
 }
 
@@ -607,8 +593,7 @@ function Schedule({ locale, d, busy, send }: Props) {
   const days = tripDays(d.trip.starts_on, d.trip.ends_on);
   if (!d.schedule.length && !d.can.manage) return null;
   return (
-    <section className="panel" aria-labelledby="trip-schedule">
-      <h2 id="trip-schedule">{t.schedule}</h2>
+    <Card title={t.schedule} labelledBy="trip-schedule" headingId="trip-schedule">
       {days.map((day) => {
         const items = d.schedule.filter((s) => s.day === day);
         if (!items.length) return null;
@@ -672,7 +657,7 @@ function Schedule({ locale, d, busy, send }: Props) {
           <button className="button secondary" disabled={busy}>{t.addItem}</button>
         </form>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -681,10 +666,7 @@ function Checklist({ locale, d, busy, send }: Props) {
   const can = d.can.manage || d.can.staff;
   const done = d.checklist.filter((c) => c.done_at).length;
   return (
-    <section className="panel" aria-labelledby="trip-checklist">
-      <h2 id="trip-checklist">
-        {t.checklist} <span className="muted">({done}/{d.checklist.length})</span>
-      </h2>
+    <Card title={<>{t.checklist} <span className="muted">({done}/{d.checklist.length})</span></>} labelledBy="trip-checklist" headingId="trip-checklist">
       <ul className="checklist">
         {d.checklist.map((c) => (
           <li key={c.id}>
@@ -724,15 +706,14 @@ function Checklist({ locale, d, busy, send }: Props) {
           <button className="button secondary" disabled={busy}>{t.addCheck}</button>
         </form>
       )}
-    </section>
+    </Card>
   );
 }
 
 function Documents({ locale, d }: { locale: Locale; d: Detail }) {
   const t = tripsCopy[locale];
   return (
-    <section className="panel" aria-labelledby="trip-documents">
-      <h2 id="trip-documents">{t.documents}</h2>
+    <Card title={t.documents} labelledBy="trip-documents" headingId="trip-documents">
       <p className="muted">{t.documentsIntro}</p>
       {d.countdown.urgent && d.documents.length > 0 && (
         <p className="notice">
@@ -757,7 +738,7 @@ function Documents({ locale, d }: { locale: Locale; d: Detail }) {
       ) : (
         <p className="muted">{t.documentsOk}</p>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -771,8 +752,7 @@ function CareSection({ locale, d, busy, send }: Props) {
     care.days.includes(d.today) ? d.today : care.days[0],
   );
   return (
-    <section className="panel" aria-labelledby="trip-care">
-      <h2 id="trip-care">{t.care}</h2>
+    <Card title={t.care} labelledBy="trip-care" headingId="trip-care">
       <p className="muted">{t.careIntro}</p>
       {d.support.some((s) => s.support_needs || s.safety_notes || s.emergency_contact) && (
         <details className="support-list">
@@ -830,7 +810,7 @@ function CareSection({ locale, d, busy, send }: Props) {
       ) : (
         <p className="muted">{t.careNone}</p>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -840,8 +820,7 @@ function Budget({ locale, d, busy, send }: Props) {
   const [lines, setLines] = useState(b.lines.map((l) => ({ label: l.label, amount: (l.planned_cents / 100).toFixed(2) })));
   const planned = b.lines.reduce((n, l) => n + l.planned_cents, 0);
   return (
-    <section className="panel" aria-labelledby="trip-budget">
-      <h2 id="trip-budget">{t.budget}</h2>
+    <Card title={t.budget} labelledBy="trip-budget" headingId="trip-budget">
       <p className="muted">{t.budgetIntro}</p>
       <dl className="report-totals">
         <div>
@@ -893,7 +872,7 @@ function Budget({ locale, d, busy, send }: Props) {
           </div>
         </form>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -934,8 +913,7 @@ function Offline({ locale, d }: { locale: Locale; d: Detail }) {
     }
   }
   return (
-    <section className="panel" aria-labelledby="trip-offline">
-      <h2 id="trip-offline">{t.offline}</h2>
+    <Card title={t.offline} labelledBy="trip-offline" headingId="trip-offline">
       <p className="muted">{t.offlineIntro}</p>
       <form className="inline-form" onSubmit={prepare}>
         <label htmlFor="book-code">
@@ -954,6 +932,6 @@ function Offline({ locale, d }: { locale: Locale; d: Detail }) {
           {t.prepared} <Link href={`/${locale}/offline-book`}>{t.openBook}</Link>
         </p>
       )}
-    </section>
+    </Card>
   );
 }

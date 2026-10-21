@@ -8,6 +8,7 @@ import type {
 import { refereesCopy, weekendDays } from "./referees-copy";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const when = (l: Locale, d: string) =>
@@ -79,16 +80,14 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access referees">
-      <h1>{t.refereeTitle}</h1>
-      <p className="muted">{t.refereeIntro}</p>
+      <PageHeader title={t.refereeTitle} subtitle={t.refereeIntro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.denied}</p>}
       {!data && !denied && !error && <p role="status">{t.loading}</p>}
       {data && (
         <div className="grid">
-          <section className="panel" aria-labelledby="ref-assignments">
-            <h2 id="ref-assignments">{t.assignments}</h2>
+          <Card title={t.assignments} labelledBy="ref-assignments" headingId="ref-assignments">
             {data.assignments.length ? (
               <ul className="records">
                 {data.assignments.map((a) => {
@@ -103,18 +102,15 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
                         {a.competition ? ` · ${a.competition}` : ""}
                         {a.venue ? ` · ${a.venue}` : ""} · {t.roles[a.role]}
                       </span>
-                      <span
-                        className="status-tag"
-                        data-tone={
+                      <Badge tone={
                           a.status === "accepted"
                             ? "success"
                             : a.status === "declined"
                               ? "danger"
                               : "warning"
-                        }
-                      >
+                        }>
                         {t.statuses[a.status]}
-                      </span>
+                      </Badge>
                       {a.status === "proposed" && (
                         <div className="row-actions">
                           <button
@@ -223,11 +219,10 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
                 })}
               </ul>
             ) : (
-              <p className="muted">{t.noAssignment}</p>
+              <EmptyState title={t.noAssignment} />
             )}
-          </section>
-          <section className="panel" aria-labelledby="ref-availability">
-            <h2 id="ref-availability">{t.availability}</h2>
+          </Card>
+          <Card title={t.availability} labelledBy="ref-availability" headingId="ref-availability">
             <p className="muted">{t.availabilityHint}</p>
             <form
               onSubmit={(e) => {
@@ -268,7 +263,7 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
                 {t.saveAvailability}
               </button>
             </form>
-          </section>
+          </Card>
         </div>
       )}
     </main>
@@ -314,8 +309,7 @@ export function Designations({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access referees">
-      <h1>{t.designTitle}</h1>
-      <p className="muted">{t.designIntro}</p>
+      <PageHeader title={t.designTitle} subtitle={t.designIntro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.denied}</p>}
@@ -344,26 +338,23 @@ export function Designations({ locale }: { locale: Locale }) {
                       {m.venue ? ` · ${m.venue}` : ""}
                     </span>
                     {report && (
-                      <span className="status-tag" data-tone="success">
+                      <Badge tone="success">
                         {t.reportDone} {report.home_score}-{report.away_score}
-                      </span>
+                      </Badge>
                     )}
                     <ul className="assigned-referees">
                       {assigned.map((a) => (
                         <li key={a.referee_id}>
                           {a.name} · {t.roles[a.role]}{" "}
-                          <span
-                            className="status-tag"
-                            data-tone={
+                          <Badge tone={
                               a.status === "accepted"
                                 ? "success"
                                 : a.status === "declined"
                                   ? "danger"
                                   : "warning"
-                            }
-                          >
+                            }>
                             {t.statuses[a.status]}
-                          </span>
+                          </Badge>
                           {data.can.manage && (
                             <button
                               type="button"
@@ -439,7 +430,7 @@ export function Designations({ locale }: { locale: Locale }) {
               })}
             </ul>
           ) : (
-            <p className="muted">{t.noMatch}</p>
+            <EmptyState title={t.noMatch} />
           )}
         </>
       )}

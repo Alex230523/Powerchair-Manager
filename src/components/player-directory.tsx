@@ -2,11 +2,12 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
 import { errors } from "./access-copy";
-import { Button } from "./ui";
+import { Button, EmptyState, PageHeader } from "./ui";
 import { Modal } from "./modal";
 import { PlayerImport } from "./player-import";
 import { ExportDialog } from "./export-dialog";
@@ -158,9 +159,9 @@ export function PlayerDirectory({
     [creating, setCreating] = useState(false),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
-    [team, setTeam] = useState(""),
     [position, setPosition] = useState(""),
     [minimum, setMinimum] = useState("");
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
     year: "numeric",
@@ -335,12 +336,7 @@ export function PlayerDirectory({
   }
   return (
     <main id="main" className="access player-directory">
-      <div className="directory-heading">
-        <div>
-          <h1>{title}</h1>
-          <p>{data?.context.name ?? t.intro}</p>
-        </div>
-        <div className="directory-actions">
+      <PageHeader title={title} subtitle={data?.context.name ?? t.intro} actions={<><div className="directory-actions">
           <Link
             className="button secondary"
             href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
@@ -392,8 +388,7 @@ export function PlayerDirectory({
               {role === "player" ? t.add : t.addCoach}
             </Button>
           )}
-        </div>
-      </div>
+        </div></>} />
       {!person && !creating && feedback}
       {!data && (
         <p>
@@ -431,9 +426,9 @@ export function PlayerDirectory({
                 placeholder={p.name}
               />
             </label>
-            <label>
-              {p.team}
-              <select value={team} onChange={(e) => setTeam(e.target.value)}>
+            <div className="directory-field">
+              <label htmlFor="directory-team">{p.team}</label>
+              <select id="directory-team" value={team} onChange={(e) => setTeam(e.target.value)}>
                 <option value="">{t.all}</option>
                 {data.teams.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -441,7 +436,8 @@ export function PlayerDirectory({
                   </option>
                 ))}
               </select>
-            </label>
+              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
+            </div>
             {role === "player" && (
               <label>
                 {t.position}
@@ -531,10 +527,15 @@ export function PlayerDirectory({
                         {r.full_name}
                       </button>
                     </th>
-                    <td>
-                      {[
-                        ...new Set(current(r).map((a) => teamName(a.team_id))),
-                      ].join(", ") || t.unassigned}
+                    <td className="tag-cell">
+                      {[...new Set(current(r).map((a) => a.team_id))].length
+                        ? [...new Set(current(r).map((a) => a.team_id))].map((id) => (
+                            <span key={id} className="team-chip" data-color={data?.teams.find((x) => x.id === id)?.color ?? "none"}>
+                              <span className="team-dot" aria-hidden="true" />
+                              {teamName(id)}
+                            </span>
+                          ))
+                        : t.unassigned}
                     </td>
                     {role === "player" && (
                       <>
@@ -595,7 +596,7 @@ export function PlayerDirectory({
               </tbody>
             </table>
             <ShowMore locale={locale} {...moreRoster} />
-            {!roster.length && <p className="empty-directory">{p.empty}</p>}
+            {!roster.length && <EmptyState title={p.empty} />}
           </div>
           {manager && !former && (
             <details className="panel">

@@ -29,6 +29,8 @@ import {
   type TodoKey,
 } from "./summary";
 import { presenceRules, readiness } from "./presence";
+import { fundingDeadlines } from "../funding/service";
+import { resolveScope, teamMembers } from "../scope/service";
 
 /**
  * Read-only operational summary for the active context.
@@ -40,12 +42,12 @@ import { presenceRules, readiness } from "./presence";
  * Runs in one READ ONLY snapshot and takes no organization lock, unlike
  * module mutations, so it never blocks or delays them.
  */
-export async function dashboardView(db: Pool, p: Principal) {
+export async function dashboardView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
   const c = await db.connect();
   try {
     await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     await c.query("SET LOCAL TIME ZONE 'Europe/Brussels'");
-    const result = await compute(c, p);
+    const result = await compute(c, p, raw);
     await c.query("COMMIT");
     return result;
   } catch (e) {
@@ -56,7 +58,7 @@ export async function dashboardView(db: Pool, p: Principal) {
   }
 }
 
-async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
+async function compute(c: PoolClient, p: Principal, raw: { season?: string; team?: string }): Promise<Dashboard> {
   const user = await account(c, p);
   const counts: Partial<Record<TodoKey, number>> = {};
   const metrics: Metric[] = [];
@@ -93,6 +95,12 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   // Modules the club switched off add nothing to the dashboard.
   const on = (m: string) => !club || !context.disabled_modules?.includes(m);
   const own = [...(await ownProfiles(c, a))];
+  // The team chosen in the top bar (wave 12): validated here, never trusted from the URL.
+  const scope = club
+    ? await resolveScope(c, { organization_id: org, role: a.role, user_id: p.userId, team_id: a.team_id }, raw)
+    : { seasonId: null, teamId: null };
+  const teamId = scope.teamId;
+  const members = teamId ? await teamMembers(c, org, teamId) : null;
 
   // Registrations: club inbox for registrations.manage, as in registrationView(adminMode).
   if (club && has("registrations.manage")) {
@@ -133,8 +141,8 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
                 count(*) FILTER (WHERE status='expired' OR (status='valid' AND expires_on<CURRENT_DATE))::int AS expired,
                 count(*) FILTER (WHERE status='valid' AND expires_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30)::int AS expiring,
                 count(*) FILTER (WHERE status IN ('missing','requested','refused'))::int AS missing
-           FROM club_document WHERE organization_id=$1 AND (NOT sensitive OR $2)`,
-        [org, a.grants.includes("documents.sensitive")],
+           FROM club_document WHERE organization_id=$1 AND (NOT sensitive OR $2) AND ($3::uuid[] IS NULL OR profile_id=ANY($3::uuid[]))`,
+        [org, a.grants.includes("documents.sensitive"), members],
       )
     ).rows[0];
     counts.documentsReview = d.review;
@@ -181,8 +189,8 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   // Staff: registers of finished events left open, and answers still missing this week.
   const managed = (
     await c.query(
-      "SELECT e.*,(r.closed_at IS NULL AND e.ends_at<now()) AS to_close,(SELECT count(*)::int FROM attendance_invitation i WHERE i.register_id=r.id AND i.withdrawn_at IS NULL AND i.response='none') AS unanswered FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id WHERE r.organization_id=$1 AND e.status='scheduled' AND ((r.closed_at IS NULL AND e.ends_at<now()) OR (e.starts_at>now() AND e.starts_at<now()+interval '7 days')) ORDER BY e.starts_at LIMIT 200",
-      [org],
+      "SELECT e.*,(r.closed_at IS NULL AND e.ends_at<now()) AS to_close,(SELECT count(*)::int FROM attendance_invitation i WHERE i.register_id=r.id AND i.withdrawn_at IS NULL AND i.response='none') AS unanswered FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id WHERE r.organization_id=$1 AND e.status='scheduled' AND ($2::uuid IS NULL OR e.team_id=$2) AND ((r.closed_at IS NULL AND e.ends_at<now()) OR (e.starts_at>now() AND e.starts_at<now()+interval '7 days')) ORDER BY e.starts_at LIMIT 200",
+      [org, teamId],
     )
   ).rows as (Event & { to_close: boolean; unanswered: number })[];
   let toClose = 0,
@@ -234,10 +242,10 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     scopes.push("people");
     const m = (
       await c.query(
-        `SELECT (SELECT count(*)::int FROM club_person WHERE organization_id=$1 AND status='active') AS members,
-                (SELECT count(*)::int FROM club_person WHERE organization_id=$1 AND status='active' AND 'player'=ANY(directory_roles) AND NOT 'player'=ANY(former_roles)) AS players,
-                (SELECT count(*)::int FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT s.archived) AS teams`,
-        [org],
+        `SELECT (SELECT count(*)::int FROM club_person WHERE organization_id=$1 AND status='active' AND ($2::uuid[] IS NULL OR id=ANY($2::uuid[]))) AS members,
+                (SELECT count(*)::int FROM club_person WHERE organization_id=$1 AND status='active' AND 'player'=ANY(directory_roles) AND NOT 'player'=ANY(former_roles) AND ($2::uuid[] IS NULL OR id=ANY($2::uuid[]))) AS players,
+                (SELECT count(*)::int FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT s.archived AND ($3::uuid IS NULL OR t.id=$3)) AS teams`,
+        [org, members, teamId],
       )
     ).rows[0];
     metrics.push(
@@ -253,8 +261,8 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     scopes.push("dues");
     const next = await count(
       c,
-      "SELECT COALESCE(sum(i.amount_cents),0) AS count FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND i.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30",
-      [org],
+      "SELECT COALESCE(sum(i.amount_cents),0) AS count FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND i.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30 AND ($2::uuid[] IS NULL OR d.profile_id=ANY($2::uuid[]))",
+      [org, members],
     );
     // Treasury: balance of the club ledger (cancelled entries never count).
     const treasury = await count(
@@ -288,10 +296,10 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   // Agenda: the next fortnight, filtered exactly like the calendar.
   const events = (
     await c.query(
-      "SELECT e.*,t.name AS team_name,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>now() AND e.starts_at<now()+interval '14 days' ORDER BY e.starts_at,e.id LIMIT 60",
-      [org],
+      "SELECT e.*,t.name AS team_name,t.color AS team_color,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>now() AND e.starts_at<now()+interval '14 days' AND ($2::uuid IS NULL OR e.team_id=$2 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 60",
+      [org, teamId],
     )
-  ).rows as (Event & { team_name: string | null; place_name: string | null })[];
+  ).rows as (Event & { team_name: string | null; team_color: string | null; place_name: string | null })[];
   const agenda: AgendaItem[] = [];
   let upcoming = 0;
   const rules = presenceRules(
@@ -325,6 +333,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
         startsAt: new Date(e.starts_at).toISOString(),
         endsAt: new Date(e.ends_at).toISOString(),
         team: e.team_name,
+        teamColor: e.team_color ?? null,
         place: e.place_name,
         responseNeeded: pendingEvents.has(e.id),
         ...(hasRegister && e.status === "scheduled"
@@ -339,7 +348,7 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
   // Administrative dates of the next 30 days, next to the events.
   const deadlines: Deadline[] = [];
   const push = (d: Omit<Deadline, "id">) =>
-    deadlines.push({ id: `${d.kind}:${d.date}:${d.href}`, ...d });
+    deadlines.push({ id: `${d.kind}:${d.date}:${d.href}:${d.title}`, ...d });
   if (managesDocuments(a)) {
     for (const r of (
       await c.query(
@@ -387,6 +396,10 @@ async function compute(c: PoolClient, p: Principal): Promise<Dashboard> {
     ).rows)
       push({ kind: "trip", date: r.day, title: r.title, count: 1, href: `/trips/${r.id}` });
   }
+  // Grants to file or report on, partners to renew or call back (wave 11): money people only.
+  if (club && on("finance") && (has("dues.manage") || has("dues.read")))
+    for (const d of await fundingDeadlines(c, org, 30))
+      push({ kind: d.kind, date: d.date, title: d.title, count: 1, href: d.href });
   deadlines.sort((x, y) => x.date.localeCompare(y.date));
 
   return {

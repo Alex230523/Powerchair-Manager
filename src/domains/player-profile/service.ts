@@ -112,7 +112,10 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         const team = all.teams.find((t) => t.id === a.team_id);
         return {
           id: a.id,
+          team_id: a.team_id,
           team: team?.name ?? "",
+          team_color: (team as { color?: string | null } | undefined)?.color ?? null,
+          season_id: team?.season_id ?? null,
           season: team ? (seasons.get(team.season_id) ?? "") : "",
           role: a.role,
           position: a.position,
@@ -273,6 +276,12 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         viewMoney: can.viewMoney,
       },
       teams,
+      // Open teams of the club, for "move to…" (wave 12): those who manage teams only.
+      otherTeams: can.editPosition
+        ? all.teams
+            .filter((t) => !t.archived && !t.season_archived)
+            .map((t) => ({ id: t.id, name: t.name, season_id: t.season_id, color: (t as { color?: string | null }).color ?? null }))
+        : [],
       guardians,
       matches: await playerMatchStats(c, org, id),
       license: ((

@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { rolloverView } from "@/domains/seasons/rollover";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
+import { PageHeader } from "./ui";
 
 const copy = {
   fr: {
@@ -97,7 +98,7 @@ export function Rollover({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access rollover">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );

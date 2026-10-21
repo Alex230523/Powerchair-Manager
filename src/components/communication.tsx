@@ -13,6 +13,7 @@ import { communicationCopy } from "./communication-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
 import { useData, usePost } from "./use-api";
+import { Badge, EmptyState, PageHeader, Tabs } from "./ui";
 
 type View = Awaited<ReturnType<typeof communicationView>>;
 type Tab = "events" | "newsletter" | "groups" | "alumni" | "sender";
@@ -47,7 +48,7 @@ export function Communication({
   if (!data)
     return (
       <main id="main" className="access communication">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {denied ? (
           <p className="notice">{t.denied}</p>
         ) : error ? (
@@ -73,37 +74,10 @@ export function Communication({
     post({ organizationId: data.organization_id, ...body }, done);
   return (
     <main id="main" className="access communication">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p className="muted">{t.intro}</p>
-        </div>
-      </div>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      <div className="tabs" role="tablist" aria-label={t.title}>
-        {tabs.map((key, i) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            id={`com-tab-${key}`}
-            aria-selected={tab === key}
-            aria-controls={tab === key ? `com-panel-${key}` : undefined}
-            tabIndex={tab === key ? 0 : -1}
-            onClick={() => setChosen(key)}
-            onKeyDown={(e) => {
-              if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-              const next =
-                tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-              setChosen(next);
-              document.getElementById(`com-tab-${next}`)?.focus();
-            }}
-          >
-            {t.tabs[key]}
-          </button>
-        ))}
-      </div>
+      <Tabs label={t.title} items={tabs.map((key) => ({ id: key, label: t.tabs[key] }))} value={tab} onChange={(id) => setChosen(id as typeof tab)} idPrefix="com-tab" panelId={(id) => `com-panel-${id}`} />
       <section
         role="tabpanel"
         id={`com-panel-${tab}`}
@@ -307,9 +281,9 @@ function EventMails({ data, t, locale, busy, send, eventId }: Props & { eventId?
           </button>
         )}
       </div>
-      {!data.plannable.length && <p className="muted">{t.noPlannable}</p>}
+      {!data.plannable.length && <EmptyState title={t.noPlannable} />}
       {editing === "new" && form()}
-      {!data.eventMails.length && <p className="empty-directory">{t.noEventMail}</p>}
+      {!data.eventMails.length && <EmptyState title={t.noEventMail} />}
       <ul className="records com-list">
         {data.eventMails.map((m) => (
           <li key={m.id}>
@@ -322,14 +296,11 @@ function EventMails({ data, t, locale, busy, send, eventId }: Props & { eventId?
                     {m.subject}
                     <span className="muted"> · {m.event.title}</span>
                   </h3>
-                  <span
-                    className="status-tag"
-                    data-tone={
+                  <Badge tone={
                       m.state === "review" ? "warning" : m.state === "sent" ? "success" : m.state === "scheduled" ? undefined : "danger"
-                    }
-                  >
+                    }>
                     {t.states[m.state]}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="muted small">
                   {m.state === "sent" && m.sent_at
@@ -429,7 +400,7 @@ function Newsletters({ data, t, locale, busy, send }: Props) {
       {editing === "new" && (
         <NewsletterEditor data={data} t={t} busy={busy} send={send} close={() => setEditing(null)} preview={previewHtml} />
       )}
-      {!data.newsletters.length && <p className="empty-directory">{t.noNewsletter}</p>}
+      {!data.newsletters.length && <EmptyState title={t.noNewsletter} />}
       <ul className="records com-list">
         {data.newsletters.map((n) =>
           editing === n.id ? (
@@ -440,9 +411,9 @@ function Newsletters({ data, t, locale, busy, send }: Props) {
             <li key={n.id}>
               <div className="panel-head">
                 <h3>{n.subject}</h3>
-                <span className="status-tag" data-tone={n.status === "sent" ? "success" : undefined}>
+                <Badge tone={n.status === "sent" ? "success" : undefined}>
                   {n.status === "sent" ? t.sent : t.draft}
-                </span>
+                </Badge>
               </div>
               <p className="muted small">
                 {n.status === "sent" && n.sent_at
@@ -784,7 +755,7 @@ function Groups({ data, t, busy, send }: Omit<Props, "locale">) {
         )}
       </div>
       {editing === "new" && form()}
-      {!data.groups.length && <p className="empty-directory">{t.noGroup}</p>}
+      {!data.groups.length && <EmptyState title={t.noGroup} />}
       <ul className="records com-list">
         {data.groups.map((g) => (
           <li key={g.id}>
@@ -797,7 +768,7 @@ function Groups({ data, t, busy, send }: Omit<Props, "locale">) {
                     {g.name}
                     {g.archived && <span className="muted"> · {t.archived}</span>}
                   </h3>
-                  {g.size !== null && <span className="status-tag">{fill(t.size, { n: g.size })}</span>}
+                  {g.size !== null && <Badge>{fill(t.size, { n: g.size })}</Badge>}
                 </div>
                 <p className="muted small">
                   {[
@@ -829,7 +800,7 @@ function Alumni({ data, t, locale, busy, send }: Props) {
   return (
     <>
       <p className="muted">{t.alumniIntro}</p>
-      {!data.alumni.length && <p className="empty-directory">{t.noAlumni}</p>}
+      {!data.alumni.length && <EmptyState title={t.noAlumni} />}
       <ul className="records com-list">
         {data.alumni.map((a) => (
           <li key={a.id}>
@@ -838,10 +809,7 @@ function Alumni({ data, t, locale, busy, send }: Props) {
                 {a.full_name}
                 {a.former_player && <span className="muted small"> · {t.formerPlayer}</span>}
               </h3>
-              <span
-                className="status-tag"
-                data-tone={!a.reachable ? undefined : a.unsubscribed ? "warning" : "success"}
-              >
+              <Badge tone={!a.reachable ? undefined : a.unsubscribed ? "warning" : "success"}>
                 {!a.reachable
                   ? t.unreachable
                   : !a.unsubscribed
@@ -849,7 +817,7 @@ function Alumni({ data, t, locale, busy, send }: Props) {
                     : a.stop_source === "link"
                       ? t.unsubscribedLink
                       : t.unsubscribedStaff}
-              </span>
+              </Badge>
             </div>
             <p className="muted small">{fill(t.left, { d: day(a.left_on) })}</p>
             {a.reachable && a.stop_source !== "link" && (

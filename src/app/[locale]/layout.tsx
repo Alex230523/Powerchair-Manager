@@ -3,6 +3,7 @@ import { AppShell, themeScript } from "@/components/app-shell";
 import { OfflineSupport } from "@/components/offline-support";
 import { notFound } from "next/navigation";
 import { copy, isLocale } from "@/lib/locale";
+import { fontClass } from "../fonts";
 import "../globals.css";
 export const metadata: Metadata = {
   title: "Powerchair Football Manager",
@@ -16,8 +17,8 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#faf8f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#110f0e" },
+    { media: "(prefers-color-scheme: light)", color: "#f9fbfe" },
+    { media: "(prefers-color-scheme: dark)", color: "#10151c" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -33,7 +34,7 @@ export default async function Layout({
   if (!isLocale(locale)) notFound();
   return (
     // The theme script may set data-theme before hydration.
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} className={fontClass} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

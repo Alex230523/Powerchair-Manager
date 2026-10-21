@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type { documentView } from "@/domains/documents/service";
 import { categories, statuses } from "@/domains/documents/schema";
 import {
@@ -17,7 +18,7 @@ import {
   documentErrors,
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel } from "./ui";
+import { Button, Panel, Badge, PageHeader } from "./ui";
 import { SignaturePad, signatureCopy } from "./signature-pad";
 type View = Awaited<ReturnType<typeof documentView>>;
 function Field({
@@ -56,12 +57,15 @@ export function Documents({ locale }: { locale: Locale }) {
     [category, setCategory] = useState(""),
     [ruleId, setRule] = useState(""),
     [templateId, setTemplate] = useState("");
+  // The top bar's team (wave 12) narrows the list to its members' documents.
+  const scope = useScope();
+  const scopedUrl = "/api/documents" + (scope.teamId ? `?team=${scope.teamId}` : "");
   const load = useCallback(async () => {
-    const r = await fetch("/api/documents", { cache: "no-store" }),
+    const r = await fetch(scopedUrl, { cache: "no-store" }),
       body = await r.json();
     if (!r.ok) throw new Error(body.error);
     setData(body);
-  }, []);
+  }, [scopedUrl]);
   const errorText = useCallback(
     (code: string) =>
       (documentErrors[code] ?? registrationErrors[code])?.[
@@ -140,8 +144,7 @@ export function Documents({ locale }: { locale: Locale }) {
   return (
     <>
       <main id="main" className="access documents">
-        <h1>{t.title}</h1>
-        <p>{t.intro}</p>
+        <PageHeader title={t.title} subtitle={t.intro} />
         {data?.manage && (
           <p>
             <Link
@@ -167,6 +170,10 @@ export function Documents({ locale }: { locale: Locale }) {
             {!data.mfa && <p>{t.mfa}</p>}
             <p className="muted">{t.sensitiveHint}</p>
             <div className="actions">
+              {/* Licences and transfers keep their own page; the documents page points to it (wave 11). */}
+              <Link className="button secondary" href={"/" + locale + "/licenses"}>
+                {locale === "fr" ? "Licences et transferts" : locale === "en" ? "Licences and transfers" : "Licenties en transfers"}
+              </Link>
               <Button
                 onClick={() => {
                   setCategory("training");
@@ -299,7 +306,7 @@ export function Documents({ locale }: { locale: Locale }) {
                         i: number,
                       ) => (
                         <li key={i}>
-                          <span className="status-tag" data-tone="success">
+                          <Badge tone="success">
                             {signatureCopy[locale].signed
                               .replace("{name}", g.signer_name)
                               .replace(
@@ -309,7 +316,7 @@ export function Documents({ locale }: { locale: Locale }) {
                                   { timeZone: "Europe/Brussels" },
                                 ),
                               )}
-                          </span>
+                          </Badge>
                         </li>
                       ),
                     )}

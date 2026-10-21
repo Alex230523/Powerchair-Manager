@@ -8,6 +8,8 @@ type Event = {
   ends_at: string;
   status: string;
   place_name: string | null;
+  team_id?: string | null;
+  team_color?: string | null;
 };
 export function CalendarBoard({
   locale,
@@ -108,6 +110,7 @@ export function CalendarBoard({
                     "board-event " +
                     (e.status === "cancelled" ? "board-cancelled" : "")
                   }
+                  data-color={e.team_id ? (e.team_color ?? "none") : undefined}
                   key={e.id}
                   onClick={() => onSelect(e.id)}
                 >

@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { WholeClubNote } from "./use-scope";
 import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
+import { Badge, EmptyState, PageHeader, Card } from "./ui";
 
 export const fundraisingCopy = {
   fr: {
@@ -244,7 +246,7 @@ export function PotProgress({
         <strong>
           {t.raised.replace("{raised}", euro(locale, Math.max(0, progress.net))).replace("{goal}", euro(locale, goal))}
         </strong>{" "}
-        · {progress.reached ? <span className="status-tag" data-tone="success">{t.reached}</span> : t.left.replace("{left}", euro(locale, progress.left))}
+        · {progress.reached ? <Badge tone="success">{t.reached}</Badge> : t.left.replace("{left}", euro(locale, progress.left))}
       </p>
       {progress.spent > 0 && <p className="muted small">{t.spent.replace("{spent}", euro(locale, progress.spent))}</p>}
     </div>
@@ -385,7 +387,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access fundraising">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -552,24 +554,20 @@ export function Fundraising({ locale }: { locale: Locale }) {
   }
   return (
     <main id="main" className="access fundraising">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p className="muted">{t.intro}</p>
-        </div>
-        {data.can.manage && editing !== "group" && (
+      <PageHeader title={t.title} subtitle={t.intro} actions={data.can.manage && editing !== "group" && (
           <button type="button" className="button" onClick={() => setEditing("group")}>{t.newGroup}</button>
-        )}
-      </div>
+        )}>
+        <WholeClubNote locale={locale} />
+      </PageHeader>
       {error && <p role="alert">{error}</p>}
       {(message || copied) && <p role="status">{copied || message}</p>}
-      {editing === "group" && <section className="panel" aria-label={t.newGroup}>{groupForm()}</section>}
+      {editing === "group" && <Card label={t.newGroup}>{groupForm()}</Card>}
       {!data.can.manage && !data.can.detail && (
         <p className="muted">{t.potsForMeIntro}</p>
       )}
-      {!data.groups.length && <p className="empty-directory">{t.noGroup}</p>}
+      {!data.groups.length && <EmptyState title={t.noGroup} />}
       {!data.can.manage && !data.can.detail && data.groups.length > 0 && !data.pots.some((p) => p.players_join) && (
-        <p className="empty-directory">{t.nothingForMe}</p>
+        <EmptyState title={t.nothingForMe} />
       )}
       {data.groups.map((g) => {
         const pots = data.pots.filter(
@@ -602,7 +600,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
             {pots.length ? (
               <ul className="pot-list">
                 {pots.map((pot) => (
-                  <li key={pot.id} className="pot-card" data-status={pot.status}>
+                  <Card as="li" key={pot.id} className="pot-card" data={{ status: pot.status }}>
                     {editing === `potedit-${pot.id}` ? (
                       potForm(g.id, pot)
                     ) : (
@@ -610,8 +608,8 @@ export function Fundraising({ locale }: { locale: Locale }) {
                         <div className="trip-card-head">
                           <h3>{pot.name}</h3>
                           <span>
-                            {pot.players_join && <span className="status-tag" data-tone="success">{t.withPlayers}</span>}
-                            <span className="status-tag">{pot.status === "open" ? t.open : t.closed}</span>
+                            {pot.players_join && <Badge tone="success">{t.withPlayers}</Badge>}
+                            <Badge>{pot.status === "open" ? t.open : t.closed}</Badge>
                           </span>
                         </div>
                         {pot.deadline && <p className="muted small">{t.until.replace("{d}", day(pot.deadline))}</p>}
@@ -689,11 +687,11 @@ export function Fundraising({ locale }: { locale: Locale }) {
                         )}
                       </>
                     )}
-                  </li>
+                  </Card>
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noPot}</p>
+              <EmptyState title={t.noPot} />
             )}
           </section>
         );
@@ -719,7 +717,7 @@ export function PublicPot({ locale, token }: { locale: Locale; token: string }) 
   if (!data)
     return (
       <main id="main" className="access public-pot">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );

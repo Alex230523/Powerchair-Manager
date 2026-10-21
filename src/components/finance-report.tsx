@@ -2,10 +2,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type { financeReport } from "@/domains/finance/service";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
+import { Card } from "./ui";
 
 type Report = Awaited<ReturnType<typeof financeReport>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -22,9 +24,12 @@ export function FinanceReport({
     x = financeExtras[locale];
   const [report, setReport] = useState<Report | null>(null),
     [error, setError] = useState("");
+  // The team chosen in the top bar (wave 12) filters the report; the whole club stays a line apart.
+  const scope = useScope();
+  const teamQuery = scope.teamId ? "&team=" + scope.teamId : "";
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/finance/report?season=" + encodeURIComponent(season), {
+    fetch("/api/finance/report?season=" + encodeURIComponent(season) + teamQuery, {
       cache: "no-store",
     })
       .then(async (r) => {
@@ -38,7 +43,7 @@ export function FinanceReport({
     return () => {
       cancelled = true;
     };
-  }, [season, locale, t.restricted]);
+  }, [season, locale, t.restricted, teamQuery]);
   const money = (cents: number) =>
     new Intl.NumberFormat(tag(locale), {
       style: "currency",
@@ -69,6 +74,7 @@ export function FinanceReport({
             <div>
               <h1>
                 {x.report} {report.season.label}
+                {report.team && <span className="muted"> · {report.team}</span>}
               </h1>
               <p>
                 {report.club} · {day(report.season.from)} →{" "}
@@ -110,8 +116,33 @@ export function FinanceReport({
               <dd>{money(report.closing)}</dd>
             </div>
           </dl>
-          <section className="panel" aria-labelledby="report-budget">
-            <h2 id="report-budget">{t.byCategory}</h2>
+          {report.byTeam.length > 1 && (
+            <Card title={x.byTeam} labelledBy="report-teams" headingId="report-teams">
+              <div className="table-scroll">
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <th scope="col">{x.team}</th>
+                      <th scope="col" className="num">{t.income}</th>
+                      <th scope="col" className="num">{t.expenses}</th>
+                      <th scope="col" className="num">{x.result}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.byTeam.map((row) => (
+                      <tr key={row.team_id ?? "club"} data-current={row.team_id === report.teamId || undefined}>
+                        <th scope="row">{row.team_id ? row.name : x.wholeClub}</th>
+                        <td className="num amount-in">{money(row.income)}</td>
+                        <td className="num amount-out">{money(row.expenses)}</td>
+                        <td className="num">{money(row.income - row.expenses)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+          <Card title={t.byCategory} labelledBy="report-budget" headingId="report-budget">
             <div className="table-scroll">
               <table className="ledger">
                 <thead>
@@ -148,9 +179,8 @@ export function FinanceReport({
                 </tbody>
               </table>
             </div>
-          </section>
-          <section className="panel" aria-labelledby="report-lines">
-            <h2 id="report-lines">{x.lines}</h2>
+          </Card>
+          <Card title={x.lines} labelledBy="report-lines" headingId="report-lines">
             <div className="table-scroll">
               <table className="ledger">
                 <thead>
@@ -190,7 +220,7 @@ export function FinanceReport({
                 </tbody>
               </table>
             </div>
-          </section>
+          </Card>
         </>
       )}
     </main>

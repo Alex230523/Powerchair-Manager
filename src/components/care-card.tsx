@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import { careMoments } from "@/domains/trips/schema";
 import { tripsCopy } from "./trips-copy";
 import { Card } from "./player-profile";
+import { EmptyState } from "./ui";
 
 const copy = {
   fr: {
@@ -163,7 +164,7 @@ export function CareCard({
           ))}
         </ul>
       ) : (
-        editing !== "new" && <p className="muted">{t.none}</p>
+        editing !== "new" && <EmptyState title={t.none} />
       )}
     </Card>
   );
