@@ -206,7 +206,7 @@ it("encrypts confidential answers, hides them without the grant and fills the pr
       expectedVersion: visible.version,
       status: "accepted",
       message: "",
-      confirmDuplicate: false,
+      confirmDuplicate: false, acceptOverCapacity: false,
     },
     club,
   );

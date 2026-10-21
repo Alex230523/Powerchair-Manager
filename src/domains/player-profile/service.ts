@@ -280,7 +280,10 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
       otherTeams: can.editPosition
         ? all.teams
             .filter((t) => !t.archived && !t.season_archived)
-            .map((t) => ({ id: t.id, name: t.name, season_id: t.season_id, color: (t as { color?: string | null }).color ?? null }))
+            .map((t) => {
+              const x = t as { color?: string | null; capacity?: number | null; players?: number };
+              return { id: t.id, name: t.name, season_id: t.season_id, color: x.color ?? null, capacity: x.capacity ?? null, players: x.players ?? 0 };
+            })
         : [],
       guardians,
       matches: await playerMatchStats(c, org, id),

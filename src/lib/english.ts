@@ -1,4 +1,5 @@
 export const englishErrors: Record<string, string> = {
+  TEAM_FULL: "This team is full: put the application on the waiting list, or tick « Accept even if the team is full ».",
   LAST_ADMIN:
     "Add a successor before removing or limiting the last permanent active president.",
   FORBIDDEN: "Your active profile does not allow this action.",
@@ -522,6 +523,8 @@ export const english = {
     newProfile: "Create person record",
     team: "Assign team (optional)",
     noTeam: "No assignment",
+    teamFull: "full",
+    overCapacity: "Accept even if the team is full",
     confirm: "I confirm the identity despite the different name",
     notes: "Internal notes",
     note: "Note for authorised staff",

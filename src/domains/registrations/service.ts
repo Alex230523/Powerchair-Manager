@@ -183,6 +183,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     profileId: id.optional(),
     teamId: id.optional(),
     confirmDuplicate: z.boolean().default(false),
+    /** Wave 16 (R1): accept into a team that has no place left, after confirmation. */
+    acceptOverCapacity: z.boolean().default(false),
   }),
   z.object({
     action: z.literal("note"),
@@ -383,7 +385,7 @@ export async function registrationView(
       ).rows,
       teams: (
         await c.query(
-          "SELECT t.id,t.name,t.season_id FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT s.archived",
+          "SELECT t.id,t.name,t.season_id,t.capacity,(SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=t.id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active') AS players FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT s.archived",
           [org],
         )
       ).rows,
@@ -813,6 +815,16 @@ export async function registrationExecute(
             )
           ).rows[0];
           if (!team) throw new AccessError("NOT_FOUND", 404);
+          // A full team (wave 16, R1): the waiting list, or an explicit "accept anyway".
+          if (team.capacity !== null && !input.acceptOverCapacity) {
+            const players = (
+              await c.query(
+                "SELECT count(DISTINCT m.profile_id)::int AS n FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=$1 AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active' AND m.profile_id<>$2",
+                [team.id, profileId],
+              )
+            ).rows[0].n as number;
+            if (players >= team.capacity) throw new AccessError("TEAM_FULL", 409);
+          }
           await c.query(
             "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'player',GREATEST((SELECT starts_on FROM season WHERE id=$4),LEAST(CURRENT_DATE,(SELECT ends_on FROM season WHERE id=$4)))) ON CONFLICT(team_id,profile_id,role) WHERE ends_on IS NULL DO NOTHING",
             [org, team.id, profileId, a.season_id],

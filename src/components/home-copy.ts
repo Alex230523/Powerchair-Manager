@@ -201,6 +201,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Documents manquants",
         text: "Demandés, non déposés ou refusés",
       },
+      teamsOverCapacity: {
+        title: "Équipes au-delà de leurs places",
+        text: "Plus de joueurs que de places : revoyez les places ou les affectations",
+      },
       documentsExpiring: {
         title: "Expirent sous 30 jours",
         text: "À anticiper",
@@ -366,6 +370,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Ontbrekende documenten",
         text: "Gevraagd, niet geüpload of geweigerd",
       },
+      teamsOverCapacity: {
+        title: "Teams boven hun plaatsen",
+        text: "Meer spelers dan plaatsen: herzie de plaatsen of de toewijzingen",
+      },
       documentsExpiring: {
         title: "Verlopen binnen 30 dagen",
         text: "Tijdig opvolgen",
@@ -530,6 +538,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       documentsMissing: {
         title: "Missing documents",
         text: "Requested, not uploaded or refused",
+      },
+      teamsOverCapacity: {
+        title: "Teams over their places",
+        text: "More players than places: review the places or the assignments",
       },
       documentsExpiring: {
         title: "Expiring within 30 days",

@@ -82,7 +82,7 @@ type View = {
   context?: { organization_id: string; organization_name: string };
   forms?: Form[];
   seasons?: { id: string; name: string }[];
-  teams?: { id: string; name: string; season_id: string }[];
+  teams?: { id: string; name: string; season_id: string; capacity: number | null; players: number }[];
   profiles?: { id: string; full_name: string; birth_date: string | null }[];
   applications: Application[];
 };
@@ -1601,6 +1601,7 @@ export function Registrations({
                           profileId: d.get("profile") || undefined,
                           teamId: d.get("team") || undefined,
                           confirmDuplicate: d.has("confirm"),
+                          acceptOverCapacity: d.has("overCapacity"),
                         });
                       });
                     }}
@@ -1657,10 +1658,17 @@ export function Registrations({
                           .map((team) => (
                             <option key={team.id} value={team.id}>
                               {team.name}
+                              {team.capacity !== null && ` · ${team.players}/${team.capacity}`}
+                              {team.capacity !== null && team.players >= team.capacity && ` · ${t.teamFull}`}
                             </option>
                           ))}
                       </select>
                     </FieldLabel>
+                    {/* Wave 16 (R1): a full team needs an explicit confirmation, or the waiting list. */}
+                    <label className="check">
+                      <input type="checkbox" name="overCapacity" />
+                      {t.overCapacity}
+                    </label>
                     <Button disabled={busy}>{t.decide}</Button>
                   </form>
                 )}
