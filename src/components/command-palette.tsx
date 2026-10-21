@@ -2,95 +2,47 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Locale } from "@/lib/locale";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
+import { IconTile } from "./ui";
+import { paletteCopy } from "./command-palette-copy";
+import { fold, matchActions, pushRecent, readRecent, writeRecent, type PaletteAction, type Recent } from "./palette";
 
-const copy = {
-  fr: {
-    open: "Rechercher",
-    shortcut: "Raccourci : Ctrl+K ou ⌘K",
-    label: "Rechercher un joueur, un coach, une équipe, un événement ou une page",
-    placeholder: "Nom, équipe, page…",
-    fieldHint: "Rechercher un joueur, une équipe, un événement",
-    pages: "Pages",
-    people: "Personnes",
-    teams: "Équipes",
-    events: "Événements",
-    player: "Joueur",
-    coach: "Coach",
-    former: "ancien",
-    none: "Aucun résultat.",
-    hint: "Tapez au moins deux lettres.",
-    close: "Fermer",
-    keys: "↑ ↓ pour choisir, Entrée pour ouvrir, Échap pour fermer",
-    count: "{n} résultats",
-  },
-  nl: {
-    open: "Zoeken",
-    shortcut: "Sneltoets: Ctrl+K of ⌘K",
-    label: "Zoek een speler, coach, team, evenement of pagina",
-    placeholder: "Naam, team, pagina…",
-    fieldHint: "Zoek een speler, een team, een evenement",
-    pages: "Pagina's",
-    people: "Personen",
-    teams: "Teams",
-    events: "Evenementen",
-    player: "Speler",
-    coach: "Coach",
-    former: "voormalig",
-    none: "Geen resultaten.",
-    hint: "Typ minstens twee letters.",
-    close: "Sluiten",
-    keys: "↑ ↓ om te kiezen, Enter om te openen, Esc om te sluiten",
-    count: "{n} resultaten",
-  },
-  en: {
-    open: "Search",
-    shortcut: "Shortcut: Ctrl+K or ⌘K",
-    label: "Search for a player, coach, team, event or page",
-    placeholder: "Name, team, page…",
-    fieldHint: "Search a player, a team, an event",
-    pages: "Pages",
-    people: "People",
-    teams: "Teams",
-    events: "Events",
-    player: "Player",
-    coach: "Coach",
-    former: "former",
-    none: "No results.",
-    hint: "Type at least two letters.",
-    close: "Close",
-    keys: "↑ ↓ to choose, Enter to open, Esc to close",
-    count: "{n} results",
-  },
-};
 export type SearchPage = { route: string; label: string };
 type Found = {
   people: { id: string; name: string; kind: "player" | "coach"; former: boolean }[];
   teams: { id: string; name: string }[];
   events: { id: string; title: string; starts_at: string }[];
 };
-type Result = { key: string; group: string; label: string; detail?: string; href: string };
-const fold = (s: string) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
+type Result = { key: string; group: string; label: string; detail?: string; icon: IconName; href?: string; scope?: "season" | "team" };
+
+/** Asks the season or team capsule of the top bar to take the focus (wave 15, C6). */
+export const scopeFocusEvent = "pfm-scope-focus";
 
 /**
- * Global search. Pages come from the menu the person already sees; people,
- * teams and events come from the server, filtered by the same rules as their
- * own screens.
+ * Global search and actions (Ctrl+K). Sections in this order: Actions,
+ * People, Teams, Events, Pages. Actions come with the person's rights
+ * (palette.ts); people, teams and events come from the server, filtered by
+ * the same rules as their own screens; pages from the menu the person sees.
+ * With an empty field: the actions and the last five items opened.
  */
 export function CommandPalette({
   locale,
   pages,
+  actions = [],
+  collect = false,
   enabled,
   variant = "icon",
 }: {
   locale: Locale;
   pages: SearchPage[];
+  actions?: PaletteAction[];
+  /** The person may collect dues: a player found offers "Encaisser la cotisation de …". */
+  collect?: boolean;
   enabled: boolean;
   /** "field": the search capsule of the top bar (wave 14); "icon": a round button. */
   variant?: "icon" | "field";
 }) {
-  const t = copy[locale];
+  const t = paletteCopy[locale];
   const mac = useSyncExternalStore(
     () => () => {},
     () => /Mac|iPhone|iPad/.test(navigator.platform),
@@ -101,20 +53,25 @@ export function CommandPalette({
   const input = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState(""),
     [found, setFound] = useState<Found | null>(null),
-    [active, setActive] = useState(0);
+    [active, setActive] = useState(0),
+    [recent, setRecent] = useState<Recent[]>([]);
 
   function open() {
+    setRecent(readRecent());
+    setActive(0);
     if (!dialog.current?.open) dialog.current?.showModal();
     input.current?.focus();
     input.current?.select();
   }
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  });
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        if (!dialog.current?.open) dialog.current?.showModal();
-        input.current?.focus();
-        input.current?.select();
+        openRef.current();
       }
     };
     window.addEventListener("keydown", key);
@@ -149,40 +106,60 @@ export function CommandPalette({
       timeZone: "Europe/Brussels",
     }).format(new Date(d));
   const needle = fold(q.trim());
-  const results: Result[] =
-    needle.length < 2
-      ? []
-      : [
-          ...pages
-            .filter((p) => fold(p.label).includes(needle))
-            .slice(0, 6)
-            .map((p) => ({
-              key: "page" + p.route,
-              group: t.pages,
-              label: p.label,
-              href: `/${locale}${p.route}`,
-            })),
-          ...(found?.people ?? []).map((p) => ({
+  const searching = needle.length >= 2;
+  const actionResults: Result[] = matchActions(actions, t, q).map((a) => ({
+    key: "action-" + a.id,
+    group: t.actions,
+    label: t[a.id],
+    icon: a.icon,
+    ...(a.route ? { href: `/${locale}${a.route}` } : {}),
+    ...(a.scope ? { scope: a.scope } : {}),
+  }));
+  const people = searching ? (found?.people ?? []) : [];
+  const results: Result[] = [
+    ...(needle.length === 0 || actionResults.length ? actionResults : []),
+    ...(searching
+      ? [
+          ...people.map((p) => ({
             key: "person" + p.id,
             group: t.people,
             label: p.name,
             detail: (p.kind === "coach" ? t.coach : t.player) + (p.former ? ` · ${t.former}` : ""),
+            icon: (p.kind === "coach" ? "whistle" : "user") as IconName,
             href: `/${locale}/${p.kind === "coach" ? "coaches" : "players"}/${p.id}`,
           })),
-          ...(found?.teams ?? []).map((x) => ({
-            key: "team" + x.id,
-            group: t.teams,
-            label: x.name,
-            href: `/${locale}/players`,
-          })),
+          // The fee of a player found, straight to their line in Cotisations.
+          ...(collect
+            ? people
+                .filter((p) => p.kind === "player" && !p.former)
+                .slice(0, 3)
+                .map((p) => ({
+                  key: "collect" + p.id,
+                  group: t.people,
+                  label: t.collectFor.replace("{name}", p.name),
+                  detail: t.collectDues,
+                  icon: "dues" as IconName,
+                  href: `/${locale}/dues?pay=${p.id}`,
+                }))
+            : []),
+          ...(found?.teams ?? []).map((x) => ({ key: "team" + x.id, group: t.teams, label: x.name, icon: "team" as IconName, href: `/${locale}/teams/${x.id}` })),
           ...(found?.events ?? []).map((e) => ({
             key: "event" + e.id,
             group: t.events,
             label: e.title,
             detail: when(e.starts_at),
+            icon: "calendar" as IconName,
             href: `/${locale}/calendar`,
           })),
-        ];
+          ...pages
+            .filter((p) => fold(p.label).includes(needle))
+            .slice(0, 6)
+            .map((p) => ({ key: "page" + p.route, group: t.pages, label: p.label, icon: "arrow" as IconName, href: `/${locale}${p.route}` })),
+        ]
+      : needle.length === 0
+        ? recent.map((r) => ({ ...r, key: "recent-" + r.key, group: t.recent }))
+        : []),
+  ];
   const current = Math.min(active, Math.max(results.length - 1, 0));
   const groups = [...new Set(results.map((r) => r.group))];
   function go(r: Result | undefined) {
@@ -190,6 +167,14 @@ export function CommandPalette({
     dialog.current?.close();
     setQ("");
     setFound(null);
+    if (r.scope) {
+      window.dispatchEvent(new CustomEvent(scopeFocusEvent, { detail: r.scope }));
+      return;
+    }
+    if (!r.href) return;
+    const key = r.key.replace(/^recent-/, "");
+    const next = pushRecent(readRecent(), { key, label: r.label, detail: r.detail, href: r.href, icon: r.icon });
+    writeRecent(next);
     router.push(r.href);
   }
   return (
@@ -201,14 +186,7 @@ export function CommandPalette({
           <kbd aria-hidden="true">{mac ? "⌘K" : "Ctrl K"}</kbd>
         </button>
       ) : (
-        <button
-          type="button"
-          className="icon-button search-trigger"
-          aria-label={t.open}
-          title={`${t.open} (${t.shortcut})`}
-          aria-keyshortcuts="Control+K Meta+K"
-          onClick={open}
-        >
+        <button type="button" className="icon-button search-trigger" aria-label={t.open} title={`${t.open} (${t.shortcut})`} aria-keyshortcuts="Control+K Meta+K" onClick={open}>
           <Icon name="search" />
         </button>
       )}
@@ -216,6 +194,11 @@ export function CommandPalette({
         ref={dialog}
         className="command-palette"
         aria-label={t.label}
+        onClose={() => {
+          // Each opening starts clean: the actions and the recent items.
+          setQ("");
+          setFound(null);
+        }}
         onClick={(e) => {
           // A tap outside the panel closes it.
           if (e.target === dialog.current) dialog.current?.close();
@@ -252,22 +235,14 @@ export function CommandPalette({
                 }
               }}
             />
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => dialog.current?.close()}
-            >
+            <button type="button" className="text-button" onClick={() => dialog.current?.close()}>
               {t.close}
             </button>
           </div>
           <div id="command-results" role="listbox" aria-label={t.label}>
             {groups.map((g, gi) => (
               <div key={g} role="group" aria-labelledby={`cmd-group-${gi}`}>
-                <div
-                  className="command-group"
-                  id={`cmd-group-${gi}`}
-                  role="presentation"
-                >
+                <div className="command-group" id={`cmd-group-${gi}`} role="presentation">
                   {g}
                 </div>
                 {results.map((r, i) =>
@@ -281,8 +256,16 @@ export function CommandPalette({
                       onMouseEnter={() => setActive(i)}
                       onClick={() => go(r)}
                     >
-                      <span>{r.label}</span>
-                      {r.detail && <small>{r.detail}</small>}
+                      <IconTile icon={r.icon} size={28} />
+                      <span className="command-text">
+                        <span className="command-label">{r.label}</span>
+                        {r.detail && <small>{r.detail}</small>}
+                      </span>
+                      {i === current && (
+                        <kbd className="command-enter" aria-hidden="true">
+                          {t.enter}
+                        </kbd>
+                      )}
                     </div>
                   ),
                 )}
@@ -290,11 +273,7 @@ export function CommandPalette({
             ))}
           </div>
           <p className="command-foot muted" aria-live="polite">
-            {needle.length < 2
-              ? t.hint
-              : results.length
-                ? t.count.replace("{n}", String(results.length))
-                : t.none}
+            {!searching ? t.hint : results.length ? t.count.replace("{n}", String(results.length)) : t.none}
             <span className="command-keys"> · {t.keys}</span>
           </p>
         </div>

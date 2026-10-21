@@ -3523,21 +3523,22 @@ input.narrow {
   }
 }
 
-/* Global search (Ctrl+K / ⌘K). */
+/* Global search and actions (Ctrl+K / ⌘K); wave 15, C6: 640 px window at 15 % of the height, radius 20 px, light veil. */
 .command-palette {
   width: min(640px, calc(100% - 16px));
   max-height: min(560px, calc(100dvh - 32px));
-  margin: 10vh auto auto;
+  margin: 15vh auto auto;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
   background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
   overflow: hidden;
 }
 .command-palette::backdrop {
   background: var(--backdrop);
+  opacity: 0.6;
 }
 .command-box {
   display: flex;
@@ -3560,7 +3561,7 @@ input.narrow {
   min-width: 0;
   border: 0;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   padding: 8px 0;
 }
 .command-input input:focus {
@@ -3568,7 +3569,7 @@ input.narrow {
   box-shadow: none;
 }
 .command-palette:focus-within .command-input {
-  box-shadow: inset 0 -2px 0 var(--brand-500);
+  box-shadow: inset 0 -2px 0 var(--primary);
 }
 #command-results {
   margin: 0;
@@ -3578,23 +3579,40 @@ input.narrow {
 .command-group {
   padding: 10px 10px 4px;
   font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--muted);
 }
 .command-option {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-.command-option small {
-  color: var(--muted);
+.command-text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.command-label {
+  font-size: var(--text-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.command-option small {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.command-enter {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--muted);
 }
 .command-option[aria-selected="true"] {
   background: var(--accent-soft);
@@ -4475,6 +4493,11 @@ input.narrow {
   background: var(--accent-soft);
   color: var(--primary);
   flex: none;
+}
+.icon-tile[data-size="sm"] {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-xs);
 }
 .icon-tile[data-size="lg"] {
   width: 2.75rem;
