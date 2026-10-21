@@ -897,8 +897,9 @@ export async function fundingTasksView(db: Pool, p: Principal) {
 export type MoneyDeadline = {
   id: string;
   date: string;
-  kind: "condition" | "payment" | "renewal" | "grant" | "grantReport" | "grantEnd" | "grantRecheck" | "task" | "accountsAssembly" | "accountsFiling";
-  source: "partner" | "grant" | "accounts";
+  kind: "condition" | "payment" | "renewal" | "grant" | "grantReport" | "grantEnd" | "grantRecheck" | "task" | "accountsAssembly" | "accountsFiling" | "tournamentDay";
+  /** "tournament": a match day shown in the calendar (21/10/2026), always on, not part of the money layer. */
+  source: "partner" | "grant" | "accounts" | "tournament";
   title: string;
   href: string;
 };

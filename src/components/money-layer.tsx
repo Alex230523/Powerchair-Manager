@@ -51,7 +51,7 @@ export function DeadlineChip({ locale, d }: { locale: Locale; d: MoneyDeadline }
   const s = sponsorsCopy[locale];
   return (
     <Link className="board-deadline" data-source={d.source} href={`/${locale}${d.href}`}>
-      <Icon name={d.source === "partner" ? "handshake" : d.source === "accounts" ? "document" : "landmark"} size={14} />
+      <Icon name={d.source === "partner" ? "handshake" : d.source === "accounts" ? "document" : d.source === "tournament" ? "trophy" : "landmark"} size={14} />
       {/* The accounts' title is only the year: their kind is written out. */}
       <span className={d.source === "accounts" ? undefined : "sr-only"}>{s.layerKinds[d.kind]} · </span>
       <span>{d.title}</span>
@@ -68,4 +68,27 @@ export function LayerToggle({ locale, on, onChange }: { locale: Locale; on: bool
       <Icon name="handshake" size={16} /> {s.layer}
     </label>
   );
+}
+
+/**
+ * Tournament match days of the shown period (21/10/2026): always in the
+ * calendar for the clubs that organise or play, as whole-day capsules
+ * linking to the day in the tournament page.
+ */
+export function useTournamentDays(from: string, to: string) {
+  const [state, setState] = useState<{ key: string; items: MoneyDeadline[] }>({ key: "", items: [] });
+  const key = `${from}:${to}`;
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tournaments/days?from=${from}&to=${to}`, { cache: "no-store" })
+      .then(async (r) => (r.ok ? ((await r.json()) as { items: Omit<MoneyDeadline, "kind" | "source">[] }) : { items: [] }))
+      .then((v) => {
+        if (!cancelled) setState({ key: `${from}:${to}`, items: v.items.map((d) => ({ ...d, kind: "tournamentDay" as const, source: "tournament" as const })) });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [from, to]);
+  return state.key === key ? state.items : [];
 }

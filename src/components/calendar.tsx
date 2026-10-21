@@ -6,7 +6,7 @@ import { plannerCopy } from "./calendar-planner-copy";
 import { Modal } from "./modal";
 import { Icon } from "./icons";
 import { movePeriod, planRange, type PlannerView } from "@/domains/calendar/planner";
-import { DeadlineChip, LayerToggle, useMoneyDeadlines } from "./money-layer";
+import { DeadlineChip, LayerToggle, useMoneyDeadlines, useTournamentDays } from "./money-layer";
 import { sponsorsCopy } from "./sponsors-copy";
 import { attendanceCopy } from "./attendance-copy";
 import {
@@ -258,6 +258,8 @@ export function Calendar({
   }
   const range = planRange(anchor, view),
     money = useMoneyDeadlines(range.from, range.to, moneyLayer),
+    tournamentDays = useTournamentDays(range.from, range.to),
+    dayChips = [...tournamentDays, ...money.items],
     params =
       "all=" +
       (view === "list" && !eventId ? "true" : "false") +
@@ -616,15 +618,15 @@ export function Calendar({
                   onSelect={openEvent}
                   onCreate={data.canPlan ? newEvent : undefined}
                   onMore={setMoreDay}
-                  deadlines={money.items}
+                  deadlines={dayChips}
                 />
               )}
               {(view === "week" || view === "days3") && (
-                <WeekGrid locale={locale} from={range.from} days={view === "week" ? 7 : 3} events={kindsShown} colorBy={colorBy} onSelect={openEvent} deadlines={money.items} />
+                <WeekGrid locale={locale} from={range.from} days={view === "week" ? 7 : 3} events={kindsShown} colorBy={colorBy} onSelect={openEvent} deadlines={dayChips} />
               )}
-              {view === "list" && money.items.length > 0 && (
+              {view === "list" && dayChips.length > 0 && (
                 <ul className="deadline-list">
-                  {money.items.map((d) => (
+                  {dayChips.map((d) => (
                     <li key={d.id}>
                       <span className="muted small">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d.date + "T12:00:00Z"))}</span> <DeadlineChip locale={locale} d={d} />
                     </li>
