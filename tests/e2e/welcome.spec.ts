@@ -86,7 +86,8 @@ test("guided account creation from an invitation, and « Ce n'est pas mon rôle 
     expect((await db.query("SELECT classification FROM player_sport_profile WHERE profile_id=$1", [camille])).rows[0].classification).toBe("PF1");
 
     // The same link a second time.
-    const again = await browser.newPage();
+    const otherContext = await browser.newContext();
+    const again = await otherContext.newPage();
     await again.goto(`/fr/welcome/${token}`);
     await expect(again.getByText("Cette invitation a déjà été utilisée.")).toBeVisible();
 
@@ -100,7 +101,7 @@ test("guided account creation from an invitation, and « Ce n'est pas mon rôle 
     await again.getByRole("button", { name: "Prévenir le club" }).click();
     await expect(again.getByRole("status")).toContainText("La personne qui vous a invité est prévenue");
     expect((await db.query("SELECT disputed_note FROM invitation WHERE profile_id=$1", [other])).rows[0].disputed_note).toBe("Je suis la maman");
-    await again.close();
+    await otherContext.close();
   } finally {
     await db.end();
   }
