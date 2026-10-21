@@ -4528,9 +4528,11 @@ a.sidebar-foot:hover, a.sidebar-foot:focus-visible { background: var(--sidebar-h
 .profile-menu-body select { min-height: 40px; max-width: 100%; }
 .profile-menu-body .button { justify-content: center; }
 @media (max-width: 760px) {
-  .scope-bar { width: 100%; }
-  .capsule { flex: 1 1 140px; }
-  .capsule select { max-width: none; flex: 1; }
+  /* The tools wrap and the capsules take a row of their own under the search and the buttons. */
+  .topbar-tools { flex-wrap: wrap; }
+  .scope-bar { width: 100%; order: 10; }
+  .capsule { flex: 1 1 130px; min-width: 0; }
+  .capsule select { max-width: none; flex: 1; min-width: 0; width: 100%; }
 }
 
 /* Teams page and sheet (wave 12) */

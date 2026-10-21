@@ -236,7 +236,8 @@ test("new club, federation and referee pages load and pass axe", async ({
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Notifications", exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
-    await page.getByRole("link", { name: /^Mon espace · / }).click();
+    await page.locator(".profile-menu > summary").click();
+    await page.locator(".profile-menu").getByRole("link", { name: "Mon espace", exact: true }).click();
     await expect(page).toHaveURL("/fr/access");
     await expect(page.getByRole("heading", { name: "Photo de profil", exact: true })).toBeVisible();
     // A contact, then a grant linked to it.

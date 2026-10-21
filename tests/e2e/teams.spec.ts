@@ -133,7 +133,7 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await creation.getByRole("button", { name: "Enregistrer", exact: true }).click();
     const cardC = page.locator(".team-card").filter({ hasText: "Équipe C" });
     await expect(cardC).toBeVisible();
-    await expect(cardC.locator(".team-dot").first()).toHaveAttribute("data-color", "plum");
+    await expect(cardC).toHaveAttribute("data-color", "plum");
     expect((await db.query("SELECT color,category FROM team WHERE organization_id=$1 AND name='Équipe C'", [club])).rows[0]).toEqual({ color: "plum", category: "Jeunes" });
 
     // 3. The team sheet: roster, a player moved to Équipe B, the colour changed.
