@@ -94,6 +94,8 @@ export const shellCopy = {
     theme: "Thème",
     themeLight: "Clair",
     themeDark: "Sombre",
+    themeLightName: "Thème clair",
+    themeDarkName: "Thème sombre",
     textSize: "Taille du texte",
     textNormal: "Normal",
     textLarge: "Grand",
@@ -196,6 +198,8 @@ export const shellCopy = {
     theme: "Thema",
     themeLight: "Licht",
     themeDark: "Donker",
+    themeLightName: "Licht thema",
+    themeDarkName: "Donker thema",
     textSize: "Tekstgrootte",
     textNormal: "Normaal",
     textLarge: "Groot",
@@ -298,6 +302,8 @@ export const shellCopy = {
     theme: "Theme",
     themeLight: "Light",
     themeDark: "Dark",
+    themeLightName: "Light theme",
+    themeDarkName: "Dark theme",
     textSize: "Text size",
     textNormal: "Normal",
     textLarge: "Large",
@@ -308,3 +314,6 @@ export const shellCopy = {
     pendingCount: "{n} to handle",
   },
 } satisfies Record<Locale, Record<string, string>>;
+
+/** Each language in its own name (wave 16, M1): the same in the three interfaces. */
+export const languageNames = { fr: "Français", nl: "Nederlands", en: "English" } as const;

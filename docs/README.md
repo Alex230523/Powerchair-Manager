@@ -76,6 +76,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Connexion vers l’accueil, sans double authentification, président avec tous les droits](evolutions/2026-10-21-zo-accueil-sans-mfa-droits-president.md) |
 | 21/10/2026 | [Tournois : le calendrier fédéral devient « Tournois »](evolutions/2026-10-21-zp-tournois.md) |
 | 21/10/2026 | [Vague 16, B1 : plus de puce sous la barre du haut](evolutions/2026-10-21-zq-vague-16-b1-puce-barre-haut.md) |
+| 21/10/2026 | [Vague 16, M1 : menu du compte compact](evolutions/2026-10-21-zr-vague-16-m1-menu-compte.md) |
 
 ## Convention
 

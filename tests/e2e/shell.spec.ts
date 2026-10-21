@@ -92,20 +92,26 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await expect(panel).toBeHidden();
     await expect(bellButton).toBeFocused();
 
-    // The account menu: profile switch, Mon espace, language, theme.
+    // The account menu (wave 16, M1): profile switch, Mon compte, Réglages, then compact settings.
     await page.locator(".profile-menu > summary").click();
     const menu = page.locator(".profile-menu-body");
     await expect(menu.getByText("Changer de profil")).toBeVisible();
     await expect(menu.getByLabel("Profil actif", { exact: true })).toBeVisible();
-    await expect(menu.getByRole("link", { name: "Mon espace", exact: true })).toHaveAttribute("href", "/fr/access");
+    await expect(menu.getByRole("link", { name: "Mon espace", exact: true })).toHaveCount(0);
     await expect(menu.getByRole("link", { name: "Mon compte", exact: true })).toHaveAttribute("href", "/fr/settings/account");
     await expect(menu.getByRole("link", { name: "Réglages", exact: true })).toHaveAttribute("href", "/fr/settings");
-    await expect(menu.getByRole("link", { name: "NL", exact: true })).toHaveAttribute("href", "/nl");
-    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Sombre" }).click();
+    // Never wider than the sidebar.
+    expect((await menu.boundingBox())!.width).toBeLessThanOrEqual(240);
+    await expect(menu.getByLabel("Langue", { exact: true })).toHaveValue("fr");
+    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Thème sombre" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await axe(page, "account menu, dark");
-    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Clair" }).click();
+    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Thème clair" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    // The language list opens the same page in Dutch.
+    await Promise.all([page.waitForURL(/\/nl$/), menu.getByLabel("Langue", { exact: true }).selectOption("nl")]);
+    await page.goto("/fr");
+    await page.locator(".profile-menu > summary").click();
     await expect(menu.getByRole("button", { name: "Se déconnecter", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
 
