@@ -24,6 +24,8 @@ const copy = {
     noLogo: "Aucun logo pour l’instant.",
     saved: "Enregistré.",
     readOnly: "Seul un président peut modifier l’identité du club.",
+    movedText: "Le nom, le logo, l’email de contact et la fédération du club se règlent dans Réglages, catégorie Club.",
+    movedLink: "Ouvrir les réglages du club",
     teams: "Équipes du club",
     teamsIntro:
       "Un club peut aligner plusieurs équipes la même saison. Créez-les et modifiez-les dans la section « Équipes » plus bas.",
@@ -48,6 +50,8 @@ const copy = {
     noLogo: "Nog geen logo.",
     saved: "Opgeslagen.",
     readOnly: "Alleen een voorzitter kan de identiteit van de club wijzigen.",
+    movedText: "Naam, logo, contactadres en federatie van de club stel je in bij Instellingen, categorie Club.",
+    movedLink: "De clubinstellingen openen",
     teams: "Teams van de club",
     teamsIntro:
       "Een club kan meerdere teams in hetzelfde seizoen hebben. Maak en wijzig ze in de sectie ‘Teams’ hieronder.",
@@ -72,6 +76,8 @@ const copy = {
     noLogo: "No logo yet.",
     saved: "Saved.",
     readOnly: "Only a president can change the club identity.",
+    movedText: "The club name, logo, contact email and federation are set in Settings, Club category.",
+    movedLink: "Open the club settings",
     teams: "Club teams",
     teamsIntro:
       "A club can field several teams in the same season. Create and edit them in the ‘Teams’ section below.",
@@ -113,7 +119,8 @@ const official = {
     rollover: "Season rollover",
   },
 };
-export function ClubIdentity({ locale }: { locale: Locale }) {
+/** `only`: "identity" in Settings > Club (wave 15), "teams" in Gestion du club, which links to the identity. */
+export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identity" | "teams" }) {
   const t = copy[locale];
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -189,6 +196,14 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <div className="grid">
+        {only === "teams" ? (
+          <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
+            <p className="muted">{t.movedText}</p>
+            <p>
+              <Link href={`/${locale}/settings/club#club-identity-title`}>{t.movedLink}</Link>
+            </p>
+          </Card>
+        ) : (
         <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
           <p className="muted">{t.intro}</p>
           <div className="logo-row">
@@ -328,7 +343,8 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
             <p className="muted">{t.readOnly}</p>
           )}
         </Card>
-        {o.kind === "club" && (
+        )}
+        {o.kind === "club" && only !== "identity" && (
           <Card title={t.teams} labelledBy="club-teams-title" headingId="club-teams-title">
             <p className="muted">{t.teamsIntro}</p>
             <p>

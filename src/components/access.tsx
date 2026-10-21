@@ -1,9 +1,9 @@
 "use client";
-import { shellCopy, contextChanged, initials } from "./app-shell";
+import { shellCopy } from "./app-shell";
 import { clearOfflineData } from "@/lib/offline-queue";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import {
   labels,
@@ -490,7 +490,7 @@ export function Access({ locale }: { locale: Locale }) {
         {state && (
           <>
             <p>
-              <Link href={`/${locale}/notifications`}>
+              <Link href={`/${locale}/settings/notifications`}>
                 {locale === "en"
                   ? "Notifications"
                   : locale === "fr"
@@ -941,99 +941,12 @@ export function Access({ locale }: { locale: Locale }) {
             {state.selected && !state.permissions.includes("members.read") && (
               <p>{t.readonly}</p>
             )}
-            <Panel title={t.photo}>
-              <p className="muted">{t.photoIntro}</p>
-              <div className="avatar-row">
-                {state.avatarVersion ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="avatar avatar-large" src={`/api/account/avatar?v=${state.avatarVersion}`} alt={t.photo} />
-                ) : (
-                  <span className="avatar avatar-large" aria-hidden="true">{initials(state.user.name)}</span>
-                )}
-                <div className="actions">
-                  <label className="button secondary file-button">
-                    {t.choosePhoto}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="sr-only"
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = "";
-                        if (!file) return;
-                        if (file.size > 262144 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-                          setFailure(t.invalidPhoto);
-                          return;
-                        }
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const data = String(reader.result).split(",")[1] ?? "";
-                          void task(async () => {
-                            await command({ action: "avatar", mediaType: file.type, data });
-                            contextChanged();
-                          });
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                  {state.avatarVersion && (
-                    <button
-                      type="button"
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() =>
-                        void task(async () => {
-                          await command({ action: "removeAvatar" });
-                          contextChanged();
-                        })
-                      }
-                    >
-                      {t.removePhoto}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </Panel>
-            <Panel title={t.preferences}>
-              <form
-                onSubmit={(e) =>
-                  submit(e, async (data) => {
-                    await command({
-                      action: "preferences",
-                      locale: data.get("locale"),
-                      notificationsEnabled: data.has("notifications"),
-                    });
-                    contextChanged();
-                    router.push(`/${String(data.get("locale"))}/access`);
-                  })
-                }
-              >
-                <label>
-                  {locale === "en"
-                    ? "Language"
-                    : locale === "fr"
-                      ? "Langue"
-                      : "Taal"}
-                  <select
-                    name="locale"
-                    defaultValue={state.preferences?.locale ?? locale}
-                  >
-                    <option value="fr">Français</option>
-                    <option value="nl">Nederlands</option>
-                    <option value="en">English</option>
-                  </select>
-                </label>
-                <label className="check">
-                  <input
-                    name="notifications"
-                    type="checkbox"
-                    defaultChecked={state.preferences?.notifications_enabled}
-                  />
-                  {t.notifications}
-                </label>
-                <Button disabled={busy}>{t.save}</Button>
-              </form>
+            {/* Photo, language and theme moved to Settings > My account (wave 15). */}
+            <Panel title={t.accountMoved} id="access-account">
+              <p className="muted">{t.accountMovedText}</p>
+              <p>
+                <Link href={`/${locale}/settings/account`}>{t.accountMovedLink}</Link>
+              </p>
             </Panel>
           </>
         )}

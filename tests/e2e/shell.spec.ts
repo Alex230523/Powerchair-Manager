@@ -86,7 +86,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     const panel = page.getByRole("dialog", { name: "Notifications" });
     await expect(panel).toBeVisible();
     await expect(panel.getByText(/^Test de notification/)).toBeVisible();
-    await expect(panel.getByRole("link", { name: /Tout voir/ })).toHaveAttribute("href", "/fr/notifications");
+    await expect(panel.getByRole("link", { name: /Tout voir/ })).toHaveAttribute("href", "/fr/settings/notifications");
     await axe(page, "bell panel", ".bell-panel");
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
@@ -98,6 +98,8 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await expect(menu.getByText("Changer de profil")).toBeVisible();
     await expect(menu.getByLabel("Profil actif", { exact: true })).toBeVisible();
     await expect(menu.getByRole("link", { name: "Mon espace", exact: true })).toHaveAttribute("href", "/fr/access");
+    await expect(menu.getByRole("link", { name: "Mon compte", exact: true })).toHaveAttribute("href", "/fr/settings/account");
+    await expect(menu.getByRole("link", { name: "Réglages", exact: true })).toHaveAttribute("href", "/fr/settings");
     await expect(menu.getByRole("link", { name: "NL", exact: true })).toHaveAttribute("href", "/nl");
     await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Sombre" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");

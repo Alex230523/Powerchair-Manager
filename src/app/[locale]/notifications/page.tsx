@@ -1,9 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/lib/locale";
-import { Notifications } from "@/components/notifications";
-export const metadata = {
-  title: "Notifications · Powerchair Football Manager",
-};
+/** The notifications page lives in Settings since wave 15; old links and emails still land there. */
 export default async function Page({
   params,
 }: {
@@ -11,5 +8,5 @@ export default async function Page({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <Notifications locale={locale} />;
+  redirect(`/${locale}/settings/notifications`);
 }

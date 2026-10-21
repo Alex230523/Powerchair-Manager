@@ -437,7 +437,7 @@ export function Dues({ locale }: { locale: Locale }) {
                 <Link className="button secondary" href={`/${locale}/reminders?kind=dues`}>
                   {remindLabel[locale]}
                 </Link>
-                <Link className="button secondary" href={`/${locale}/settings#settings-dues-title`}>
+                <Link className="button secondary" href={`/${locale}/settings/money#settings-dues-title`}>
                   {settingsLabel[locale]}
                 </Link>
                 <button type="button" className="button" onClick={() => setIssuing(true)} disabled={!view.plans.some((p) => !p.archived)}>

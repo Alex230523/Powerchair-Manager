@@ -205,8 +205,8 @@ test("new club, federation and referee pages load and pass axe", async ({
       page.locator("nav").getByRole("link", { name: "Messagerie", exact: true }),
     ).toHaveCount(0);
     await expect(page.locator("nav").getByRole("link", { name: "Statistiques", exact: true })).toBeVisible();
-    // Presence thresholds: the president lowers the bar for trainings.
-    await page.goto("/fr/settings");
+    // Presence thresholds: the president lowers the bar for trainings (Settings > Activities since wave 15).
+    await page.goto("/fr/settings/activities");
     const okPlayers = page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true });
     await expect(okPlayers).toHaveValue("5");
     await okPlayers.fill("3");
@@ -236,12 +236,15 @@ test("new club, federation and referee pages load and pass axe", async ({
     await page.goto("/fr/calendar");
     await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
     await expect(page.locator("main").getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
+    // Wave 15: notifications and dues rates sit in their own settings sub-pages; the photo is in My account.
     await page.goto("/fr/settings");
-    await expect(page.getByRole("heading", { name: "Notifications", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Notifications et résumé", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Argent", exact: true })).toBeVisible();
+    await page.goto("/fr/settings/money");
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
     await page.locator(".profile-menu > summary").click();
-    await page.locator(".profile-menu").getByRole("link", { name: "Mon espace", exact: true }).click();
-    await expect(page).toHaveURL("/fr/access");
+    await page.locator(".profile-menu").getByRole("link", { name: "Mon compte", exact: true }).click();
+    await expect(page).toHaveURL("/fr/settings/account");
     await expect(page.getByRole("heading", { name: "Photo de profil", exact: true })).toBeVisible();
     // A contact, then a grant linked to it.
     await page.goto("/fr/contacts");

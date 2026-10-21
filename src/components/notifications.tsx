@@ -199,11 +199,12 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
             <p className="muted">
               {data.transport === "smtp" ? t.smtp : t.local}
             </p>
-            <Panel title={`${t.inbox} · ${t.unread} : ${data.unread}`}>
+            <Panel id="notif-inbox" title={`${t.inbox} · ${t.unread} : ${data.unread}`}>
               <p className="muted">{t.inboxLimit}</p>
               <label className="check">
                 <input
                   type="checkbox"
+                  data-nodirty=""
                   checked={unreadOnly}
                   onChange={(e) => setUnreadOnly(e.target.checked)}
                 />
@@ -248,7 +249,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                 <p>{t.empty}</p>
               )}
             </Panel>
-            <Panel title={t.preferences}>
+            <Panel id="notif-preferences" title={t.preferences}>
               <p>{t.security}</p>
               {!data.globalEnabled && (
                 <p className="notice">
@@ -310,10 +311,11 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
             </Panel>
             {data.manage && (
               <>
-                <Panel title={t.templates}>
+                <Panel id="notif-templates" title={t.templates}>
                   <label>
                     {t.kind}
                     <select
+                      data-nodirty=""
                       value={
                         template ? `${template.kind}:${template.locale}` : ""
                       }
@@ -419,7 +421,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                     </section>
                   )}
                 </Panel>
-                <Panel title={t.queue}>
+                <Panel id="notif-queue" title={t.queue}>
                   <p className="muted">{t.queueLimit}</p>
                   {data.paused && <p className="notice">{t.paused}</p>}
                   <Button

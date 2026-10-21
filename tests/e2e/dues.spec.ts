@@ -92,6 +92,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page.locator(".profile-menu option:checked")).toHaveText(
       "Club — Président",
     );
+    // Language and photo live in Settings > My account since wave 15.
+    await page.goto("/fr/settings/account");
     const pref = page
       .locator("form")
       .filter({ has: page.locator('select[name="locale"]') });
@@ -99,11 +101,11 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await pref
       .getByRole("button", { name: "Enregistrer", exact: true })
       .click();
-    await expect(page).toHaveURL("/en/access");
+    await expect(page).toHaveURL("/en/settings/account");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("header")).not.toContainText("Language");
-    // Rates are set in Settings since wave 11; receivables are issued from Dues.
-    await page.goto("/en/settings");
+    // Rates are set in Settings > Money (waves 11 and 15); receivables are issued from Dues.
+    await page.goto("/en/settings/money");
     await page.getByRole("button", { name: "New rate", exact: true }).click();
     const rate = page.getByRole("dialog", { name: "New rate" });
     await rate.getByLabel("Category", { exact: true }).fill("Player membership");
@@ -152,7 +154,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page.getByRole("status")).toHaveText("Saved.");
     await expect(row).toContainText("€187.50");
     // The season is underway: editing the rate warns the president first.
-    await page.goto("/en/settings");
+    await page.goto("/en/settings/money");
     await page.getByRole("button", { name: /^Edit : Player membership/ }).click();
     const edit = page.getByRole("dialog", { name: /Edit the rate/ });
     await edit.getByLabel("Amount (€)", { exact: true }).fill("260");

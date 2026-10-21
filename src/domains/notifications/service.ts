@@ -232,7 +232,7 @@ export async function notificationExecute(
           variables: {
             name: s.user.name,
             organization: s.context.organization_name,
-            url: process.env.BETTER_AUTH_URL + "/" + locale + "/notifications",
+            url: process.env.BETTER_AUTH_URL + "/" + locale + "/settings/notifications",
           },
         });
       } else {
