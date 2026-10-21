@@ -4477,7 +4477,7 @@ input.narrow {
   flex: none;
 }
 .icon-tile[data-size="lg"] {
-  width: 44px;
+  width: 2.75rem;
   height: 2.75rem;
   border-radius: var(--radius-md);
 }
@@ -5397,7 +5397,7 @@ input.narrow {
 .team-card-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 10px; border-top: 1px solid var(--line); }
 .team-card-foot a { min-height: 2.75rem; display: inline-flex; align-items: center; font-weight: 600; }
 .color-picker { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0 0 12px; }
-.color-swatch { width: 44px; height: 2.75rem; border-radius: 50%; border: 2px solid var(--team-border); background: var(--team-bg); display: grid; place-items: center; cursor: pointer; }
+.color-swatch { width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 2px solid var(--team-border); background: var(--team-bg); display: grid; place-items: center; cursor: pointer; }
 .color-swatch .team-dot { width: 14px; height: 14px; background: var(--team-border); }
 .color-swatch[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
 .team-sheet .page-header { border-left: 6px solid var(--team-border); padding-left: 14px; }
@@ -6262,7 +6262,7 @@ ul.task-list {
 }
 @media (max-width: 760px) {
   .icon-button.round {
-    width: 44px;
+    width: 2.75rem;
     height: 2.75rem;
   }
   .board-more {
