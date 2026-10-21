@@ -819,7 +819,7 @@ export function Calendar({
                               <strong>{h.action === "created" ? t.create : h.action === "cancelled" ? t.cancelled : h.action === "venue.updated" ? t.place : t.edit}</strong> · {h.actor}
                               <p className="muted small">
                                 {String(h.before_data?.local_start ?? "…")} → {String(h.after_data.local_start)}
-                                {(h.before_data?.place_name || h.after_data.place_name) && ` · ${String(h.before_data?.place_name ?? "")} → ${String(h.after_data.place_name ?? "")}`}
+                                {!!(h.before_data?.place_name || h.after_data.place_name) && ` · ${String(h.before_data?.place_name ?? "")} → ${String(h.after_data.place_name ?? "")}`}
                               </p>
                               {!!h.after_data.reason && <p>{String(h.after_data.reason)}</p>}
                             </li>
