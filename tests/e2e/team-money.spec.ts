@@ -91,7 +91,7 @@ test("dues, trips and pots follow the team chosen in the top bar", async ({ page
     await expect(due).toContainText("250,00");
     await expect(table.getByRole("columnheader", { name: "Équipe", exact: true })).toHaveCount(0);
     await expect(page.locator(".scope-note")).toHaveCount(0);
-    await expect(page.locator("main").getByLabel("Équipe", { exact: true })).toHaveValue(teamB);
+    await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamB);
     await axe(page, "dues team B");
     // The home's money card gives the same figures for the team.
     await page.goto("/fr");
@@ -100,7 +100,7 @@ test("dues, trips and pots follow the team chosen in the top bar", async ({ page
     // Trips: the form offers the team; the list keeps whole-club trips and the chosen team's.
     await page.goto("/fr/trips");
     await page.getByRole("button", { name: "Nouveau déplacement", exact: true }).click();
-    const teamField = page.locator("main").getByLabel("Équipe", { exact: true });
+    const teamField = page.locator("main").getByRole("combobox", { name: /^Équipe/ });
     await expect(teamField).toBeVisible();
     await expect(teamField.locator("option")).toHaveText(["Club entier", "Équipe A", "Équipe B"]);
     await axe(page, "trip form");

@@ -113,9 +113,9 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await page.goto("/fr/dues");
     await loaded(page, "/fr/dues");
     await expect(page.locator(".scope-note")).toHaveCount(0);
-    await expect(page.locator("main").getByLabel("Équipe", { exact: true })).toHaveValue(teamA);
+    await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamA);
     await page.locator(".scope-chip .scope-clear").click();
-    await expect(page.locator("main").getByLabel("Équipe", { exact: true })).toHaveValue("");
+    await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue("");
 
     // 2. Mes équipes: one card per team, a new team with its colour.
     await page.goto("/fr/teams");
