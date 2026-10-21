@@ -86,7 +86,7 @@ function needManage(s: Scope) {
       mfaSatisfied(!!s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
     );
 }
-const eventSelect = `SELECT e.*,s.interval_days,COALESCE(v.name,NULLIF(e.free_location,''),p.name) AS place_name,COALESCE(v.address,p.address) AS place_address,t.name AS team_name,u.name AS responsible_name FROM calendar_event e JOIN calendar_series s ON s.id=e.series_id LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id LEFT JOIN team t ON t.id=e.team_id JOIN "user" u ON u.id=e.responsible_user_id`;
+const eventSelect = `SELECT e.*,s.interval_days,COALESCE(v.name,NULLIF(e.free_location,''),p.name) AS place_name,COALESCE(v.address,p.address) AS place_address,t.name AS team_name,t.color AS team_color,u.name AS responsible_name FROM calendar_event e JOIN calendar_series s ON s.id=e.series_id LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id LEFT JOIN team t ON t.id=e.team_id JOIN "user" u ON u.id=e.responsible_user_id`;
 async function record(s: Scope, id: string) {
   const e = (
     await s.c.query(eventSelect + " WHERE e.id=$1 AND e.organization_id=$2", [
@@ -380,6 +380,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       place_name: string | null;
       place_address: string | null;
       team_name: string | null;
+      team_color: string | null;
       responsible_name: string;
     })[];
     const events = [];
@@ -430,7 +431,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
     const teams = [];
     for (const team of (
       await s.c.query(
-        "SELECT t.id,t.name,t.season_id FROM team t JOIN season se ON se.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT se.archived",
+        "SELECT t.id,t.name,t.season_id,t.color FROM team t JOIN season se ON se.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT se.archived",
         [s.a.organization_id],
       )
     ).rows) {
@@ -444,7 +445,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
           )
         ).rowCount
       )
-        teams.push({ id: team.id as string, name: team.name as string });
+        teams.push({ id: team.id as string, name: team.name as string, color: (team.color ?? null) as string | null });
     }
     const canPlan =
       manager(s.a) ||

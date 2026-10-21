@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
@@ -158,9 +159,9 @@ export function PlayerDirectory({
     [creating, setCreating] = useState(false),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
-    [team, setTeam] = useState(""),
     [position, setPosition] = useState(""),
     [minimum, setMinimum] = useState("");
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
     year: "numeric",
@@ -431,9 +432,9 @@ export function PlayerDirectory({
                 placeholder={p.name}
               />
             </label>
-            <label>
-              {p.team}
-              <select value={team} onChange={(e) => setTeam(e.target.value)}>
+            <div className="directory-field">
+              <label htmlFor="directory-team">{p.team}</label>
+              <select id="directory-team" value={team} onChange={(e) => setTeam(e.target.value)}>
                 <option value="">{t.all}</option>
                 {data.teams.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -441,7 +442,8 @@ export function PlayerDirectory({
                   </option>
                 ))}
               </select>
-            </label>
+              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
+            </div>
             {role === "player" && (
               <label>
                 {t.position}
@@ -531,10 +533,15 @@ export function PlayerDirectory({
                         {r.full_name}
                       </button>
                     </th>
-                    <td>
-                      {[
-                        ...new Set(current(r).map((a) => teamName(a.team_id))),
-                      ].join(", ") || t.unassigned}
+                    <td className="tag-cell">
+                      {[...new Set(current(r).map((a) => a.team_id))].length
+                        ? [...new Set(current(r).map((a) => a.team_id))].map((id) => (
+                            <span key={id} className="team-chip" data-color={data?.teams.find((x) => x.id === id)?.color ?? "none"}>
+                              <span className="team-dot" aria-hidden="true" />
+                              {teamName(id)}
+                            </span>
+                          ))
+                        : t.unassigned}
                     </td>
                     {role === "player" && (
                       <>

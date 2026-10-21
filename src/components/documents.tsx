@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type { documentView } from "@/domains/documents/service";
 import { categories, statuses } from "@/domains/documents/schema";
 import {
@@ -56,12 +57,15 @@ export function Documents({ locale }: { locale: Locale }) {
     [category, setCategory] = useState(""),
     [ruleId, setRule] = useState(""),
     [templateId, setTemplate] = useState("");
+  // The top bar's team (wave 12) narrows the list to its members' documents.
+  const scope = useScope();
+  const scopedUrl = "/api/documents" + (scope.teamId ? `?team=${scope.teamId}` : "");
   const load = useCallback(async () => {
-    const r = await fetch("/api/documents", { cache: "no-store" }),
+    const r = await fetch(scopedUrl, { cache: "no-store" }),
       body = await r.json();
     if (!r.ok) throw new Error(body.error);
     setData(body);
-  }, []);
+  }, [scopedUrl]);
   const errorText = useCallback(
     (code: string) =>
       (documentErrors[code] ?? registrationErrors[code])?.[

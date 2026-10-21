@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import type { matchesView, matchDetail } from "@/domains/competitions/service";
 import {
   matchKinds,
@@ -19,11 +20,11 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 /** Club matches: fixtures, line-ups, results and player statistics. */
 export function Matches({ locale }: { locale: Locale }) {
   const t = matchesCopy[locale];
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [team, setTeam] = useState(""),
     [show, setShow] = useState<"upcoming" | "played" | "all">("upcoming"),
     [editing, setEditing] = useState<Match | "new" | null>(null),
     [dialog, setDialog] = useState<{
@@ -199,6 +200,7 @@ export function Matches({ locale }: { locale: Locale }) {
               </option>
             ))}
           </select>
+          <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
         </label>
         <label>
           {t.show}

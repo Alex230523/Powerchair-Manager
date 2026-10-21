@@ -1,3 +1,4 @@
+import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
 import { mfaSatisfied, mfaRequired } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { Pool, PoolClient } from "pg";
@@ -185,6 +186,9 @@ async function readWorkspace(db: Db, p: Principal) {
     fundraisingOpen: boolean;
     /** Changes with every new photo: the menu refreshes its picture. */
     avatarVersion: string | null;
+    /** Seasons and teams the top bar offers (wave 12), already filtered for the actor. */
+    seasons: SeasonOption[];
+    teams: TeamOption[];
   } = {
     user,
     avatarVersion:
@@ -209,7 +213,18 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: [],
     audit: [],
     fundraisingOpen: false,
+    seasons: [],
+    teams: [],
   };
+  if (selected && selected.kind === "club") {
+    result.seasons = await seasonOptions(db, selected.organization_id);
+    result.teams = await teamOptions(db, {
+      organization_id: selected.organization_id,
+      role: selected.role,
+      user_id: p.userId,
+      team_id: selected.team_id,
+    });
+  }
   // Members see "Levée de fonds" only while a pot open to the players exists.
   if (selected && selected.kind === "club")
     result.fundraisingOpen =

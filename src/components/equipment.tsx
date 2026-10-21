@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScope } from "./use-scope";
 import type { equipmentView } from "@/domains/equipment/service";
 import {
   chairStatuses,
@@ -59,15 +60,17 @@ export function Equipment({ locale }: { locale: Locale }) {
   const failure = (code: string) =>
     t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
 
+  const scope = useScope();
+  const scopedUrl = "/api/equipment" + (scope.teamId ? `?team=${scope.teamId}` : "");
   async function load() {
-    const r = await fetch("/api/equipment", { cache: "no-store" });
+    const r = await fetch(scopedUrl, { cache: "no-store" });
     const v = await r.json();
     if (!r.ok) throw new Error(v.error);
     setView(v);
   }
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/equipment", { cache: "no-store" })
+    fetch(scopedUrl, { cache: "no-store" })
       .then(async (r) => {
         const v = await r.json();
         if (!r.ok) throw new Error(v.error);
@@ -81,7 +84,7 @@ export function Equipment({ locale }: { locale: Locale }) {
     };
     // The copy only changes with the locale, which reloads the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scopedUrl]);
   async function send(body: Record<string, unknown>) {
     setBusy(true);
     setError("");

@@ -3,6 +3,7 @@ import { AbsencesPanel, absenceCopy } from "./absences";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { useScopedTeam, ApplyScope } from "./use-scope";
 import { Button, Panel } from "./ui";
 import { attendanceCopy } from "./attendance-copy";
 import { AttendanceGrid, gridCopy } from "./attendance-grid";
@@ -41,9 +42,9 @@ const offlineCopy = {
 export function Attendance({ locale }: { locale: Locale }) {
   const t = attendanceCopy[locale],
     today = localAt(new Date(), "Europe/Brussels");
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [from, setFrom] = useState(shiftLocal(today, -30).slice(0, 10)),
     [to, setTo] = useState(shiftLocal(today, 60).slice(0, 10)),
-    [team, setTeam] = useState(""),
     [data, setData] = useState<View | null>(null),
     [selected, setSelected] = useState(""),
     [busy, setBusy] = useState(false),
@@ -250,6 +251,7 @@ export function Attendance({ locale }: { locale: Locale }) {
                   </option>
                 ))}
               </select>
+              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
             </label>
             <label>
               {t.season}

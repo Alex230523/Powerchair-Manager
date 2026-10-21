@@ -10,6 +10,7 @@ import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
 import { PageHeader } from "./ui";
 import { shellCopy } from "./shell-copy";
+import { useScope } from "./use-scope";
 import { Modal } from "./modal";
 
 type View = Awaited<ReturnType<typeof financeView>>;
@@ -43,15 +44,18 @@ export function Finance({ locale }: { locale: Locale }) {
       timeZone: "UTC",
     }).format(new Date(d + "T12:00:00Z"));
 
+  // The team chosen in the top bar (wave 12) narrows the ledger, the budget and the figures.
+  const scope = useScope();
+  const scopedUrl = "/api/finance" + (scope.teamId ? `?team=${scope.teamId}` : "");
   async function load() {
-    const r = await fetch("/api/finance", { cache: "no-store" });
+    const r = await fetch(scopedUrl, { cache: "no-store" });
     const v = await r.json();
     if (!r.ok) throw new Error(v.error);
     setView(v);
   }
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/finance", { cache: "no-store" })
+    fetch(scopedUrl, { cache: "no-store" })
       .then(async (r) => {
         const v = await r.json();
         if (cancelled) return;
@@ -74,7 +78,7 @@ export function Finance({ locale }: { locale: Locale }) {
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, scopedUrl]);
 
   async function send(body: Record<string, unknown>) {
     setBusy(true);
@@ -116,6 +120,7 @@ export function Finance({ locale }: { locale: Locale }) {
       category: receivableId ? "dues" : value("category"),
       receivableId,
       tripId: value("trip") || null,
+      teamId: value("team") || null,
       amountCents: Math.round(Number(value("amount").replace(",", ".")) * 100),
       method: value("method"),
       counterparty: value("counterparty"),
@@ -161,7 +166,7 @@ export function Finance({ locale }: { locale: Locale }) {
         ),
       })),
     );
-    void send({ action: "budget", season: view?.season.label, lines }).then(
+    void send({ action: "budget", season: view?.season.label, teamId: view?.teamId ?? null, lines }).then(
       (ok) => {
         if (ok) {
           setEditingBudget(false);
@@ -423,6 +428,17 @@ export function Finance({ locale }: { locale: Locale }) {
                     </span>
                   </label>
                 )}
+                {view.teams.length > 0 && (
+                  <label htmlFor="fin-team">
+                    {x.team}
+                    <select id="fin-team" name="team" defaultValue={view.teamId ?? ""}>
+                      <option value="">{x.wholeClub}</option>
+                      {view.teams.map((tm) => (
+                        <option key={tm.id} value={tm.id}>{tm.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {view.trips.length > 0 && (
                   <label htmlFor="fin-trip">
                     {x.trip}
@@ -484,6 +500,7 @@ export function Finance({ locale }: { locale: Locale }) {
             <div className="panel-head">
               <h2 id="finance-budget">
                 {x.budget} · {view.season.label}
+                {view.teamId && <span className="muted"> · {view.teams.find((tm) => tm.id === view.teamId)?.name}</span>}
               </h2>
               {view.can_edit && (
                 <button
@@ -658,6 +675,15 @@ export function Finance({ locale }: { locale: Locale }) {
                         <td>{day(e.occurred_on)}</td>
                         <td>
                           <strong>{e.label}</strong>
+                          {e.team_name && (
+                            <>
+                              {" "}
+                              <span className="team-chip" data-color={e.team_color ?? "none"}>
+                                <span className="team-dot" aria-hidden="true" />
+                                {e.team_name}
+                              </span>
+                            </>
+                          )}
                           {(e.counterparty || e.reference) && (
                             <span className="muted">
                               {" "}

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { WholeClubNote } from "./use-scope";
 import type { tripsView, tripDetail } from "@/domains/trips/service";
 import { licenceCategories } from "@/domains/trips/schema";
 import { tripsCopy } from "./trips-copy";
@@ -214,6 +215,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
         <div>
           <h1>{t.title}</h1>
           <p className="muted">{t.intro}</p>
+          <WholeClubNote locale={locale} />
         </div>
         {data.can.manage && (
           <button type="button" className="button" aria-expanded={creating} onClick={() => setCreating(!creating)}>

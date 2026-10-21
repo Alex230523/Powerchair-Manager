@@ -78,6 +78,8 @@ export type AgendaItem = {
   startsAt: string;
   endsAt: string;
   team: string | null;
+  /** The team's palette key (wave 12), for the chip. */
+  teamColor?: string | null;
   place: string | null;
   responseNeeded: boolean;
   /** Players and coaches who answered "present", against the club thresholds. */

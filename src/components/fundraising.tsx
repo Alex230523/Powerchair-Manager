@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
+import { WholeClubNote } from "./use-scope";
 import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
@@ -556,6 +557,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
         <div>
           <h1>{t.title}</h1>
           <p className="muted">{t.intro}</p>
+          <WholeClubNote locale={locale} />
         </div>
         {data.can.manage && editing !== "group" && (
           <button type="button" className="button" onClick={() => setEditing("group")}>{t.newGroup}</button>

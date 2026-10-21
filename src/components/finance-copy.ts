@@ -255,6 +255,10 @@ export const financeExtras = {
       "Accès en lecture seule : vous consultez les comptes sans pouvoir les modifier.",
     trip: "Déplacement (facultatif)",
     tripNone: "Aucun",
+    byTeam: "Par équipe",
+    result: "Résultat",
+    team: "Équipe",
+    wholeClub: "Club entier",
     budgetIntro:
       "Montants prévus par catégorie, comparés au réel. Un écart positif est favorable au club.",
     planned: "Prévu",
@@ -296,6 +300,10 @@ export const financeExtras = {
       "Alleen-lezen: u raadpleegt de rekeningen zonder ze te kunnen wijzigen.",
     trip: "Verplaatsing (optioneel)",
     tripNone: "Geen",
+    byTeam: "Per team",
+    result: "Resultaat",
+    team: "Team",
+    wholeClub: "Hele club",
     budgetIntro:
       "Geplande bedragen per categorie, vergeleken met de realiteit. Een positief verschil is gunstig voor de club.",
     planned: "Gepland",
@@ -336,6 +344,10 @@ export const financeExtras = {
     readOnly: "Read-only access: you can see the accounts but not change them.",
     trip: "Trip (optional)",
     tripNone: "None",
+    byTeam: "By team",
+    result: "Result",
+    team: "Team",
+    wholeClub: "Whole club",
     budgetIntro:
       "Planned amounts per category compared with actuals. A positive gap is good for the club.",
     planned: "Planned",
