@@ -210,7 +210,7 @@ test("new club, federation and referee pages load and pass axe", async ({
     await okPlayers.fill("3");
     await page.getByLabel("Entraînements · Joueurs · Tendu à partir de", { exact: true }).fill("2");
     await page.getByRole("button", { name: "Enregistrer les seuils", exact: true }).click();
-    await expect(page.getByRole("status")).toContainText("Seuils enregistrés.");
+    await expect(page.getByRole("status").filter({ hasText: "Seuils enregistrés." })).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true })).toHaveValue("3");
     // The dashboard: to-do blocks, key figures on the left, the agenda on the right.
@@ -219,6 +219,44 @@ test("new club, federation and referee pages load and pass axe", async ({
     await expect(page.getByRole("heading", { name: /^À faire/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Prochains événements", exact: true })).toBeVisible();
     await expect(page.getByText("Accès rapide", { exact: true })).toHaveCount(0);
+
+    // Wave 11: contact book, grants and partners pages; trips and halls reached
+    // from the calendar; notifications inside settings; the photo corner opens Mon espace.
+    for (const path of ["/fr/contacts", "/fr/funding/grants", "/fr/funding/partners"]) await check(page, path);
+    for (const name of ["Déplacements", "Annuaire des salles", "Notifications", "Licences"])
+      await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
+    // Menu groups are folded until opened: the entries exist, visible or not.
+    await expect(page.locator("nav").getByRole("link", { name: "Transferts", exact: true, includeHidden: true })).toHaveCount(1);
+    await expect(page.locator("nav").getByRole("link", { name: "Finance du club", exact: true, includeHidden: true })).toHaveCount(1);
+    await page.goto("/fr/calendar");
+    await expect(page.getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
+    await page.goto("/fr/settings");
+    await expect(page.getByRole("heading", { name: "Notifications", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
+    await page.getByRole("link", { name: /^Mon espace · / }).click();
+    await expect(page).toHaveURL("/fr/access");
+    await expect(page.getByRole("heading", { name: "Photo de profil", exact: true })).toBeVisible();
+    // A contact, then a grant linked to it.
+    await page.goto("/fr/contacts");
+    await page.getByRole("button", { name: "Nouveau contact", exact: true }).click();
+    const contact = page.getByRole("dialog", { name: "Nouveau contact" });
+    await contact.getByLabel("Nom", { exact: true }).fill("Marc Dupont");
+    await contact.getByLabel("Organisation", { exact: true }).fill("Commune");
+    await contact.getByLabel("Pouvoirs publics", { exact: true }).check();
+    await contact.getByRole("button", { name: "Enregistrer", exact: true }).click();
+    await expect(page.locator("main .contact-table")).toContainText("Marc Dupont");
+    await page.goto("/fr/funding/grants");
+    await page.getByRole("button", { name: "Nouvelle demande", exact: true }).click();
+    const grant = page.getByRole("dialog", { name: "Nouvelle demande" });
+    await grant.getByLabel(/^Organisme/).fill("Commune de Schaerbeek");
+    await grant.getByLabel("Montant demandé (€)", { exact: true }).fill("8000");
+    await grant.getByLabel("Date limite de dépôt", { exact: true }).fill("2026-12-01");
+    await grant.getByLabel("Contact").selectOption({ label: "Marc Dupont · Commune" });
+    await grant.getByRole("button", { name: "Enregistrer", exact: true }).click();
+    await expect(page.locator("main table")).toContainText("Commune de Schaerbeek");
+    await expect(page.locator("main table")).toContainText("Déposer le dossier");
+    await check(page, "/fr/funding/grants");
 
     await switchProfile(page, roles.federation_president);
     for (const path of [

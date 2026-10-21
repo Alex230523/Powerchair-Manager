@@ -9,6 +9,7 @@ import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
 import { PageHeader } from "./ui";
+import { shellCopy } from "./shell-copy";
 import { Modal } from "./modal";
 
 type View = Awaited<ReturnType<typeof financeView>>;
@@ -238,6 +239,12 @@ export function Finance({ locale }: { locale: Locale }) {
             <>
               <Link className="button secondary" href={`/${locale}/dues`}>
                 {t.dues}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/funding/grants`}>
+                {shellCopy[locale].grants}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/funding/partners`}>
+                {shellCopy[locale].partners}
               </Link>
               <Link className="button secondary" href={`/${locale}/funding/report?season=${view.season.label}`}>
                 {x.report}

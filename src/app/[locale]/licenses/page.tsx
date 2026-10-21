@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/locale";
 import { ClubLicenses } from "@/components/licenses";
-export const metadata = { title: "Licences · Powerchair Football Manager" };
+export const metadata = { title: "Transferts · Powerchair Football Manager" };
 export default async function Page({
   params,
 }: {

@@ -29,6 +29,7 @@ export type Workspace = {
   };
   permissions: string[];
   fundraisingOpen?: boolean;
+  avatarVersion?: string | null;
 };
 type NavItem = { route: string; label: keyof Copy; icon: IconName };
 type NavGroup = {
@@ -96,8 +97,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               items: [
                 ...item("/calendar", "calendar", "calendar"),
                 ...item("/matches", "matches", "whistle", has("calendar.read", "calendar.manage")),
-                ...item("/trips", "trips", "arrow", has("calendar.read", "calendar.manage")),
-                ...item("/venues", "venues", "club", has("calendar.read", "calendar.manage")),
+                // Trips and halls are reached from the calendar page (wave 11).
                 ...item("/federal-calendar", "federalCalendar", "calendar", has("calendar.read", "calendar.manage")),
                 ...item("/documents", "documents", "document"),
                 // Club mails: newsletters (notifications.manage), event mails (planners).
@@ -116,6 +116,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               items: [
                 ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
                 ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
+                ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
               ],
             },
@@ -126,6 +127,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               items: [
                 ...item("/funding", "funding", "funding", has("dues.read", "dues.manage")),
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
+                ...item("/funding/grants", "grants", "document", has("dues.read", "dues.manage")),
+                ...item("/funding/partners", "partners", "team", has("dues.read", "dues.manage")),
                 ...item("/fundraising", "fundraising", "chart", has("dues.read", "dues.manage")),
               ],
             },
@@ -192,7 +195,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
       items: [
         ...(state?.selected
           ? ([
-              { route: "/notifications", label: "notifications", icon: "bell" },
+              // Notifications live in Réglages since wave 11.
               ...(kind === "club" && !member
                 ? ([
                     ...item(
@@ -406,14 +409,19 @@ export function AppShell({
             })}
           </nav>
         </details>
-        <div className="sidebar-foot">
-          {state?.user.name && (
-            <span className="avatar" aria-hidden="true">
-              {initials(state.user.name)}
-            </span>
-          )}
+        {/* The account's own corner: photo and name open Mon espace (wave 11). */}
+        <Link className="sidebar-foot" href={`/${locale}/access`} aria-label={`${t.access} · ${state?.user.name ?? ""}`}>
+          {state?.user.name &&
+            (state.avatarVersion ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="avatar" src={`/api/account/avatar?v=${state.avatarVersion}`} alt="" />
+            ) : (
+              <span className="avatar" aria-hidden="true">
+                {initials(state.user.name)}
+              </span>
+            ))}
           <span>{state?.user.name ?? "Powerchair Football Manager"}</span>
-        </div>
+        </Link>
       </aside>
       <div className="app-content">
         <header className="topbar">

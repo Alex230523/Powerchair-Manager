@@ -11,6 +11,7 @@ import {
 import { delegable, isAdmin, permissions, type Role } from "../access/policy";
 import { optionalModules, type OptionalModule } from "../access/rights";
 import { presenceRules, presenceRulesSchema } from "../dashboard/presence";
+import { duesRules, duesRulesSchema } from "../dues/rules";
 
 /**
  * Club governance: which modules the club uses, the rights profiles it
@@ -30,6 +31,8 @@ export const governanceCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("deleteProfile"), id: z.uuid() }),
   /** Presence thresholds of the dashboard (players and coaches "present"). */
   z.object({ action: z.literal("presence"), rules: presenceRulesSchema }),
+  /** Automatic dues reminders (wave 11). */
+  z.object({ action: z.literal("duesRules"), rules: duesRulesSchema }),
 ]);
 export type GovernanceCommand = z.infer<typeof governanceCommand>;
 export const journalQuery = z.object({
@@ -101,7 +104,7 @@ async function scope<T>(
 export async function governanceView(db: Pool, p: Principal) {
   return scope(db, p, false, async ({ c, org, role, perms, mfa }) => {
     const orgRow = (
-      await c.query("SELECT disabled_modules,presence_rules FROM organization WHERE id=$1", [
+      await c.query("SELECT disabled_modules,presence_rules,dues_rules FROM organization WHERE id=$1", [
         org,
       ])
     ).rows[0];
@@ -112,6 +115,7 @@ export async function governanceView(db: Pool, p: Principal) {
       organizationId: org,
       disabled,
       presence: presenceRules(orgRow.presence_rules),
+      dues: duesRules(orgRow.dues_rules),
       can: {
         modules: mfa && isAdmin(role as Role),
         presence: mfa && perms.includes("mandates.manage"),
@@ -168,6 +172,12 @@ export async function governanceExecute(
           JSON.stringify(command.rules),
         ]);
         await audit(c, org, p.userId, "presence.rules", org, { before, after: command.rules });
+        return { ok: true as const };
+      }
+      if (command.action === "duesRules") {
+        if (!perms.includes("mandates.manage")) throw new AccessError("FORBIDDEN");
+        await c.query("UPDATE organization SET dues_rules=$2 WHERE id=$1", [org, JSON.stringify(command.rules)]);
+        await audit(c, org, p.userId, "dues.rules", org, command.rules);
         return { ok: true as const };
       }
       if (command.action === "saveProfile") {

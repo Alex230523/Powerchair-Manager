@@ -17,6 +17,8 @@ import {
 import { governanceCopy } from "./governance-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
+import { Notifications } from "./notifications";
+import { DuesSettingsPanel } from "./dues-settings";
 import { Badge, Card } from "./ui";
 
 type Member = {
@@ -199,6 +201,8 @@ export function Settings({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {!manage && <p className="notice">{t.presidentOnly}</p>}
+      {/* Notifications live here since wave 11, for every profile. */}
+      <Notifications locale={locale} embedded />
 
       {manage && ws.selected?.role === "club_president" && people && (
         <section className="panel" aria-labelledby="settings-self">
@@ -399,6 +403,9 @@ export function Settings({ locale }: { locale: Locale }) {
       )}
       {gov?.can.presence && (
         <PresencePanel locale={locale} gov={gov} busy={busy} post={post} />
+      )}
+      {gov?.can.presence && !gov.disabled.includes("dues") && (
+        <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
       )}
       {gov?.can.modules && (
         <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />

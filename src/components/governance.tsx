@@ -11,6 +11,7 @@ import {
   type Grant,
   type Level,
 } from "@/domains/access/rights";
+import type { DuesRules } from "@/domains/dues/rules";
 import type { PresenceRules } from "@/domains/dashboard/presence";
 import { governanceCopy } from "./governance-copy";
 import { settingsCopy } from "./settings-copy";
@@ -20,6 +21,7 @@ export type Governance = {
   organizationId: string;
   disabled: string[];
   presence: PresenceRules;
+  dues: DuesRules;
   can: {
     modules: boolean;
     presence: boolean;

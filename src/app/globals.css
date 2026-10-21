@@ -4437,3 +4437,19 @@ input.narrow {
 @media (max-width: 400px) {
   .stat-row-grid[data-cols="4"], .stat-row-grid[data-cols="5"], .stat-row-grid[data-cols="2"] { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Wave 11: profile photo */
+a.sidebar-foot { text-decoration: none; color: var(--sidebar-ink); border-radius: var(--radius-sm); }
+a.sidebar-foot:hover, a.sidebar-foot:focus-visible { background: var(--sidebar-hover); }
+.sidebar-foot img.avatar { object-fit: cover; }
+.avatar-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.avatar-large { width: 84px; height: 84px; font-size: 1.4rem; object-fit: cover; border-radius: 50%; }
+.file-button { cursor: pointer; display: inline-flex; }
+.agenda-deadline .agenda-date[data-kind="grant"] { background: var(--info-soft); color: var(--info-ink); }
+.agenda-deadline .agenda-date[data-kind="partner"] { background: var(--accent-soft); color: var(--accent-ink); }
+.toolbar-check { align-self: flex-end; padding-bottom: 10px; white-space: nowrap; }
+.tag-cell .badge { margin: 1px 4px 1px 0; }
+.text-button.danger { color: var(--danger-ink); }
+.contact-table tr[data-archived] th, .contact-table tr[data-archived] td { color: var(--muted); }
+.tag-picker { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; }
+.tag-picker legend { padding: 0 4px; font-size: 0.85rem; color: var(--muted); }

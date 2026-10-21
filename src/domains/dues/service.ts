@@ -231,7 +231,7 @@ export async function duesView(db: Pool, p: Principal) {
       plans: s.readAll
         ? (
             await s.c.query(
-              "SELECT *,first_due::text AS first_due FROM dues_plan WHERE organization_id=$1 ORDER BY created_at DESC",
+              "SELECT p.*,p.first_due::text AS first_due,se.name AS season_name,(SELECT count(*)::int FROM dues_receivable d WHERE d.plan_id=p.id AND d.status='open') AS issued_count FROM dues_plan p JOIN season se ON se.id=p.season_id WHERE p.organization_id=$1 ORDER BY p.created_at DESC",
               [o],
             )
           ).rows
@@ -365,6 +365,24 @@ export async function duesExecute(
         ).rows[0];
         await log(s, "plan", row.id, null, null, row);
         return { id: row.id };
+      }
+      if (cmd.action === "updatePlan") {
+        const issued = (
+          await s.c.query(
+            "SELECT count(*)::int AS n FROM dues_receivable WHERE plan_id=$1 AND organization_id=$2 AND status='open'",
+            [cmd.id, o],
+          )
+        ).rows[0].n as number;
+        if (issued > 0 && !cmd.confirm) throw new AccessError("SEASON_STARTED", 409);
+        const row = (
+          await s.c.query(
+            "UPDATE dues_plan SET category=$3,amount_cents=$4,max_installments=$5,first_due=$6,version=version+1 WHERE id=$1 AND organization_id=$2 AND NOT archived RETURNING *",
+            [cmd.id, o, cmd.category, cmd.amountCents, cmd.maxInstallments, cmd.firstDue],
+          )
+        ).rows[0];
+        if (!row) throw new AccessError("NOT_FOUND", 404);
+        await log(s, "updatePlan", row.id, null, null, { ...row, issued });
+        return { id: row.id, issued };
       }
       if (cmd.action === "siblingRule") {
         const row = (

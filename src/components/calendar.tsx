@@ -92,6 +92,7 @@ type View = {
   sharedVenues: { id: string; name: string; address: string }[];
   manage: boolean;
   canPlan: boolean;
+  offModules?: string[];
   events: Item[];
   teams: { id: string; name: string }[];
   places: Place[];
@@ -155,6 +156,8 @@ export function Calendar({
           exercise:
             "Fiches d’exercice : sélectionnez les documents à joindre à l’entraînement.",
           docs: "Gérer les documents",
+          trips: "Déplacements",
+          venues: "Annuaire des salles",
           coaches: "Présences des coachs",
           players: "Présences des joueurs",
           attendance: "Gérer les convocations et présences",
@@ -177,6 +180,8 @@ export function Calendar({
             exercise:
               "Exercise sheets: select documents to attach to the training session.",
             docs: "Manage documents",
+            trips: "Trips",
+            venues: "Hall directory",
             coaches: "Coach attendance",
             players: "Player attendance",
             attendance: "Manage invitations and attendance",
@@ -197,6 +202,8 @@ export function Calendar({
               "Naam en adres zijn zichtbaar voor clubs en federatie. Geen privécontactgegevens.",
             exercise: "Oefenfiches: selecteer documenten voor de training.",
             docs: "Documenten beheren",
+            trips: "Verplaatsingen",
+            venues: "Zalengids",
             coaches: "Aanwezigheid coaches",
             players: "Aanwezigheid spelers",
             attendance: "Oproepen en aanwezigheid beheren",
@@ -406,6 +413,17 @@ export function Calendar({
                 {extra.subscribe}
               </a>
               <Link href={"/" + locale + "/documents"}>{extra.docs}</Link>
+              {/* Trips and halls left the menu (wave 11): they live here. */}
+              {!data.offModules?.includes("trips") && (
+                <Link className="button secondary" href={"/" + locale + "/trips"}>
+                  {extra.trips}
+                </Link>
+              )}
+              {data.canPlan && (
+                <Link className="button secondary" href={"/" + locale + "/venues"}>
+                  {extra.venues}
+                </Link>
+              )}
             </div>
             <Panel title={t.agenda}>
               <h3 className="calendar-period">

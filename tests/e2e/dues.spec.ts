@@ -100,6 +100,17 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page).toHaveURL("/en/access");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("header")).not.toContainText("Language");
+    // Rates are set in Settings since wave 11; receivables are issued from Dues.
+    await page.goto("/en/settings");
+    await page.getByRole("button", { name: "New rate", exact: true }).click();
+    const rate = page.getByRole("dialog", { name: "New rate" });
+    await rate.getByLabel("Category", { exact: true }).fill("Player membership");
+    await rate.getByLabel("Amount (€)", { exact: true }).fill("250");
+    await rate.getByLabel("First due date", { exact: true }).fill("2026-10-31");
+    await rate.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+    await expect(rate).toHaveCount(0);
+    // Changing a rate once dues exist asks the president to confirm (checked below).
     await openMenuGroup(page, "Club finances");
     await page
       .locator("nav")
@@ -108,19 +119,6 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(
       page.getByRole("heading", { name: "Dues", exact: true }),
     ).toBeVisible();
-    // Rates and receivables are created from dialogs (wave 10).
-    await page.getByRole("button", { name: "New rate", exact: true }).click();
-    const rate = page.getByRole("dialog", { name: "New rate" });
-    await rate
-      .getByLabel("Rate category", { exact: true })
-      .fill("Player membership");
-    await rate.getByLabel("Amount (€)", { exact: true }).fill("250");
-    await rate.getByLabel("First due date", { exact: true }).fill("2026-10-31");
-    await rate
-      .getByRole("button", { name: "Create rate", exact: true })
-      .click();
-    await expect(page.getByRole("status")).toHaveText("Saved.");
-    await expect(rate).toHaveCount(0);
     await page.getByRole("button", { name: "Issue dues", exact: true }).click();
     const issue = page.getByRole("dialog", { name: "Issue dues" });
     await issue
@@ -150,6 +148,17 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await pay.getByRole("button", { name: "Collect", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Saved.");
     await expect(row).toContainText("€187.50");
+    // The season is underway: editing the rate warns the president first.
+    await page.goto("/en/settings");
+    await page.getByRole("button", { name: /^Edit : Player membership/ }).click();
+    const edit = page.getByRole("dialog", { name: /Edit the rate/ });
+    await edit.getByLabel("Amount (€)", { exact: true }).fill("260");
+    await edit.getByRole("button", { name: "Save", exact: true }).click();
+    const warn = page.getByRole("dialog", { name: "The season is underway" });
+    await expect(warn).toContainText("1 dues were already issued");
+    await warn.getByRole("button", { name: "Confirm the change", exact: true }).click();
+    await expect(warn).toHaveCount(0);
+    await expect(page.locator("section.card", { has: page.locator("#settings-dues-title") })).toContainText("€260.00");
     expect(
       (
         await new AxeBuilder({ page })
