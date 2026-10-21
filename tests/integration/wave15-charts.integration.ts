@@ -76,9 +76,10 @@ it("counts each season of the club by team, a player in two teams once in the to
     ],
   ]);
   expect(v.seasons[1].retention).toEqual({ stayed: 1, joined: 2, left: 1, rate: 50 });
-  // Nothing of the other club; the coach without a statistics right is refused.
+  // Nothing of the other club; a coach who supervises no team sees no one (wave 16, S2: coaches see their own teams).
   expect(JSON.stringify(v)).not.toContain("Autres");
-  await expect(clubStatistics(db, coach, "headcount", {})).rejects.toMatchObject({ code: "FORBIDDEN" });
+  const c = (await clubStatistics(db, coach, "headcount", {})) as { seasons: { total: number }[] };
+  expect(c.seasons.map((s) => s.total)).toEqual([0, 0]);
 });
 
 it("gives the team colours to the monthly lines", async () => {

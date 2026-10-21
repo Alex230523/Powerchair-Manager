@@ -94,7 +94,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 // Wave 16 (E2): the coaches' exercise sheets.
                 ...item("/exercises", "exercises", "clipboardList", true),
                 ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
-                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
+                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage")),
               ],
             },
             {
@@ -164,7 +164,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                   ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
                   ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
-                  ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
+                  ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
                 ],
               },
               {

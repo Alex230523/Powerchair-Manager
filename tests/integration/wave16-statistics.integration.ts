@@ -13,7 +13,7 @@ import { ensureStorage } from "../../src/domains/storage/service";
 const schema = "w16st_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
-let clubA: string, clubB: string, presidentA: Principal, presidentB: Principal, coachA: Principal, coachNone: Principal;
+let clubA: string, clubB: string, presidentA: Principal, presidentB: Principal, coachA: Principal, coachNone: Principal, playerA: Principal;
 let pastA: string, nowA: string, lions: string, eagles: string, ana: string, ben: string, cleo: string, trip: string;
 // A one-pixel PNG.
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -93,6 +93,7 @@ beforeAll(async () => {
   await join(clubA, lions, coachProfile, "coach");
   coachA = await actor(clubA, "coach", ["attendance.manage"], lions);
   coachNone = await actor(clubA, "coach");
+  playerA = await actor(clubA, "player");
   // Club B: one team, one player, never seen by club A.
   const nowB = (await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-100,CURRENT_DATE+230) RETURNING id", [clubB])).rows[0].id;
   const others = (await db.query("INSERT INTO team(organization_id,season_id,name) VALUES($1,$2,'Autres') RETURNING id", [clubB, nowB])).rows[0].id;
@@ -145,7 +146,9 @@ it("shows the same key figures as the home, the treasury for the money, the atte
   const c = (await clubStatistics(db, coachA, "summary", {})) as { tiles: Record<string, number | null>; restricted: boolean };
   expect(c.restricted).toBe(true);
   expect(c.tiles).toMatchObject({ players: 2, trainings: 3, matches: 2, treasury: null, attendance: 75 });
-  await expect(clubStatistics(db, coachNone, "summary", {})).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // A coach of no team: nothing to see, not even the club's figures (S2 opened the statistics to every coach).
+  expect(((await clubStatistics(db, coachNone, "summary", {})) as { tiles: Record<string, number | null> }).tiles).toMatchObject({ players: 0, trainings: 0, matches: 0, treasury: null });
+  await expect(clubStatistics(db, playerA, "summary", {})).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(clubStatistics(db, coachA, "storage", {})).rejects.toMatchObject({ code: "FORBIDDEN" });
 });
 

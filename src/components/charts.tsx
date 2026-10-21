@@ -463,3 +463,101 @@ export function SplitBar({ parts, label, height = 20 }: { parts: { id: string; s
     </div>
   );
 }
+
+export type DivergingBar = { id: string; label: string; title: string; up: number; down: number; color: string };
+/**
+ * Bars above and below the axis (wave 16, S2: goals per match): goals scored
+ * above in the team's colour, conceded below in --chart-8, one pair per
+ * match in order. The arrows go through the matches.
+ */
+export function DivergingBarChart({
+  locale,
+  summary,
+  bars,
+  upLabel,
+  downLabel,
+  height = 240,
+}: {
+  locale: Locale;
+  summary: string;
+  bars: DivergingBar[];
+  upLabel: string;
+  downLabel: string;
+  height?: number;
+}) {
+  const c = chartsCopy[locale];
+  const { ref, width } = useWidth();
+  const m = { l: 32, r: 12, t: 12, b: 12 };
+  const pw = Math.max(width - m.l - m.r, 40),
+    n = bars.length;
+  const peak = Math.max(1, ...bars.map((b) => Math.max(b.up, b.down)));
+  const stepY = niceStep(peak / 2);
+  const top = Math.max(stepY * Math.ceil(peak / stepY), stepY);
+  const half = (height - m.t - m.b) / 2;
+  const zero = m.t + half;
+  const y = (v: number) => zero - (v / top) * half;
+  const band = pw / Math.max(n, 1),
+    bar = Math.max(2, Math.min(18, band * 0.7));
+  const cx = (i: number) => m.l + band * (i + 0.5);
+  const { active, setActive, onPointerMove, onKeyDown } = usePointer(n, (px) => Math.floor((px - m.l) / band));
+  const ticks: number[] = [];
+  for (let v = -top; v <= top + 1e-9; v += stepY) ticks.push(v);
+  const rows = (i: number): TipRow[] => [
+    { id: "up", label: upLabel, color: bars[i].color, value: String(bars[i].up) },
+    { id: "down", label: downLabel, color: "var(--chart-8)", value: String(bars[i].down) },
+  ];
+  return (
+    <div ref={ref} className="chart" role="group" aria-label={summary} tabIndex={0} onKeyDown={onKeyDown} onBlur={() => setActive(null)}>
+      <svg width={width} height={height} aria-hidden="true" onPointerMove={onPointerMove} onPointerLeave={() => setActive(null)}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={m.l + pw} y1={y(v)} y2={y(v)} stroke={v === 0 ? "var(--border-strong)" : "var(--grid-line)"} strokeWidth={1} />
+            <text x={m.l - 8} y={y(v)} dy="0.32em" textAnchor="end" className="chart-axis">
+              {Math.abs(v)}
+            </text>
+          </g>
+        ))}
+        {active !== null && <rect x={m.l + band * active} y={m.t} width={band} height={half * 2} fill="var(--surface-soft)" />}
+        {bars.map((b, i) => (
+          <g key={b.id}>
+            {b.up > 0 && <rect x={cx(i) - bar / 2} y={y(b.up)} width={bar} height={zero - y(b.up)} fill={b.color} rx={2} />}
+            {b.down > 0 && <rect x={cx(i) - bar / 2} y={zero} width={bar} height={y(-b.down) - zero} fill="var(--chart-8)" rx={2} />}
+          </g>
+        ))}
+      </svg>
+      {active !== null && <Tooltip x={cx(active)} width={width} title={bars[active].title} rows={rows(active)} />}
+      <p className="sr-only" aria-live="polite">
+        {active !== null ? `${bars[active].title} : ${rows(active).map((r) => `${r.label} ${r.value}`).join(", ")}` : ""}
+      </p>
+      <p className="sr-only">{c.keys}</p>
+    </div>
+  );
+}
+
+/** Horizontal bars, one per row, the label on the left and the figure at the end (wave 16, S2: playing time). */
+export function HorizontalBars({ summary, rows, format }: { summary: string; rows: { id: string; label: string; value: number; note?: string; color: string }[]; format: (v: number) => string }) {
+  const { ref, width } = useWidth();
+  const rowHeight = 30,
+    labelWidth = Math.min(160, Math.max(90, width * 0.3)),
+    // Room for the figure and its note (« 120 min · 3 tit. »).
+    valueWidth = rows.some((r) => r.note) ? 120 : 64;
+  const peak = Math.max(1, ...rows.map((r) => r.value));
+  const pw = Math.max(width - labelWidth - valueWidth - 8, 20);
+  return (
+    <div ref={ref} className="chart">
+      <svg width={width} height={rows.length * rowHeight} role="img" aria-label={summary}>
+        {rows.map((r, i) => (
+          <g key={r.id} transform={`translate(0 ${i * rowHeight})`}>
+            <text x={0} y={rowHeight / 2} dy="0.32em" className="chart-axis chart-row-label">
+              {r.label.length > 22 ? r.label.slice(0, 21) + "…" : r.label}
+            </text>
+            <rect x={labelWidth} y={7} width={Math.max((r.value / peak) * pw, r.value ? 2 : 0)} height={rowHeight - 14} rx={2} fill={r.color} />
+            <text x={labelWidth + (r.value / peak) * pw + 6} y={rowHeight / 2} dy="0.32em" className="chart-total">
+              {r.note ? `${format(r.value)} · ${r.note}` : format(r.value)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}

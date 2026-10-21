@@ -20,9 +20,9 @@ import { HallOfFame } from "./hall-of-fame";
  * season and the team come from the top bar; each chart has its period in
  * its « ... » menu, kept in the address. No filter bar.
  */
-const colorOf = (c: string | null | undefined, i: number) => (c ? `var(--team-${c}-border)` : `var(--chart-${(i % 8) + 1})`);
+export const colorOf = (c: string | null | undefined, i: number) => (c ? `var(--team-${c}-border)` : `var(--chart-${(i % 8) + 1})`);
 const palette = (i: number) => `var(--chart-${(i % 8) + 1})`;
-const shortDate = (locale: Locale, d: string) =>
+export const shortDate = (locale: Locale, d: string) =>
   new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
 const money = (locale: Locale, cents: number) =>
   new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
@@ -34,17 +34,17 @@ type Summary = {
   tiles: { players: number; coaches: number; trainings: number; matches: number; treasury: number | null; attendance: number | null } | null;
   can: { money: boolean; storage: boolean; manageAwards: boolean };
 };
-type Spanned = { period: Period; from: string; to: string; names: string[] };
-type CsvSection = { title: string; rows: (string | number | null)[][] };
+export type Spanned = { period: Period; from: string; to: string; names: string[] };
+export type CsvSection = { title: string; rows: (string | number | null)[][] };
 
-/** One chart's data from /api/statistics/club, for the season and team of the top bar. */
-function useStat<T>(chart: string, params: Record<string, string | undefined>) {
+/** One chart's data from /api/statistics/club (or /game), for the season and team of the top bar. */
+export function useStat<T>(chart: string, params: Record<string, string | undefined>, api = "/api/statistics/club") {
   const scope = useScope();
   const query = new URLSearchParams({ chart });
   if (scope.seasonId) query.set("season", scope.seasonId);
   if (scope.teamId) query.set("team", scope.teamId);
   for (const [k, v] of Object.entries(params)) if (v) query.set(k, v);
-  const url = "/api/statistics/club?" + query;
+  const url = api + "?" + query;
   const [state, setState] = useState<{ url: string; data: T | null; error: string }>({ url: "", data: null, error: "" });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -65,7 +65,7 @@ function useStat<T>(chart: string, params: Record<string, string | undefined>) {
 }
 
 /** The period of a chart, kept in the address (?p-<chart>=). */
-function usePeriod(chart: string, fallback: PeriodKind): [Period, (p: Period) => void] {
+export function usePeriod(chart: string, fallback: PeriodKind): [Period, (p: Period) => void] {
   const params = useSearchParams(),
     router = useRouter(),
     path = usePathname();
@@ -84,14 +84,14 @@ function usePeriod(chart: string, fallback: PeriodKind): [Period, (p: Period) =>
 }
 
 /** The period under a chart's title: a season, seasons, or two dates. */
-function periodText(t: StatisticsCopy, locale: Locale, d: Spanned | null) {
+export function periodText(t: StatisticsCopy, locale: Locale, d: Spanned | null) {
   if (!d) return t.loading;
   if (d.period.kind === "custom") return fill(t.period.dates, { from: shortDate(locale, d.from), to: shortDate(locale, d.to) });
   if (!d.names.length) return d.period.kind === "previous" ? t.period.none : fill(t.period.dates, { from: shortDate(locale, d.from), to: shortDate(locale, d.to) });
   return d.names.length === 1 ? fill(t.period.one, { season: d.names[0] }) : fill(t.period.many, { first: d.names[0], last: d.names[d.names.length - 1] });
 }
 
-function Failed({ locale, retry }: { locale: Locale; retry: () => void }) {
+export function Failed({ locale, retry }: { locale: Locale; retry: () => void }) {
   const t = statisticsCopy[locale];
   return (
     <p role="alert" className="error-message">
@@ -103,7 +103,7 @@ function Failed({ locale, retry }: { locale: Locale; retry: () => void }) {
   );
 }
 
-export function StatisticsTabs({ locale, current }: { locale: Locale; current: "club" }) {
+export function StatisticsTabs({ locale, current }: { locale: Locale; current: "club" | "game" }) {
   const t = statisticsCopy[locale];
   const params = useSearchParams();
   const keep = new URLSearchParams();
@@ -114,30 +114,60 @@ export function StatisticsTabs({ locale, current }: { locale: Locale; current: "
       <Link href={`/${locale}/statistics/club${q}`} aria-current={current === "club" ? "page" : undefined}>
         {t.tabClub}
       </Link>
+      <Link href={`/${locale}/statistics/game${q}`} aria-current={current === "game" ? "page" : undefined}>
+        {t.tabGame}
+      </Link>
     </nav>
   );
+}
+
+/** The page header of both tabs: title, season and team in the subtitle, the report and the CSV of the tab. */
+export function StatisticsHeader({ locale, summary, onCsv }: { locale: Locale; summary: { season: { name: string } | null; team: { name: string } | null; restricted: boolean } | null; onCsv: () => void }) {
+  const t = statisticsCopy[locale];
+  const s = summary;
+  const teamText = s?.team ? s.team.name : s?.restricted ? t.myTeams : t.allTeams;
+  return (
+    <PageHeader
+      title={t.title}
+      subtitle={s ? (s.season ? fill(t.subtitle, { season: s.season.name, team: teamText }) : t.noSeason) : t.loading}
+      actions={
+        <>
+          <Link className="button secondary" href={`/${locale}/statistics/report`}>
+            {reportCopy[locale].title}
+          </Link>
+          <Button icon="download" disabled={!s} onClick={onCsv}>
+            {t.exportCsv}
+          </Button>
+        </>
+      }
+    />
+  );
+}
+
+/** Each card gives its figures to the header's « Export CSV ». */
+export function useCsvSections() {
+  const sections = useRef(new Map<string, CsvSection>());
+  const register = useCallback((key: string, section: CsvSection | null) => {
+    if (section) sections.current.set(key, section);
+    else sections.current.delete(key);
+  }, []);
+  const exportAll = useCallback((order: string[], filename: string) => {
+    const rows: (string | number | null)[][] = [];
+    for (const key of order) {
+      const sec = sections.current.get(key);
+      if (sec) rows.push([sec.title], ...sec.rows, []);
+    }
+    downloadCsv(filename, rows);
+  }, []);
+  return { register, exportAll };
 }
 
 export function StatisticsClub({ locale }: { locale: Locale }) {
   const t = statisticsCopy[locale];
   const scope = useScope();
   const summary = useStat<Summary>("summary", {});
-  const sections = useRef(new Map<string, CsvSection>());
-  const register = useCallback((key: string, section: CsvSection | null) => {
-    if (section) sections.current.set(key, section);
-    else sections.current.delete(key);
-  }, []);
+  const { register, exportAll } = useCsvSections();
   const s = summary.data;
-  const teamText = s?.team ? s.team.name : s?.restricted ? t.myTeams : t.allTeams;
-  function exportAll() {
-    const rows: (string | number | null)[][] = [];
-    for (const key of ["tiles", "attendance", "headcount", "results", "storage"]) {
-      const sec = sections.current.get(key);
-      if (!sec) continue;
-      rows.push([sec.title], ...sec.rows, []);
-    }
-    downloadCsv(`statistics-${slug(s?.season?.name ?? "club")}.csv`, rows);
-  }
   useEffect(() => {
     if (!s?.tiles) return register("tiles", null);
     const x = s.tiles;
@@ -154,20 +184,7 @@ export function StatisticsClub({ locale }: { locale: Locale }) {
   }, [s, t, register]);
   return (
     <main id="main" className="statistics">
-      <PageHeader
-        title={t.title}
-        subtitle={s ? (s.season ? fill(t.subtitle, { season: s.season.name, team: teamText }) : t.noSeason) : t.loading}
-        actions={
-          <>
-            <Link className="button secondary" href={`/${locale}/statistics/report`}>
-              {reportCopy[locale].title}
-            </Link>
-            <Button icon="download" disabled={!s} onClick={exportAll}>
-              {t.exportCsv}
-            </Button>
-          </>
-        }
-      />
+      <StatisticsHeader locale={locale} summary={s} onCsv={() => exportAll(["tiles", "attendance", "headcount", "results", "storage"], `statistics-${slug(s?.season?.name ?? "club")}.csv`)} />
       <StatisticsTabs locale={locale} current="club" />
       {summary.error && <Failed locale={locale} retry={summary.retry} />}
       <div role="status" className="sr-only">
@@ -206,10 +223,10 @@ export function StatisticsClub({ locale }: { locale: Locale }) {
   );
 }
 
-type Register = (key: string, section: CsvSection | null) => void;
+export type Register = (key: string, section: CsvSection | null) => void;
 
 /** The card frame of a chart: title, period under it, the « ... » menu and the tools. */
-function ChartCard({
+export function ChartCard({
   id,
   title,
   sub,
@@ -591,7 +608,7 @@ function ResultsCard({ locale, register }: { locale: Locale; register: Register 
               const total = x.won + x.drawn + x.lost;
               return (
                 <li key={x.name}>
-                  <Link href={`/${locale}/matches?season=${x.season_id}&team=${x.team_id}`} aria-label={`${fill(r.open, { team: x.name })} : ${total ? line(x) : r.none}`}>
+                  <Link href={`/${locale}/statistics/game?season=${x.season_id}&team=${x.team_id}`} aria-label={`${fill(r.open, { team: x.name })} : ${total ? line(x) : r.none}`}>
                     <DonutChart won={x.won} drawn={x.drawn} lost={x.lost} unit={total === 1 ? r.match : r.matches} />
                     <span className="result-ring-name" data-export-text>
                       <span className="team-dot" data-color={x.color ?? undefined} aria-hidden="true" />

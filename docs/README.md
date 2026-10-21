@@ -86,6 +86,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 16, E2 : bibliothèque de fiches exercices](evolutions/2026-10-21-zy-vague-16-e2-fiches-exercices.md) |
 | 21/10/2026 | [Vague 16, E3 : tournois du club sur la page Tournois](evolutions/2026-10-21-zz-vague-16-e3-tournois-club.md) |
 | 21/10/2026 | [Vague 16, S1 : statistiques du club](evolutions/2026-10-21-zza-vague-16-s1-statistiques-club.md) |
+| 21/10/2026 | [Vague 16, S2 : statistiques de jeu](evolutions/2026-10-21-zzb-vague-16-s2-statistiques-jeu.md) |
 
 ## Convention
 

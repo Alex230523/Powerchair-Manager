@@ -32,13 +32,14 @@ export async function statisticsContext(c: Db, p: Principal, raw: { season?: str
   const user = await account(c, p);
   const rights = permissions(a.role, a.grants);
   const has = (x: string) => mfaSatisfied(!!user.twoFactorEnabled) && (rights as string[]).includes(x);
-  if (!(has("people.read") || has("attendance.manage") || has("calendar.manage"))) throw new AccessError("FORBIDDEN");
+  // A coach always sees the statistics of the teams they supervise (wave 16, S2).
+  if (!(has("people.read") || has("attendance.manage") || has("calendar.manage") || has("teams.manage") || a.role === "coach")) throw new AccessError("FORBIDDEN");
   const org = a.organization_id as string;
   const actor = { organization_id: org, role: a.role, user_id: p.userId, team_id: a.team_id };
   const seasons = await seasonOptions(c, org);
   const allowed = await teamOptions(c, actor);
   // A coach without the directory: only the teams they supervise, never the whole club.
-  const restricted = a.role === "coach" && !has("people.read");
+  const restricted = a.role === "coach" && !has("people.read") && !has("teams.manage");
   const scope = await resolveScope(c, actor, raw);
   const team = scope.teamId ? (allowed.find((t) => t.id === scope.teamId) ?? null) : null;
   const season = seasons.find((s) => s.id === scope.seasonId) ?? null;
@@ -58,10 +59,12 @@ export async function statisticsContext(c: Db, p: Principal, raw: { season?: str
     manageAwards: a.role === "club_president" || has("mandates.manage") || has("teams.manage"),
   };
 }
-type Context = Awaited<ReturnType<typeof statisticsContext>>;
+export type StatisticsContext = Awaited<ReturnType<typeof statisticsContext>>;
+type Context = StatisticsContext;
 
-function periodOf(x: Context, chart: string, raw?: string) {
-  const period = parsePeriod(raw, defaults[chart] ?? "season");
+/** The period of a chart: its address value, else its default; the dates and the seasons it covers. */
+export function periodOf(x: Context, chart: string, raw?: string, fallback?: PeriodKind) {
+  const period = parsePeriod(raw, fallback ?? defaults[chart] ?? "season");
   const spans: SeasonSpan[] = x.seasons.map((s) => ({ id: s.id, name: s.name, starts_on: s.starts_on, ends_on: s.ends_on }));
   return { period, ...resolvePeriod(spans, x.season?.id ?? null, period, today()) };
 }

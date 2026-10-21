@@ -97,6 +97,7 @@ test("statistics, Club tab: tiles, periods, weeks, ages, rings, storage and Hall
     await expect(page.getByRole("heading", { name: "Statistiques", exact: true })).toBeVisible();
     await expect(page.locator(".page-subtitle")).toHaveText("Saison 2026-27 · toutes les équipes");
     await expect(page.getByRole("navigation", { name: "Onglets des statistiques" }).getByRole("link", { name: "Club" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Onglets des statistiques" }).getByRole("link", { name: "Jeu" })).not.toHaveAttribute("aria-current");
     await expect(page.locator(".stat-card").filter({ hasText: "Joueurs" })).toContainText("5");
     await expect(page.locator(".stat-card").filter({ hasText: "Matchs" })).toContainText("2");
     await expect(page.locator(".stat-card").filter({ hasText: "Solde total" })).toBeVisible();
@@ -161,7 +162,7 @@ test("statistics, Club tab: tiles, periods, weeks, ages, rings, storage and Hall
     await expect(results.locator("li").filter({ hasText: "Aigles" })).toContainText("Aucun match joué");
     await expect(results.locator("li").filter({ hasText: "Lions" }).locator("svg .donut-total")).toHaveText("2");
     const ring = results.getByRole("link", { name: "Voir les matchs de Lions : 1 victoire(s) · 0 nul(s) · 1 défaite(s)" });
-    await expect(ring).toHaveAttribute("href", new RegExp(`/fr/matches\\?season=${now}&team=${lions}$`));
+    await expect(ring).toHaveAttribute("href", new RegExp(`/fr/statistics/game\\?season=${now}&team=${lions}$`));
 
     // 6. Storage, for the president.
     await expect(page.locator("#stats-storage")).toContainText(/utilisés sur 1 Go/);
