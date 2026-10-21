@@ -172,7 +172,7 @@ test("persistent club directory, seasons, teams, families, archives and CSV", as
         .locator("#families .records li")
         .filter({ hasText: "Parent Test → Joueur Test" }),
     ).toBeVisible();
-    const profile = page.locator("section.panel").filter({
+    const profile = page.locator("section.card").filter({
       has: page.getByRole("heading", {
         name: "Fiche de la personne · Joueur Test",
         exact: true,

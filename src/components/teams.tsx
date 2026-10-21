@@ -10,7 +10,7 @@ import { useScope, scopedHref } from "./use-scope";
 import { teamsCopy } from "./teams-copy";
 import { shellCopy } from "./shell-copy";
 import { kindLabels } from "./calendar-copy";
-import { Badge, Card, EmptyState, PageHeader } from "./ui";
+import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
@@ -118,7 +118,7 @@ export function Teams({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access teams">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -244,7 +244,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
   if (!data)
     return (
       <main id="main" className="access team-sheet">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -271,13 +271,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
       />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      <div className="tabs" role="tablist" aria-label={team.name}>
-        {tabs.map((k) => (
-          <button key={k} type="button" role="tab" id={`team-tab-${k}`} aria-selected={tab === k} aria-controls={`team-panel-${k}`} tabIndex={tab === k ? 0 : -1} onClick={() => setTab(k)}>
-            {sh.tabs[k]}
-          </button>
-        ))}
-      </div>
+      <Tabs label={team.name} items={tabs.map((k) => ({ id: k, label: sh.tabs[k] }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="team-tab" panelId={(id) => `team-panel-${id}`} />
       {tab === "roster" && (
         <div role="tabpanel" id="team-panel-roster" aria-labelledby="team-tab-roster"><Card id="team-panel-roster-card" className="flush" title={sh.tabs.roster}>
           {data.roster.length ? (

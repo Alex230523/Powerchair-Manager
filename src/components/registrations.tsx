@@ -1400,9 +1400,9 @@ export function Registrations({
                         <dt>
                           {f.label[locale] || f.label.fr}
                           {f.confidential && (
-                            <span className="status-tag" data-tone="warning">
+                            <Badge tone="warning">
                               {fieldExtras[locale].confidentialTag}
-                            </span>
+                            </Badge>
                           )}
                         </dt>
                         <dd>
