@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { WholeClubNote } from "./use-scope";
+import { useScope } from "./use-scope";
 import type { tripsView, tripDetail } from "@/domains/trips/service";
 import { licenceCategories } from "@/domains/trips/schema";
 import { tripsCopy } from "./trips-copy";
@@ -69,7 +69,7 @@ export function TripForm({
   onSubmit,
 }: {
   locale: Locale;
-  list: Pick<List, "venues" | "places">;
+  list: Pick<List, "venues" | "places"> & Partial<Pick<List, "teams">>;
   trip?: Detail["trip"];
   busy: boolean;
   onSubmit: (fields: Record<string, unknown>) => void;
@@ -97,6 +97,7 @@ export function TripForm({
       emergency: s("emergency"),
       contact: s("contact"),
       notes: s("notes"),
+      ...(list.teams?.length ? { teamId: s("teamId") || null } : {}),
     });
   }
   const f = t.fields;
@@ -162,6 +163,17 @@ export function TripForm({
           {f.returnPoint}
           <input id={`${id}-retp`} name="returnPoint" maxLength={300} defaultValue={trip?.return_point} />
         </label>
+        {(list.teams?.length ?? 0) > 0 && (
+          <label htmlFor={`${id}-team`}>
+            {t.team}
+            <select id={`${id}-team`} name="teamId" defaultValue={trip?.team_id ?? ""}>
+              <option value="">{t.wholeClub}</option>
+              {list.teams?.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <label htmlFor={`${id}-contact`}>
           {f.contact}
           <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder="Ex. Sophie, 0470 12 34 56" />
@@ -202,6 +214,8 @@ export function TripsPage({ locale }: { locale: Locale }) {
   const { data, error, setError, denied, reload } = useData<List>("/api/trips", failure);
   const { busy, message, post } = usePost("/api/trips", reload, setError, failure);
   const [creating, setCreating] = useState(false);
+  // The team chosen in the top bar (wave 15): its trips and the whole-club ones.
+  const team = useScope().teamId;
   if (!data)
     return (
       <main id="main" className="access trips">
@@ -216,9 +230,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
           <button type="button" className="button" aria-expanded={creating} onClick={() => setCreating(!creating)}>
             {creating ? t.close : t.create}
           </button>
-        )}>
-        <WholeClubNote locale={locale} />
-      </PageHeader>
+        )} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {creating && (
@@ -235,9 +247,9 @@ export function TripsPage({ locale }: { locale: Locale }) {
           />
         </Card>
       )}
-      {data.trips.length ? (
+      {data.trips.some((x) => !team || !x.team_id || x.team_id === team) ? (
         <ul className="trip-list">
-          {data.trips.map((x) => (
+          {data.trips.filter((x) => !team || !x.team_id || x.team_id === team).map((x) => (
             <Card as="li" key={x.id} className="trip-card" data={{ status: x.status }}>
               <div className="trip-card-head">
                 <Link href={`/${locale}/trips/${x.id}`}>
@@ -252,6 +264,12 @@ export function TripsPage({ locale }: { locale: Locale }) {
               </p>
               <p className="trip-meta">
                 <Badge>{t.statuses[x.status]}</Badge>
+                {x.team_name && (
+                  <span className="team-chip" data-color={x.team_color ?? "none"}>
+                    <span className="team-dot" aria-hidden="true" />
+                    {x.team_name}
+                  </span>
+                )}
                 <span>{t.travelling.replace("{n}", String(x.travelling))}</span>
                 {x.powerchairs > 0 && <span>{t.powerchairs.replace("{n}", String(x.powerchairs))}</span>}
               </p>

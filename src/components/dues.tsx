@@ -2,7 +2,7 @@
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
-import { WholeClubNote, useScope, useSeeded } from "./use-scope";
+import { ApplyScope, useScope, useScopedTeam, useSeeded } from "./use-scope";
 import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
 import { duesTotals } from "@/domains/dues/schema";
@@ -44,6 +44,8 @@ const copy = {
       "Les encaissements, virements, QR et rapprochements seront disponibles au lot 09. Aucun paiement n’est enregistré ici.",
     plans: "Barèmes",
     season: "Saison",
+    team: "Équipe",
+    allTeams: "Toutes les équipes",
     category: "Catégorie du barème",
     amount: "Montant (€)",
     count: "Nombre d’échéances",
@@ -122,6 +124,8 @@ const copy = {
       "Betalingen, overschrijvingen, QR en afstemming volgen in fase 09. Hier worden geen betalingen geboekt.",
     plans: "Tarieven",
     season: "Seizoen",
+    team: "Team",
+    allTeams: "Alle teams",
     category: "Tariefcategorie",
     amount: "Bedrag (€)",
     count: "Aantal termijnen",
@@ -200,6 +204,8 @@ const copy = {
       "Payments, bank transfers, QR codes and reconciliation will follow in lot 09. No payments are recorded here.",
     plans: "Rates",
     season: "Season",
+    team: "Team",
+    allTeams: "All teams",
     category: "Rate category",
     amount: "Amount (€)",
     count: "Number of instalments",
@@ -298,6 +304,8 @@ type Debt = {
   state: "paid" | "late" | "due_soon" | "on_track" | "cancelled" | "exempt";
   payments: { id: string; occurred_on: string; amount_cents: number; method: string; reference: string; cancelled_at: string | null }[];
   history: { action: string; reason: string; created_at: string }[];
+  /** Teams the line belongs to (wave 15): its rate's team, or the player's current teams. */
+  team_ids: string[];
 };
 type View = {
   organizationId: string;
@@ -315,6 +323,7 @@ type View = {
     installments: number | null;
   }[];
   debts: Debt[];
+  teams: { id: string; name: string; season_id: string; color: string | null }[];
 };
 const remindLabel = {
   fr: "Relancer ceux qui ne sont pas en ordre",
@@ -337,6 +346,8 @@ export function Dues({ locale }: { locale: Locale }) {
   // The season chosen in the top bar (wave 12) seeds the season filter.
   const scope = useScope();
   const [filter, setFilter] = useSeeded(scope.seasonId ?? "");
+  // The team chosen in the top bar (wave 15): tiles, table and search follow it; a local choice can be applied everywhere.
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   // ?state=late (from the dashboard and the sidebar counter) seeds the state filter.
   const urlState = useSyncExternalStore(
     () => () => {},
@@ -410,15 +421,19 @@ export function Dues({ locale }: { locale: Locale }) {
   const day = (d: string) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
   const tone: Record<Debt["state"], Tone> = { paid: "success", late: "danger", due_soon: "warning", on_track: "neutral", cancelled: "neutral", exempt: "info" };
+  const inTeam = (d: Debt) => !team || (d.team_ids ?? []).includes(team);
   const rows = (view?.debts ?? []).filter(
     (d) =>
+      inTeam(d) &&
       (!filter || d.season_id === filter) &&
       (!stateFilter || d.state === stateFilter) &&
       (!q || d.full_name.toLowerCase().includes(q.toLowerCase())),
   );
   const seasonRows = (view?.debts ?? []).filter((d) => (!filter || d.season_id === filter) && d.status === "open");
   // The same totals as the dashboard and the sidebar counter (domain function, no second calculation).
-  const totals = duesTotals(seasonRows, new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()));
+  const totals = duesTotals(seasonRows, new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()), team || null);
+  const teams = view?.teams ?? [];
+  const teamColumn = !team && teams.length > 0;
   const detail = view?.debts.find((d) => d.id === detailId);
   const paying = view?.debts.find((d) => d.id === payId);
   const nextOpen = (d: Debt) => d.settled.find((i) => i.left_cents > 0);
@@ -448,7 +463,6 @@ export function Dues({ locale }: { locale: Locale }) {
           </>
         }
       />
-      <WholeClubNote locale={locale} />
       {error && (
         <p role="alert">
           {error} <Link href={`/${locale}/access`}>{t.access}</Link>
@@ -474,6 +488,20 @@ export function Dues({ locale }: { locale: Locale }) {
                     {t.search}
                     <input type="search" value={q} onChange={(e) => setQ(e.target.value)} />
                   </label>
+                )}
+                {teams.length > 0 && (
+                  <>
+                    <label>
+                      {t.team}
+                      <select value={team} onChange={(e) => setTeam(e.target.value)}>
+                        <option value="">{t.allTeams}</option>
+                        {teams.map((x) => (
+                          <option key={x.id} value={x.id}>{x.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
+                  </>
                 )}
                 <label>
                   {t.season}
@@ -504,6 +532,7 @@ export function Dues({ locale }: { locale: Locale }) {
                   <thead>
                     <tr>
                       <th scope="col">{t.person}</th>
+                      {teamColumn && <th scope="col">{t.team}</th>}
                       <th scope="col">{t.plan}</th>
                       <th scope="col" className="num">{t.net}</th>
                       <th scope="col" className="num">{t.collected}</th>
@@ -519,6 +548,19 @@ export function Dues({ locale }: { locale: Locale }) {
                       return (
                         <tr key={d.id} data-state={d.state}>
                           <th scope="row">{d.full_name}</th>
+                          {teamColumn && (
+                            <td>
+                              {(d.team_ids ?? []).map((id) => {
+                                const x = teams.find((v) => v.id === id);
+                                return x ? (
+                                  <span key={id} className="team-chip" data-color={x.color ?? "none"}>
+                                    <span className="team-dot" aria-hidden="true" />
+                                    {x.name}
+                                  </span>
+                                ) : null;
+                              })}
+                            </td>
+                          )}
                           <td>{d.category} <span className="muted small">· {d.season_name}</span></td>
                           <td className="num">{money(d.net_cents)}</td>
                           <td className="num">{money(Math.min(d.paid_cents, d.net_cents))}</td>

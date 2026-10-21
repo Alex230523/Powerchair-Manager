@@ -82,9 +82,10 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
     const teamId = (await resolveScope(c, { organization_id: org, role: actor.role, user_id: p.userId, team_id: actor.team_id }, raw)).teamId;
     const entries = (
       await c.query(
-        `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,t.trip_id,t.team_id,tm.name AS team_name,tm.color AS team_color,u.name AS author,
+        `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,t.trip_id,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,tm.color AS team_color,u.name AS author,
                 COALESCE((SELECT json_agg(json_build_object('id',r.id,'filename',r.filename) ORDER BY r.uploaded_at) FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL),'[]') AS receipts
-           FROM finance_transaction t JOIN "user" u ON u.id=t.created_by LEFT JOIN team tm ON tm.id=t.team_id WHERE t.organization_id=$1 AND ($2::uuid IS NULL OR t.team_id=$2) ORDER BY t.occurred_on DESC,t.created_at DESC LIMIT 2000`,
+           FROM finance_transaction t JOIN "user" u ON u.id=t.created_by LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id)
+          WHERE t.organization_id=$1 AND ($2::uuid IS NULL OR COALESCE(t.team_id,tr.team_id)=$2) ORDER BY t.occurred_on DESC,t.created_at DESC LIMIT 2000`,
         [org, teamId],
       )
     ).rows as (Entry & {
@@ -238,6 +239,10 @@ export async function financeExecute(
           !(await c.query("SELECT 1 FROM team WHERE id=$1 AND organization_id=$2", [input.teamId, organization])).rowCount
         )
           throw new AccessError("NOT_FOUND", 404);
+        // An expense of a team trip counts for that team unless another team is chosen (wave 15).
+        const team =
+          input.teamId ??
+          (input.tripId ? ((await c.query("SELECT team_id FROM trip WHERE id=$1 AND organization_id=$2", [input.tripId, organization])).rows[0]?.team_id ?? null) : null);
         const row = (
           await c.query(
             "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id,trip_id,team_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id",
@@ -255,7 +260,7 @@ export async function financeExecute(
               userId,
               input.receivableId ?? null,
               input.tripId ?? null,
-              input.teamId ?? null,
+              team,
             ],
           )
         ).rows[0];
@@ -368,7 +373,7 @@ export async function financeReport(db: Pool, p: Principal, label: string, raw: 
     const teamId = (await resolveScope(c, { organization_id: org, role: actor.role, user_id: p.userId, team_id: actor.team_id }, raw)).teamId;
     const everything = (
       await c.query(
-        "SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.cancelled_at,t.team_id,tm.name AS team_name,(SELECT count(*)::int FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL) AS receipts FROM finance_transaction t LEFT JOIN team tm ON tm.id=t.team_id WHERE t.organization_id=$1 AND t.occurred_on<=$2 ORDER BY t.occurred_on,t.created_at",
+        "SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.cancelled_at,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,(SELECT count(*)::int FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL) AS receipts FROM finance_transaction t LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id) WHERE t.organization_id=$1 AND t.occurred_on<=$2 ORDER BY t.occurred_on,t.created_at",
         [org, season.to],
       )
     ).rows as (Entry & {

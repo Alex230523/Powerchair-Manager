@@ -134,15 +134,15 @@ export async function tripsView(db: Pool, p: Principal) {
   return scope(db, p, false, async (x) => {
     const trips = (
       await x.c.query(
-        `SELECT t.id,t.title,t.kind,t.status,t.starts_on::text AS starts_on,t.ends_on::text AS ends_on,
+        `SELECT t.id,t.title,t.kind,t.status,t.starts_on::text AS starts_on,t.ends_on::text AS ends_on,t.team_id,tm.name AS team_name,tm.color AS team_color,
                 COALESCE(v.name,pl.name,NULLIF(t.destination,'')) AS destination,
                 count(tp.id) FILTER (WHERE tp.status<>'declined')::int AS travelling,
                 count(tp.id) FILTER (WHERE tp.status='confirmed')::int AS confirmed,
                 count(tp.id) FILTER (WHERE tp.status<>'declined' AND tp.chair IN ('powerchair','both'))::int AS powerchairs
            FROM trip t LEFT JOIN shared_venue v ON v.id=t.shared_venue_id LEFT JOIN calendar_place pl ON pl.id=t.place_id
-           LEFT JOIN trip_participant tp ON tp.trip_id=t.id
+           LEFT JOIN trip_participant tp ON tp.trip_id=t.id LEFT JOIN team tm ON tm.id=t.team_id
           WHERE t.organization_id=$1 AND ($2 OR EXISTS(SELECT 1 FROM trip_participant o WHERE o.trip_id=t.id AND o.profile_id=ANY($3::uuid[])))
-          GROUP BY t.id,v.name,pl.name ORDER BY t.starts_on DESC LIMIT 200`,
+          GROUP BY t.id,v.name,pl.name,tm.name,tm.color ORDER BY t.starts_on DESC LIMIT 200`,
         [x.org, x.readAll, [...x.own]],
       )
     ).rows;
@@ -190,6 +190,10 @@ export async function tripsView(db: Pool, p: Principal) {
               [x.org],
             )
           ).rows
+        : [],
+      // Teams of the open seasons, for the trip's team (wave 15).
+      teams: x.manage
+        ? ((await x.c.query("SELECT id,name,color FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [x.org])).rows as { id: string; name: string; color: string | null }[])
         : [],
     };
   });
@@ -483,15 +487,21 @@ export async function tripExecute(
         )
           throw new AccessError("NOT_FOUND", 404);
       };
+      // A team of the same club only (the foreign key says so too; this gives a clean 404).
+      const checkTeam = async (i: { teamId?: string | null }) => {
+        if (i.teamId && !(await x.c.query("SELECT 1 FROM team WHERE id=$1 AND organization_id=$2", [i.teamId, x.org])).rowCount)
+          throw new AccessError("NOT_FOUND", 404);
+      };
       switch (input.action) {
         case "create": {
           need();
           await checkPlace(input);
+          await checkTeam(input);
           const id = (
             await x.c.query(
-              `INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,shared_venue_id,place_id,destination,meeting_point,departure_at,return_at,return_point,accommodation,accommodation_accessible,emergency,contact,notes,created_by)
-               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
-              [x.org, ...fields(input), x.userId],
+              `INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,shared_venue_id,place_id,destination,meeting_point,departure_at,return_at,return_point,accommodation,accommodation_accessible,emergency,contact,notes,created_by,team_id)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+              [x.org, ...fields(input), x.userId, input.teamId ?? null],
             )
           ).rows[0].id as string;
           await insertChecklist(x.c, id, defaultChecklist[input.locale]);
@@ -501,10 +511,11 @@ export async function tripExecute(
         case "update": {
           need();
           await checkPlace(input);
+          await checkTeam(input);
           const changed = await x.c.query(
-            `UPDATE trip SET title=$3,kind=$4,starts_on=$5,ends_on=$6,shared_venue_id=$7,place_id=$8,destination=$9,meeting_point=$10,departure_at=$11,return_at=$12,return_point=$13,accommodation=$14,accommodation_accessible=$15,emergency=$16,contact=$17,notes=$18,version=version+1
+            `UPDATE trip SET title=$3,kind=$4,starts_on=$5,ends_on=$6,shared_venue_id=$7,place_id=$8,destination=$9,meeting_point=$10,departure_at=$11,return_at=$12,return_point=$13,accommodation=$14,accommodation_accessible=$15,emergency=$16,contact=$17,notes=$18,team_id=CASE WHEN $20::boolean THEN $21::uuid ELSE team_id END,version=version+1
               WHERE id=$1 AND organization_id=$2 AND version=$19 RETURNING id`,
-            [input.id, x.org, ...fields(input), input.version],
+            [input.id, x.org, ...fields(input), input.version, input.teamId !== undefined, input.teamId ?? null],
           );
           if (!changed.rowCount) {
             await tripRow(x, input.id);

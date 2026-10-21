@@ -18,6 +18,7 @@ import {
   siblingRanks,
   type Command,
 } from "./schema";
+import { receivableTeamsSql } from "./teams";
 export { commandSchema };
 type Scope = {
   c: PoolClient;
@@ -182,16 +183,17 @@ async function writeSchedule(
   return rows;
 }
 /**
- * Open receivables of a season with their instalments and payments, for the
- * totals (duesTotals). Shared by the dues page, the dashboard and the sidebar.
+ * Receivables of a season with their instalments, payments and teams, for the
+ * totals (duesTotals). Shared by the dues page, the dashboard and the sidebar;
+ * the team filter is applied by duesTotals so all three give the same figures.
  */
-export async function duesSeasonRows(c: PoolClient, org: string, seasonId: string | null, profiles: string[] | null = null) {
+export async function duesSeasonRows(c: PoolClient, org: string, seasonId: string | null) {
   const rows = (
     await c.query(
-      "SELECT d.id,d.status,d.net_cents,d.profile_id,(SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents FROM dues_receivable d WHERE d.organization_id=$1 AND ($2::uuid IS NULL OR d.season_id=$2) AND ($3::uuid[] IS NULL OR d.profile_id=ANY($3::uuid[]))",
-      [org, seasonId, profiles],
+      `SELECT d.id,d.status,d.net_cents,d.profile_id,(SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents,${receivableTeamsSql("d", "p")} AS team_ids FROM dues_receivable d JOIN dues_plan p ON p.id=d.plan_id WHERE d.organization_id=$1 AND ($2::uuid IS NULL OR d.season_id=$2)`,
+      [org, seasonId],
     )
-  ).rows as { id: string; status: string; net_cents: number; profile_id: string; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[] }[];
+  ).rows as { id: string; status: string; net_cents: number; profile_id: string; paid_cents: number; team_ids: string[]; installments: { ordinal: number; due_on: string; amount_cents: number }[] }[];
   if (!rows.length) return rows;
   const installments = (
     await c.query("SELECT receivable_id,ordinal,due_on::text AS due_on,amount_cents FROM dues_installment WHERE receivable_id=ANY($1::uuid[]) ORDER BY ordinal", [rows.map((r) => r.id)])
@@ -205,7 +207,7 @@ export async function duesView(db: Pool, p: Principal) {
       o = s.a.organization_id;
     const debts = (
       await s.c.query(
-        "SELECT d.*,c.full_name,se.name AS season_name,(SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents FROM dues_receivable d JOIN club_person c ON c.id=d.profile_id JOIN season se ON se.id=d.season_id WHERE d.organization_id=$1 AND ($2 OR d.profile_id=ANY($3::uuid[])) ORDER BY se.starts_on DESC,c.full_name",
+        `SELECT d.*,c.full_name,se.name AS season_name,(SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents,${receivableTeamsSql("d", "p")} AS team_ids FROM dues_receivable d JOIN dues_plan p ON p.id=d.plan_id JOIN club_person c ON c.id=d.profile_id JOIN season se ON se.id=d.season_id WHERE d.organization_id=$1 AND ($2 OR d.profile_id=ANY($3::uuid[])) ORDER BY se.starts_on DESC,c.full_name`,
         [o, s.readAll, own],
       )
     ).rows;
@@ -262,9 +264,9 @@ export async function duesView(db: Pool, p: Principal) {
             )
           ).rows
         : [],
-      // Teams of the open seasons, for a rate by team (wave 12).
-      teams: s.manage
-        ? ((await s.c.query("SELECT id,name,season_id FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [o])).rows as { id: string; name: string; season_id: string }[])
+      // Teams of the open seasons, for a rate by team (wave 12) and the team column and filter (wave 15).
+      teams: s.readAll
+        ? ((await s.c.query("SELECT id,name,season_id,color FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [o])).rows as { id: string; name: string; season_id: string; color: string | null }[])
         : [],
       profiles: s.manage
         ? (

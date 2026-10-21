@@ -36,6 +36,8 @@ const tripFields = z.object({
   emergency: text(1000),
   contact: text(200),
   notes: text(2000),
+  /** The team the trip belongs to (wave 15); null or absent: the whole club. */
+  teamId: id.nullable().optional(),
 });
 export const tripCommand = z.discriminatedUnion("action", [
   z.object({

@@ -218,14 +218,3 @@ export function ApplyScope({ locale, differs, apply }: { locale: "fr" | "nl" | "
     </button>
   );
 }
-const wholeClubCopy = {
-  fr: "Vue club entière : les montants ne sont pas découpés par équipe.",
-  nl: "Hele club: de bedragen zijn niet per team opgesplitst.",
-  en: "Whole club view: amounts are not split by team.",
-};
-/** Money pages (wave 12): a discreet note when a team is chosen, since amounts stay club-wide. */
-export function WholeClubNote({ locale }: { locale: "fr" | "nl" | "en" }) {
-  const scope = useScope();
-  if (!scope.teamId) return null;
-  return <p className="scope-note">{wholeClubCopy[locale]}</p>;
-}
