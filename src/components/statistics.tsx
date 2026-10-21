@@ -18,6 +18,7 @@ import { kindLabels } from "./calendar-copy";
 import { Button, Card, DataTable, EmptyState, PageHeader, StatCard, Toolbar } from "./ui";
 import { ChartFrame, LineChart, trendSentence, type ChartSeries } from "./charts";
 import { statisticsCopy } from "./statistics-copy";
+import { reportCopy } from "./report-copy";
 type View = Awaited<ReturnType<typeof attendanceView>>;
 export function Statistics({ locale }: { locale: Locale }) {
   const t = statisticsCopy[locale],
@@ -134,6 +135,9 @@ export function Statistics({ locale }: { locale: Locale }) {
             </Link>
             <Link className="button secondary" href={"/" + locale + "/calendar"}>
               {t.calendar}
+            </Link>
+            <Link className="button secondary" href={"/" + locale + "/statistics/report"}>
+              {reportCopy[locale].title}
             </Link>
             <Button disabled={!data || loading || data.limited || !report.people.length} onClick={exportCsv}>
               {t.export}

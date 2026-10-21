@@ -775,7 +775,7 @@ export async function calendarExecute(
         for (const [i, item] of schedule.entries()) {
           const e = (
             await s.c.query(
-              "INSERT INTO calendar_event(organization_id,series_id,ordinal,title,kind,custom_type,timezone,starts_at,ends_at,local_start,local_end,team_id,place_id,responsible_user_id,visibility,equipment,instructions,shared_venue_id,free_location) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",
+              "INSERT INTO calendar_event(organization_id,series_id,ordinal,title,kind,custom_type,timezone,starts_at,ends_at,local_start,local_end,team_id,place_id,responsible_user_id,visibility,equipment,instructions,shared_venue_id,free_location,highlight) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *",
               [
                 s.a.organization_id,
                 input.requestId,
@@ -796,6 +796,7 @@ export async function calendarExecute(
                 item.instructions,
                 item.sharedVenueId ?? null,
                 item.freeLocation ?? "",
+                !!input.highlight,
               ],
             )
           ).rows[0] as Event;
@@ -904,7 +905,7 @@ export async function calendarExecute(
           };
           const e = (
             await s.c.query(
-              "UPDATE calendar_event SET title=$2,kind=$3,custom_type=$4,timezone=$5,starts_at=$6,ends_at=$7,local_start=$8,local_end=$9,team_id=$10,place_id=$11,responsible_user_id=$12,visibility=$13,equipment=$14,instructions=$15,shared_venue_id=$17,free_location=$18,is_exception=CASE WHEN $16 THEN true ELSE is_exception END,version=version+1,updated_at=now() WHERE id=$1 RETURNING *",
+              "UPDATE calendar_event SET title=$2,kind=$3,custom_type=$4,timezone=$5,starts_at=$6,ends_at=$7,local_start=$8,local_end=$9,team_id=$10,place_id=$11,responsible_user_id=$12,visibility=$13,equipment=$14,instructions=$15,shared_venue_id=$17,free_location=$18,highlight=COALESCE($19,highlight),is_exception=CASE WHEN $16 THEN true ELSE is_exception END,version=version+1,updated_at=now() WHERE id=$1 RETURNING *",
               [
                 old.id,
                 item.title,
@@ -924,6 +925,7 @@ export async function calendarExecute(
                 input.scope === "one",
                 item.sharedVenueId ?? null,
                 item.freeLocation ?? "",
+                input.highlight ?? null,
               ],
             )
           ).rows[0] as Event;

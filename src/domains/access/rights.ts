@@ -144,7 +144,7 @@ export const moduleRoutes: Record<OptionalModule, string[]> = {
   licenses: ["/licenses", "/federal-calendar", "/api/licenses", "/api/federal-calendar"],
   reminders: ["/reminders", "/api/reminders"],
   messages: ["/messages", "/api/messages", "/communication", "/api/communication"],
-  statistics: ["/statistics"],
+  statistics: ["/statistics", "/api/statistics/report"],
   trips: ["/trips", "/api/trips"],
   fundraising: ["/fundraising", "/api/fundraising"],
 };

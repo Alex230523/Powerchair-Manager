@@ -35,6 +35,8 @@ export const eventFields = z.object({
   instructions: text(5000),
   participants: z.array(id).max(200),
   documents: z.array(id).max(20),
+  /** A big event of the season (wave 15, C11): club party, open day, camp. */
+  highlight: z.boolean().optional(),
 });
 export const commandSchema = z.discriminatedUnion("action", [
   z.object({

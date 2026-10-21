@@ -38,6 +38,10 @@ const tripFields = z.object({
   notes: text(2000),
   /** The team the trip belongs to (wave 15); null or absent: the whole club. */
   teamId: id.nullable().optional(),
+  /** A tournament's result (wave 15, C11), for the activity report; absent: unchanged. */
+  finalRank: z.number().int().min(1).max(500).nullable().optional(),
+  teamsCount: z.number().int().min(1).max(500).nullable().optional(),
+  resultNote: text(160).optional(),
 });
 export const tripCommand = z.discriminatedUnion("action", [
   z.object({
