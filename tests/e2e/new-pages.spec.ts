@@ -285,6 +285,32 @@ test("new club, federation and referee pages load and pass axe", async ({
       expect(overflow, path).toBeLessThanOrEqual(1);
     }
 
+    // Wave 13 foundations: the site serves its own fonts (serif titles, DM Sans text) and
+    // nothing overflows at 1440, 1024, 390 and 320 px.
+    await page.goto("/fr");
+    await expect(page.locator("main h1").first()).toBeVisible();
+    const fonts = await page.evaluate(() => ({
+      ui: getComputedStyle(document.documentElement).getPropertyValue("--font-dm-sans").trim(),
+      display: getComputedStyle(document.documentElement).getPropertyValue("--font-source-serif").trim(),
+      h1: getComputedStyle(document.querySelector("main h1")!).fontFamily,
+      body: getComputedStyle(document.body).fontFamily,
+      links: [...document.querySelectorAll('link[href*="fonts.googleapis"], link[href*="fonts.gstatic"]')].length,
+    }));
+    expect(fonts.ui).not.toBe("");
+    expect(fonts.display).not.toBe("");
+    expect(fonts.h1).not.toBe(fonts.body);
+    expect(fonts.links).toBe(0);
+    for (const width of [1440, 1024, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const path of ["/fr", "/fr/players", "/fr/calendar", "/fr/funding", "/fr/settings", "/fr/teams"]) {
+        await page.goto(path);
+        await expect(page.locator("main h1").first()).toBeVisible();
+        await expect(page.getByText(/^Chargement/)).toHaveCount(0, { timeout: 15000 });
+        const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(over, `${path} at ${width}px`).toBeLessThanOrEqual(1);
+      }
+    }
+
     // Global search: Ctrl+K opens it, a name leads to the player.
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/fr/players");
