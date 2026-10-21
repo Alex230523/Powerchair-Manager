@@ -4734,6 +4734,86 @@ input.narrow {
 .data-table {
   position: relative;
 }
+/* Bottom bar on phones (wave 15, C5): home, three shortcuts of the role, "Plus" opens the drawer. */
+.bottom-nav {
+  display: none;
+}
+@media (max-width: 760px) {
+  /* The page keeps room for the bar, and scrolling to a focused field never leaves it under the bar. */
+  :root:has(.bottom-nav) {
+    --bottom-nav-space: calc(4rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: var(--bottom-nav-space);
+  }
+  .app-shell:has(> .bottom-nav) .app-content {
+    padding-bottom: var(--bottom-nav-space);
+  }
+  .bottom-nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 25;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    height: calc(4rem + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .bottom-nav[data-hidden] {
+    display: none;
+  }
+  .bottom-nav a,
+  .bottom-nav button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 3rem;
+    min-height: 3rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: var(--text-xs);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .bottom-nav [aria-current] {
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .bottom-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 1.75rem;
+    border-radius: var(--radius-pill);
+  }
+  .bottom-nav [aria-current] .bottom-icon {
+    background: var(--accent-soft);
+  }
+  .bottom-badge {
+    position: absolute;
+    top: -8px;
+    right: 0;
+    line-height: 1;
+  }
+  .bottom-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+@media print {
+  .bottom-nav {
+    display: none;
+  }
+}
 /* Text size and contrast choice (wave 15, C4). */
 .display-choice {
   display: grid;
