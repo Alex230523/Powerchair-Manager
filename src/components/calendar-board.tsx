@@ -25,6 +25,9 @@ export type BoardEvent = {
   team_name?: string | null;
   team_color?: string | null;
   attendance?: { role: string; response: string }[];
+  /** Wave 16 (E1): the club's type, its name and palette colour. */
+  type_name?: string | null;
+  type_color?: string | null;
 };
 export type ColorBy = "team" | "kind";
 
@@ -42,7 +45,8 @@ const local = (e: BoardEvent) => ({ ...e, local_start: brussels(e.starts_at), lo
 export function dayName(locale: Locale, day: string, style: "long" | "short" = "long") {
   return new Intl.DateTimeFormat(tag(locale), style === "long" ? { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" } : { weekday: "short", day: "numeric", timeZone: "UTC" }).format(new Date(day + "T12:00Z"));
 }
-export function kindName(locale: Locale, e: Pick<BoardEvent, "kind" | "custom_type">) {
+export function kindName(locale: Locale, e: Pick<BoardEvent, "kind" | "custom_type" | "type_name">) {
+  if (e.type_name) return e.type_name;
   return e.kind === "custom" && e.custom_type ? e.custom_type : ((kindLabels[locale] as Record<string, string>)[e.kind] ?? e.kind);
 }
 /** "Entraînement Équipe A, lundi 19 octobre de 18 h à 20 h, salle X": the full name of an event button. */
@@ -55,7 +59,7 @@ export function eventName(locale: Locale, e: BoardEvent) {
 }
 /** The colour of a capsule: the team's, or the type's. */
 export function colorAttrs(e: BoardEvent, by: ColorBy) {
-  return by === "kind" ? { "data-kind": e.kind } : { "data-color": e.team_id ? (e.team_color ?? "none") : "none" };
+  return by === "kind" ? { "data-kind": e.type_color ?? e.kind } : { "data-color": e.team_id ? (e.team_color ?? "none") : "none" };
 }
 const time = (iso: string) => brussels(iso).slice(11, 16);
 
@@ -155,6 +159,7 @@ export function WeekGrid({
   colorBy,
   onSelect,
   deadlines = [],
+  onCreate,
 }: {
   locale: Locale;
   from: string;
@@ -163,6 +168,8 @@ export function WeekGrid({
   colorBy: ColorBy;
   onSelect: (id: string) => void;
   deadlines?: MoneyDeadline[];
+  /** Wave 16 (E1): « + » on each day, the form opens on that day. */
+  onCreate?: (day: string) => void;
 }) {
   const t = plannerCopy[locale];
   const days = Array.from({ length: count }, (_, i) => shiftLocal(from + "T12:00", i).slice(0, 10));
@@ -184,6 +191,11 @@ export function WeekGrid({
           {days.map((d) => (
             <div key={d} className="planner-dayhead" data-today={d === today || undefined}>
               <span className="planner-dayname">{dayName(locale, d, "short")}</span>
+              {onCreate && (
+                <button type="button" className="planner-add" aria-label={(locale === "fr" ? "Ajouter un événement le " : locale === "en" ? "Add event on " : "Evenement toevoegen op ") + dayName(locale, d)} onClick={() => onCreate(d)}>
+                  +
+                </button>
+              )}
             </div>
           ))}
         </div>

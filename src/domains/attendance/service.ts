@@ -250,6 +250,34 @@ export async function applyAbsences(
     [org, registerId, profileId],
   );
 }
+/**
+ * Wave 16 (E1): the invitations of an event chosen in the calendar form
+ * (groups and people), written as « Convoquer » writes them: one register,
+ * one invitation per person, earlier answers kept, people no longer invited
+ * withdrawn, absences announced in advance applied, invited people told.
+ * The caller has checked that the actor may plan this event.
+ */
+export async function inviteForEvent(c: PoolClient, p: Principal, a: Actor, e: Event, profiles: string[], deadline: Date) {
+  const s: Scope = { c, p, a };
+  if (e.status !== "scheduled" || e.starts_at <= new Date() || deadline <= new Date() || deadline > e.starts_at) return null;
+  let r = (await c.query("SELECT * FROM attendance_register WHERE event_id=$1", [e.id])).rows[0];
+  if (r?.closed_at) return r.id as string;
+  if (r) await c.query("UPDATE attendance_register SET deadline=$2,version=version+1 WHERE id=$1", [r.id, deadline]);
+  else r = (await c.query("INSERT INTO attendance_register(organization_id,event_id,deadline,minimum) VALUES($1,$2,$3,0) RETURNING *", [e.organization_id, e.id, deadline])).rows[0];
+  await c.query("UPDATE attendance_invitation SET withdrawn_at=now(),version=version+1 WHERE register_id=$1 AND withdrawn_at IS NULL AND NOT(profile_id=ANY($2::uuid[]))", [r.id, profiles]);
+  const before = new Set((await c.query("SELECT id FROM attendance_invitation WHERE register_id=$1 AND withdrawn_at IS NULL", [r.id])).rows.map((x) => x.id as string));
+  for (const id of new Set(profiles))
+    await c.query(
+      "INSERT INTO attendance_invitation(organization_id,register_id,profile_id) VALUES($1,$2,$3) ON CONFLICT(register_id,profile_id) DO UPDATE SET withdrawn_at=NULL,version=attendance_invitation.version+1,response='none',comment='',responded_at=NULL,responded_by=NULL WHERE attendance_invitation.withdrawn_at IS NOT NULL",
+      [e.organization_id, r.id, id],
+    );
+  await applyAbsences(c, e.organization_id, r.id);
+  const fresh = (await c.query("SELECT id FROM attendance_invitation WHERE register_id=$1 AND withdrawn_at IS NULL", [r.id])).rows.map((x) => x.id as string).filter((id) => !before.has(id));
+  await history(s, r.id, null, "invite", null, { profiles, deadline: deadline.toISOString(), from: "calendar" });
+  if (fresh.length) await notify(s, e, fresh);
+  return r.id as string;
+}
+
 export async function attendanceExecute(
   db: Pool,
   p: Principal,

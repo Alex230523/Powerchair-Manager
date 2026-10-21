@@ -17,6 +17,21 @@ export const visibilities = [
 ] as const;
 const id = z.uuid(),
   text = (n: number) => z.string().trim().max(n);
+/** Wave 16 (E1): who an event invites. team, group (Communication) and person name one; the others are audiences. */
+export const inviteGroupKinds = ["team", "teamCoaches", "players", "guardians", "coaches", "staff", "group", "person"] as const;
+export type InviteGroupKind = (typeof inviteGroupKinds)[number];
+export const families = ["training", "match", "meeting", "other"] as const;
+export const inviteSchema = z
+  .object({
+    /** « Demander une réponse »: the invitations of the Présences module. */
+    ask: z.boolean(),
+    deadline: z.iso.datetime({ offset: true }).nullable(),
+    groups: z
+      .array(z.object({ kind: z.enum(inviteGroupKinds), ref: id.nullable() }))
+      .max(60)
+      .refine((g) => g.every((x) => (["team", "group", "person"].includes(x.kind) ? !!x.ref : !x.ref)), "ref"),
+  })
+  .optional();
 export const eventFields = z.object({
   title: text(160).min(2),
   kind: z.enum(kinds),
@@ -37,6 +52,11 @@ export const eventFields = z.object({
   documents: z.array(id).max(20),
   /** A big event of the season (wave 15, C11): club party, open day, camp. */
   highlight: z.boolean().optional(),
+  /** Wave 16 (E1): the club's type (its family sets kind). */
+  eventTypeId: id.nullable().optional(),
+  invite: inviteSchema,
+  /** Wave 16 (E1): the trip linked to the event (null unlinks). */
+  tripId: id.nullable().optional(),
 });
 export const commandSchema = z.discriminatedUnion("action", [
   z.object({
@@ -87,6 +107,27 @@ export const commandSchema = z.discriminatedUnion("action", [
     scope: z.enum(["one", "following", "all"]),
     reason: text(1000).min(5),
   }),
+  /** Wave 16 (E1): only an event nobody answered, without register nor match. */
+  z.object({ action: z.literal("delete"), id, expectedVersion: z.number().int().positive() }),
+  /** Settings > Activities > « Types d'événement ». */
+  z.object({
+    action: z.literal("eventType"),
+    id: id.optional(),
+    expectedVersion: z.number().int().positive().optional(),
+    name: text(60).min(2),
+    family: z.enum(families),
+    color: z.enum(kinds),
+    icon: text(30).min(1),
+    askResponse: z.boolean(),
+    defaultGroups: z.array(z.enum(["team", "teamCoaches", "players", "guardians", "coaches", "staff"])).max(6),
+    register: z.boolean(),
+    archived: z.boolean(),
+  }),
+  z.object({ action: z.literal("eventTypeOrder"), ids: z.array(id).min(1).max(60) }),
+  /** « 14 personnes invitées »: who the groups stand for today, before saving. */
+  z.object({ action: z.literal("previewInvite"), teamId: id.nullable(), invite: inviteSchema.unwrap() }),
+  /** « Créer un déplacement » from the event: same date, place and title, linked. */
+  z.object({ action: z.literal("createTrip"), eventId: id }),
   z.object({
     action: z.literal("feed"),
     name: text(80).min(2),

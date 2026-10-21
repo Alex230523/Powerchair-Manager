@@ -150,6 +150,8 @@ try {
     console.log(`« ${CLUB} » existe déjà.`);
     // Tournaments came later (21/10/2026): added to an existing demo once.
     await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
+    // Wave 16 (E1): the demo events take the club's type matching their kind.
+    await db.query("UPDATE calendar_event e SET event_type_id=(SELECT t.id FROM event_type t WHERE t.organization_id=e.organization_id AND t.legacy_kind=e.kind ORDER BY t.position LIMIT 1) WHERE e.event_type_id IS NULL");
     printAccounts();
     await db.end();
     process.exit(0);
@@ -1592,6 +1594,8 @@ try {
   );
 
   await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
+  // Wave 16 (E1): the demo events take the club's type matching their kind.
+  await db.query("UPDATE calendar_event e SET event_type_id=(SELECT t.id FROM event_type t WHERE t.organization_id=e.organization_id AND t.legacy_kind=e.kind ORDER BY t.position LIMIT 1) WHERE e.event_type_id IS NULL");
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();
 } finally {

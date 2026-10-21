@@ -1,6 +1,7 @@
 "use client";
 import { TeamPlacesSettings } from "./team-places-settings";
 import { ClubObligations } from "./club-obligations";
+import { EventTypesSettings } from "./event-types-settings";
 import { FiscalYearPanel } from "./fiscal-year";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -565,6 +566,7 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
             <PresencePanel locale={locale} gov={gov} busy={busy} post={post} />
           )}
           {shown && category === "activities" && gov?.can.presence && <TeamPlacesSettings locale={locale} />}
+          {shown && category === "activities" && <EventTypesSettings locale={locale} />}
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}

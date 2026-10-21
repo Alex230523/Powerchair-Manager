@@ -7739,3 +7739,112 @@ ul.task-list {
   width: 8px;
   height: 8px;
 }
+
+/* ---------- Creating an event (wave 16, E1) ---------- */
+.event-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.event-section {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.event-section > legend,
+.event-section > summary {
+  padding: 0 var(--space-1);
+  font-weight: 600;
+  color: var(--heading);
+}
+details.event-section > summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.event-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.event-chips > legend {
+  width: 100%;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+.chip-check:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--surface-soft);
+}
+.chip-check input {
+  width: 18px;
+  height: 18px;
+}
+.event-invited > summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+.event-answers,
+.event-trip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.planner-dayhead {
+  position: relative;
+}
+.planner-add {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  min-width: 24px;
+  min-height: 24px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.event-types {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+.event-types > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.event-type-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
