@@ -2,7 +2,6 @@
 import Link from "next/link";
 import {
   useId,
-  useRef,
   type ButtonHTMLAttributes,
   type KeyboardEvent,
   type ReactNode,
@@ -289,23 +288,17 @@ export const StatCard = KpiCard;
 
 /* ---------- Tabs and segmented control ---------- */
 export type TabItem = { id: string; label: ReactNode; count?: number; disabled?: boolean };
-function useRoving() {
-  const ref = useRef<HTMLDivElement>(null);
-  return {
-    ref,
-    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-      const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
-      if (!keys.includes(e.key) || !ref.current) return;
-      const items = [...ref.current.querySelectorAll<HTMLButtonElement>("[data-roving]:not([disabled])")];
-      const at = items.findIndex((b) => b === document.activeElement);
-      if (at < 0) return;
-      e.preventDefault();
-      const next =
-        e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (at + (e.key === "ArrowRight" ? 1 : items.length - 1)) % items.length;
-      items[next].focus();
-      items[next].click();
-    },
-  };
+/** Arrow keys, Home and End move the focus between the enabled items of the list and select the one reached. */
+function roving(e: KeyboardEvent<HTMLDivElement>) {
+  const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+  if (!keys.includes(e.key)) return;
+  const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("[data-roving]:not([disabled])")];
+  const at = items.findIndex((b) => b === document.activeElement);
+  if (at < 0) return;
+  e.preventDefault();
+  const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (at + (e.key === "ArrowRight" ? 1 : items.length - 1)) % items.length;
+  items[next].focus();
+  items[next].click();
 }
 /** Page tabs: tablist/tab roles, arrow keys move and select. */
 export function Tabs({
@@ -326,11 +319,10 @@ export function Tabs({
   /** Prefix of the tab ids (default: a generated one), for panels that point back at their tab. */
   idPrefix?: string;
 }) {
-  const roving = useRoving();
   const generated = useId();
   const base = idPrefix ?? generated;
   return (
-    <div className="tabs" role="tablist" aria-label={label} ref={roving.ref} onKeyDown={roving.onKeyDown}>
+    <div className="tabs" role="tablist" aria-label={label} onKeyDown={roving}>
       {items.map((it) => (
         <button
           key={it.id}
@@ -363,9 +355,8 @@ export function Segmented({
   onChange: (id: string) => void;
   label: string;
 }) {
-  const roving = useRoving();
   return (
-    <div className="segmented" role="group" aria-label={label} ref={roving.ref} onKeyDown={roving.onKeyDown}>
+    <div className="segmented" role="group" aria-label={label} onKeyDown={roving}>
       {items.map((it) => (
         <button
           key={it.id}

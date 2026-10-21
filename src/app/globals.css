@@ -451,13 +451,14 @@ main p[role="status"] {
   background: var(--surface-soft);
   color: var(--text);
 }
+/* Danger: white on the full tint in light, dark ink on the light tint in dark, like the primary button. */
 .button.danger {
   background: var(--danger);
-  color: #ffffff;
+  color: var(--on-primary);
 }
 .button.danger:hover {
   background: var(--danger-ink);
-  color: #ffffff;
+  color: var(--on-primary);
 }
 .button.secondary:disabled,
 .button.ghost:disabled,
