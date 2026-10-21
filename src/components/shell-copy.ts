@@ -4,6 +4,7 @@ export const shellCopy = {
   fr: {
     home: "Accueil",
     access: "Mon espace",
+    myAccount: "Mon compte",
     people: "Personnes et équipes",
     registrations: "Inscriptions",
     mine: "Mes inscriptions",
@@ -100,6 +101,7 @@ export const shellCopy = {
   nl: {
     home: "Start",
     access: "Mijn ruimte",
+    myAccount: "Mijn account",
     people: "Personen en teams",
     registrations: "Inschrijvingen",
     mine: "Mijn inschrijvingen",
@@ -196,6 +198,7 @@ export const shellCopy = {
   en: {
     home: "Home",
     access: "My space",
+    myAccount: "My account",
     people: "People and teams",
     registrations: "Registrations",
     mine: "My applications",

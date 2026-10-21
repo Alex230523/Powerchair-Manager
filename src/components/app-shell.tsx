@@ -13,6 +13,8 @@ import type { Todo } from "@/domains/dashboard/summary";
 import { menuGroups, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
+import { settingsEntries, visibleCategories } from "./settings-nav";
+import { settingsHubCopy } from "./settings-hub-copy";
 export { shellCopy };
 type Copy = (typeof shellCopy)[Locale];
 export function initials(name: string) {
@@ -58,7 +60,7 @@ function setTheme(next: "light" | "dark") {
   window.dispatchEvent(new Event("pfm-theme"));
 }
 /** Light or dark, as a segmented pair in the account menu. */
-function ThemeChoice({ t }: { t: Copy }) {
+export function ThemeChoice({ t }: { t: Copy }) {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => null);
   if (dark === null) return null;
   return (
@@ -263,6 +265,17 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
+  // Settings are found by Ctrl+K too (wave 15): each category and each setting it holds.
+  const h = settingsHubCopy[locale];
+  const shownSettings = state?.selected
+    ? visibleCategories({ kind: state.selected.kind, role, permissions: state.permissions ?? [], disabled: state.selected.disabled_modules })
+    : [];
+  const settingsPages = [
+    ...shownSettings.map((c) => ({ route: `/settings/${c}`, label: `${t.settings} · ${h.categories[c].title}` })),
+    ...settingsEntries
+      .filter((e) => shownSettings.includes(e.category))
+      .map((e) => ({ route: `/settings/${e.category}#${e.anchor}`, label: `${h.entries[e.id].title} · ${t.settings}` })),
+  ];
   const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
   return (
     <ScopeProvider
@@ -348,9 +361,19 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                   </select>
                 </label>
               )}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/settings/account`}>
+                  <Icon name="userRound" size={16} /> {t.myAccount}
+                </Link>
+              )}
               <Link className="menu-link" href={`/${locale}/access`}>
-                <Icon name="userRound" size={16} /> {t.access}
+                <Icon name="lock" size={16} /> {t.access}
               </Link>
+              {state && (
+                <Link className="menu-link" href={`/${locale}/settings`}>
+                  <Icon name="settings" size={16} /> {t.settings}
+                </Link>
+              )}
               <div className="menu-row">
                 <span className="menu-heading">
                   <Icon name="globe" size={16} /> {t.language}
@@ -394,7 +417,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] })))]}
+                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
               />
             </div>
             <div className="topbar-tools">
@@ -452,7 +475,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                       ) : (
                         <p className="muted bell-empty">{t.noNotifications}</p>
                       )}
-                      <Link className="menu-link bell-all" href={`/${locale}/notifications`} onClick={() => setBell(false)}>
+                      <Link className="menu-link bell-all" href={`/${locale}/settings/notifications`} onClick={() => setBell(false)}>
                         {t.seeAll} <Icon name="arrow" size={16} />
                       </Link>
                     </div>

@@ -221,8 +221,12 @@ export function Card({
   );
 }
 /** The former Panel: a titled card. */
-export function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return <Card title={title}>{children}</Card>;
+export function Panel({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+  return (
+    <Card title={title} headingId={id} labelledBy={id}>
+      {children}
+    </Card>
+  );
 }
 
 /* ---------- Icon tile, badge ---------- */

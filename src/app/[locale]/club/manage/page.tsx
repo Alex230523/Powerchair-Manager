@@ -14,7 +14,7 @@ export default async function Page({
   if (!isLocale(locale)) notFound();
   return (
     <People locale={locale} management>
-      <ClubIdentity locale={locale} />
+      <ClubIdentity locale={locale} only="teams" />
     </People>
   );
 }
