@@ -48,7 +48,7 @@ export const federationClubsCommand = z.discriminatedUnion("action", [
     city: text(80),
     affiliationNumber: text(40),
     companyNumber: z.union([z.literal(""), z.string().regex(/^[01][0-9]{3}\.[0-9]{3}\.[0-9]{3}$/)]),
-    legalForm: z.enum(["asbl", "de_facto"]).nullable(),
+    legalForm: z.enum(["asbl", "de_facto", "other"]).nullable(),
     contactEmail: z.union([z.literal(""), email]),
     president: z.object(person),
   }),
@@ -85,7 +85,7 @@ export async function federationClubsView(db: Pool, p: Principal) {
       name: string;
       city: string;
       affiliation_number: string;
-      legal_form: "asbl" | "de_facto" | null;
+      legal_form: "asbl" | "de_facto" | "other" | null;
       company_number: string;
       contact_email: string | null;
       president: { name: string; email: string } | null;

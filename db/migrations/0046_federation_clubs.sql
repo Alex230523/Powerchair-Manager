@@ -1,11 +1,12 @@
 -- Wave 16 (I3): the federation creates its clubs and invites their presidents.
 -- city, affiliation_number, legal_form: the club's public identity as the
 -- federation records it (affiliation number unique within a federation); the
--- company number already exists (0027).
+-- company number already exists (0027). The club sets its form in its own
+-- settings too (wave 16, A: the club status follows it).
 ALTER TABLE organization
   ADD COLUMN city text NOT NULL DEFAULT '' CHECK (length(city) <= 80),
   ADD COLUMN affiliation_number text NOT NULL DEFAULT '' CHECK (length(affiliation_number) <= 40),
-  ADD COLUMN legal_form text CHECK (legal_form IS NULL OR legal_form IN ('asbl', 'de_facto'));
+  ADD COLUMN legal_form text CHECK (legal_form IS NULL OR legal_form IN ('asbl', 'de_facto', 'other'));
 CREATE UNIQUE INDEX organization_affiliation_number ON organization(federation_id, lower(affiliation_number))
   WHERE federation_id IS NOT NULL AND affiliation_number <> '';
 -- issued_by_federation: an invitation into a club sent by its federation

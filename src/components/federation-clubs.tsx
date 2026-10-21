@@ -249,6 +249,7 @@ export function FederationClubs({ locale }: { locale: Locale }) {
                   <option value="">{t.form.notSaid}</option>
                   <option value="asbl">{t.form.legalForms.asbl}</option>
                   <option value="de_facto">{t.form.legalForms.de_facto}</option>
+                  <option value="other">{t.form.legalForms.other}</option>
                 </select>
               </label>
               <label>
