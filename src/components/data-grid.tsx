@@ -136,6 +136,7 @@ export function DataGrid<T>({
   const [anchor, setAnchor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  const [columnsOpen, setColumnsOpen] = useState(false);
   const visible = columns.filter((c) => !hidden.includes(c.key));
   const sorted = useMemo(() => {
     const col = sort ? columns.find((c) => c.key === sort.key) : undefined;
@@ -201,11 +202,13 @@ export function DataGrid<T>({
   return (
     <div className={`data-grid ${selectable ? "selectable" : ""} ${className}`.replace(/\s+/g, " ").trim()}>
       {storageKey && hideable.length > 0 && (
-        <details className="dg-columns">
+        <details className="dg-columns" onToggle={(e) => setColumnsOpen(e.currentTarget.open)}>
           <summary className="button secondary sm">
             <Icon name="settings" size={16} />
             {t.columns}
           </summary>
+          {/* Built only when open, so its labels never double the table's own. */}
+          {columnsOpen && (
           <fieldset>
             <legend className="sr-only">{t.columnsShown}</legend>
             {columns
@@ -217,6 +220,7 @@ export function DataGrid<T>({
                 </label>
               ))}
           </fieldset>
+          )}
         </details>
       )}
       <DataTable label={label} caption={caption}>

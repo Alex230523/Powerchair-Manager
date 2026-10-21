@@ -4762,10 +4762,8 @@ input.narrow {
 .data-grid tr[data-selected] > * {
   background: var(--accent-soft);
 }
+/* Right under the table, in the flow: it never hides a row nor the focus (WCAG 2.4.11). */
 .dg-bar {
-  position: sticky;
-  bottom: 16px;
-  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -4823,6 +4821,13 @@ input.narrow {
 }
 .dg-status:empty {
   display: none;
+}
+.data-grid .row-actions {
+  gap: 8px;
+}
+.data-grid .row-actions .text-button {
+  min-height: 32px;
+  padding-inline: 4px;
 }
 .card.flush .card-body > .data-grid > .dg-columns {
   padding: 8px 12px 0;
