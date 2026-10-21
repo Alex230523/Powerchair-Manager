@@ -96,6 +96,8 @@ export function buildBoard(counts: Partial<Record<TodoKey, number>>, opts: { pre
     key,
     count: value[key] as number,
     ...(key in boardMeta ? boardMeta[key as keyof typeof boardMeta] : todoMeta[key as TodoKey]),
+    // Only grant steps to do: the tasks page opens on them.
+    ...(key === "moneyTasks" && !counts.sponsorTasks && counts.grantTasks ? { href: todoMeta.grantTasks.href } : {}),
     ...(key === "documents" && defined(counts.documentsExpiring) ? { expiring: counts.documentsExpiring } : {}),
     ...(key === "clubStatus" && opts.status ? { status: opts.status } : {}),
   });

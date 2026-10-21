@@ -114,7 +114,8 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     // 4. The coach sees his step on his home and ticks it on the tasks page.
     await coachPage.setViewportSize({ width: 1280, height: 900 });
     await coachPage.goto("/fr");
-    const todo = coachPage.locator(".todo-card").filter({ hasText: "Tâches de subsides" });
+    // Wave 16 (A): sponsors and grants share one square.
+    const todo = coachPage.locator(".todo-card").filter({ hasText: "Sponsors et subsides" });
     await expect(todo).toBeVisible();
     await todo.click();
     await expect(coachPage).toHaveURL("/fr/tasks?kind=grant");
