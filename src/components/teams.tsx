@@ -279,7 +279,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
         ))}
       </div>
       {tab === "roster" && (
-        <Card id="team-panel-roster" className="flush" title={sh.tabs.roster}>
+        <div role="tabpanel" id="team-panel-roster" aria-labelledby="team-tab-roster"><Card id="team-panel-roster-card" className="flush" title={sh.tabs.roster}>
           {data.roster.length ? (
             <div className="table-scroll">
               <table className="compact-table">
@@ -320,10 +320,10 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
           ) : (
             <EmptyState title={sh.emptyRoster} icon="players" />
           )}
-        </Card>
+        </Card></div>
       )}
       {tab === "staff" && (
-        <Card id="team-panel-staff" title={sh.tabs.staff}>
+        <div role="tabpanel" id="team-panel-staff" aria-labelledby="team-tab-staff"><Card id="team-panel-staff-card" title={sh.tabs.staff}>
           {data.staff.length ? (
             <ul className="records">
               {data.staff.map((m) => (
@@ -337,10 +337,10 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
           ) : (
             <EmptyState title={sh.emptyStaff} icon="whistle" />
           )}
-        </Card>
+        </Card></div>
       )}
       {tab === "settings" && data.can.manage && (
-        <Card id="team-panel-settings" title={sh.tabs.settings}>
+        <div role="tabpanel" id="team-panel-settings" aria-labelledby="team-tab-settings"><Card id="team-panel-settings-card" title={sh.tabs.settings}>
           <TeamForm
             locale={locale}
             team={team}
@@ -364,7 +364,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
               )
             }
           />
-        </Card>
+        </Card></div>
       )}
       {moving && (
         <MoveDialog
