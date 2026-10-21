@@ -43,5 +43,15 @@ test("the design gallery passes axe in both themes and its tabs work with the ke
 
   // Phone width: nothing overflows.
   await page.setViewportSize({ width: 320, height: 720 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  expect(
+    await page.evaluate(() => {
+      const over = document.documentElement.scrollWidth - innerWidth;
+      if (over <= 1) return [];
+      // Names the widest offenders so the failure says what sticks out.
+      return [...document.querySelectorAll("body *")]
+        .filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(e).position !== "fixed")
+        .slice(0, 12)
+        .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")} right=${Math.round(e.getBoundingClientRect().right)} (over ${over}px)`);
+    }),
+  ).toEqual([]);
 });
