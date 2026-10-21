@@ -5,7 +5,7 @@ import { totp } from "../support/totp";
 import { readFile } from "node:fs/promises";
 const origin = "http://127.0.0.1:3100";
 function section(page: Page, title: string) {
-  return page.locator("details").filter({
+  return page.locator("main details").filter({
     has: page
       .locator("summary")
       .filter({ hasText: new RegExp("^" + title + "$") }),

@@ -225,14 +225,17 @@ test("new club, federation and referee pages load and pass axe", async ({
     // Wave 11: contact book, grants and partners pages; trips and halls reached
     // from the calendar; notifications inside settings; the photo corner opens Mon espace.
     for (const path of ["/fr/contacts", "/fr/funding/grants", "/fr/funding/partners"]) await check(page, path);
-    for (const name of ["Déplacements", "Annuaire des salles", "Notifications", "Licences"])
+    for (const name of ["Annuaire des salles", "Notifications", "Licences", "Mon espace", "Messagerie"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
-    // Menu groups are folded until opened: the entries exist, visible or not.
-    await expect(page.locator("nav").getByRole("link", { name: "Transferts", exact: true, includeHidden: true })).toHaveCount(1);
-    await expect(page.locator("nav").getByRole("link", { name: "Finance du club", exact: true, includeHidden: true })).toHaveCount(1);
+    // Menu groups are folded until opened: the entries exist, visible or not. Wave 14 regroups the
+    // president's menu: Équipes, Activités (trips and halls are back), Communication, Argent, Club, Plus.
+    for (const name of ["Transferts", "Finances", "Déplacements", "Salles", "Mes équipes", "Réglages"])
+      await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
+    for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"])
+      await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
     await page.goto("/fr/calendar");
-    await expect(page.getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Notifications", exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();

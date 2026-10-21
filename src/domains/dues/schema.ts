@@ -94,6 +94,29 @@ export function duesState(
   soon.setUTCDate(soon.getUTCDate() + 14);
   return open[0].due_on <= soon.toISOString().slice(0, 10) ? "due_soon" : "on_track";
 }
+/**
+ * The season's totals, computed once for the dues page, the dashboard and
+ * the sidebar counter: what is due, what came in, what is overdue and how
+ * many players are late. Cancelled receivables count for nothing.
+ */
+export function duesTotals(
+  debts: { status: string; net_cents: number; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[] }[],
+  today: string,
+) {
+  const open = debts.filter((d) => d.status === "open");
+  let due = 0,
+    collected = 0,
+    late = 0,
+    playersLate = 0;
+  for (const d of open) {
+    const settled = settle(d.installments, d.paid_cents);
+    due += d.net_cents;
+    collected += Math.min(d.paid_cents, d.net_cents);
+    late += settled.filter((i) => i.due_on < today).reduce((sum, i) => sum + i.left_cents, 0);
+    if (duesState(d, settled, today) === "late") playersLate += 1;
+  }
+  return { due, collected, late, playersLate, rate: due > 0 ? Math.round((collected / due) * 100) : null };
+}
 export type Command = z.infer<typeof commandSchema>;
 export function schedule(cents: number, count: number, first: string) {
   if (

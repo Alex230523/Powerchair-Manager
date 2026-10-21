@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Locale } from "@/lib/locale";
 import { Icon } from "./icons";
 
@@ -10,6 +10,7 @@ const copy = {
     shortcut: "Raccourci : Ctrl+K ou ⌘K",
     label: "Rechercher un joueur, un coach, une équipe, un événement ou une page",
     placeholder: "Nom, équipe, page…",
+    fieldHint: "Rechercher un joueur, une équipe, un événement",
     pages: "Pages",
     people: "Personnes",
     teams: "Équipes",
@@ -28,6 +29,7 @@ const copy = {
     shortcut: "Sneltoets: Ctrl+K of ⌘K",
     label: "Zoek een speler, coach, team, evenement of pagina",
     placeholder: "Naam, team, pagina…",
+    fieldHint: "Zoek een speler, een team, een evenement",
     pages: "Pagina's",
     people: "Personen",
     teams: "Teams",
@@ -46,6 +48,7 @@ const copy = {
     shortcut: "Shortcut: Ctrl+K or ⌘K",
     label: "Search for a player, coach, team, event or page",
     placeholder: "Name, team, page…",
+    fieldHint: "Search a player, a team, an event",
     pages: "Pages",
     people: "People",
     teams: "Teams",
@@ -79,12 +82,20 @@ export function CommandPalette({
   locale,
   pages,
   enabled,
+  variant = "icon",
 }: {
   locale: Locale;
   pages: SearchPage[];
   enabled: boolean;
+  /** "field": the search capsule of the top bar (wave 14); "icon": a round button. */
+  variant?: "icon" | "field";
 }) {
   const t = copy[locale];
+  const mac = useSyncExternalStore(
+    () => () => {},
+    () => /Mac|iPhone|iPad/.test(navigator.platform),
+    () => false,
+  );
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -183,16 +194,24 @@ export function CommandPalette({
   }
   return (
     <>
-      <button
-        type="button"
-        className="icon-button search-trigger"
-        aria-label={t.open}
-        title={`${t.open} (${t.shortcut})`}
-        aria-keyshortcuts="Control+K Meta+K"
-        onClick={open}
-      >
-        <Icon name="search" />
-      </button>
+      {variant === "field" ? (
+        <button type="button" className="search-field" aria-label={t.label} title={t.shortcut} aria-keyshortcuts="Control+K Meta+K" onClick={open}>
+          <Icon name="search" size={16} />
+          <span className="search-field-text">{t.fieldHint}</span>
+          <kbd aria-hidden="true">{mac ? "⌘K" : "Ctrl K"}</kbd>
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="icon-button search-trigger"
+          aria-label={t.open}
+          title={`${t.open} (${t.shortcut})`}
+          aria-keyshortcuts="Control+K Meta+K"
+          onClick={open}
+        >
+          <Icon name="search" />
+        </button>
+      )}
       <dialog
         ref={dialog}
         className="command-palette"

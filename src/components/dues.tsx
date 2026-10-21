@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
 import { WholeClubNote, useScope, useSeeded } from "./use-scope";
 import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
+import { duesTotals } from "@/domains/dues/schema";
 const copy = {
   fr: {
     collected: "Encaissé",
@@ -329,7 +330,6 @@ export function Dues({ locale }: { locale: Locale }) {
     [planId, setPlanId] = useState(""),
     [applicationId, setApplicationId] = useState(""),
     [confirmation, setConfirmation] = useState(""),
-    [stateFilter, setStateFilter] = useState(""),
     [q, setQ] = useState(""),
     [detailId, setDetailId] = useState(""),
     [payId, setPayId] = useState(""),
@@ -337,6 +337,13 @@ export function Dues({ locale }: { locale: Locale }) {
   // The season chosen in the top bar (wave 12) seeds the season filter.
   const scope = useScope();
   const [filter, setFilter] = useSeeded(scope.seasonId ?? "");
+  // ?state=late (from the dashboard and the sidebar counter) seeds the state filter.
+  const urlState = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("state") ?? "",
+    () => "",
+  );
+  const [stateFilter, setStateFilter] = useSeeded(urlState);
   const money = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
@@ -410,12 +417,8 @@ export function Dues({ locale }: { locale: Locale }) {
       (!q || d.full_name.toLowerCase().includes(q.toLowerCase())),
   );
   const seasonRows = (view?.debts ?? []).filter((d) => (!filter || d.season_id === filter) && d.status === "open");
-  const totals = {
-    due: seasonRows.reduce((n, d) => n + d.net_cents, 0),
-    collected: seasonRows.reduce((n, d) => n + Math.min(d.paid_cents, d.net_cents), 0),
-    late: seasonRows.reduce((n, d) => n + d.overdue_cents, 0),
-    playersLate: seasonRows.filter((d) => d.state === "late").length,
-  };
+  // The same totals as the dashboard and the sidebar counter (domain function, no second calculation).
+  const totals = duesTotals(seasonRows, new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()));
   const detail = view?.debts.find((d) => d.id === detailId);
   const paying = view?.debts.find((d) => d.id === payId);
   const nextOpen = (d: Debt) => d.settled.find((i) => i.left_cents > 0);

@@ -2,6 +2,7 @@ import { getAuth } from "@/lib/auth-server";
 import { getDb } from "@/lib/db";
 import { AccessError } from "@/domains/access/service";
 import {
+  notificationBrief,
   notificationView,
   notificationExecute,
   notificationCommand,
@@ -27,8 +28,11 @@ function failure(e: unknown) {
 }
 export async function GET(request: Request) {
   try {
+    const brief = new URL(request.url).searchParams.get("brief") === "1";
     return Response.json(
-      await notificationView(getDb(), await principal(request)),
+      brief
+        ? await notificationBrief(getDb(), await principal(request))
+        : await notificationView(getDb(), await principal(request)),
       { headers },
     );
   } catch (e) {

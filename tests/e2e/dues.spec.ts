@@ -113,7 +113,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
     await expect(rate).toHaveCount(0);
     // Changing a rate once dues exist asks the president to confirm (checked below).
-    await openMenuGroup(page, "Club finances");
+    // The president's menu groups money matters under "Money" (wave 14).
+    await openMenuGroup(page, "Money");
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })
@@ -161,6 +162,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await warn.getByRole("button", { name: "Confirm the change", exact: true }).click();
     await expect(warn).toHaveCount(0);
     await expect(page.locator("section.card", { has: page.locator("#settings-dues-title") })).toContainText("€260.00");
+    // Back to the top: fields scrolled under the sticky top bar read as obscured targets.
+    await page.evaluate(() => window.scrollTo(0, 0));
     expect(
       (
         await new AxeBuilder({ page })

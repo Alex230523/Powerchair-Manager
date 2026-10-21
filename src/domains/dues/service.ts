@@ -181,6 +181,24 @@ async function writeSchedule(
     );
   return rows;
 }
+/**
+ * Open receivables of a season with their instalments and payments, for the
+ * totals (duesTotals). Shared by the dues page, the dashboard and the sidebar.
+ */
+export async function duesSeasonRows(c: PoolClient, org: string, seasonId: string | null, profiles: string[] | null = null) {
+  const rows = (
+    await c.query(
+      "SELECT d.id,d.status,d.net_cents,d.profile_id,(SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents FROM dues_receivable d WHERE d.organization_id=$1 AND ($2::uuid IS NULL OR d.season_id=$2) AND ($3::uuid[] IS NULL OR d.profile_id=ANY($3::uuid[]))",
+      [org, seasonId, profiles],
+    )
+  ).rows as { id: string; status: string; net_cents: number; profile_id: string; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[] }[];
+  if (!rows.length) return rows;
+  const installments = (
+    await c.query("SELECT receivable_id,ordinal,due_on::text AS due_on,amount_cents FROM dues_installment WHERE receivable_id=ANY($1::uuid[]) ORDER BY ordinal", [rows.map((r) => r.id)])
+  ).rows as { receivable_id: string; ordinal: number; due_on: string; amount_cents: number }[];
+  for (const r of rows) r.installments = installments.filter((i) => i.receivable_id === r.id);
+  return rows;
+}
 export async function duesView(db: Pool, p: Principal) {
   return scope(db, p, async (s) => {
     const own = s.readAll ? [] : [...(await ownProfiles(s.c, s.a))],

@@ -1,233 +1,20 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useRef, useSyncExternalStore } from "react";
-import { labels, type Role } from "@/domains/access/policy";
-import { moduleOfPath } from "@/domains/access/rights";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
-import { BrandLogo, Icon, type IconName } from "./icons";
+import { authClient } from "@/lib/auth-client";
+import { BrandMark, Icon } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { CommandPalette } from "./command-palette";
 import { ScopeProvider, useScope } from "./use-scope";
-import type { SeasonOption, TeamOption } from "@/domains/scope/service";
+import type { Todo } from "@/domains/dashboard/summary";
+import { menuGroups, type NavItem, type Workspace } from "./menu";
+export { menuGroups, type Workspace };
 import { Badge } from "./ui";
 export { shellCopy };
 type Copy = (typeof shellCopy)[Locale];
-export type Workspace = {
-  user: { name: string };
-  contexts: { id: string; name: string; role: Role }[];
-  profiles: {
-    id: string;
-    mandate_id: string;
-    name: string;
-    is_default: boolean;
-  }[];
-  selected?: {
-    id: string;
-    organization_id: string;
-    organization_name: string;
-    kind: "club" | "federation";
-    logo_version: string | null;
-    disabled_modules?: string[];
-  };
-  permissions: string[];
-  fundraisingOpen?: boolean;
-  avatarVersion?: string | null;
-  seasons?: SeasonOption[];
-  teams?: TeamOption[];
-};
-type NavItem = { route: string; label: keyof Copy; icon: IconName };
-type NavGroup = {
-  id: string;
-  label: keyof Copy;
-  icon: IconName;
-  items: NavItem[];
-};
-/**
- * Menu structure (wave 10). Club presidents see every module; coaches see the
- * modules their rights cover; players and guardians see their own space only:
- * calendar, their file, documents, dues (and the fundraising pots open to the
- * players). Each page still enforces its own permissions server-side.
- * Statistics are reached from the home dashboard, not from the menu.
- */
-export function menuGroups(state: Workspace | null): NavGroup[] {
-  const perms = new Set(state?.permissions ?? []);
-  const has = (...p: string[]) => p.some((x) => perms.has(x));
-  const manager = perms.has("registrations.manage");
-  const kind = state?.selected?.kind;
-  const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
-  const member = role === "player" || role === "guardian";
-  const registrations: NavItem = {
-    route: manager ? "/registrations" : "/registrations/mine",
-    label: manager ? "registrations" : "mine",
-    icon: "inbox",
-  };
-  const item = (route: string, label: keyof Copy, icon: IconName, allowed = true): NavItem[] =>
-    allowed ? [{ route, label, icon }] : [];
-  const club: NavGroup[] =
-    kind === "club" && member
-      ? [
-          {
-            id: "mine",
-            label: "mySpace",
-            icon: "user",
-            items: [
-              ...item("/calendar", "calendar", "calendar"),
-              ...item("/players", "myFile", "players"),
-              ...item("/documents", "documents", "document"),
-              ...item("/dues", "dues", "dues"),
-              ...item("/fundraising", "fundraising", "chart", !!state?.fundraisingOpen),
-              registrations,
-            ],
-          },
-        ]
-      : kind === "club"
-        ? [
-            {
-              id: "players",
-              label: "groupPlayers",
-              icon: "players",
-              items: [
-                ...item("/players", "players", "players", has("people.read")),
-                ...item("/teams", "teams", "team", has("people.read", "teams.manage") || role === "coach"),
-                ...(manager ? [registrations] : []),
-                ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
-                ...item("/licenses", "licenses", "check", has("people.read")),
-                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
-              ],
-            },
-            {
-              id: "life",
-              label: "club",
-              icon: "calendar",
-              items: [
-                ...item("/calendar", "calendar", "calendar"),
-                ...item("/matches", "matches", "whistle", has("calendar.read", "calendar.manage")),
-                // Trips and halls are reached from the calendar page (wave 11).
-                ...item("/federal-calendar", "federalCalendar", "calendar", has("calendar.read", "calendar.manage")),
-                ...item("/documents", "documents", "document"),
-                // Club mails: newsletters (notifications.manage), event mails (planners).
-                ...item(
-                  "/communication",
-                  "communication",
-                  "bell",
-                  has("notifications.manage", "calendar.manage") || role === "coach",
-                ),
-              ],
-            },
-            {
-              id: "management",
-              label: "groupManagement",
-              icon: "club",
-              items: [
-                ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
-                ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
-                ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
-                ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
-              ],
-            },
-            {
-              id: "finance",
-              label: "groupFinance",
-              icon: "dues",
-              items: [
-                ...item("/funding", "funding", "funding", has("dues.read", "dues.manage")),
-                ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
-                ...item("/funding/grants", "grants", "document", has("dues.read", "dues.manage")),
-                ...item("/funding/partners", "partners", "team", has("dues.read", "dues.manage")),
-                ...item("/fundraising", "fundraising", "chart", has("dues.read", "dues.manage")),
-              ],
-            },
-          ]
-        : kind === "federation"
-          ? [
-              {
-                id: "federation",
-                label: "groupFederation",
-                icon: "club",
-                items: [
-                  ...((role === "referee"
-                    ? [
-                        {
-                          route: "/referee",
-                          label: "refereeSpace",
-                          icon: "whistle",
-                        },
-                      ]
-                    : [
-                        {
-                          route: "/federation/clubs",
-                          label: "federationClubs",
-                          icon: "club",
-                        },
-                        {
-                          route: "/federation/courses",
-                          label: "courses",
-                          icon: "team",
-                        },
-                        {
-                          route: "/federation/licenses",
-                          label: "federationLicenses",
-                          icon: "check",
-                        },
-                        {
-                          route: "/federation/referees",
-                          label: "designations",
-                          icon: "whistle",
-                        },
-                      ]) satisfies NavItem[]),
-                  { route: "/calendar", label: "calendar", icon: "calendar" },
-                  { route: "/venues", label: "venues", icon: "club" },
-                  { route: "/documents", label: "documents", icon: "document" },
-                ],
-              },
-            ]
-          : [];
-  // Modules the club switched off leave the menu (their routes refuse too).
-  const off = new Set(state?.selected?.disabled_modules ?? []);
-  const shown = (items: NavItem[]) =>
-    items.filter((i) => {
-      const m = moduleOfPath(i.route);
-      return !m || !off.has(m);
-    });
-  return [
-    ...club
-      .map((g) => ({ ...g, items: shown(g.items) }))
-      .filter((g) => g.items.length > 0),
-    {
-      id: "admin",
-      label: "admin",
-      icon: "settings",
-      items: [
-        ...(state?.selected
-          ? ([
-              // Notifications live in Réglages since wave 11.
-              ...(kind === "club" && !member
-                ? ([
-                    ...item(
-                      "/reminders",
-                      "reminders",
-                      "message",
-                      !off.has("reminders") && has("dues.manage", "documents.manage", "notifications.manage"),
-                    ),
-                    ...item("/privacy", "privacy", "lock", has("audit.read", "mandates.manage")),
-                  ] satisfies NavItem[])
-                : []),
-              { route: "/settings", label: "settings", icon: "settings" },
-            ] satisfies NavItem[])
-          : state
-            ? ([registrations] satisfies NavItem[])
-            : []),
-        ...(kind === "club" && !member && !off.has("trips") && has("calendar.read", "calendar.manage")
-          ? ([
-              { route: "/offline-book", label: "offlineBook", icon: "lock" },
-            ] satisfies NavItem[])
-          : []),
-        { route: "/access", label: "access", icon: "user" },
-      ],
-    },
-  ];
-}
 export function initials(name: string) {
   return (
     name
@@ -261,58 +48,55 @@ function isDark() {
   const chosen = document.documentElement.dataset.theme;
   return chosen ? chosen === "dark" : window.matchMedia(darkQuery).matches;
 }
-function ThemeToggle({ t }: { t: Copy }) {
-  // null on the server: the button only appears once the real theme is known.
+function setTheme(next: "light" | "dark") {
+  document.documentElement.dataset.theme = next;
+  try {
+    window.localStorage.setItem("pfm-theme", next);
+  } catch {
+    /* Preference is kept for this page only. */
+  }
+  window.dispatchEvent(new Event("pfm-theme"));
+}
+/** Light or dark, as a segmented pair in the account menu. */
+function ThemeChoice({ t }: { t: Copy }) {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => null);
   if (dark === null) return null;
   return (
-    <button
-      type="button"
-      className="icon-button"
-      aria-label={dark ? t.light : t.dark}
-      title={dark ? t.light : t.dark}
-      onClick={() => {
-        const next = dark ? "light" : "dark";
-        document.documentElement.dataset.theme = next;
-        try {
-          window.localStorage.setItem("pfm-theme", next);
-        } catch {
-          /* Preference is kept for this page only. */
-        }
-        window.dispatchEvent(new Event("pfm-theme"));
-      }}
-    >
-      <Icon name={dark ? "sun" : "moon"} />
-    </button>
+    <div className="segmented account-theme" role="group" aria-label={t.theme}>
+      <button type="button" aria-pressed={!dark} onClick={() => setTheme("light")}>
+        <Icon name="sun" size={16} /> {t.themeLight}
+      </button>
+      <button type="button" aria-pressed={dark} onClick={() => setTheme("dark")}>
+        <Icon name="moon" size={16} /> {t.themeDark}
+      </button>
+    </div>
   );
 }
-export function AppShell({
-  locale,
-  children,
-}: {
-  locale: Locale;
-  children: React.ReactNode;
-}) {
-  const navigation = useRef<HTMLDetailsElement>(null);
+const drawerQuery = "(max-width: 1023px)";
+const counterRoutes: Record<string, Todo["key"]> = {
+  "/registrations": "registrationsReview",
+  "/attendance": "registersToClose",
+  "/dues": "duesLate",
+};
+type Brief = { unread: number; latest: { id: string; title: string; body: string | null; href: string | null; read_at: string | null; created_at: string }[] };
+
+export function AppShell({ locale, children }: { locale: Locale; children: ReactNode }) {
   const path = usePathname(),
     t = shellCopy[locale];
   const [state, setState] = useState<Workspace | null>(null),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 761px)");
-    const resize = () => {
-      if (navigation.current) navigation.current.open = media.matches;
-    };
-    resize();
-    media.addEventListener("change", resize);
-    return () => media.removeEventListener("change", resize);
-  }, []);
-  useEffect(() => {
-    // On small screens the menu closes after navigating.
-    if (navigation.current && !window.matchMedia("(min-width: 761px)").matches)
-      navigation.current.open = false;
-  }, [path]);
+    [error, setError] = useState(""),
+    [todos, setTodos] = useState<Todo[]>([]),
+    [brief, setBrief] = useState<Brief | null>(null),
+    [drawer, setDrawer] = useState(false),
+    [bell, setBell] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null),
+    closeButton = useRef<HTMLButtonElement>(null),
+    aside = useRef<HTMLElement>(null),
+    bellButton = useRef<HTMLButtonElement>(null),
+    panel = useRef<HTMLDivElement>(null),
+    account = useRef<HTMLDetailsElement>(null);
+  const panelId = useId();
   useEffect(() => {
     let cancelled = false;
     const load = () => {
@@ -337,6 +121,89 @@ export function AppShell({
       window.removeEventListener("storage", sync);
     };
   }, [path]);
+  const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
+  const member = role === "player" || role === "guardian";
+  const club = state?.selected?.kind === "club";
+  const selectedId = state?.selected?.id ?? null;
+  // Counters of the menu and the bell: real figures from the dashboard and the inbox, refreshed with the page.
+  useEffect(() => {
+    if (!selectedId) return;
+    let cancelled = false;
+    const load = () => {
+      if (club && !member)
+        fetch("/api/dashboard", { cache: "no-store" })
+          .then(async (r) => (r.ok ? ((await r.json()) as { todos?: Todo[] }) : null))
+          .then((d) => {
+            if (!cancelled) setTodos(d?.todos ?? []);
+          })
+          .catch(() => {
+            if (!cancelled) setTodos([]);
+          });
+      fetch("/api/notifications?brief=1", { cache: "no-store" })
+        .then(async (r) => (r.ok ? ((await r.json()) as Brief) : null))
+        .then((b) => {
+          if (!cancelled) setBrief(b);
+        })
+        .catch(() => {
+          if (!cancelled) setBrief(null);
+        });
+    };
+    load();
+    window.addEventListener("pfm-workspace", load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pfm-workspace", load);
+    };
+  }, [selectedId, club, member, path]);
+  // The drawer: Escape closes it, focus stays inside while it is open, and goes back to the menu button after.
+  useEffect(() => {
+    if (!drawer) return;
+    closeButton.current?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawer(false);
+    };
+    document.addEventListener("keydown", key);
+    document.body.dataset.drawer = "open";
+    return () => {
+      document.removeEventListener("keydown", key);
+      delete document.body.dataset.drawer;
+      menuButton.current?.focus();
+    };
+  }, [drawer]);
+  // The notification panel: Escape or a click elsewhere closes it; focus goes back to the bell.
+  useEffect(() => {
+    if (!bell) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setBell(false);
+    };
+    const away = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!panel.current?.contains(target) && !bellButton.current?.contains(target)) setBell(false);
+    };
+    document.addEventListener("keydown", key);
+    document.addEventListener("mousedown", away);
+    return () => {
+      document.removeEventListener("keydown", key);
+      document.removeEventListener("mousedown", away);
+      bellButton.current?.focus();
+    };
+  }, [bell]);
+  const trapFocus = useCallback((e: ReactKeyboardEvent<HTMLElement>) => {
+    if (e.key !== "Tab" || !aside.current || !window.matchMedia(drawerQuery).matches) return;
+    const focusables = [...aside.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])')].filter(
+      (el) => el.offsetParent !== null,
+    );
+    if (!focusables.length) return;
+    const first = focusables[0],
+      last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
   if (path.includes("/registration-widget/")) return children;
   function current(route: string) {
     const href = `/${locale}${route}`;
@@ -344,17 +211,23 @@ export function AppShell({
     if (route && path.startsWith(href + "/")) return "true" as const;
     return undefined;
   }
+  const counts = new Map(todos.map((x) => [x.key, x]));
   function item({ route, label, icon }: NavItem) {
+    const todo = counterRoutes[route] ? counts.get(counterRoutes[route]) : undefined;
     return (
-      <Link
-        key={route}
-        href={`/${locale}${route}`}
-        aria-current={current(route)}
-      >
+      <Link key={route} href={`/${locale}${route}`} aria-current={current(route)}>
         <span className="nav-icon">
           <Icon name={icon} />
         </span>
-        {t[label]}
+        <span className="nav-label">{t[label]}</span>
+        {todo && todo.count > 0 && (
+          <>
+            <span className="nav-count" aria-hidden="true">
+              <Badge tone={todo.tone === "danger" ? "danger" : "warning"}>{todo.count}</Badge>
+            </span>
+            <span className="sr-only"> · {t.pendingCount.replace("{n}", String(todo.count))}</span>
+          </>
+        )}
       </Link>
     );
   }
@@ -377,132 +250,221 @@ export function AppShell({
       setBusy(false);
     }
   }
-  const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
+  async function signOut() {
+    setBusy(true);
+    try {
+      await authClient.signOut();
+    } finally {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/${locale}/access`);
+    }
+  }
+  const localePath = (l: Locale) => path.replace(/^\/(fr|nl|en)(?=\/|$)/, `/${l}`);
+  const unread = brief?.unread ?? 0;
+  const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
+  const groups = menuGroups(state);
+  const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
   return (
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}
       seasons={state?.seasons ?? []}
       teams={state?.teams ?? []}
     >
-    <div className="app-shell">
-      <aside className="sidebar">
-        <Link className="brand" href={`/${locale}`}>
-          <BrandLogo height={26} />
-          <span className="brand-text">Powerchair Football Manager</span>
-        </Link>
-        <details ref={navigation} className="sidebar-nav" open>
-          <summary>
-            <Icon name="menu" />
-            {t.menu}
-          </summary>
-          <nav aria-label={t.menu}>
+      <div className="app-shell">
+        {drawer && <div className="drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden="true" />}
+        <aside className="sidebar" ref={aside} data-open={drawer || undefined} onKeyDown={trapFocus} aria-label={t.mainMenu}>
+          <div className="sidebar-head">
+            <Link className="brand" href={`/${locale}`} onClick={() => setDrawer(false)}>
+              {state?.selected?.logo_version ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="brand-mark" src={`/api/club/logo?org=${state.selected.organization_id}&v=${state.selected.logo_version}`} alt="" />
+              ) : (
+                <BrandMark />
+              )}
+              <span className="brand-words">
+                <span className="brand-name">{t.brandName}</span>
+                {orgName && <span className="brand-org">{orgName}</span>}
+              </span>
+            </Link>
+            <button type="button" ref={closeButton} className="icon-button drawer-close" aria-label={t.closeMenu} onClick={() => setDrawer(false)}>
+              <Icon name="close" />
+            </button>
+          </div>
+          <nav
+            aria-label={t.menu}
+            onClick={(e) => {
+              if ((e.target as Element).closest("a")) setDrawer(false);
+            }}
+          >
             {item({ route: "", label: "home", icon: "home" })}
-            {menuGroups(state).map((group) => {
-              const holds = group.items.some(
-                (i) => current(i.route) !== undefined,
-              );
+            {groups.map((group) => {
+              const holds = group.items.some((i) => current(i.route) !== undefined);
               return (
-                <details
-                  key={group.id}
-                  className="nav-group"
-                  open={holds || undefined}
-                  data-current={holds || undefined}
-                >
+                <details key={group.id} className="nav-group" open={holds || undefined} data-current={holds || undefined} data-folded={group.folded || undefined}>
                   <summary>
-                    <span className="nav-icon">
-                      <Icon name={group.icon} />
+                    <span className="nav-group-label">{t[group.label]}</span>
+                    <span className="nav-chevron" aria-hidden="true">
+                      <Icon name="chevronDown" size={16} />
                     </span>
-                    {t[group.label]}
                   </summary>
                   <div className="nav-items">{group.items.map(item)}</div>
                 </details>
               );
             })}
           </nav>
-        </details>
-        {/* The account's own corner (wave 11 and 12): photo and name open the profile menu. */}
-        <details className="profile-menu">
-          <summary className="sidebar-foot" aria-label={`${t.profileMenu} · ${state?.user.name ?? ""}`}>
-            {state?.user.name &&
-              (state.avatarVersion ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="avatar" src={`/api/account/avatar?v=${state.avatarVersion}`} alt="" />
-              ) : (
-                <span className="avatar" aria-hidden="true">
-                  {initials(state.user.name)}
-                </span>
-              ))}
-            <span>{state?.user.name ?? "Powerchair Football Manager"}</span>
-          </summary>
-          <div className="profile-menu-body">
-            {state ? (
-              <label>
-                {t.profile}
-                <select
-                  aria-label={t.profile}
-                  value={state.selected?.id ?? ""}
-                  disabled={busy}
-                  onChange={(e) => void change(e.target.value)}
-                >
-                  <option value="" disabled>
-                    {t.choose}
-                  </option>
-                  {state.contexts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {state.profiles?.find((p) => p.mandate_id === c.id)?.name ?? `${c.name} · ${labels[c.role][locale]}`}
+          {/* The account corner: photo, name and role open the account menu. */}
+          <details className="profile-menu" ref={account}>
+            <summary className="sidebar-foot" aria-label={`${t.accountMenu} · ${state?.user.name ?? ""}`}>
+              {state?.user.name &&
+                (state.avatarVersion ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="avatar" src={`/api/account/avatar?v=${state.avatarVersion}`} alt="" />
+                ) : (
+                  <span className="avatar" aria-hidden="true">
+                    {initials(state.user.name)}
+                  </span>
+                ))}
+              <span className="foot-words">
+                <span className="foot-name">{state?.user.name ?? t.brandName}</span>
+                {role && <span className="foot-role">{labels[role][locale]}</span>}
+              </span>
+              <span className="nav-chevron" aria-hidden="true">
+                <Icon name="chevronDown" size={16} />
+              </span>
+            </summary>
+            <div className="profile-menu-body">
+              {state && state.contexts.length > 0 && (
+                <label>
+                  <span className="menu-heading">{t.changeProfile}</span>
+                  <select aria-label={t.profile} value={state.selected?.id ?? ""} disabled={busy} onChange={(e) => void change(e.target.value)}>
+                    <option value="" disabled>
+                      {t.choose}
                     </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <Link className="button secondary" href={`/${locale}/access`}>
-              {t.access}
-            </Link>
-          </div>
-        </details>
-      </aside>
-      <div className="app-content">
-        <header className="topbar">
-          <div className="topbar-context">
-            {state?.selected?.logo_version && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="org-logo"
-                src={`/api/club/logo?org=${state.selected.organization_id}&v=${state.selected.logo_version}`}
-                alt=""
-              />
-            )}
-            <strong>
-              {state?.selected?.organization_name ??
-                (state ? t.noContext : "Powerchair Football Manager")}
-            </strong>
-            {role && <Badge tone="primary">{labels[role][locale]}</Badge>}
-          </div>
-          <div className="topbar-tools">
-            {!state && (
-              <Link className="button secondary" href={`/${locale}/access`}>
-                {t.access}
+                    {state.contexts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {state.profiles?.find((p) => p.mandate_id === c.id)?.name ?? `${c.name} · ${labels[c.role][locale]}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <Link className="menu-link" href={`/${locale}/access`}>
+                <Icon name="userRound" size={16} /> {t.access}
               </Link>
-            )}
-            {state?.selected?.kind === "club" && role !== "player" && role !== "guardian" && <ScopeBar t={t} />}
-            <CommandPalette
-              locale={locale}
-              enabled={!!state?.selected}
-              pages={[
-                { route: "", label: t.home },
-                ...menuGroups(state).flatMap((g) =>
-                  g.items.map((i) => ({ route: i.route, label: t[i.label] })),
-                ),
-              ]}
-            />
-            <ThemeToggle t={t} />
-          </div>
-          {error && <p role="alert">{error}</p>}
-        </header>
-        <ScopeChip t={t} />
-        {children}
+              <div className="menu-row">
+                <span className="menu-heading">
+                  <Icon name="globe" size={16} /> {t.language}
+                </span>
+                <span className="menu-langs">
+                  {(["fr", "nl", "en"] as const).map((l) => (
+                    <Link key={l} href={localePath(l)} aria-current={l === locale ? "true" : undefined} lang={l}>
+                      {l.toUpperCase()}
+                    </Link>
+                  ))}
+                </span>
+              </div>
+              <div className="menu-row">
+                <span className="menu-heading">{t.theme}</span>
+                <ThemeChoice t={t} />
+              </div>
+              {state && (
+                <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
+                  <Icon name="logOut" size={16} /> {t.signOut}
+                </button>
+              )}
+              {error && <p role="alert">{error}</p>}
+            </div>
+          </details>
+        </aside>
+        <div className="app-content">
+          <header className="topbar">
+            <button type="button" ref={menuButton} className="icon-button drawer-open" aria-label={t.openMenu} aria-expanded={drawer} onClick={() => setDrawer(true)}>
+              <Icon name="menu" />
+            </button>
+            <Link className="topbar-mark" href={`/${locale}`} aria-label={t.home}>
+              {state?.selected?.logo_version ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="brand-mark" src={`/api/club/logo?org=${state.selected.organization_id}&v=${state.selected.logo_version}`} alt="" />
+              ) : (
+                <BrandMark size={28} />
+              )}
+            </Link>
+            <div className="topbar-search">
+              <CommandPalette
+                locale={locale}
+                enabled={!!state?.selected}
+                variant="field"
+                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] })))]}
+              />
+            </div>
+            <div className="topbar-tools">
+              {!state && (
+                <Link className="button secondary" href={`/${locale}/access`}>
+                  {t.access}
+                </Link>
+              )}
+              {club && !member && <ScopeBar t={t} />}
+              {state?.selected && (
+                <div className="bell">
+                  <button
+                    type="button"
+                    ref={bellButton}
+                    className="icon-button bell-button"
+                    aria-label={`${t.notificationsButton} · ${unreadText}`}
+                    aria-expanded={bell}
+                    aria-controls={panelId}
+                    onClick={() => setBell((v) => !v)}
+                  >
+                    <Icon name="bell" />
+                    {unread > 0 && (
+                      <span className="bell-count" aria-hidden="true">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
+                  </button>
+                  {bell && (
+                    <div className="bell-panel" role="dialog" aria-modal="false" aria-label={t.notificationsButton} id={panelId} ref={panel}>
+                      <div className="bell-head">
+                        <strong>{t.notificationsButton}</strong>
+                        <span className="muted">{unreadText}</span>
+                        <button type="button" className="icon-button sm" aria-label={t.closePanel} onClick={() => setBell(false)}>
+                          <Icon name="close" size={16} />
+                        </button>
+                      </div>
+                      {brief?.latest.length ? (
+                        <ul className="bell-list">
+                          {brief.latest.map((n) => (
+                            <li key={n.id} data-unread={!n.read_at || undefined}>
+                              {n.href ? (
+                                <Link href={n.href.startsWith("/") && !n.href.startsWith(`/${locale}/`) ? `/${locale}${n.href}` : n.href} onClick={() => setBell(false)}>
+                                  <strong>{n.title}</strong>
+                                  {n.body && <span>{n.body}</span>}
+                                </Link>
+                              ) : (
+                                <div>
+                                  <strong>{n.title}</strong>
+                                  {n.body && <span>{n.body}</span>}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="muted bell-empty">{t.noNotifications}</p>
+                      )}
+                      <Link className="menu-link bell-all" href={`/${locale}/notifications`} onClick={() => setBell(false)}>
+                        {t.seeAll} <Icon name="arrow" size={16} />
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </header>
+          <ScopeChip t={t} />
+          {children}
+        </div>
       </div>
-    </div>
     </ScopeProvider>
   );
 }
@@ -518,12 +480,16 @@ function ScopeBar({ t }: { t: Copy }) {
         <span className="capsule-label">{t.season}</span>
         <select aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
           {open.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
           ))}
           {archived.length > 0 && (
             <optgroup label={t.archivedSeasons}>
               {archived.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
             </optgroup>
           )}
@@ -536,7 +502,9 @@ function ScopeBar({ t }: { t: Copy }) {
           <select aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
             <option value="">{t.allTeams}</option>
             {scope.seasonTeams.map((x) => (
-              <option key={x.id} value={x.id}>{x.name}</option>
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
             ))}
           </select>
         </label>

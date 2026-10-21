@@ -109,6 +109,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Inscriptions à examiner",
         text: "Dossiers soumis ou en cours d’examen",
       },
+      duesLate: {
+        title: "Cotisations en retard",
+        text: "Joueurs avec une échéance dépassée",
+      },
       documentsReview: {
         title: "Documents à vérifier",
         text: "Dépôts en attente de validation",
@@ -234,6 +238,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Inschrijvingen te beoordelen",
         text: "Ingediende of lopende dossiers",
       },
+      duesLate: {
+        title: "Achterstallige bijdragen",
+        text: "Spelers met een vervallen termijn",
+      },
       documentsReview: {
         title: "Documenten te controleren",
         text: "Uploads wachten op validatie",
@@ -358,6 +366,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       registrationsReview: {
         title: "Registrations to review",
         text: "Submitted or under review",
+      },
+      duesLate: {
+        title: "Late dues",
+        text: "Players with an overdue instalment",
       },
       documentsReview: {
         title: "Documents to check",

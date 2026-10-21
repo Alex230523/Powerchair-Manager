@@ -31,6 +31,9 @@ import {
 import { presenceRules, readiness } from "./presence";
 import { fundingDeadlines } from "../funding/service";
 import { resolveScope, teamMembers } from "../scope/service";
+import { duesSeasonRows } from "../dues/service";
+import { today } from "../calendar/access";
+import { duesTotals } from "../dues/schema";
 
 /**
  * Read-only operational summary for the active context.
@@ -276,6 +279,9 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
         : []),
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );
+    // Players late with their dues (wave 14): the same totals as the dues page, for the season in view.
+    const totals = duesTotals(await duesSeasonRows(c, org, scope.seasonId, members), today());
+    counts.duesLate = totals.playersLate;
   } else if (club && on("dues") && own.length) {
     const next = (
       await c.query(
