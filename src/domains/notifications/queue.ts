@@ -12,6 +12,7 @@ export type Db = Pool | PoolClient;
 export type Category = "security" | "administrative" | "sport";
 export type ResourceType =
   | "auth"
+  | "funding"
   | "invitation"
   | "membership"
   | "team"

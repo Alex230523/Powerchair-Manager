@@ -8,8 +8,11 @@ import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { fundingCopy } from "./funding-copy";
 import { shellCopy } from "./shell-copy";
-import { Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
+import { Badge, Card, EmptyState, PageHeader, StatCard, Tabs, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
+import { sponsorsCopy } from "./sponsors-copy";
+import { PackagesPanel, PartnerSheet, PaymentBadge } from "./sponsors";
+import { proposedRenewal } from "@/domains/funding/schema";
 
 type View = Awaited<ReturnType<typeof fundingView>>;
 type Grant = View["grants"][number];
@@ -29,12 +32,13 @@ const inDays = (n: number) => {
 
 function useFunding(locale: Locale) {
   const t = fundingCopy[locale] as (typeof fundingCopy)["fr"];
-  const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
+  const full = sponsorsCopy[locale].packageFull;
+  const failure = useCallback((code: string) => (code === "PACKAGE_FULL" ? full : (errors[code]?.[locale] ?? t.unavailable)), [locale, t.unavailable, full]);
   const { data, error, setError, reload } = useData<View>("/api/funding", failure);
   const { busy, message, post } = usePost("/api/funding", reload, setError, failure);
   const day = (d: string | null) =>
     d ? new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")) : "";
-  return { t, data, error, message, busy, post, day };
+  return { t, data, error, setError, reload, message, busy, post, day };
 }
 function Nav({ locale, current }: { locale: Locale; current: "grants" | "partners" }) {
   const s = shellCopy[locale];
@@ -311,12 +315,19 @@ export function Grants({ locale }: { locale: Locale }) {
 }
 
 const partnerTone: Record<string, Tone> = { prospect: "info", active: "success", ended: "neutral" };
-/** Partners: sponsors, donors, patrons and foundations, with the next step. */
-export function Partners({ locale }: { locale: Locale }) {
-  const { t, data, error, message, busy, post, day } = useFunding(locale);
-  const p = t.partners;
-  const [editing, setEditing] = useState<Partner | "new" | null>(null),
-    [status, setStatus] = useState("");
+/** What the page was opened with: a sheet (?partner=), a prefilled new partner (from a pot), a tab. */
+export type PartnersStart = { partner?: string; name?: string; note?: string; tab?: "partners" | "packages" };
+/** Partners: sponsors, donors, patrons and foundations, with their package, conditions, payment and dates (waves 11 and 15). */
+export function Partners({ locale, start = {} }: { locale: Locale; start?: PartnersStart }) {
+  const { t, data, error, setError, reload, message, busy, post, day } = useFunding(locale);
+  const p = t.partners,
+    sp = sponsorsCopy[locale];
+  const [editing, setEditing] = useState<Partner | "new" | null>(start.name ? "new" : null),
+    [status, setStatus] = useState(""),
+    [tab, setTab] = useState<"partners" | "packages">(start.tab ?? "partners"),
+    [sheet, setSheet] = useState<string | null>(start.partner ?? null),
+    [newContact, setNewContact] = useState(false),
+    [packageId, setPackageId] = useState<string | null>(null);
   if (!data)
     return (
       <main id="main" className="access funding-partners">
@@ -327,11 +338,24 @@ export function Partners({ locale }: { locale: Locale }) {
   const rows = data.partners.filter((x) => !status || x.status === status);
   const active = data.partners.filter((x) => x.status === "active");
   const soon = inDays(60);
-  const renewals = active.filter((x) => x.ends_on && x.ends_on <= soon).length;
+  const renewals = active.filter((x) => {
+    const d = x.renewal_on ?? x.ends_on;
+    return !!d && d <= soon;
+  }).length;
+  const lateConditions = data.tasks.filter((x) => x.partner_id && x.status === "todo" && x.due_on && x.due_on < data.today).length;
+  const current = editing && editing !== "new" ? editing : undefined;
+  const chosen = packageId ?? current?.package_id ?? "";
+  const pkg = data.packages.find((k) => k.id === chosen);
+  const season = data.seasons.find((x) => x.id === pkg?.season_id) ?? data.seasons[0];
+  const openForm = (x: Partner | "new") => {
+    setPackageId(null);
+    setNewContact(false);
+    setEditing(x);
+  };
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const cur = editing && editing !== "new" ? editing : undefined;
+    const cur = current;
     void post(
       {
         organizationId: data.organization_id,
@@ -347,12 +371,28 @@ export function Partners({ locale }: { locale: Locale }) {
         endsOn: dateOrNull(f.get("ends")),
         nextActionOn: dateOrNull(f.get("nextActionOn")),
         nextAction: String(f.get("nextAction") ?? ""),
-        contactId: String(f.get("contact") ?? "") || null,
+        ...(newContact
+          ? {
+              newContact: {
+                fullName: String(f.get("contactName") ?? ""),
+                organizationName: String(f.get("contactCompany") ?? ""),
+                email: String(f.get("contactEmail") ?? "").trim(),
+                phone: String(f.get("contactPhone") ?? ""),
+              },
+            }
+          : { contactId: String(f.get("contact") ?? "") || null }),
         notes: String(f.get("notes") ?? ""),
+        packageId: String(f.get("package") ?? "") || null,
+        signedOn: dateOrNull(f.get("signed")),
+        paymentDueOn: dateOrNull(f.get("paymentDue")),
+        paidOn: dateOrNull(f.get("paid")),
+        renewalOn: dateOrNull(f.get("renewal")),
+        recordPayment: f.get("recordPayment") === "on",
       },
       t.saved,
     ).then((ok) => ok && setEditing(null));
   };
+  const open = data.partners.find((x) => x.id === sheet);
   return (
     <main id="main" className="access funding-partners">
       <PageHeader
@@ -361,94 +401,136 @@ export function Partners({ locale }: { locale: Locale }) {
         actions={
           <>
             <Nav locale={locale} current="partners" />
-            {data.can.manage && (
-              <button type="button" className="button" onClick={() => setEditing("new")}>{p.new}</button>
+            {data.can.manage && tab === "partners" && (
+              <button type="button" className="button" onClick={() => openForm("new")}>{p.new}</button>
             )}
           </>
         }
       />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      <div className="stat-row-grid" data-cols="4">
-        <StatCard label={p.totalActive} value={String(active.length)} icon="team" tone="brand" />
-        <StatCard label={p.totalAmount} value={euro(locale, active.reduce((n, x) => n + x.amount_cents, 0))} icon="funding" tone="info" />
-        <StatCard label={p.received} value={euro(locale, (data.received.sponsor ?? 0) + (data.received.donation ?? 0))} icon="dues" tone="success" href={`/${locale}/funding`} />
-        <StatCard label={p.renewals} value={String(renewals)} icon="alert" tone={renewals ? "warning" : "neutral"} />
-      </div>
-      <Card title={p.title} id="partners" className="flush"
-        actions={
-          <Toolbar>
-            <div className="toolbar-field">
-              <label htmlFor="partner-status">{t.status}</label>
-              <select id="partner-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">{t.all}</option>
-                {partnerStatuses.map((k) => (
-                  <option key={k} value={k}>{p.statuses[k]}</option>
-                ))}
-              </select>
-            </div>
-          </Toolbar>
-        }
-      >
-        {rows.length ? (
-          <div className="table-scroll">
-            <table className="compact-table">
-              <thead>
-                <tr>
-                  <th scope="col">{p.name}</th>
-                  <th scope="col">{p.kind}</th>
-                  <th scope="col" className="num">{p.amount}</th>
-                  <th scope="col">{p.counterpart}</th>
-                  <th scope="col">{p.next}</th>
-                  <th scope="col">{t.status}</th>
-                  <th scope="col"><span className="sr-only">{t.edit}</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((x) => (
-                  <tr key={x.id}>
-                    <th scope="row">
-                      {x.name}
-                      {x.contact_name && <span className="muted small"> · {x.contact_name}</span>}
-                    </th>
-                    <td>{p.kinds[x.kind]}{x.in_kind && <span className="muted small"> · {x.in_kind}</span>}</td>
-                    <td className="num">{x.amount_cents ? euro(locale, x.amount_cents) : "…"}</td>
-                    <td>{x.counterpart}</td>
-                    <td>
-                      {x.next ? (
-                        <>
-                          {p.nextKinds[x.next.kind]} · {day(x.next.date)}
-                          {x.next.kind === "action" && x.next_action && <span className="muted small"> · {x.next_action}</span>}
-                          {x.next.date < today() && <Badge tone="danger">!</Badge>}
-                        </>
-                      ) : (
-                        <span className="muted">…</span>
-                      )}
-                    </td>
-                    <td><Badge tone={partnerTone[x.status]} dot>{p.statuses[x.status]}</Badge></td>
-                    <td className="row-actions">
-                      {data.can.manage && (
-                        <button type="button" className="text-button" onClick={() => setEditing(x)}>
-                          {t.edit}<span className="sr-only"> : {x.name}</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <Tabs
+        label={sp.tabsLabel}
+        idPrefix="partners-tab"
+        panelId="partners-panel"
+        value={tab}
+        onChange={(v) => setTab(v as "partners" | "packages")}
+        items={[
+          { id: "partners", label: sp.tabPartners, count: data.partners.length },
+          { id: "packages", label: sp.tabPackages, count: data.packages.filter((k) => !k.archived).length },
+        ]}
+      />
+      <div role="tabpanel" id="partners-panel" aria-labelledby={`partners-tab-${tab}`}>
+        {tab === "packages" ? (
+          <PackagesPanel locale={locale} data={data} busy={busy} post={post} />
         ) : (
-          <EmptyState title={p.empty} icon="team" />
+          <>
+            <div className="stat-row-grid" data-cols="5">
+              <StatCard label={p.totalActive} value={String(active.length)} icon="team" tone="brand" />
+              <StatCard label={p.totalAmount} value={euro(locale, active.reduce((n, x) => n + x.amount_cents, 0))} icon="funding" tone="info" />
+              <StatCard label={p.received} value={euro(locale, (data.received.sponsor ?? 0) + (data.received.donation ?? 0))} icon="dues" tone="success" href={`/${locale}/funding`} />
+              <StatCard label={p.renewals} value={String(renewals)} icon="clock" tone={renewals ? "warning" : "neutral"} />
+              <StatCard label={sp.lateConditions} value={String(lateConditions)} icon="alert" tone={lateConditions ? "danger" : "neutral"} href={`/${locale}/tasks`} />
+            </div>
+            <Card title={p.title} id="partners" className="flush"
+              actions={
+                <Toolbar>
+                  <div className="toolbar-field">
+                    <label htmlFor="partner-status">{t.status}</label>
+                    <select id="partner-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                      <option value="">{t.all}</option>
+                      {partnerStatuses.map((k) => (
+                        <option key={k} value={k}>{p.statuses[k]}</option>
+                      ))}
+                    </select>
+                  </div>
+                </Toolbar>
+              }
+            >
+              {rows.length ? (
+                <div className="table-scroll">
+                  <table className="compact-table partners-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{p.name}</th>
+                        <th scope="col">{sp.contactPerson}</th>
+                        <th scope="col">{sp.package}</th>
+                        <th scope="col" className="num">{p.amount}</th>
+                        <th scope="col">{sp.payment}</th>
+                        <th scope="col">{sp.conditions}</th>
+                        <th scope="col">{sp.nearest}</th>
+                        <th scope="col">{t.status}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((x) => (
+                        <tr key={x.id}>
+                          <th scope="row">
+                            <button type="button" className="text-button partner-open" onClick={() => setSheet(x.id)}>
+                              {x.name}<span className="sr-only"> · {sp.open}</span>
+                            </button>
+                            <span className="muted small"> · {p.kinds[x.kind]}</span>
+                          </th>
+                          <td>
+                            {x.contact_name ? <Link href={`/${locale}/contacts?contact=${x.contact_id}`}>{x.contact_name}</Link> : <span className="muted">…</span>}
+                          </td>
+                          <td>{x.package_name ? <Badge tone="primary">{x.package_name}</Badge> : <span className="muted">…</span>}</td>
+                          <td className="num">{x.amount_cents ? euro(locale, x.amount_cents) : "…"}</td>
+                          <td><PaymentBadge locale={locale} payment={x.payment} /></td>
+                          <td>
+                            {x.tasks_total ? (
+                              <span className="task-progress">
+                                <span>{sp.conditionsDone.replace("{done}", String(x.tasks_done)).replace("{total}", String(x.tasks_total))}</span>
+                                <progress max={x.tasks_total} value={x.tasks_done} aria-label={`${sp.conditions} : ${x.name}`} />
+                                {x.tasks_late > 0 && <Badge tone="danger">{x.tasks_late}</Badge>}
+                              </span>
+                            ) : (
+                              <span className="muted">…</span>
+                            )}
+                          </td>
+                          <td>
+                            {x.nearest ? (
+                              <>
+                                {sp.nearestKinds[x.nearest.kind]} · {day(x.nearest.date)}
+                                {x.nearest.date < data.today && <Badge tone="danger">!</Badge>}
+                              </>
+                            ) : (
+                              <span className="muted">…</span>
+                            )}
+                          </td>
+                          <td><Badge tone={partnerTone[x.status]} dot>{p.statuses[x.status]}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState title={p.empty} icon="team" />
+              )}
+            </Card>
+          </>
         )}
-      </Card>
+      </div>
+      {open && !editing && (
+        <PartnerSheet
+          locale={locale}
+          data={data}
+          partner={open}
+          busy={busy}
+          post={post}
+          reload={reload}
+          setError={setError}
+          close={() => setSheet(null)}
+          edit={() => openForm(open)}
+        />
+      )}
       {editing && (
         <Modal title={editing === "new" ? p.new : `${p.editTitle} · ${editing.name}`} close={() => setEditing(null)}>
           <form className="finance-form" onSubmit={submit}>
             <div className="form-pair">
               <label>
                 {p.name}
-                <input name="name" required minLength={2} maxLength={160} defaultValue={editing === "new" ? "" : editing.name} />
+                <input name="name" required minLength={2} maxLength={160} defaultValue={editing === "new" ? (start.name ?? "") : editing.name} />
               </label>
               <label>
                 {p.kind}
@@ -461,6 +543,31 @@ export function Partners({ locale }: { locale: Locale }) {
             </div>
             <div className="form-pair">
               <label>
+                {sp.package}
+                <select name="package" value={chosen} onChange={(e) => setPackageId(e.target.value)}>
+                  <option value="">{sp.noPackageChoice}</option>
+                  {data.packages
+                    .filter((k) => !k.archived || k.id === current?.package_id)
+                    .map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.name} · {euro(locale, k.amount_cents)}{k.season_name ? ` · ${k.season_name}` : ""}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                {p.amount}
+                <input
+                  name="amount"
+                  inputMode="decimal"
+                  key={"amount" + chosen}
+                  defaultValue={packageId && pkg ? String(pkg.amount_cents / 100) : editing === "new" ? "" : String(editing.amount_cents / 100)}
+                />
+              </label>
+            </div>
+            {current && chosen !== (current.package_id ?? "") && <p className="notice small">{sp.switchWarning}</p>}
+            <div className="form-pair">
+              <label>
                 {t.status}
                 <select name="status" defaultValue={editing === "new" ? "prospect" : editing.status}>
                   {partnerStatuses.map((k) => (
@@ -469,10 +576,72 @@ export function Partners({ locale }: { locale: Locale }) {
                 </select>
               </label>
               <label>
-                {p.amount}
-                <input name="amount" inputMode="decimal" defaultValue={editing === "new" ? "" : String(editing.amount_cents / 100)} />
+                {sp.signedOn}
+                <input name="signed" type="date" defaultValue={editing === "new" ? "" : (editing.signed_on ?? "")} />
               </label>
             </div>
+            <div className="form-pair">
+              <label>
+                {sp.paymentDueOn}
+                <input name="paymentDue" type="date" defaultValue={editing === "new" ? "" : (editing.payment_due_on ?? "")} />
+              </label>
+              <label>
+                {sp.paidOnLabel}
+                <input name="paid" type="date" defaultValue={editing === "new" ? "" : (editing.paid_on ?? "")} />
+              </label>
+            </div>
+            {!current?.payment_transaction_id ? (
+              <label className="check">
+                <input type="checkbox" name="recordPayment" defaultChecked />
+                {sp.recordPayment}
+              </label>
+            ) : (
+              <p className="muted small">{sp.recordedPayment}</p>
+            )}
+            <label>
+              {sp.renewalOn}
+              <input
+                name="renewal"
+                type="date"
+                key={"renewal" + chosen}
+                aria-describedby="renewal-hint"
+                defaultValue={editing !== "new" && editing.renewal_on ? editing.renewal_on : season?.ends_on ? proposedRenewal(season.ends_on) : ""}
+              />
+            </label>
+            <p className="muted small" id="renewal-hint">{sp.renewalHint}</p>
+            {data.can.contactsManage && (
+              <label className="check">
+                <input type="checkbox" checked={newContact} onChange={(e) => setNewContact(e.target.checked)} />
+                {sp.newContactToggle}
+              </label>
+            )}
+            {newContact ? (
+              <fieldset className="official">
+                <legend>{sp.contactPerson}</legend>
+                <div className="form-pair">
+                  <label>
+                    {sp.contactName}
+                    <input name="contactName" required minLength={2} maxLength={120} />
+                  </label>
+                  <label>
+                    {sp.contactCompany}
+                    <input name="contactCompany" maxLength={160} />
+                  </label>
+                </div>
+                <div className="form-pair">
+                  <label>
+                    {sp.contactEmail}
+                    <input name="contactEmail" type="email" maxLength={200} />
+                  </label>
+                  <label>
+                    {sp.contactPhone}
+                    <input name="contactPhone" maxLength={40} />
+                  </label>
+                </div>
+              </fieldset>
+            ) : (
+              <ContactSelect name="contact" value={editing === "new" ? null : editing.contact_id} contacts={data.contacts} label={sp.contactPerson} none={t.noContact} />
+            )}
             <label>
               {p.inKind}
               <input name="inKind" maxLength={400} defaultValue={editing === "new" ? "" : editing.in_kind} />
@@ -501,10 +670,9 @@ export function Partners({ locale }: { locale: Locale }) {
                 <input name="nextAction" maxLength={200} defaultValue={editing === "new" ? "" : editing.next_action} />
               </label>
             </div>
-            <ContactSelect name="contact" value={editing === "new" ? null : editing.contact_id} contacts={data.contacts} label={t.contact} none={t.noContact} />
             <label>
               {t.notes}
-              <textarea name="notes" rows={3} maxLength={4000} defaultValue={editing === "new" ? "" : editing.notes} />
+              <textarea name="notes" rows={3} maxLength={4000} defaultValue={editing === "new" ? (start.note ?? "") : editing.notes} />
             </label>
             <div className="actions">
               <button className="button" disabled={busy}>{t.save}</button>

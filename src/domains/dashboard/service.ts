@@ -31,7 +31,7 @@ import {
   type WeekEvent,
 } from "./summary";
 import { presenceRules, readiness } from "./presence";
-import { fundingDeadlines } from "../funding/service";
+import { fundingDeadlines, moneyDeadlinesIn, openTasksCount } from "../funding/service";
 import { resolveScope, seasonOptions, teamMembers } from "../scope/service";
 import { duesSeasonRows } from "../dues/service";
 import { today } from "../calendar/access";
@@ -406,9 +406,19 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
       push({ kind: "trip", date: r.day, title: r.title, count: 1, href: `/trips/${r.id}` });
   }
   // Grants to file or report on, partners to renew or call back (wave 11): money people only.
-  if (club && on("finance") && (has("dues.manage") || has("dues.read")))
+  const moneyPeople = has("dues.manage") || has("dues.read");
+  if (club && on("finance") && moneyPeople)
     for (const d of await fundingDeadlines(c, org, 30))
       push({ kind: d.kind, date: d.date, title: d.title, count: 1, href: d.href });
+  // Sponsor conditions, partner payments and renewals (wave 15): every one for money people, one's own tasks otherwise.
+  if (club && on("finance")) {
+    const until = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    for (const d of await moneyDeadlinesIn(c, org, today(), until, moneyPeople, own))
+      if (d.kind !== "grant" && d.kind !== "grantReport")
+        push({ kind: d.source, date: d.date, title: d.title, count: 1, href: d.href });
+    // Conditions to deliver within 14 days (late ones too): all for the president, one's own otherwise.
+    counts.sponsorTasks = await openTasksCount(c, org, "partner", 14, a.role === "club_president" && moneyPeople, own);
+  }
   deadlines.sort((x, y) => x.date.localeCompare(y.date));
 
   // The season in view, for the subtitle and the money card.

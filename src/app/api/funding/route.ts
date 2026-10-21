@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   try {
     origin(request);
     const p = await principalIn(request, "finance"),
-      body = JSON.parse(new TextDecoder().decode(await bounded(request, 30000)));
+      body = JSON.parse(new TextDecoder().decode(await bounded(request, 80000)));
     return Response.json(
       await fundingExecute(getDb(), p, fundingCommand.parse(body), z.uuid().parse(body.organizationId)),
       { headers: noStore },

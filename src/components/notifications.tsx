@@ -41,6 +41,7 @@ const variables: Record<string, string[]> = {
   match_update: ["name", "match", "status", "organization", "url"],
   registration_link: ["name", "organization", "url"],
   license_update: ["name", "person", "status", "organization", "url"],
+  funding_task: ["name", "title", "due", "organization", "url"],
 };
 /** `embedded`: rendered inside Réglages (wave 11) as a section instead of a page. */
 export function Notifications({ locale, embedded = false }: { locale: Locale; embedded?: boolean }) {

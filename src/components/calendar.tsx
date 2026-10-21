@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { CalendarBoard } from "./calendar-board";
+import { DeadlineChip, LayerToggle, useMoneyDeadlines } from "./money-layer";
+import { sponsorsCopy } from "./sponsors-copy";
 import { attendanceCopy } from "./attendance-copy";
 import {
   useCallback,
@@ -242,12 +244,15 @@ export function Calendar({
     [requestId, setRequestId] = useState(() => crypto.randomUUID()),
     // Wave 9: an event used as a model for a new one, and the week copy result.
     [copyOf, setCopyOf] = useState<Item | null>(null),
-    [copyReport, setCopyReport] = useState<string[]>([]);
+    [copyReport, setCopyReport] = useState<string[]>([]),
+    // Wave 15: the "Échéances" layer (sponsor conditions, payments, renewals, grant dates).
+    [moneyLayer, setMoneyLayer] = useState(false);
   const w9 = calendarCopyWeek[locale] as (typeof calendarCopyWeek)["fr"];
   function setAnchor(value: string) {
     if (value >= "2000-01-01" && value <= "2099-12-31") setAnchorState(value);
   }
   const range = dates(anchor, view),
+    money = useMoneyDeadlines(range.from, range.to, moneyLayer),
     params =
       "all=" +
       (view === "list" && !eventId ? "true" : "false") +
@@ -523,6 +528,7 @@ export function Calendar({
                     ))}
                   </select>
                 </Field>
+                {money.available && <LayerToggle locale={locale} on={moneyLayer} onChange={setMoneyLayer} />}
               </div>
               {view === "week" && data.canPlan && (
                 <details className="calendar-settings">
@@ -607,7 +613,17 @@ export function Calendar({
                   events={data.events}
                   onSelect={openEvent}
                   onCreate={data.canPlan ? newEvent : undefined}
+                  deadlines={money.items}
                 />
+              )}
+              {view === "list" && money.items.length > 0 && (
+                <ul className="deadline-list">
+                  {money.items.map((d) => (
+                    <li key={d.id}>
+                      <span className="muted small">{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d.date + "T12:00:00Z"))}</span> <DeadlineChip locale={locale} d={d} />
+                    </li>
+                  ))}
+                </ul>
               )}
               {view !== "list" && data.teams.some((x) => x.color) && (
                 <ul className="calendar-legend" aria-label={t.team}>
@@ -1421,6 +1437,7 @@ export function Calendar({
                         action: "feed",
                         name: d.get("name"),
                         teamId: d.get("team") || null,
+                        ...(money.available ? { includeMoney: d.has("includeMoney") } : {}),
                       });
                       setFeedUrl(result.url ?? "");
                     })
@@ -1445,6 +1462,12 @@ export function Calendar({
                       ))}
                     </select>
                   </Field>
+                  {money.available && (
+                    <label className="check">
+                      <input type="checkbox" name="includeMoney" />
+                      {sponsorsCopy[locale].icsMoney}
+                    </label>
+                  )}
                   <Button disabled={busy}>{t.feedCreate}</Button>
                 </form>
                 {feedUrl && (

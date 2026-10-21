@@ -89,6 +89,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     action: z.literal("feed"),
     name: text(80).min(2),
     teamId: id.nullable(),
+    /** Wave 15: money deadlines in the feed (only kept for a person with money rights). */
+    includeMoney: z.boolean().optional(),
   }),
   z.object({ action: z.literal("revokeFeed"), id }),
   /** Copies the scheduled events of one week to another (both Mondays). */

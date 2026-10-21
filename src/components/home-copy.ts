@@ -170,6 +170,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Cotisations en retard",
         text: "Joueurs avec une échéance dépassée",
       },
+      sponsorTasks: {
+        title: "Conditions de sponsor à livrer",
+        text: "À faire dans les 14 jours ou en retard",
+      },
       documentsReview: {
         title: "Documents à vérifier",
         text: "Dépôts en attente de validation",
@@ -327,6 +331,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Achterstallige bijdragen",
         text: "Spelers met een vervallen termijn",
       },
+      sponsorTasks: {
+        title: "Sponsorvoorwaarden te leveren",
+        text: "Binnen 14 dagen te doen of te laat",
+      },
       documentsReview: {
         title: "Documenten te controleren",
         text: "Uploads wachten op validatie",
@@ -483,6 +491,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       duesLate: {
         title: "Late dues",
         text: "Players with an overdue instalment",
+      },
+      sponsorTasks: {
+        title: "Sponsor conditions to deliver",
+        text: "Due within 14 days or late",
       },
       documentsReview: {
         title: "Documents to check",
