@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { coursesView } from "@/domains/coaches/service";
 import { errors } from "./access-copy";
+import { PageHeader } from "./ui";
 
 type View = Awaited<ReturnType<typeof coursesView>>;
 const copy = {
@@ -81,8 +82,7 @@ export function FederationClubs({ locale }: { locale: Locale }) {
     view?.clubs.reduce((n, c) => n + c[k], 0) ?? 0;
   return (
     <main id="main" className="access federation-clubs">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {error && <p className="notice">{error}</p>}
       {!view && !error && <p role="status">{t.loading}</p>}
       {view &&
