@@ -115,12 +115,8 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     );
     for (const locale of ["fr", "nl"]) {
       await page.goto("/" + locale + "/calendar");
-      await expect(
-        page.getByRole("heading", {
-          name: locale === "fr" ? "Agenda" : "Agenda",
-          exact: true,
-        }),
-      ).toBeVisible();
+      // Wave 15: the agenda card is titled with the period, its views in a segmented control.
+      await expect(page.getByRole("group", { name: locale === "fr" ? "Vue" : "Weergave", exact: true })).toBeVisible();
       await accessible(page);
     }
     await page.goto("/fr/calendar");

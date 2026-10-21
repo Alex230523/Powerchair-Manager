@@ -41,6 +41,7 @@ test("calendar: week grid, views, colours, event sheet and subscription", async 
       }
     }
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
+    await db.query('DELETE FROM "rateLimit"');
     const signup = await playerPage.request.post("/api/auth/sign-up/email", {
       headers: { origin },
       data: { name: "Planner Player", email: `planner-player-${Date.now()}@example.test`, password: "Browser-test-passphrase-2026!" },
