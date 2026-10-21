@@ -20,6 +20,7 @@ import {
   type Doc,
 } from "../documents/access";
 import {
+  buildBoard,
   buildTodos,
   metric,
   type AgendaItem,
@@ -38,6 +39,7 @@ import { today } from "../calendar/access";
 import { duesTotals } from "../dues/schema";
 import { setupState } from "../setup/service";
 import { setupShown } from "../setup/schema";
+import { clubStatus } from "../club/obligations";
 
 /**
  * Read-only operational summary for the active context.
@@ -476,6 +478,35 @@ export async function computeFor(
     };
     scopes.push("money");
   }
+  // The president's key figures (wave 16, A), for the season in view: distinct people, done sessions, played matches.
+  const president = club && (a.role === "club_president" || has("mandates.manage"));
+  if (president && seasonRow) {
+    const live = `NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=LEAST(CURRENT_DATE,$3::date) AND (m.ends_on IS NULL OR m.ends_on>=GREATEST($2::date,LEAST(CURRENT_DATE,$3::date)))`;
+    const k = (
+      await c.query(
+        `SELECT (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role='player' AND ${live} AND ($5::uuid IS NULL OR t.id=$5)) AS players,
+                (SELECT count(*)::int FROM team t WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND ($5::uuid IS NULL OR t.id=$5)) AS teams,
+                (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role IN ('coach','assistant') AND ${live} AND ($5::uuid IS NULL OR t.id=$5)) AS coaches,
+                (SELECT count(*)::int FROM equipment_chair WHERE organization_id=$1 AND status<>'retired' AND ownership<>'player') AS chairs,
+                (SELECT count(*)::int FROM equipment_chair WHERE organization_id=$1 AND status='maintenance' AND ownership<>'player') AS chairs_service,
+                (SELECT count(*)::int FROM calendar_event e WHERE e.organization_id=$1 AND e.kind='training' AND e.status='scheduled' AND e.ends_at<now() AND e.starts_at>=$2::date AND e.starts_at<$3::date+1 AND ($5::uuid IS NULL OR e.team_id=$5)) AS trainings,
+                (SELECT count(*)::int FROM match x WHERE x.organization_id=$1 AND x.status='played' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($5::uuid IS NULL OR x.team_id=$5)) AS matches`,
+        [org, seasonRow.starts_on, seasonRow.ends_on, seasonRow.id, teamId],
+      )
+    ).rows[0] as { players: number; teams: number; coaches: number; chairs: number; chairs_service: number; trainings: number; matches: number };
+    const season = `?season=${seasonRow.id}`;
+    metrics.push(
+      metric("seasonPlayers", k.players, { href: `/players${season}` }),
+      metric("seasonTeams", k.teams, { href: `/teams${season}` }),
+      metric("seasonCoaches", k.coaches, { href: `/coaches${season}` }),
+      ...(on("equipment") ? [metric("chairs", k.chairs, { href: "/equipment", extra: k.chairs_service })] : []),
+      metric("trainingsDone", k.trainings, { href: `/attendance${season}` }),
+      ...(on("matches") ? [metric("matchesPlayed", k.matches, { href: `/matches${season}` })] : []),
+    );
+  }
+  // « Statut du club » (wave 16, A): the obligations of the year, for the president.
+  const status = president ? await clubStatus(c, org) : null;
+
   // The week asked for: events the actor may read, filtered like the calendar and the team in view.
   let week: Dashboard["week"];
   if (raw.week && /^\d{4}-\d{2}-\d{2}$/.test(raw.week) && !Number.isNaN(Date.parse(raw.week + "T00:00:00Z"))) {
@@ -534,6 +565,7 @@ export async function computeFor(
       mail: club && (has("notifications.manage") || has("calendar.manage")),
     },
     todos: buildTodos(counts),
+    board: buildBoard(counts, { president, status }),
     metrics,
     agenda,
     deadlines: deadlines.slice(0, limits.deadlines),
