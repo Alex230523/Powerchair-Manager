@@ -21,6 +21,8 @@ const labels = {
 /** Creates the account, opens the sign-in card (back to « Mon espace » afterwards) and fills it; the test clicks « Se connecter ». */
 export async function prepareSignIn(page: Page, db: Pool, name: string, email: string, password: string, locale: "fr" | "nl" | "en" = "fr") {
   await createAccount(db, name, email, password);
+  // Many sign-ins in a row across the suite: the e2e database starts each one with a clean rate window.
+  await db.query('DELETE FROM "rateLimit"');
   await page.goto(`/${locale}/access?next=${encodeURIComponent(`/${locale}/access`)}`);
   await page.getByLabel(labels[locale].email, { exact: true }).fill(email);
   await page.getByLabel(labels[locale].password, { exact: true }).fill(password);
@@ -41,5 +43,6 @@ export async function signUpVia(
   options: { headers?: Record<string, string>; data: { name: string; email: string; password: string } },
 ): Promise<SignUpAnswer> {
   await createAccount(db, options.data.name, options.data.email, options.data.password);
+  await db.query('DELETE FROM "rateLimit"');
   return target.request.post("/api/auth/sign-in/email", { headers: options.headers, data: { email: options.data.email, password: options.data.password } }) as Promise<SignUpAnswer>;
 }
