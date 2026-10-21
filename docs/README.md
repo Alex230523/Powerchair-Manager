@@ -58,6 +58,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 15, C13 : réglages rangés en sous-pages](evolutions/2026-10-21-w-vague-15-reglages-sous-pages.md) |
 | 21/10/2026 | [Vague 15, prompt 1.C : cotisations, déplacements et cagnottes par équipe](evolutions/2026-10-21-x-vague-15-equipe-cotisations-deplacements-cagnottes.md) |
 | 21/10/2026 | [Vague 15, C1 : sponsors, formules du club, conditions et calendrier](evolutions/2026-10-21-y-vague-15-sponsors-formules.md) |
+| 21/10/2026 | [Vague 15, C2 : subsides, dossier complet, check-list, organismes et année suivante](evolutions/2026-10-21-z-vague-15-subsides-dossier.md) |
 
 ## Convention
 

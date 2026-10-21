@@ -418,6 +418,8 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
         push({ kind: d.source, date: d.date, title: d.title, count: 1, href: d.href });
     // Conditions to deliver within 14 days (late ones too): all for the president, one's own otherwise.
     counts.sponsorTasks = await openTasksCount(c, org, "partner", 14, a.role === "club_president" && moneyPeople, own);
+    // Grant check-lists (wave 15, C2): same rule, the person in charge sees their own steps.
+    counts.grantTasks = await openTasksCount(c, org, "grant", 14, a.role === "club_president" && moneyPeople, own);
   }
   deadlines.sort((x, y) => x.date.localeCompare(y.date));
 

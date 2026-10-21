@@ -174,6 +174,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Conditions de sponsor à livrer",
         text: "À faire dans les 14 jours ou en retard",
       },
+      grantTasks: {
+        title: "Tâches de subsides",
+        text: "Étapes de dossier à faire dans les 14 jours ou en retard",
+      },
       documentsReview: {
         title: "Documents à vérifier",
         text: "Dépôts en attente de validation",
@@ -335,6 +339,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Sponsorvoorwaarden te leveren",
         text: "Binnen 14 dagen te doen of te laat",
       },
+      grantTasks: {
+        title: "Subsidietaken",
+        text: "Dossierstappen binnen 14 dagen of te laat",
+      },
       documentsReview: {
         title: "Documenten te controleren",
         text: "Uploads wachten op validatie",
@@ -495,6 +503,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       sponsorTasks: {
         title: "Sponsor conditions to deliver",
         text: "Due within 14 days or late",
+      },
+      grantTasks: {
+        title: "Grant tasks",
+        text: "File steps due within 14 days or overdue",
       },
       documentsReview: {
         title: "Documents to check",

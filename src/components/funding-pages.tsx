@@ -20,8 +20,8 @@ type Partner = View["partners"][number];
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const euro = (locale: Locale, cents: number) =>
   new Intl.NumberFormat(tag(locale), { style: "currency", currency: "EUR" }).format(cents / 100);
-const cents = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? "0").replace(",", ".") || 0) * 100);
-const dateOrNull = (v: FormDataEntryValue | null) => (String(v ?? "") ? String(v) : null);
+export const cents = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? "0").replace(",", ".") || 0) * 100);
+export const dateOrNull = (v: FormDataEntryValue | null) => (String(v ?? "") ? String(v) : null);
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
 /** A day n days from now (no Date.now in render: the lint rule of purity). */
 const inDays = (n: number) => {
@@ -30,7 +30,7 @@ const inDays = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-function useFunding(locale: Locale) {
+export function useFunding(locale: Locale) {
   const t = fundingCopy[locale] as (typeof fundingCopy)["fr"];
   const full = sponsorsCopy[locale].packageFull;
   const failure = useCallback((code: string) => (code === "PACKAGE_FULL" ? full : (errors[code]?.[locale] ?? t.unavailable)), [locale, t.unavailable, full]);
@@ -40,7 +40,7 @@ function useFunding(locale: Locale) {
     d ? new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")) : "";
   return { t, data, error, setError, reload, message, busy, post, day };
 }
-function Nav({ locale, current }: { locale: Locale; current: "grants" | "partners" }) {
+export function Nav({ locale, current }: { locale: Locale; current: "grants" | "partners" }) {
   const s = shellCopy[locale];
   return (
     <>
@@ -51,7 +51,7 @@ function Nav({ locale, current }: { locale: Locale; current: "grants" | "partner
     </>
   );
 }
-function ContactSelect({
+export function ContactSelect({
   name,
   value,
   contacts,
@@ -79,241 +79,7 @@ function ContactSelect({
   );
 }
 
-const grantTone: Record<string, Tone> = { idea: "neutral", submitted: "info", granted: "success", refused: "danger", paid: "success", closed: "neutral" };
-/** Grants (subsides): one row per application, the next date in front. */
-export function Grants({ locale }: { locale: Locale }) {
-  const { t, data, error, message, busy, post, day } = useFunding(locale);
-  const g = t.grants;
-  const [editing, setEditing] = useState<Grant | "new" | null>(null),
-    [status, setStatus] = useState("");
-  if (!data)
-    return (
-      <main id="main" className="access funding-grants">
-        <PageHeader title={g.title} />
-        {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
-      </main>
-    );
-  const rows = data.grants.filter((x) => !status || x.status === status);
-  const open = data.grants.filter((x) => ["idea", "submitted", "granted"].includes(x.status));
-  const requested = open.reduce((n, x) => n + x.requested_cents, 0);
-  const granted = data.grants.filter((x) => x.status === "granted" || x.status === "paid").reduce((n, x) => n + (x.granted_cents ?? 0), 0);
-  const submit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const cur = editing && editing !== "new" ? editing : undefined;
-    void post(
-      {
-        organizationId: data.organization_id,
-        action: "grant",
-        ...(cur ? { id: cur.id } : {}),
-        seasonId: String(f.get("season") ?? "") || null,
-        funder: String(f.get("funder") ?? ""),
-        program: String(f.get("program") ?? ""),
-        purpose: String(f.get("purpose") ?? ""),
-        requestedCents: cents(f.get("requested")),
-        grantedCents: String(f.get("granted") ?? "") ? cents(f.get("granted")) : null,
-        status: String(f.get("status") ?? "idea"),
-        deadlineOn: dateOrNull(f.get("deadline")),
-        submittedOn: dateOrNull(f.get("submitted")),
-        decisionOn: dateOrNull(f.get("decision")),
-        paidOn: dateOrNull(f.get("paid")),
-        reportDueOn: dateOrNull(f.get("report")),
-        contactId: String(f.get("contact") ?? "") || null,
-        notes: String(f.get("notes") ?? ""),
-      },
-      t.saved,
-    ).then((ok) => ok && setEditing(null));
-  };
-  return (
-    <main id="main" className="access funding-grants">
-      <PageHeader
-        title={g.title}
-        subtitle={g.intro}
-        actions={
-          <>
-            <Nav locale={locale} current="grants" />
-            {data.can.manage && (
-              <button type="button" className="button" onClick={() => setEditing("new")}>{g.new}</button>
-            )}
-          </>
-        }
-      />
-      {error && <p role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
-      <div className="stat-row-grid" data-cols="4">
-        <StatCard label={g.open} value={String(open.length)} icon="document" tone="brand" />
-        <StatCard label={g.totalRequested} value={euro(locale, requested)} icon="funding" tone="info" />
-        <StatCard label={g.totalGranted} value={euro(locale, granted)} icon="check" tone="success" />
-        <StatCard label={g.received} value={euro(locale, data.received.subsidy ?? 0)} icon="dues" tone="neutral" href={`/${locale}/funding`} />
-      </div>
-      <Card title={g.title} id="grants" className="flush"
-        actions={
-          <Toolbar>
-            <div className="toolbar-field">
-              <label htmlFor="grant-status">{t.status}</label>
-              <select id="grant-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">{t.all}</option>
-                {grantStatuses.map((k) => (
-                  <option key={k} value={k}>{g.statuses[k]}</option>
-                ))}
-              </select>
-            </div>
-          </Toolbar>
-        }
-      >
-        {rows.length ? (
-          <div className="table-scroll">
-            <table className="compact-table">
-              <thead>
-                <tr>
-                  <th scope="col">{g.funder}</th>
-                  <th scope="col">{g.purpose}</th>
-                  <th scope="col" className="num">{g.requested}</th>
-                  <th scope="col" className="num">{g.granted}</th>
-                  <th scope="col">{g.next}</th>
-                  <th scope="col">{t.status}</th>
-                  <th scope="col"><span className="sr-only">{t.edit}</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((x) => (
-                  <tr key={x.id}>
-                    <th scope="row">
-                      {x.funder}
-                      {x.program && <span className="muted small"> · {x.program}</span>}
-                      {x.contact_name && <span className="muted small"> · {x.contact_name}</span>}
-                    </th>
-                    <td>{x.purpose}{x.season_name && <span className="muted small"> · {x.season_name}</span>}</td>
-                    <td className="num">{euro(locale, x.requested_cents)}</td>
-                    <td className="num">{x.granted_cents === null ? "…" : euro(locale, x.granted_cents)}</td>
-                    <td>
-                      {x.next ? (
-                        <>
-                          {g.nextKinds[x.next.kind]} · {day(x.next.date)}
-                          {x.next.date < today() && <Badge tone="danger">!</Badge>}
-                        </>
-                      ) : (
-                        <span className="muted">…</span>
-                      )}
-                    </td>
-                    <td><Badge tone={grantTone[x.status]} dot>{g.statuses[x.status]}</Badge></td>
-                    <td className="row-actions">
-                      {data.can.manage && (
-                        <button type="button" className="text-button" onClick={() => setEditing(x)}>
-                          {t.edit}<span className="sr-only"> : {x.funder}</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title={g.empty} icon="document" />
-        )}
-      </Card>
-      {editing && (
-        <Modal title={editing === "new" ? g.new : `${g.editTitle} · ${editing.funder}`} close={() => setEditing(null)}>
-          <form className="finance-form" onSubmit={submit}>
-            <div className="form-pair">
-              <label>
-                {g.funder}
-                <input name="funder" required minLength={2} maxLength={160} defaultValue={editing === "new" ? "" : editing.funder} />
-              </label>
-              <label>
-                {g.program}
-                <input name="program" maxLength={160} defaultValue={editing === "new" ? "" : editing.program} />
-              </label>
-            </div>
-            <label>
-              {g.purpose}
-              <textarea name="purpose" rows={2} maxLength={2000} defaultValue={editing === "new" ? "" : editing.purpose} />
-            </label>
-            <div className="form-pair">
-              <label>
-                {g.season}
-                <select name="season" defaultValue={editing === "new" ? "" : (editing.season_id ?? "")}>
-                  <option value="">{t.none}</option>
-                  {data.seasons.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t.status}
-                <select name="status" defaultValue={editing === "new" ? "idea" : editing.status}>
-                  {grantStatuses.map((k) => (
-                    <option key={k} value={k}>{g.statuses[k]}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="form-pair">
-              <label>
-                {g.requested}
-                <input name="requested" inputMode="decimal" defaultValue={editing === "new" ? "" : String(editing.requested_cents / 100)} />
-              </label>
-              <label>
-                {g.granted}
-                <input name="granted" inputMode="decimal" defaultValue={editing === "new" || editing.granted_cents === null ? "" : String(editing.granted_cents / 100)} />
-              </label>
-            </div>
-            <div className="form-pair">
-              <label>
-                {g.deadline}
-                <input name="deadline" type="date" defaultValue={editing === "new" ? "" : (editing.deadline_on ?? "")} />
-              </label>
-              <label>
-                {g.submitted}
-                <input name="submitted" type="date" defaultValue={editing === "new" ? "" : (editing.submitted_on ?? "")} />
-              </label>
-            </div>
-            <div className="form-pair">
-              <label>
-                {g.decision}
-                <input name="decision" type="date" defaultValue={editing === "new" ? "" : (editing.decision_on ?? "")} />
-              </label>
-              <label>
-                {g.paid}
-                <input name="paid" type="date" defaultValue={editing === "new" ? "" : (editing.paid_on ?? "")} />
-              </label>
-            </div>
-            <div className="form-pair">
-              <label>
-                {g.report}
-                <input name="report" type="date" defaultValue={editing === "new" ? "" : (editing.report_due_on ?? "")} />
-              </label>
-              <ContactSelect name="contact" value={editing === "new" ? null : editing.contact_id} contacts={data.contacts} label={t.contact} none={t.noContact} />
-            </div>
-            <label>
-              {t.notes}
-              <textarea name="notes" rows={3} maxLength={4000} defaultValue={editing === "new" ? "" : editing.notes} />
-            </label>
-            <div className="actions">
-              <button className="button" disabled={busy}>{t.save}</button>
-              <button type="button" className="button secondary" onClick={() => setEditing(null)}>{t.cancel}</button>
-              {editing !== "new" && (
-                <button
-                  type="button"
-                  className="text-button danger"
-                  disabled={busy}
-                  onClick={() => {
-                    if (!window.confirm(t.confirmRemove)) return;
-                    void post({ organizationId: data.organization_id, action: "deleteGrant", id: editing.id }, t.deleted).then((ok) => ok && setEditing(null));
-                  }}
-                >
-                  {t.remove}
-                </button>
-              )}
-            </div>
-          </form>
-        </Modal>
-      )}
-    </main>
-  );
-}
-
+export const grantTone: Record<string, Tone> = { idea: "neutral", submitted: "info", granted: "success", refused: "danger", paid: "success", closed: "neutral" };
 const partnerTone: Record<string, Tone> = { prospect: "info", active: "success", ended: "neutral" };
 /** What the page was opened with: a sheet (?partner=), a prefilled new partner (from a pot), a tab. */
 export type PartnersStart = { partner?: string; name?: string; note?: string; tab?: "partners" | "packages" };

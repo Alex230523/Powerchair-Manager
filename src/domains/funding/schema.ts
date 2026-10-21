@@ -80,8 +80,36 @@ export const fundingCommand = z.discriminatedUnion("action", [
     reportDueOn: day,
     contactId: z.uuid().nullable().optional(),
     notes: text(4000),
+    /** Wave 15 (C2): the funder chosen in the list (otherwise found or created from its name). Absent fields keep their value. */
+    funderId: z.uuid().nullable().optional(),
+    programUrl: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(500)]).optional(),
+    conditions: text(4000).optional(),
+    explanation: text(4000).optional(),
+    endsOn: day,
+    recheckOn: day,
   }),
   z.object({ action: z.literal("deleteGrant"), id: z.uuid() }),
+  z.object({
+    action: z.literal("funder"),
+    id: z.uuid(),
+    name: text(160).min(2),
+    website: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(300)]),
+    email: z.union([z.literal(""), z.email().max(200)]),
+    phone: text(40),
+    address: text(300),
+    notes: text(2000),
+    contactId: z.uuid().nullable(),
+  }),
+  /** The usual check-list of a grant file, added to its tasks (titles in the user's language). */
+  z.object({ action: z.literal("grantChecklist"), grantId: z.uuid(), locale: z.enum(["fr", "nl", "en"]) }),
+  /** Next year's application: same funder, programme, texts and check-list (unticked, one year later). */
+  z.object({ action: z.literal("nextYear"), grantId: z.uuid() }),
+  /** Equipment financed by the grant, with its purchase value. */
+  z.object({
+    action: z.literal("grantChairs"),
+    grantId: z.uuid(),
+    chairs: z.array(z.object({ id: z.uuid(), purchaseValueCents: cents.nullable() })).max(100),
+  }),
   z.object({
     action: z.literal("partner"),
     id: z.uuid().optional(),
@@ -255,3 +283,23 @@ export const examplePackages = {
     ] },
   ],
 } as const;
+
+/** The usual steps of a grant file (wave 15, C2), editable once added. */
+export const grantChecklist = {
+  fr: ["Lire l’appel et ses conditions", "Réunir les statuts et les derniers comptes", "Rédiger le dossier", "Faire signer le dossier", "Déposer le dossier", "Suivre la décision", "Récolter les factures", "Rendre le justificatif"],
+  nl: ["De oproep en de voorwaarden lezen", "De statuten en de laatste rekeningen verzamelen", "Het dossier schrijven", "Het dossier laten ondertekenen", "Het dossier indienen", "De beslissing opvolgen", "De facturen verzamelen", "De verantwoording indienen"],
+  en: ["Read the call and its conditions", "Gather the statutes and the latest accounts", "Write the file", "Have the file signed", "File the application", "Follow the decision", "Collect the invoices", "Hand in the report"],
+} as const;
+/** State of a grant's deadline: warning within 14 days, danger once passed while not filed. */
+export function deadlineTone(g: { status: string; deadline_on: string | null }, today: string): "danger" | "warning" | null {
+  if (!g.deadline_on || g.status !== "idea") return null;
+  if (g.deadline_on < today) return "danger";
+  return g.deadline_on <= addDays(today, 14) ? "warning" : null;
+}
+/** The same day one year later (29 February becomes 28 February), for next year's application. */
+export function nextYearDate(d: string | null) {
+  if (!d) return null;
+  const year = Number(d.slice(0, 4)) + 1;
+  const md = d.slice(5) === "02-29" ? "02-28" : d.slice(5);
+  return `${year}-${md}`;
+}
