@@ -1,5 +1,5 @@
 import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
-import { mfaSatisfied, mfaRequired } from "../../lib/security-policy";
+import { mfaSatisfied } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { Pool, PoolClient } from "pg";
 import { z } from "zod";
@@ -177,7 +177,6 @@ async function readWorkspace(db: Db, p: Principal) {
   );
   const result: {
     user: typeof user;
-    mfaRequired: boolean;
     contexts: unknown[];
     profiles: {
       id: string;
@@ -206,7 +205,6 @@ async function readWorkspace(db: Db, p: Principal) {
           [p.userId],
         )
       ).rows[0]?.v ?? null,
-    mfaRequired: mfaRequired(),
     contexts: contexts.rows,
     profiles: (
       await db.query(

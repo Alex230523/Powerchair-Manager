@@ -48,7 +48,15 @@ import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
 const CLUB = "Club démo Powerchair";
-export const DEMO_PASSWORD = "Demo-Powerchair-2026";
+/**
+ * Local and Codespaces demo: the public password below. An online preview
+ * (Vercel) must use its own secret instead, PFM_DEMO_PASSWORD, which is
+ * never printed.
+ */
+const ownPassword = process.env.PFM_DEMO_PASSWORD;
+if (process.env.VERCEL_ENV && (!ownPassword || ownPassword.length < 12))
+  throw new Error("PFM_DEMO_PASSWORD (12 characters minimum) is required for an online preview.");
+export const DEMO_PASSWORD = ownPassword || "Demo-Powerchair-2026";
 const accounts = [
   {
     key: "president",
@@ -92,10 +100,13 @@ const refereeAccount = {
   profile: "Arbitre · BPCF (démo)",
 };
 
-if (process.env.NODE_ENV === "production" && !process.argv.includes("--force"))
+// Never in a Vercel production deployment. Elsewhere in production mode (a
+// Vercel preview builds with NODE_ENV=production), only with the project's
+// own secret password, never the public one written above.
+if (process.env.VERCEL_ENV === "production")
+  throw new Error("Refusing to create demo accounts in production.");
+if (process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
-// The seed acts through the services as the president; MFA is not set up for demo accounts.
-process.env.PFM_MFA_SUSPENDED = "true";
 
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth(db);
@@ -1586,7 +1597,11 @@ try {
 }
 
 function printAccounts() {
-  console.log(`\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`);
+  console.log(
+    ownPassword
+      ? "\nComptes de démonstration (mot de passe : celui de PFM_DEMO_PASSWORD)"
+      : `\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`,
+  );
   for (const a of [...accounts, federationAccount, refereeAccount])
     console.log(`  ${a.email.padEnd(22)} ${a.profile}`);
   console.log("\nConnexion : /fr/access\n");

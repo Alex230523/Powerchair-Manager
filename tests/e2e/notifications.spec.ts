@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
-import { totp } from "../support/totp";
 const origin = "http://127.0.0.1:3100";
 test("notification inbox, FR/NL models, preferences and local delivery queue", async ({
   page,
@@ -20,22 +19,6 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
     });
     expect(signup.status(), await signup.text()).toBe(200);
     const user = (await signup.json()).user;
-    const enable = await page.request.post("/api/auth/two-factor/enable", {
-      headers: { origin },
-      data: { password },
-    });
-    expect(enable.status(), await enable.text()).toBe(200);
-    const secret = new URL((await enable.json()).totpURI).searchParams.get(
-      "secret",
-    )!;
-    expect(
-      (
-        await page.request.post("/api/auth/two-factor/verify-totp", {
-          headers: { origin },
-          data: { code: totp(secret) },
-        })
-      ).status(),
-    ).toBe(200);
     const org = (
       await db.query(
         "INSERT INTO organization(name,kind) VALUES('Club Notifications','club') RETURNING id",

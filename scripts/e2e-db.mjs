@@ -25,7 +25,6 @@ try {
     PFM_E2E_DATABASE_URL: base.toString(),
     BETTER_AUTH_URL: "http://127.0.0.1:3100",
     PFM_LOCAL_MAIL: "true",
-    PFM_MFA_SUSPENDED: process.env.PFM_TEST_MFA_SUSPENDED ?? "false",
     MAIL_TRANSPORT: "local",
     PFM_MAIL_DIR: ".local/mail-e2e",
   };

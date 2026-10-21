@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
-import { totp } from "../support/totp";
 const origin = "http://127.0.0.1:3100";
 test("unverified accounts, document requests, deposit, review, versions and generated template", async ({
   page,
@@ -26,22 +25,6 @@ test("unverified accounts, document requests, deposit, review, versions and gene
     expect(signup.status()).toBe(200);
     const admin = (await signup.json()).user;
     expect(admin.emailVerified).toBe(false);
-    const enable = await page.request.post("/api/auth/two-factor/enable", {
-      headers: { origin },
-      data: { password },
-    });
-    expect(enable.status()).toBe(200);
-    const secret = new URL((await enable.json()).totpURI).searchParams.get(
-      "secret",
-    )!;
-    expect(
-      (
-        await page.request.post("/api/auth/two-factor/verify-totp", {
-          headers: { origin },
-          data: { code: totp(secret) },
-        })
-      ).status(),
-    ).toBe(200);
     const playerSignup = await playerPage.request.post(
       "/api/auth/sign-up/email",
       {
