@@ -60,7 +60,7 @@ test("events: button in the header, a training for Équipe A with answers, a tri
     await editor.getByLabel("Relier un déplacement existant").selectOption({ label: `Bus du mardi · ${start}` });
     await axe(page, "event form");
     await editor.getByRole("button", { name: "Enregistrer l’événement" }).click();
-    await expect(page.getByText("Enregistré", { exact: false }).first()).toBeVisible();
+    await expect(page.getByText("Enregistré.", { exact: true })).toBeVisible();
     const event = (await db.query("SELECT id FROM calendar_event WHERE organization_id=$1 AND title='Entraînement du mardi'", [club])).rows[0].id;
     expect((await db.query("SELECT count(*)::int AS n FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$1", [event])).rows[0].n).toBe(1);
 

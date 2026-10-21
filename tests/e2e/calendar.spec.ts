@@ -153,6 +153,8 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     });
     await editor.getByLabel("Équipe", { exact: true }).selectOption(team);
     await editor.getByLabel("Lieu", { exact: true }).selectOption(place);
+    // Wave 16 (E1): responsible, visibility and attachments live in « Avancé ».
+    await editor.locator("summary", { hasText: "Avancé" }).click();
     await editor.getByLabel("Visibilité", { exact: true }).selectOption("team");
     await editor.getByLabel("Récurrence", { exact: true }).selectOption("7");
     await editor
