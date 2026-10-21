@@ -10,6 +10,7 @@ import {
   type Principal,
 } from "../access/service";
 import { permissions } from "../access/policy";
+import { ownProfiles } from "../calendar/access";
 
 /**
  * Fundraising, kept apart from the club accounts. A group (support committee,
@@ -36,6 +37,8 @@ export const fundraisingCommand = z.discriminatedUnion("action", [
     goalCents: z.number().int().min(100).max(1000000000),
     deadline: z.iso.date().nullable(),
     status: z.enum(["open", "closed"]),
+    /** The players take part: they see the pot and note what they collect. */
+    playersJoin: z.boolean().optional(),
   }),
   z.object({ action: z.literal("publish"), potId: z.uuid(), public: z.boolean() }),
   z.object({
@@ -47,6 +50,19 @@ export const fundraisingCommand = z.discriminatedUnion("action", [
     amountCents: z.number().int().min(1).max(1000000000),
     donor: text(160),
     anonymous: z.boolean(),
+    /** The player who collected it, when the pot is run with the players. */
+    profileId: z.uuid().nullable().optional(),
+  }),
+  /** A player (or a parent for a child) notes what they collected themselves. */
+  z.object({
+    action: z.literal("collect"),
+    potId: z.uuid(),
+    profileId: z.uuid(),
+    occurredOn: z.iso.date(),
+    kind: z.enum(["donation", "sponsor", "action"]),
+    label: text(160).min(2),
+    amountCents: z.number().int().min(1).max(1000000000),
+    donor: text(160),
   }),
   z.object({ action: z.literal("cancelMovement"), id: z.uuid() }),
 ]);
@@ -62,6 +78,9 @@ export type MovementView = {
   anonymous?: boolean;
   cancelled_at?: string | null;
   author?: string;
+  profile_id?: string | null;
+  collector?: string | null;
+  self_reported?: boolean;
 };
 
 /** Collected = gifts, sponsors, actions and subsidies, minus expenses. */
@@ -91,8 +110,17 @@ async function scope<T>(
   db: Pool,
   p: Principal,
   write: boolean,
-  fn: (x: { c: PoolClient; org: string; manage: boolean; detail: boolean; userId: string }) => Promise<T>,
+  fn: (x: {
+    c: PoolClient;
+    org: string;
+    manage: boolean;
+    detail: boolean;
+    userId: string;
+    own: Set<string>;
+  }) => Promise<T>,
   expected?: string,
+  /** The command is a member's own collection: no money right needed. */
+  member = false,
 ) {
   const c = await db.connect();
   try {
@@ -110,8 +138,9 @@ async function scope<T>(
     const manage = mfa && rights.includes("dues.manage");
     // Donor names and the movement list: money managers and readers only.
     const detail = manage || (mfa && rights.includes("dues.read"));
-    if (write && !manage) throw new AccessError(mfa ? "FORBIDDEN" : "MFA_REQUIRED");
-    const out = await fn({ c, org: a.organization_id, manage, detail, userId: p.userId });
+    if (write && !manage && !member) throw new AccessError(mfa ? "FORBIDDEN" : "MFA_REQUIRED");
+    const own = await ownProfiles(c, { ...a, twoFactorEnabled: !!user.twoFactorEnabled });
+    const out = await fn({ c, org: a.organization_id, manage, detail, userId: p.userId, own });
     await c.query("COMMIT");
     return out;
   } catch (e) {
@@ -125,7 +154,7 @@ async function scope<T>(
 }
 
 export async function fundraisingView(db: Pool, p: Principal) {
-  return scope(db, p, false, async ({ c, org, manage, detail }) => {
+  return scope(db, p, false, async ({ c, org, manage, detail, own }) => {
     const groups = (
       await c.query(
         "SELECT id,name,description,archived FROM fundraising_group WHERE organization_id=$1 AND ($2 OR NOT archived) ORDER BY archived,name",
@@ -134,7 +163,7 @@ export async function fundraisingView(db: Pool, p: Principal) {
     ).rows;
     const pots = (
       await c.query(
-        "SELECT id,group_id,name,description,goal_cents,deadline::text AS deadline,status,public_token,version FROM fundraising_pot WHERE organization_id=$1 ORDER BY status,created_at DESC",
+        "SELECT id,group_id,name,description,goal_cents,deadline::text AS deadline,status,public_token,players_join,version FROM fundraising_pot WHERE organization_id=$1 ORDER BY status,created_at DESC",
         [org],
       )
     ).rows as {
@@ -146,32 +175,71 @@ export async function fundraisingView(db: Pool, p: Principal) {
       deadline: string | null;
       status: string;
       public_token: string | null;
+      players_join: boolean;
       version: number;
     }[];
     const movements = (
       await c.query(
-        `SELECT m.id,m.pot_id,m.occurred_on::text AS occurred_on,m.kind,m.label,m.amount_cents,m.donor,m.anonymous,m.cancelled_at,u.name AS author
-           FROM fundraising_movement m JOIN fundraising_pot p ON p.id=m.pot_id JOIN "user" u ON u.id=m.created_by
+        `SELECT m.id,m.pot_id,m.occurred_on::text AS occurred_on,m.kind,m.label,m.amount_cents,m.donor,m.anonymous,m.cancelled_at,u.name AS author,m.profile_id,cp.full_name AS collector,m.self_reported
+           FROM fundraising_movement m JOIN fundraising_pot p ON p.id=m.pot_id JOIN "user" u ON u.id=m.created_by LEFT JOIN club_person cp ON cp.id=m.profile_id
           WHERE p.organization_id=$1 ORDER BY m.occurred_on DESC,m.created_at DESC`,
         [org],
       )
     ).rows as (MovementView & { pot_id: string; amount_cents: number })[];
+    const players = manage
+      ? ((
+          await c.query(
+            "SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' AND 'player'=ANY(directory_roles) AND NOT 'player'=ANY(former_roles) ORDER BY full_name",
+            [org],
+          )
+        ).rows as { id: string; full_name: string }[])
+      : [];
+    const ownProfilesList = own.size
+      ? ((
+          await c.query("SELECT id,full_name FROM club_person WHERE id=ANY($1::uuid[]) ORDER BY full_name", [[...own]])
+        ).rows as { id: string; full_name: string }[])
+      : [];
     return {
       organization_id: org,
       can: { manage, detail },
       groups,
+      players,
+      ownProfiles: ownProfilesList,
       pots: pots.map((pot) => {
-        const own = movements.filter((m) => m.pot_id === pot.id);
+        const mine = movements.filter((m) => m.pot_id === pot.id);
+        // Who collected what: shown to everyone when the players take part.
+        const byCollector = new Map<string, { profile_id: string; name: string; cents: number; count: number }>();
+        for (const m of mine)
+          if (m.profile_id && !m.cancelled_at && m.kind !== "expense") {
+            const v = byCollector.get(m.profile_id) ?? { profile_id: m.profile_id, name: m.collector ?? "", cents: 0, count: 0 };
+            v.cents += m.amount_cents;
+            v.count += 1;
+            byCollector.set(m.profile_id, v);
+          }
+        const collectors = [...byCollector.values()].sort((a, b) => b.cents - a.cents);
+        const ownMovements = mine.filter((m) => m.profile_id && own.has(m.profile_id));
         return {
           ...pot,
           public_token: manage ? pot.public_token : null,
-          progress: potProgress(pot.goal_cents, own),
+          progress: potProgress(pot.goal_cents, mine),
+          collectors: pot.players_join || detail ? collectors : [],
+          /** What the viewer (or their children) collected, with amounts. */
+          own_movements: ownMovements.map((m) => ({
+            id: m.id,
+            occurred_on: m.occurred_on,
+            kind: m.kind,
+            label: m.label,
+            amount_cents: m.amount_cents,
+            donor: m.donor,
+            collector: m.collector,
+            cancelled_at: m.cancelled_at,
+          })),
           movements: (detail
-            ? own
+            ? mine
             : // Members see the effort, not who gave what.
-              own
+              mine
                 .filter((m) => !m.cancelled_at && m.kind !== "expense")
-                .map((m) => ({ id: m.id, occurred_on: m.occurred_on, kind: m.kind, label: m.label }))) as MovementView[],
+                .map((m) => ({ id: m.id, occurred_on: m.occurred_on, kind: m.kind, label: m.label, collector: m.collector }))) as MovementView[],
         };
       }),
     };
@@ -188,7 +256,9 @@ export async function fundraisingExecute(
     db,
     p,
     true,
-    async ({ c, org, userId }) => {
+    async ({ c, org, userId, own, manage }) => {
+      if (cmd.action !== "collect" && cmd.action !== "cancelMovement" && !manage)
+        throw new AccessError("FORBIDDEN");
       const pot = async (id: string) => {
         const row = (
           await c.query("SELECT * FROM fundraising_pot WHERE id=$1 AND organization_id=$2 FOR UPDATE", [id, org])
@@ -221,18 +291,18 @@ export async function fundraisingExecute(
               .rowCount
           )
             throw new AccessError("NOT_FOUND", 404);
-          const values = [cmd.groupId, cmd.name, cmd.description, cmd.goalCents, cmd.deadline, cmd.status];
+          const values = [cmd.groupId, cmd.name, cmd.description, cmd.goalCents, cmd.deadline, cmd.status, cmd.playersJoin ?? null];
           if (cmd.id) {
             await pot(cmd.id);
             await c.query(
-              "UPDATE fundraising_pot SET group_id=$3,name=$4,description=$5,goal_cents=$6,deadline=$7,status=$8,version=version+1 WHERE id=$1 AND organization_id=$2",
+              "UPDATE fundraising_pot SET group_id=$3,name=$4,description=$5,goal_cents=$6,deadline=$7,status=$8,players_join=COALESCE($9,players_join),version=version+1 WHERE id=$1 AND organization_id=$2",
               [cmd.id, org, ...values],
             );
             return { id: cmd.id };
           }
           const id = (
             await c.query(
-              "INSERT INTO fundraising_pot(organization_id,group_id,name,description,goal_cents,deadline,status,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+              "INSERT INTO fundraising_pot(organization_id,group_id,name,description,goal_cents,deadline,status,players_join,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,COALESCE($8,false),$9) RETURNING id",
               [org, ...values, userId],
             )
           ).rows[0].id as string;
@@ -250,25 +320,46 @@ export async function fundraisingExecute(
         }
         case "movement": {
           await pot(cmd.potId);
+          if (
+            cmd.profileId &&
+            !(await c.query("SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2", [cmd.profileId, org])).rowCount
+          )
+            throw new AccessError("NOT_FOUND", 404);
           const id = (
             await c.query(
-              "INSERT INTO fundraising_movement(pot_id,occurred_on,kind,label,amount_cents,donor,anonymous,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
-              [cmd.potId, cmd.occurredOn, cmd.kind, cmd.label, cmd.amountCents, cmd.donor, cmd.anonymous, userId],
+              "INSERT INTO fundraising_movement(pot_id,occurred_on,kind,label,amount_cents,donor,anonymous,created_by,profile_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+              [cmd.potId, cmd.occurredOn, cmd.kind, cmd.label, cmd.amountCents, cmd.donor, cmd.anonymous, userId, cmd.profileId ?? null],
             )
           ).rows[0].id as string;
           return { id };
         }
+        case "collect": {
+          // A member notes what they (or their child) collected on a pot run with the players.
+          const row = await pot(cmd.potId);
+          if (!row.players_join || row.status !== "open") throw new AccessError("FORBIDDEN");
+          if (!own.has(cmd.profileId)) throw new AccessError("FORBIDDEN");
+          const id = (
+            await c.query(
+              "INSERT INTO fundraising_movement(pot_id,occurred_on,kind,label,amount_cents,donor,anonymous,created_by,profile_id,self_reported) VALUES($1,$2,$3,$4,$5,$6,false,$7,$8,true) RETURNING id",
+              [cmd.potId, cmd.occurredOn, cmd.kind, cmd.label, cmd.amountCents, cmd.donor, userId, cmd.profileId],
+            )
+          ).rows[0].id as string;
+          await audit(c, org, userId, "fundraising.collect", id);
+          return { id };
+        }
         case "cancelMovement": {
+          // Managers cancel anything; a member only what they noted themselves.
           const changed = await c.query(
-            "UPDATE fundraising_movement m SET cancelled_at=now(),cancelled_by=$3 FROM fundraising_pot p WHERE m.id=$1 AND p.id=m.pot_id AND p.organization_id=$2 AND m.cancelled_at IS NULL",
-            [cmd.id, org, userId],
+            "UPDATE fundraising_movement m SET cancelled_at=now(),cancelled_by=$3 FROM fundraising_pot p WHERE m.id=$1 AND p.id=m.pot_id AND p.organization_id=$2 AND m.cancelled_at IS NULL AND ($4 OR (m.self_reported AND m.created_by=$3))",
+            [cmd.id, org, userId, manage],
           );
-          if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
+          if (!changed.rowCount) throw new AccessError(manage ? "NOT_FOUND" : "FORBIDDEN", manage ? 404 : 403);
           return { id: cmd.id };
         }
       }
     },
     expected,
+    cmd.action === "collect" || cmd.action === "cancelMovement",
   );
 }
 

@@ -7,6 +7,20 @@ import { useData, usePost } from "./use-api";
 
 export const fundraisingCopy = {
   fr: {
+    playersJoin: "Les joueurs y participent",
+    playersJoinHint: "Chaque joueur (ou sa famille) voit la cagnotte dans son espace, voit qui a rapporté quoi et note lui-même ce qu'il a récolté.",
+    withPlayers: "Avec les joueurs",
+    collectors: "Qui a rapporté quoi",
+    noCollector: "Personne n'a encore noté de récolte.",
+    collector: "Récolté par",
+    mine: "Ce que j'ai récolté",
+    collect: "Noter ce que j'ai récolté",
+    forWhom: "Pour",
+    collectHint: "Un don reçu, un sponsor trouvé, une vente : notez-le ici, le club le voit tout de suite.",
+    collected: "Noté.",
+    potsForMe: "Mes cagnottes",
+    potsForMeIntro: "Les cagnottes du club auxquelles les joueurs participent. Notez ce que vous avez récolté, et voyez où en est l'équipe.",
+    nothingForMe: "Aucune cagnotte ouverte aux joueurs pour l'instant.",
     title: "Levée de fonds",
     intro:
       "Des cagnottes avec un objectif (nouveaux fauteuils, tournoi à l'étranger), rangées par groupement (comité de soutien, projet). C'est à part de la trésorerie : noter un don ici n'écrit rien dans les comptes du club, le trésorier l'encode de son côté.",
@@ -64,6 +78,20 @@ export const fundraisingCopy = {
     archived: "Archivé",
   },
   nl: {
+    playersJoin: "De spelers doen mee",
+    playersJoinHint: "Elke speler (of zijn gezin) ziet de pot in zijn omgeving, ziet wie wat binnenbracht en noteert zelf wat hij inzamelde.",
+    withPlayers: "Met de spelers",
+    collectors: "Wie bracht wat binnen",
+    noCollector: "Nog niemand noteerde een inzameling.",
+    collector: "Ingezameld door",
+    mine: "Wat ik inzamelde",
+    collect: "Noteren wat ik inzamelde",
+    forWhom: "Voor",
+    collectHint: "Een gift, een sponsor, een verkoop: noteer het hier, de club ziet het meteen.",
+    collected: "Genoteerd.",
+    potsForMe: "Mijn potten",
+    potsForMeIntro: "De potten van de club waaraan de spelers meedoen. Noteer wat u inzamelde en volg waar het team staat.",
+    nothingForMe: "Nog geen pot open voor de spelers.",
     title: "Fondsenwerving",
     intro:
       "Potten met een doel (nieuwe rolstoelen, toernooi in het buitenland), per groepering (steuncomité, project). Los van de boekhouding: een gift hier noteren schrijft niets in de rekeningen van de club, de penningmeester boekt het zelf.",
@@ -121,6 +149,20 @@ export const fundraisingCopy = {
     archived: "Gearchiveerd",
   },
   en: {
+    playersJoin: "The players take part",
+    playersJoinHint: "Each player (or their family) sees the pot in their space, sees who brought what and notes what they collected themselves.",
+    withPlayers: "With the players",
+    collectors: "Who brought what",
+    noCollector: "Nobody has noted a collection yet.",
+    collector: "Collected by",
+    mine: "What I collected",
+    collect: "Note what I collected",
+    forWhom: "For",
+    collectHint: "A gift received, a sponsor found, a sale: note it here, the club sees it at once.",
+    collected: "Noted.",
+    potsForMe: "My pots",
+    potsForMeIntro: "The club pots the players take part in. Note what you collected and see where the team stands.",
+    nothingForMe: "No pot open to the players yet.",
     title: "Fundraising",
     intro:
       "Pots with a goal (new chairs, a tournament abroad), grouped by committee or project. Kept apart from the accounts: noting a gift here writes nothing in the club ledger; the treasurer books it on their side.",
@@ -209,6 +251,127 @@ export function PotProgress({
   );
 }
 
+function Collectors({ pot, t, locale }: { pot: Pot; t: (typeof fundraisingCopy)["fr"]; locale: Locale }) {
+  return (
+    <div className="collectors">
+      <h4 className="card-subtitle">{t.collectors}</h4>
+      {pot.collectors.length ? (
+        <ol className="collector-list">
+          {pot.collectors.map((c, i) => (
+            <li key={c.profile_id}>
+              <span className="collector-rank" aria-hidden="true">{i + 1}</span>
+              <span className="collector-name">{c.name}</span>
+              <strong className="num">{euro(locale, c.cents)}</strong>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="muted small">{t.noCollector}</p>
+      )}
+    </div>
+  );
+}
+function CollectForm({
+  pot,
+  t,
+  locale,
+  busy,
+  send,
+  own,
+}: {
+  pot: Pot;
+  t: (typeof fundraisingCopy)["fr"];
+  locale: Locale;
+  busy: boolean;
+  send: (body: Record<string, unknown>, done?: string) => Promise<boolean>;
+  own: { id: string; full_name: string }[];
+}) {
+  const day = (d: string) =>
+    new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
+  const mine = pot.own_movements.filter((m) => !m.cancelled_at);
+  return (
+    <details className="collect-box" open={mine.length === 0}>
+      <summary>{t.mine} · {euro(locale, mine.reduce((n, m) => n + m.amount_cents, 0))}</summary>
+      {mine.length > 0 && (
+        <ul className="movement-list">
+          {mine.map((m) => (
+            <li key={m.id}>
+              <span>
+                {day(m.occurred_on)} · {t.kinds[m.kind]} · {m.label}
+                {m.donor && ` · ${m.donor}`}
+                {own.length > 1 && m.collector && ` · ${m.collector}`}
+              </span>
+              <strong className="num">{euro(locale, m.amount_cents)}</strong>
+              <button type="button" className="text-button" disabled={busy} onClick={() => void send({ action: "cancelMovement", id: m.id })}>
+                {t.remove}
+                <span className="sr-only"> : {m.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted small">{t.collectHint}</p>
+      <form
+        className="inline-form movement-form"
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const f = new FormData(form);
+          void send(
+            {
+              action: "collect",
+              potId: pot.id,
+              profileId: String(f.get("profile") ?? own[0]?.id),
+              occurredOn: String(f.get("date")),
+              kind: String(f.get("kind")),
+              label: String(f.get("label") ?? ""),
+              amountCents: cents(f.get("amount")),
+              donor: String(f.get("donor") ?? ""),
+            },
+            t.collected,
+          ).then((ok) => ok && form.reset());
+        }}
+      >
+        {own.length > 1 && (
+          <label>
+            {t.forWhom}
+            <select name="profile" defaultValue={own[0].id}>
+              {own.map((p) => (
+                <option key={p.id} value={p.id}>{p.full_name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label>
+          {t.date}
+          <input name="date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+        </label>
+        <label>
+          {t.kind}
+          <select name="kind" defaultValue="donation">
+            {(["donation", "sponsor", "action"] as const).map((k) => (
+              <option key={k} value={k}>{t.kinds[k]}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.label}
+          <input name="label" required minLength={2} maxLength={160} />
+        </label>
+        <label>
+          {t.amount}
+          <input name="amount" required inputMode="decimal" />
+        </label>
+        <label>
+          {t.donor}
+          <input name="donor" maxLength={160} />
+        </label>
+        <button className="button" disabled={busy}>{t.collect}</button>
+      </form>
+    </details>
+  );
+}
+
 export function Fundraising({ locale }: { locale: Locale }) {
   const t = fundraisingCopy[locale] as (typeof fundraisingCopy)["fr"];
   const failure = useCallback(
@@ -282,6 +445,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
             goalCents: cents(f.get("goal")),
             deadline: String(f.get("deadline") ?? "") || null,
             status: String(f.get("status") ?? "open"),
+            playersJoin: f.get("playersJoin") === "on",
           }).then((ok) => ok && setEditing(null));
         }}
       >
@@ -310,6 +474,11 @@ export function Fundraising({ locale }: { locale: Locale }) {
           {t.description}
           <textarea name="description" rows={2} maxLength={2000} defaultValue={pot?.description} />
         </label>
+        <label className="check">
+          <input type="checkbox" name="playersJoin" defaultChecked={pot?.players_join} />
+          {t.playersJoin}
+        </label>
+        <p className="muted small">{t.playersJoinHint}</p>
         <div className="actions">
           <button className="button" disabled={busy}>{t.save}</button>
           <button type="button" className="button secondary" onClick={() => setEditing(null)}>{t.cancel}</button>
@@ -334,6 +503,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
             amountCents: cents(f.get("amount")),
             donor: String(f.get("donor") ?? ""),
             anonymous: f.get("anonymous") === "on",
+            profileId: String(f.get("collector") ?? "") || null,
           }).then((ok) => ok && form.reset());
         }}
       >
@@ -365,6 +535,17 @@ export function Fundraising({ locale }: { locale: Locale }) {
           <input type="checkbox" name="anonymous" />
           {t.anonymous}
         </label>
+        {pot.players_join && data && (
+          <label>
+            {t.collector}
+            <select name="collector" defaultValue="">
+              <option value="">…</option>
+              {data.players.map((p) => (
+                <option key={p.id} value={p.id}>{p.full_name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <button className="button secondary" disabled={busy}>{t.addMovement}</button>
       </form>
     );
@@ -383,9 +564,18 @@ export function Fundraising({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       {(message || copied) && <p role="status">{copied || message}</p>}
       {editing === "group" && <section className="panel" aria-label={t.newGroup}>{groupForm()}</section>}
+      {!data.can.manage && !data.can.detail && (
+        <p className="muted">{t.potsForMeIntro}</p>
+      )}
       {!data.groups.length && <p className="empty-directory">{t.noGroup}</p>}
+      {!data.can.manage && !data.can.detail && data.groups.length > 0 && !data.pots.some((p) => p.players_join) && (
+        <p className="empty-directory">{t.nothingForMe}</p>
+      )}
       {data.groups.map((g) => {
-        const pots = data.pots.filter((p) => p.group_id === g.id);
+        const pots = data.pots.filter(
+          (p) => p.group_id === g.id && (data.can.manage || data.can.detail || p.players_join),
+        );
+        if (!pots.length && !data.can.manage) return null;
         return (
           <section key={g.id} className="panel" aria-labelledby={`group-${g.id}`}>
             <div className="panel-head">
@@ -419,11 +609,18 @@ export function Fundraising({ locale }: { locale: Locale }) {
                       <>
                         <div className="trip-card-head">
                           <h3>{pot.name}</h3>
-                          <span className="status-tag">{pot.status === "open" ? t.open : t.closed}</span>
+                          <span>
+                            {pot.players_join && <span className="status-tag" data-tone="success">{t.withPlayers}</span>}
+                            <span className="status-tag">{pot.status === "open" ? t.open : t.closed}</span>
+                          </span>
                         </div>
                         {pot.deadline && <p className="muted small">{t.until.replace("{d}", day(pot.deadline))}</p>}
                         {pot.description && <p className="small pre-line">{pot.description}</p>}
                         <PotProgress locale={locale} goal={pot.goal_cents} progress={pot.progress} />
+                        {pot.players_join && <Collectors pot={pot} t={t} locale={locale} />}
+                        {pot.players_join && pot.status === "open" && data.ownProfiles.length > 0 && (
+                          <CollectForm pot={pot} t={t} locale={locale} busy={busy} send={send} own={data.ownProfiles} />
+                        )}
                         {data.can.detail ? (
                           <details>
                             <summary>
@@ -435,6 +632,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
                                   <span>
                                     {day(m.occurred_on)} · {t.kinds[m.kind]} · {m.label}
                                     {m.donor && ` · ${m.anonymous ? `${t.anonymousName} (${m.donor})` : m.donor}`}
+                                    {m.collector && ` · ${t.collector} ${m.collector}`}
                                     {m.cancelled_at && <span className="muted"> · {t.cancelled}</span>}
                                   </span>
                                   <strong className="num">

@@ -28,6 +28,7 @@ export type Workspace = {
     disabled_modules?: string[];
   };
   permissions: string[];
+  fundraisingOpen?: boolean;
 };
 type NavItem = { route: string; label: keyof Copy; icon: IconName };
 type NavGroup = {
@@ -37,129 +38,142 @@ type NavGroup = {
   items: NavItem[];
 };
 /**
- * Menu structure. Club groups appear once a profile is active; each page still
- * enforces its own permissions server-side. Statistics are reached from the
- * home dashboard, not from the menu.
+ * Menu structure (wave 10). Club presidents see every module; coaches see the
+ * modules their rights cover; players and guardians see their own space only:
+ * calendar, their file, documents, dues (and the fundraising pots open to the
+ * players). Each page still enforces its own permissions server-side.
+ * Statistics are reached from the home dashboard, not from the menu.
  */
 export function menuGroups(state: Workspace | null): NavGroup[] {
-  const manager = !!state?.permissions.includes("registrations.manage");
+  const perms = new Set(state?.permissions ?? []);
+  const has = (...p: string[]) => p.some((x) => perms.has(x));
+  const manager = perms.has("registrations.manage");
   const kind = state?.selected?.kind;
   const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
+  const member = role === "player" || role === "guardian";
   const registrations: NavItem = {
     route: manager ? "/registrations" : "/registrations/mine",
     label: manager ? "registrations" : "mine",
     icon: "inbox",
   };
+  const item = (route: string, label: keyof Copy, icon: IconName, allowed = true): NavItem[] =>
+    allowed ? [{ route, label, icon }] : [];
   const club: NavGroup[] =
-    kind === "club"
+    kind === "club" && member
       ? [
           {
-            id: "players",
-            label: "groupPlayers",
-            icon: "players",
+            id: "mine",
+            label: "mySpace",
+            icon: "user",
             items: [
-              { route: "/players", label: "players", icon: "players" },
+              ...item("/calendar", "calendar", "calendar"),
+              ...item("/players", "myFile", "players"),
+              ...item("/documents", "documents", "document"),
+              ...item("/dues", "dues", "dues"),
+              ...item("/fundraising", "fundraising", "chart", !!state?.fundraisingOpen),
               registrations,
-              { route: "/attendance", label: "attendance", icon: "attendance" },
-              { route: "/licenses", label: "licenses", icon: "check" },
-            ],
-          },
-          {
-            id: "life",
-            label: "club",
-            icon: "calendar",
-            items: [
-              { route: "/calendar", label: "calendar", icon: "calendar" },
-              { route: "/matches", label: "matches", icon: "whistle" },
-              { route: "/trips", label: "trips", icon: "arrow" },
-              { route: "/venues", label: "venues", icon: "club" },
-              {
-                route: "/federal-calendar",
-                label: "federalCalendar",
-                icon: "calendar",
-              },
-              { route: "/documents", label: "documents", icon: "document" },
-              { route: "/messages", label: "messages", icon: "message" },
-              // Club mails: newsletters (notifications.manage), event mails (planners).
-              ...(state?.permissions.includes("notifications.manage") ||
-              state?.permissions.includes("calendar.manage") ||
-              role === "coach"
-                ? [
-                    {
-                      route: "/communication",
-                      label: "communication",
-                      icon: "bell",
-                    } satisfies NavItem,
-                  ]
-                : []),
-            ],
-          },
-          {
-            id: "management",
-            label: "groupManagement",
-            icon: "club",
-            items: [
-              { route: "/club/manage", label: "clubManage", icon: "club" },
-              { route: "/coaches", label: "coaches", icon: "whistle" },
-              { route: "/equipment", label: "equipment", icon: "wheelchair" },
-            ],
-          },
-          {
-            id: "finance",
-            label: "groupFinance",
-            icon: "dues",
-            items: [
-              { route: "/funding", label: "funding", icon: "funding" },
-              { route: "/dues", label: "dues", icon: "dues" },
-              { route: "/fundraising", label: "fundraising", icon: "chart" },
             ],
           },
         ]
-      : kind === "federation"
+      : kind === "club"
         ? [
             {
-              id: "federation",
-              label: "groupFederation",
+              id: "players",
+              label: "groupPlayers",
+              icon: "players",
+              items: [
+                ...item("/players", "players", "players", has("people.read")),
+                ...(manager ? [registrations] : []),
+                ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
+                ...item("/licenses", "licenses", "check", has("people.read")),
+                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
+              ],
+            },
+            {
+              id: "life",
+              label: "club",
+              icon: "calendar",
+              items: [
+                ...item("/calendar", "calendar", "calendar"),
+                ...item("/matches", "matches", "whistle", has("calendar.read", "calendar.manage")),
+                ...item("/trips", "trips", "arrow", has("calendar.read", "calendar.manage")),
+                ...item("/venues", "venues", "club", has("calendar.read", "calendar.manage")),
+                ...item("/federal-calendar", "federalCalendar", "calendar", has("calendar.read", "calendar.manage")),
+                ...item("/documents", "documents", "document"),
+                // Club mails: newsletters (notifications.manage), event mails (planners).
+                ...item(
+                  "/communication",
+                  "communication",
+                  "bell",
+                  has("notifications.manage", "calendar.manage") || role === "coach",
+                ),
+              ],
+            },
+            {
+              id: "management",
+              label: "groupManagement",
               icon: "club",
               items: [
-                ...((role === "referee"
-                  ? [
-                      {
-                        route: "/referee",
-                        label: "refereeSpace",
-                        icon: "whistle",
-                      },
-                    ]
-                  : [
-                      {
-                        route: "/federation/clubs",
-                        label: "federationClubs",
-                        icon: "club",
-                      },
-                      {
-                        route: "/federation/courses",
-                        label: "courses",
-                        icon: "team",
-                      },
-                      {
-                        route: "/federation/licenses",
-                        label: "federationLicenses",
-                        icon: "check",
-                      },
-                      {
-                        route: "/federation/referees",
-                        label: "designations",
-                        icon: "whistle",
-                      },
-                    ]) satisfies NavItem[]),
-                { route: "/calendar", label: "calendar", icon: "calendar" },
-                { route: "/venues", label: "venues", icon: "club" },
-                { route: "/documents", label: "documents", icon: "document" },
-                { route: "/messages", label: "messages", icon: "message" },
+                ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
+                ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
+                ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
+              ],
+            },
+            {
+              id: "finance",
+              label: "groupFinance",
+              icon: "dues",
+              items: [
+                ...item("/funding", "funding", "funding", has("dues.read", "dues.manage")),
+                ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
+                ...item("/fundraising", "fundraising", "chart", has("dues.read", "dues.manage")),
               ],
             },
           ]
-        : [];
+        : kind === "federation"
+          ? [
+              {
+                id: "federation",
+                label: "groupFederation",
+                icon: "club",
+                items: [
+                  ...((role === "referee"
+                    ? [
+                        {
+                          route: "/referee",
+                          label: "refereeSpace",
+                          icon: "whistle",
+                        },
+                      ]
+                    : [
+                        {
+                          route: "/federation/clubs",
+                          label: "federationClubs",
+                          icon: "club",
+                        },
+                        {
+                          route: "/federation/courses",
+                          label: "courses",
+                          icon: "team",
+                        },
+                        {
+                          route: "/federation/licenses",
+                          label: "federationLicenses",
+                          icon: "check",
+                        },
+                        {
+                          route: "/federation/referees",
+                          label: "designations",
+                          icon: "whistle",
+                        },
+                      ]) satisfies NavItem[]),
+                  { route: "/calendar", label: "calendar", icon: "calendar" },
+                  { route: "/venues", label: "venues", icon: "club" },
+                  { route: "/documents", label: "documents", icon: "document" },
+                ],
+              },
+            ]
+          : [];
   // Modules the club switched off leave the menu (their routes refuse too).
   const off = new Set(state?.selected?.disabled_modules ?? []);
   const shown = (items: NavItem[]) =>
@@ -179,18 +193,15 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
         ...(state?.selected
           ? ([
               { route: "/notifications", label: "notifications", icon: "bell" },
-              ...(kind === "club"
+              ...(kind === "club" && !member
                 ? ([
-                    ...(off.has("reminders")
-                      ? []
-                      : [
-                          {
-                            route: "/reminders",
-                            label: "reminders",
-                            icon: "message",
-                          } satisfies NavItem,
-                        ]),
-                    { route: "/privacy", label: "privacy", icon: "lock" },
+                    ...item(
+                      "/reminders",
+                      "reminders",
+                      "message",
+                      !off.has("reminders") && has("dues.manage", "documents.manage", "notifications.manage"),
+                    ),
+                    ...item("/privacy", "privacy", "lock", has("audit.read", "mandates.manage")),
                   ] satisfies NavItem[])
                 : []),
               { route: "/settings", label: "settings", icon: "settings" },
@@ -198,7 +209,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
           : state
             ? ([registrations] satisfies NavItem[])
             : []),
-        ...(kind === "club" && !off.has("trips")
+        ...(kind === "club" && !member && !off.has("trips") && has("calendar.read", "calendar.manage")
           ? ([
               { route: "/offline-book", label: "offlineBook", icon: "lock" },
             ] satisfies NavItem[])

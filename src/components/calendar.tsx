@@ -135,7 +135,13 @@ function dates(anchor: string, view: string) {
   }
   return { from: anchor, to: shiftLocal(anchor + "T12:00", 31).slice(0, 10) };
 }
-export function Calendar({ locale }: { locale: Locale }) {
+export function Calendar({
+  locale,
+  eventId,
+}: {
+  locale: Locale;
+  eventId?: string;
+}) {
   const extra =
     locale === "fr"
       ? {
@@ -207,13 +213,14 @@ export function Calendar({ locale }: { locale: Locale }) {
     [anchor, setAnchorState] = useState(() =>
       localAt(new Date(), "Europe/Brussels").slice(0, 10),
     ),
-    [view, setView] = useState("month"),
+    // Opened on one event: the list view spans the coming year so it is found.
+    [view, setView] = useState(eventId ? "list" : "month"),
     [editorOpen, setEditorOpen] = useState(false),
     [subscriptionOpen, setSubscriptionOpen] = useState(false),
     [offset, setOffset] = useState(0),
     [team, setTeam] = useState(""),
     [place, setPlace] = useState(""),
-    [selected, setSelected] = useState(""),
+    [selected, setSelected] = useState(eventId ?? ""),
     [placeEdit, setPlaceEdit] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
@@ -231,7 +238,7 @@ export function Calendar({ locale }: { locale: Locale }) {
   const range = dates(anchor, view),
     params =
       "all=" +
-      (view === "list" ? "true" : "false") +
+      (view === "list" && !eventId ? "true" : "false") +
       "&offset=" +
       offset +
       "&from=" +

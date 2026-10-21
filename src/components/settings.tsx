@@ -7,13 +7,17 @@ import { settingsCopy } from "./settings-copy";
 import { builtInProfiles, type Grant } from "@/domains/access/rights";
 import {
   ModuleRights,
+  rightsSummary,
   ModulesPanel,
+  PresencePanel,
   ProfilesPanel,
   Journal,
   type Governance,
 } from "./governance";
 import { governanceCopy } from "./governance-copy";
 import { errors } from "./access-copy";
+import { Modal } from "./modal";
+import { Badge, Card } from "./ui";
 
 type Member = {
   id: string;
@@ -68,6 +72,7 @@ export function Settings({ locale }: { locale: Locale }) {
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [draft, setDraft] = useState<Record<string, string[]>>({}),
+    [editingMember, setEditingMember] = useState(""),
     [now] = useState(() => Date.now());
   const failure = useCallback(
     (code: string) => errors[code]?.[locale] ?? t.unavailable,
@@ -131,8 +136,10 @@ export function Settings({ locale }: { locale: Locale }) {
       await load();
       setMessage(done);
       window.dispatchEvent(new Event("pfm-workspace"));
+      return true;
     } catch (e) {
       setError(failure(e instanceof Error ? e.message : ""));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -168,6 +175,8 @@ export function Settings({ locale }: { locale: Locale }) {
   members.sort(
     (a, b) => Number(b.role === "coach") - Number(a.role === "coach"),
   );
+  const coaches = members.filter((m) => m.role === "coach");
+  const others = members.filter((m) => m.role !== "coach");
 
   function selfCoach(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -236,133 +245,149 @@ export function Settings({ locale }: { locale: Locale }) {
       )}
 
       {manage && (
-        <section className="panel" aria-labelledby="settings-access">
-          <h2 id="settings-access">{t.accessTitle}</h2>
-          <p className="muted">{t.accessIntro}</p>
-          {members.length ? (
-            <ul className="grant-list">
-              {members.map((m) => {
-                const chosen = new Set(draft[m.id] ?? m.grants);
-                const apply = (list: readonly string[]) =>
-                  setDraft({
-                    ...draft,
-                    [m.id]: list.filter((x) => own.has(x)),
-                  });
-                return (
-                  <li key={m.id} className="grant-card">
-                    <div className="grant-head">
-                      <strong>{m.name}</strong>
-                      <span className="role-chip">
-                        {t.roles[m.role] ?? m.role}
-                      </span>
-                    </div>
-                    {m.role === "coach" && teams.length > 0 && (
-                      <form
-                        className="inline-form"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const team = new FormData(e.currentTarget).get(
-                            "team",
-                          ) as string;
-                          void post(
-                            "/api/people",
-                            {
-                              action: "coachScope",
-                              mandateId: m.id,
-                              teamId: team || null,
-                              organizationId: people?.context.id,
-                            },
-                            t.scopeSaved,
-                          );
-                        }}
-                      >
-                        <label htmlFor={`scope-${m.id}`}>
-                          {t.teamScope}
-                          <select
-                            id={`scope-${m.id}`}
-                            name="team"
-                            defaultValue={m.team_id ?? ""}
-                          >
-                            <option value="">{t.allTeams}</option>
-                            {teams.map((x) => (
-                              <option key={x.id} value={x.id}>
-                                {x.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <button className="button secondary" disabled={busy}>
-                          {t.saveScope}
-                          <span className="sr-only"> : {m.name}</span>
-                        </button>
-                      </form>
-                    )}
-                    <div
-                      className="preset-row"
-                      role="group"
-                      aria-label={`${g.apply} : ${m.name}`}
-                    >
-                      <span className="muted">{t.presets}</span>
-                      {Object.keys(builtInProfiles).map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          className="chip-button"
-                          onClick={() => apply(builtInProfiles[k])}
-                        >
-                          {g.profiles[k]}
-                        </button>
-                      ))}
-                      {(gov?.profiles ?? []).map((x) => (
-                        <button
-                          key={x.id}
-                          type="button"
-                          className="chip-button"
-                          data-club="true"
-                          onClick={() => apply(x.grants)}
-                        >
-                          {x.name}
-                        </button>
-                      ))}
-                    </div>
-                    <ModuleRights
-                      locale={locale}
-                      id={m.id}
-                      grants={[...chosen]}
-                      own={own}
-                      onChange={(next: Grant[]) =>
-                        setDraft({ ...draft, [m.id]: next })
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void post(
-                          "/api/workspace",
-                          {
-                            action: "grants",
-                            id: m.id,
-                            grants: [...chosen].filter((x) => own.has(x)),
-                          },
-                          t.grantsSaved,
-                        )
-                      }
-                    >
-                      {t.saveGrants}
-                      <span className="sr-only"> : {m.name}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+        <Card title={t.accessTitle} subtitle={t.accessIntro} id="settings-access">
+          <p className="muted small">{t.whatTheySee}</p>
+          {coaches.length ? (
+            <div className="table-scroll">
+              <table className="compact-table rights-table">
+                <tbody>
+                  {coaches.map((m) => {
+                    const summary = rightsSummary(locale, m.grants);
+                    return (
+                      <tr key={m.id}>
+                        <th scope="row">
+                          <strong>{m.name}</strong>
+                          <span className="muted small"> · {t.roles[m.role] ?? m.role}</span>
+                          {m.team_id && (
+                            <span className="muted small">
+                              {" "}· {teams.find((x) => x.id === m.team_id)?.name ?? ""}
+                            </span>
+                          )}
+                        </th>
+                        <td className="rights-summary">
+                          {summary ? (
+                            summary.split(" · ").map((part) => (
+                              <Badge key={part} tone="brand">{part}</Badge>
+                            ))
+                          ) : (
+                            <span className="muted">{t.noRights}</span>
+                          )}
+                        </td>
+                        <td className="row-actions">
+                          <button type="button" className="button secondary" onClick={() => setEditingMember(m.id)}>
+                            {t.editRights}
+                            <span className="sr-only"> : {m.name}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="muted">{t.noMember}</p>
           )}
-        </section>
+          {others.length > 0 && (
+            <details className="others-box">
+              <summary>
+                {t.othersTitle} ({others.length})
+              </summary>
+              <p className="muted small">{t.othersIntro}</p>
+              <ul className="inline-list">
+                {others.map((m) => (
+                  <li key={m.id}>
+                    {m.name} <span className="muted small">· {t.roles[m.role] ?? m.role}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </Card>
       )}
-
+      {manage && editingMember && (() => {
+        const m = members.find((x) => x.id === editingMember);
+        if (!m) return null;
+        const chosen = new Set(draft[m.id] ?? m.grants);
+        const apply = (list: readonly string[]) =>
+          setDraft({ ...draft, [m.id]: list.filter((x) => own.has(x)) });
+        return (
+          <Modal title={`${t.rightsOf} ${m.name}`} close={() => setEditingMember("")}>
+            {m.role === "coach" && teams.length > 0 && (
+              <form
+                className="inline-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const team = new FormData(e.currentTarget).get("team") as string;
+                  void post(
+                    "/api/people",
+                    {
+                      action: "coachScope",
+                      mandateId: m.id,
+                      teamId: team || null,
+                      organizationId: people?.context.id,
+                    },
+                    t.scopeSaved,
+                  );
+                }}
+              >
+                <label htmlFor={`scope-${m.id}`}>
+                  {t.teamScope}
+                  <select id={`scope-${m.id}`} name="team" defaultValue={m.team_id ?? ""}>
+                    <option value="">{t.allTeams}</option>
+                    {teams.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="button secondary" disabled={busy}>
+                  {t.saveScope}
+                  <span className="sr-only"> : {m.name}</span>
+                </button>
+              </form>
+            )}
+            <div className="preset-row" role="group" aria-label={`${g.apply} : ${m.name}`}>
+              <span className="muted">{t.presets}</span>
+              {Object.keys(builtInProfiles).map((k) => (
+                <button key={k} type="button" className="chip-button" onClick={() => apply(builtInProfiles[k])}>
+                  {g.profiles[k]}
+                </button>
+              ))}
+              {(gov?.profiles ?? []).map((x) => (
+                <button key={x.id} type="button" className="chip-button" data-club="true" onClick={() => apply(x.grants)}>
+                  {x.name}
+                </button>
+              ))}
+            </div>
+            <ModuleRights
+              locale={locale}
+              id={m.id}
+              grants={[...chosen]}
+              own={own}
+              onChange={(next: Grant[]) => setDraft({ ...draft, [m.id]: next })}
+            />
+            <div className="actions">
+              <button
+                type="button"
+                className="button"
+                disabled={busy}
+                onClick={() =>
+                  void post(
+                    "/api/workspace",
+                    { action: "grants", id: m.id, grants: [...chosen].filter((x) => own.has(x)) },
+                    t.grantsSaved,
+                  ).then((ok) => ok && setEditingMember(""))
+                }
+              >
+                {t.saveGrants}
+                <span className="sr-only"> : {m.name}</span>
+              </button>
+            </div>
+          </Modal>
+        );
+      })()}
       {gov && (gov.can.profiles || gov.profiles.length > 0) && (
         <ProfilesPanel
           locale={locale}
@@ -371,6 +396,9 @@ export function Settings({ locale }: { locale: Locale }) {
           busy={busy}
           post={post}
         />
+      )}
+      {gov?.can.presence && (
+        <PresencePanel locale={locale} gov={gov} busy={busy} post={post} />
       )}
       {gov?.can.modules && (
         <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />

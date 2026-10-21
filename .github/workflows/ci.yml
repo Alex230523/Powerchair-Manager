@@ -52,14 +52,18 @@ jobs:
             node -e 'for (const f of require("./eslint-report.json")) for (const m of f.messages.filter((m) => m.severity === 2)) console.log(`::${m.severity === 2 ? "error" : "warning"} file=${f.filePath.replace(process.cwd() + "/", "")},line=${m.line ?? 1},col=${m.column ?? 1}::${(m.ruleId ?? "eslint") + ": " + m.message.replace(/\n/g, " ")}`)'
             exit 1
           }
-      - run: npm run typecheck
-      - run: npm test
+      - name: Types
+        run: scripts/ci-annotate.sh "Types" npm run typecheck
+      - name: Unit tests
+        run: scripts/ci-annotate.sh "Unit tests" npm test
       - name: Migrations (twice, must be idempotent)
         run: npm run db:migrate && npm run db:migrate && npm run db:test
-      - run: npm run test:integration
+      - name: Integration tests
+        run: scripts/ci-annotate.sh "Integration tests" npm run test:integration
       - name: Demo data
         run: npm run demo:seed && npm run demo:seed
-      - run: npm run build
+      - name: Build
+        run: scripts/ci-annotate.sh "Build" npm run build
 
   e2e:
     name: End-to-end (Playwright)
@@ -91,7 +95,14 @@ jobs:
             echo "BETTER_AUTH_URL=http://127.0.0.1:3100"
             echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
           } > .env.local
-      - run: npm run test:e2e:db
+      - name: Build (failures shown as annotations; Playwright reuses the output)
+        run: scripts/ci-annotate.sh "Build for end-to-end" npm run build
+        env:
+          PFM_BUILD_DIR: .next-e2e
+          PFM_LOCAL_MAIL: "true"
+          PFM_MAIL_DIR: .local/mail-e2e
+      - name: End-to-end tests
+        run: scripts/ci-annotate.sh "End-to-end" npm run test:e2e:db
       - uses: actions/upload-artifact@v4
         if: always()
         with:

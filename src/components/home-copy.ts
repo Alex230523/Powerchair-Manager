@@ -16,6 +16,11 @@ type HomeCopy = {
   agendaEmpty: string;
   openCalendar: string;
   shortcuts: string;
+  present: string;
+  players: string;
+  coaches: string;
+  readiness: Record<"ok" | "warn" | "low", string>;
+  deadlines: Record<"documents" | "dues" | "fundraising" | "trip", string>;
   responseNeeded: string;
   cancelled: string;
   loading: string;
@@ -61,6 +66,16 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     agendaEmpty: "Aucun événement visible dans les 14 prochains jours.",
     openCalendar: "Ouvrir le calendrier",
     shortcuts: "Accès rapides",
+    present: "présents",
+    players: "joueurs",
+    coaches: "coachs",
+    readiness: { ok: "Effectif suffisant", warn: "Effectif tendu", low: "Effectif insuffisant" },
+    deadlines: {
+      documents: "Documents à renouveler",
+      dues: "Échéance de cotisation",
+      fundraising: "Échéance de cagnotte",
+      trip: "Départ en déplacement",
+    },
     responseNeeded: "Réponse attendue",
     cancelled: "Annulé",
     loading: "Chargement du tableau de bord…",
@@ -73,8 +88,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         text: "À renouveler auprès des membres",
       },
       registersToClose: {
-        title: "Registres à clôturer",
-        text: "Événements terminés, présences à finaliser",
+        title: "Présences à remplir",
+        text: "Séances terminées dont le pointage n'est pas fait",
       },
       myAttendance: {
         title: "Présences à confirmer",
@@ -174,6 +189,16 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     agendaEmpty: "Geen zichtbare activiteiten in de komende 14 dagen.",
     openCalendar: "Kalender openen",
     shortcuts: "Snelkoppelingen",
+    present: "aanwezig",
+    players: "spelers",
+    coaches: "coaches",
+    readiness: { ok: "Voldoende volk", warn: "Krap", low: "Te weinig volk" },
+    deadlines: {
+      documents: "Documenten te vernieuwen",
+      dues: "Vervaldag lidgeld",
+      fundraising: "Einddatum pot",
+      trip: "Vertrek verplaatsing",
+    },
     responseNeeded: "Antwoord verwacht",
     cancelled: "Geannuleerd",
     loading: "Dashboard wordt geladen…",
@@ -186,8 +211,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         text: "Te vernieuwen bij de leden",
       },
       registersToClose: {
-        title: "Registers af te sluiten",
-        text: "Afgelopen activiteiten, aanwezigheid af te ronden",
+        title: "Aanwezigheden in te vullen",
+        text: "Afgelopen sessies waarvan de aanwezigheid niet is genoteerd",
       },
       myAttendance: {
         title: "Aanwezigheid te bevestigen",
@@ -287,6 +312,16 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     agendaEmpty: "No visible events in the next 14 days.",
     openCalendar: "Open the calendar",
     shortcuts: "Shortcuts",
+    present: "present",
+    players: "players",
+    coaches: "coaches",
+    readiness: { ok: "Enough people", warn: "Tight", low: "Not enough people" },
+    deadlines: {
+      documents: "Documents to renew",
+      dues: "Dues instalment due",
+      fundraising: "Pot deadline",
+      trip: "Trip departure",
+    },
     responseNeeded: "Answer needed",
     cancelled: "Cancelled",
     loading: "Loading the dashboard…",
@@ -299,8 +334,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         text: "To be renewed with members",
       },
       registersToClose: {
-        title: "Registers to close",
-        text: "Finished events, attendance to finalise",
+        title: "Attendance to fill in",
+        text: "Finished sessions whose attendance is not recorded",
       },
       myAttendance: {
         title: "Attendance to confirm",

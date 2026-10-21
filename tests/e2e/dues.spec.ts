@@ -108,9 +108,9 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(
       page.getByRole("heading", { name: "Dues", exact: true }),
     ).toBeVisible();
-    const rate = page
-      .locator("form")
-      .filter({ has: page.getByLabel("Rate category", { exact: true }) });
+    // Rates and receivables are created from dialogs (wave 10).
+    await page.getByRole("button", { name: "New rate", exact: true }).click();
+    const rate = page.getByRole("dialog", { name: "New rate" });
     await rate
       .getByLabel("Rate category", { exact: true })
       .fill("Player membership");
@@ -120,25 +120,36 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
       .getByRole("button", { name: "Create rate", exact: true })
       .click();
     await expect(page.getByRole("status")).toHaveText("Saved.");
-    const issue = page.locator("form").filter({
-      has: page.getByLabel("Discount / exemption (€)", { exact: true }),
-    });
+    await expect(rate).toHaveCount(0);
+    await page.getByRole("button", { name: "Issue dues", exact: true }).click();
+    const issue = page.getByRole("dialog", { name: "Issue dues" });
     await issue
       .getByRole("combobox", { name: "Rate", exact: true })
       .selectOption({ label: "Player membership · 2026-27 · €250.00" });
     await issue.getByLabel("Number of instalments", { exact: true }).fill("4");
     await issue
-      .getByRole("button", { name: "Issue dues", exact: true })
+      .getByRole("button", { name: "Issue", exact: true })
       .click();
-    const summary = page
-      .locator("main details>summary")
+    await expect(page.getByRole("status")).toHaveText("Saved.");
+    // One line per player in the table, with the amount due and the next instalment.
+    const row = page
+      .locator("main .dues-table tbody tr")
       .filter({ hasText: "Browser player" });
-    await expect(summary).toContainText("€250.00");
-    await summary.click();
-    await expect(page.locator("main tbody tr")).toHaveCount(4);
+    await expect(row).toContainText("€250.00");
+    await expect(row).toContainText("€62.50");
+    await row.getByRole("button", { name: /^Details/ }).click();
+    const detail = page.getByRole("dialog", { name: /Browser player/ });
+    await expect(detail.locator("tbody tr")).toHaveCount(4);
     expect(
-      await page.locator("main tbody tr td:last-child").allTextContents(),
+      await detail.locator("tbody tr td:nth-child(3)").allTextContents(),
     ).toEqual(["€62.50", "€62.50", "€62.50", "€62.50"]);
+    await detail.getByRole("button", { name: "Fermer / Sluiten / Close" }).click();
+    // The tick records a payment of the next instalment in the ledger.
+    await row.getByRole("button", { name: /^Collect : Browser player/ }).click();
+    const pay = page.getByRole("dialog", { name: /Record a payment/ });
+    await pay.getByRole("button", { name: "Collect", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("Saved.");
+    await expect(row).toContainText("€187.50");
     expect(
       (
         await new AxeBuilder({ page })
@@ -152,10 +163,16 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     });
     await page.setViewportSize({ width: 375, height: 812 });
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+      await page.evaluate(() => {
+        const over = document.documentElement.scrollWidth - innerWidth;
+        if (over <= 0) return [];
+        // Names the widest offenders so the failure says what sticks out.
+        return [...document.querySelectorAll("body *")]
+          .filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(e).position !== "fixed")
+          .slice(0, 12)
+          .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")} right=${Math.round(e.getBoundingClientRect().right)} (over ${over}px)`);
+      }),
+    ).toEqual([]);
     await page.screenshot({
       path: "test-results/dues-mobile.png",
       fullPage: true,
@@ -172,7 +189,11 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
         exact: true,
       }),
     ).toHaveCount(0);
-    await openMenuGroup(page, "Club finances");
+    // A player only has "My space" in the menu: calendar, file, documents, dues.
+    await openMenuGroup(page, "My space");
+    await expect(
+      page.locator("nav").getByRole("link", { name: "Players", exact: true }),
+    ).toHaveCount(0);
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })
@@ -184,9 +205,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
       page.getByRole("heading", { name: "Rates", exact: true }),
     ).toHaveCount(0);
     await expect(
-      page
-        .locator("main details>summary")
-        .filter({ hasText: "Browser player" }),
+      page.locator("main .dues-table tbody tr").filter({ hasText: "Browser player" }),
     ).toBeVisible();
   } finally {
     await db.end();

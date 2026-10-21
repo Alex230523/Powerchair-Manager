@@ -1,6 +1,14 @@
 import type { Locale } from "../lib/locale";
 
 const fr = {
+  presenceTitle: "Effectif attendu aux séances",
+  presenceIntro:
+    "Sur le tableau de bord, chaque séance montre combien de joueurs et de coachs ont répondu « présent ». Vert à partir du nombre « suffisant », jaune à partir du nombre « tendu », rouge en dessous.",
+  presenceSaved: "Seuils enregistrés.",
+  savePresence: "Enregistrer les seuils",
+  presenceFamily: { training: "Entraînements", match: "Matchs et tournois" } as Record<string, string>,
+  presenceWho: { players: "Joueurs", coaches: "Coachs" } as Record<string, string>,
+  presenceLevel: { ok: "Suffisant à partir de", warn: "Tendu à partir de" } as Record<string, string>,
   levels: { none: "Rien", read: "Lecture", edit: "Modification" } as Record<string, string>,
   rightsModules: {
     people: "Joueurs et familles",
@@ -101,6 +109,14 @@ const fr = {
 };
 type Copy = typeof fr;
 const nl: Copy = {
+  presenceTitle: "Verwachte opkomst per sessie",
+  presenceIntro:
+    "Op het dashboard toont elke sessie hoeveel spelers en coaches « aanwezig » antwoordden. Groen vanaf « voldoende », geel vanaf « krap », rood daaronder.",
+  presenceSaved: "Drempels opgeslagen.",
+  savePresence: "Drempels opslaan",
+  presenceFamily: { training: "Trainingen", match: "Wedstrijden en toernooien" },
+  presenceWho: { players: "Spelers", coaches: "Coaches" },
+  presenceLevel: { ok: "Voldoende vanaf", warn: "Krap vanaf" },
   levels: { none: "Niets", read: "Lezen", edit: "Wijzigen" },
   rightsModules: {
     people: "Spelers en families",
@@ -200,6 +216,14 @@ const nl: Copy = {
   load: "Laden",
 };
 const en: Copy = {
+  presenceTitle: "Expected turnout per session",
+  presenceIntro:
+    "On the dashboard every session shows how many players and coaches answered \"present\". Green from the \"enough\" count, yellow from the \"tight\" count, red below.",
+  presenceSaved: "Thresholds saved.",
+  savePresence: "Save thresholds",
+  presenceFamily: { training: "Training sessions", match: "Matches and tournaments" },
+  presenceWho: { players: "Players", coaches: "Coaches" },
+  presenceLevel: { ok: "Enough from", warn: "Tight from" },
   levels: { none: "None", read: "Read", edit: "Change" },
   rightsModules: {
     people: "Players and families",

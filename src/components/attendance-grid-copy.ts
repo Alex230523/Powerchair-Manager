@@ -1,0 +1,51 @@
+/** Texts of the people x sessions attendance table (wave 10). */
+export const gridCopy = {
+  fr: {
+    title: "Tableau des présences",
+    intro:
+      "Une ligne par personne, une colonne par séance. Avant la séance : la réponse à la convocation. Dès le début : le pointage, que le coach change d'un clic.",
+    person: "Personne",
+    none: "Pas convoqué",
+    mark: "Pointer",
+    legend: "Légende",
+    responses: { none: "Pas de réponse", present: "A répondu présent", absent: "A répondu absent", uncertain: "Incertain" } as Record<string, string>,
+    actuals: { unchecked: "Non pointé", present: "Présent", absent: "Absent", late: "En retard", early: "Parti plus tôt" } as Record<string, string>,
+    short: { unchecked: "·", present: "P", absent: "A", late: "R", early: "D" } as Record<string, string>,
+    answer: { none: "○", present: "✓", absent: "✗", uncertain: "?" } as Record<string, string>,
+    open: "Ouvrir la séance",
+    total: "Présences",
+    empty: "Aucune séance sur la période.",
+  },
+  nl: {
+    title: "Aanwezigheidstabel",
+    intro:
+      "Een rij per persoon, een kolom per sessie. Vóór de sessie: het antwoord op de oproep. Vanaf het begin: de registratie, die de coach met één klik wijzigt.",
+    person: "Persoon",
+    none: "Niet opgeroepen",
+    mark: "Registreren",
+    legend: "Legende",
+    responses: { none: "Geen antwoord", present: "Antwoordde aanwezig", absent: "Antwoordde afwezig", uncertain: "Onzeker" },
+    actuals: { unchecked: "Niet geregistreerd", present: "Aanwezig", absent: "Afwezig", late: "Te laat", early: "Vroeger vertrokken" },
+    short: { unchecked: "·", present: "A", absent: "X", late: "L", early: "V" },
+    answer: { none: "○", present: "✓", absent: "✗", uncertain: "?" },
+    open: "Sessie openen",
+    total: "Aanwezigheden",
+    empty: "Geen sessie in deze periode.",
+  },
+  en: {
+    title: "Attendance table",
+    intro:
+      "One row per person, one column per session. Before the session: the answer to the call-up. From its start: the mark, which the coach changes with one click.",
+    person: "Person",
+    none: "Not invited",
+    mark: "Mark",
+    legend: "Legend",
+    responses: { none: "No answer", present: "Answered present", absent: "Answered absent", uncertain: "Unsure" },
+    actuals: { unchecked: "Not marked", present: "Present", absent: "Absent", late: "Late", early: "Left early" },
+    short: { unchecked: "·", present: "P", absent: "A", late: "L", early: "E" },
+    answer: { none: "○", present: "✓", absent: "✗", uncertain: "?" },
+    open: "Open the session",
+    total: "Attendances",
+    empty: "No session in this period.",
+  },
+};

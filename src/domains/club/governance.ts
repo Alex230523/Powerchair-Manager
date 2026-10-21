@@ -10,6 +10,7 @@ import {
 } from "../access/service";
 import { delegable, isAdmin, permissions, type Role } from "../access/policy";
 import { optionalModules, type OptionalModule } from "../access/rights";
+import { presenceRules, presenceRulesSchema } from "../dashboard/presence";
 
 /**
  * Club governance: which modules the club uses, the rights profiles it
@@ -27,6 +28,8 @@ export const governanceCommand = z.discriminatedUnion("action", [
     grants: z.array(z.enum(delegable)).max(delegable.length),
   }),
   z.object({ action: z.literal("deleteProfile"), id: z.uuid() }),
+  /** Presence thresholds of the dashboard (players and coaches "present"). */
+  z.object({ action: z.literal("presence"), rules: presenceRulesSchema }),
 ]);
 export type GovernanceCommand = z.infer<typeof governanceCommand>;
 export const journalQuery = z.object({
@@ -97,18 +100,21 @@ async function scope<T>(
 
 export async function governanceView(db: Pool, p: Principal) {
   return scope(db, p, false, async ({ c, org, role, perms, mfa }) => {
-    const disabled = (
-      await c.query("SELECT disabled_modules FROM organization WHERE id=$1", [
+    const orgRow = (
+      await c.query("SELECT disabled_modules,presence_rules FROM organization WHERE id=$1", [
         org,
       ])
-    ).rows[0].disabled_modules as string[];
+    ).rows[0];
+    const disabled = orgRow.disabled_modules as string[];
     const seeProfiles =
       mfa && (perms.includes("mandates.manage") || perms.includes("members.read"));
     return {
       organizationId: org,
       disabled,
+      presence: presenceRules(orgRow.presence_rules),
       can: {
         modules: mfa && isAdmin(role as Role),
+        presence: mfa && perms.includes("mandates.manage"),
         profiles: mfa && perms.includes("mandates.manage"),
         rightsJournal: mfa && perms.includes("audit.read"),
         healthJournal: mfa && role === "club_president",
@@ -153,6 +159,17 @@ export async function governanceExecute(
         return { ok: true as const };
       }
       if (!perms.includes("mandates.manage")) throw new AccessError("FORBIDDEN");
+      if (command.action === "presence") {
+        const before = presenceRules(
+          (await c.query("SELECT presence_rules FROM organization WHERE id=$1", [org])).rows[0].presence_rules,
+        );
+        await c.query("UPDATE organization SET presence_rules=$2 WHERE id=$1", [
+          org,
+          JSON.stringify(command.rules),
+        ]);
+        await audit(c, org, p.userId, "presence.rules", org, { before, after: command.rules });
+        return { ok: true as const };
+      }
       if (command.action === "saveProfile") {
         // A profile never holds more than its author may delegate.
         if (command.grants.some((g) => !perms.includes(g)))

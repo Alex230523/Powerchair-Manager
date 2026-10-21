@@ -11,6 +11,7 @@ import {
   type Grant,
   type Level,
 } from "@/domains/access/rights";
+import type { PresenceRules } from "@/domains/dashboard/presence";
 import { governanceCopy } from "./governance-copy";
 import { settingsCopy } from "./settings-copy";
 import { errors } from "./access-copy";
@@ -18,8 +19,10 @@ import { errors } from "./access-copy";
 export type Governance = {
   organizationId: string;
   disabled: string[];
+  presence: PresenceRules;
   can: {
     modules: boolean;
+    presence: boolean;
     profiles: boolean;
     rightsJournal: boolean;
     healthJournal: boolean;
@@ -30,7 +33,7 @@ type Post = (
   url: string,
   body: Record<string, unknown>,
   done: string,
-) => Promise<void>;
+) => Promise<void | boolean>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** Rights of one person or profile, module by module, on three levels. */
@@ -299,6 +302,93 @@ export function ModulesPanel({
         <p className="muted small">{g.core}</p>
         <button className="button" disabled={busy}>
           {g.saveModules}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+export function PresencePanel({
+  locale,
+  gov,
+  busy,
+  post,
+}: {
+  locale: Locale;
+  gov: Governance;
+  busy: boolean;
+  post: Post;
+}) {
+  const g = governanceCopy[locale];
+  const [rules, setRules] = useState(gov.presence);
+  const set = (
+    family: "training" | "match",
+    who: "players" | "coaches",
+    level: "ok" | "warn",
+    value: number,
+  ) =>
+    setRules({
+      ...rules,
+      [family]: {
+        ...rules[family],
+        [who]: { ...rules[family][who], [level]: value },
+      },
+    });
+  return (
+    <section className="panel" aria-labelledby="settings-presence">
+      <h2 id="settings-presence">{g.presenceTitle}</h2>
+      <p className="muted">{g.presenceIntro}</p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void post(
+            "/api/governance",
+            { action: "presence", rules, organizationId: gov.organizationId },
+            g.presenceSaved,
+          );
+        }}
+      >
+        <div className="table-scroll">
+          <table className="presence-rules">
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                {(["players", "coaches"] as const).flatMap((who) =>
+                  (["ok", "warn"] as const).map((level) => (
+                    <th scope="col" key={who + level}>
+                      {g.presenceWho[who]} · {g.presenceLevel[level]}
+                    </th>
+                  )),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {(["training", "match"] as const).map((family) => (
+                <tr key={family}>
+                  <th scope="row">{g.presenceFamily[family]}</th>
+                  {(["players", "coaches"] as const).flatMap((who) =>
+                    (["ok", "warn"] as const).map((level) => (
+                      <td key={who + level}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={300}
+                          aria-label={`${g.presenceFamily[family]} · ${g.presenceWho[who]} · ${g.presenceLevel[level]}`}
+                          value={rules[family][who][level]}
+                          onChange={(e) =>
+                            set(family, who, level, Number(e.target.value || 0))
+                          }
+                        />
+                      </td>
+                    )),
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button className="button" disabled={busy}>
+          {g.savePresence}
         </button>
       </form>
     </section>

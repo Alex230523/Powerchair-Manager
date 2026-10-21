@@ -40,7 +40,7 @@ test("new club, federation and referee pages load and pass axe", async ({
   page,
 }) => {
   test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use test:e2e:db");
-  test.setTimeout(240000);
+  test.setTimeout(420000);
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `pages-${Date.now()}@example.test`;
   try {
@@ -162,8 +162,17 @@ test("new club, federation and referee pages load and pass axe", async ({
     await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Nouvelles de la saison" })).toBeVisible();
     await page.getByRole("button", { name: "Aperçu : Nouvelles de la saison" }).click();
+    // The preview is a sandboxed frame: axe cannot enter it, the dialog itself is checked.
     await expect(page.getByTitle("Aperçu de la newsletter")).toBeVisible();
-    await axe("preview", "dialog");
+    const dialogViolations = (
+      await new AxeBuilder({ page })
+        .include("dialog")
+        .exclude("iframe")
+        .options({ iframes: false })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze()
+    ).violations.map((v) => v.id);
+    expect(dialogViolations).toEqual([]);
     await page.keyboard.press("Escape");
     for (const name of ["Mails d'événements", "Anciens", "Expéditeur"]) {
       await page.getByRole("tab", { name, exact: true }).click();
@@ -185,6 +194,31 @@ test("new club, federation and referee pages load and pass axe", async ({
       [tripId, club],
     );
     await check(page, `/fr/trips/${tripId}`);
+
+    // Wave 10: the home dashboard, the attendance table, the dues table and
+    // the registrations inbox pass axe; the menu lost "Messagerie".
+    for (const path of ["/fr", "/fr/dues", "/fr/attendance", "/fr/registrations"])
+      await check(page, path);
+    await expect(
+      page.locator("nav").getByRole("link", { name: "Messagerie", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.locator("nav").getByRole("link", { name: "Statistiques", exact: true })).toBeVisible();
+    // Presence thresholds: the president lowers the bar for trainings.
+    await page.goto("/fr/settings");
+    const okPlayers = page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true });
+    await expect(okPlayers).toHaveValue("5");
+    await okPlayers.fill("3");
+    await page.getByLabel("Entraînements · Joueurs · Tendu à partir de", { exact: true }).fill("2");
+    await page.getByRole("button", { name: "Enregistrer les seuils", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText("Seuils enregistrés.");
+    await page.reload();
+    await expect(page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true })).toHaveValue("3");
+    // The dashboard: to-do blocks, key figures on the left, the agenda on the right.
+    await page.goto("/fr");
+    await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^À faire/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Prochains événements", exact: true })).toBeVisible();
+    await expect(page.getByText("Accès rapide", { exact: true })).toHaveCount(0);
 
     await switchProfile(page, roles.federation_president);
     for (const path of [

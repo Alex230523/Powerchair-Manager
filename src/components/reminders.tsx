@@ -30,6 +30,7 @@ const copy = {
     overdue: "en retard",
     next: "prochaine échéance",
     selectAll: "Tout cocher",
+    selectLate: "Cocher tous les retards",
     selectNone: "Tout décocher",
     send: "Envoyer le rappel ({n})",
     sent: "{people} personne(s) relancée(s), {messages} message(s) envoyé(s).",
@@ -72,6 +73,7 @@ const copy = {
     overdue: "achterstallig",
     next: "volgende vervaldag",
     selectAll: "Alles aanvinken",
+    selectLate: "Alle achterstallen aanvinken",
     selectNone: "Alles uitvinken",
     send: "Herinnering versturen ({n})",
     sent: "{people} persoon/personen herinnerd, {messages} bericht(en) verstuurd.",
@@ -113,6 +115,7 @@ const copy = {
     overdue: "overdue",
     next: "next instalment",
     selectAll: "Tick all",
+    selectLate: "Tick everyone late",
     selectNone: "Untick all",
     send: "Send reminder ({n})",
     sent: "{people} person(s) reminded, {messages} message(s) sent.",
@@ -187,6 +190,15 @@ export function Reminders({
         if (cancelled) return;
         setView(v);
         if (!v.can.dues) setKind("documents");
+        // Everyone late on their dues is ticked from the start.
+        else
+          setPicked(
+            new Set(
+              (v.dues as { profile_id: string; overdueCents: number }[])
+                .filter((r) => r.overdueCents > 0)
+                .map((r) => r.profile_id),
+            ),
+          );
       })
       .catch((e: Error) => {
         if (cancelled) return;
@@ -309,6 +321,23 @@ export function Reminders({
               {rows.length ? (
                 <>
                   <div className="row-actions">
+                    {kind === "dues" && (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() =>
+                          setPicked(
+                            new Set(
+                              (view?.dues ?? [])
+                                .filter((r) => r.overdueCents > 0)
+                                .map((r) => r.profile_id),
+                            ),
+                          )
+                        }
+                      >
+                        {t.selectLate}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="text-button"

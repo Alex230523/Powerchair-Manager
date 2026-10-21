@@ -111,33 +111,11 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
     timeZone: zone,
   }).format(new Date(data.generatedAt));
   const href = (route: string) => `/${locale}${route}`;
-  const shortcuts: { route: string; label: string; icon: IconName }[] =
-    data.context
-      ? [
-          { route: "/calendar", label: s.calendar, icon: "calendar" },
-          { route: "/attendance", label: s.attendance, icon: "attendance" },
-          { route: "/documents", label: s.documents, icon: "document" },
-          { route: "/messages", label: s.messages, icon: "message" },
-          ...(data.scopes.includes("people")
-            ? [
-                {
-                  route: "/players",
-                  label: s.players,
-                  icon: "players" as const,
-                },
-              ]
-            : []),
-          ...(data.scopes.includes("equipment")
-            ? [
-                {
-                  route: "/equipment",
-                  label: s.equipment,
-                  icon: "wheelchair" as const,
-                },
-              ]
-            : []),
-        ]
-      : [];
+  // Events and administrative dates, one list ordered by day.
+  const timeline = [
+    ...data.agenda.map((e) => ({ kind: "event" as const, day: e.startsAt, e })),
+    ...data.deadlines.map((d) => ({ kind: "deadline" as const, day: d.date + "T23:59:59Z", d })),
+  ].sort((a, b) => a.day.localeCompare(b.day));
   return (
     <main id="main" className="dashboard">
       <div className="dash-head">
@@ -176,7 +154,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
         </h2>
         {data.todos.length ? (
           <ul className="todo-list">
-            {data.todos.map((item) => (
+            {data.todos.slice(0, 6).map((item) => (
               <li key={item.key}>
                 <Link
                   className="todo-item"
@@ -202,27 +180,31 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           </p>
         )}
       </section>
-      {data.metrics.length > 0 && (
-        <section className="dash-section" aria-labelledby="dash-figures">
-          <h2 id="dash-figures">{t.figures}</h2>
-          <ul className="metric-grid">
-            {data.metrics.map((m) => (
-              <li key={m.key}>
-                <MetricCard locale={locale} metric={m} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
       {data.context && (
         <div className="dash-columns dash-section">
+          {data.metrics.length > 0 && (
+            <section aria-labelledby="dash-figures">
+              <h2 id="dash-figures">{t.figures}</h2>
+              <ul className="dash-figures">
+                {data.metrics.map((m) => (
+                  <li key={m.key}>
+                    <MetricCard locale={locale} metric={m} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="panel" aria-labelledby="dash-agenda">
             <h2 id="dash-agenda">{t.agenda}</h2>
-            {data.agenda.length ? (
+            {timeline.length ? (
               <ul className="agenda">
-                {data.agenda.map((e) => (
-                  <AgendaRow key={e.id} locale={locale} event={e} />
-                ))}
+                {timeline.map((row) =>
+                  row.kind === "event" ? (
+                    <AgendaRow key={row.e.id} locale={locale} event={row.e} />
+                  ) : (
+                    <DeadlineRow key={row.d.id} locale={locale} deadline={row.d} />
+                  ),
+                )}
               </ul>
             ) : (
               <p className="muted">{t.agendaEmpty}</p>
@@ -230,21 +212,6 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
             <p>
               <Link href={href("/calendar")}>{t.openCalendar}</Link>
             </p>
-          </section>
-          <section className="panel" aria-labelledby="dash-shortcuts">
-            <h2 id="dash-shortcuts">{t.shortcuts}</h2>
-            <ul className="quick-links">
-              {shortcuts.map((q) => (
-                <li key={q.route}>
-                  <Link href={href(q.route)}>
-                    <span className="nav-icon">
-                      <Icon name={q.icon} />
-                    </span>
-                    {q.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </section>
         </div>
       )}
@@ -297,33 +264,85 @@ function AgendaRow({
     event.team,
     event.place,
   ].filter(Boolean);
+  const r = event.readiness;
   return (
     <li className={event.status === "cancelled" ? "agenda-cancelled" : ""}>
-      <span className="agenda-date" aria-hidden="true">
-        <strong>{part({ day: "numeric" }).format(start)}</strong>
-        <span>{part({ month: "short" }).format(start)}</span>
-      </span>
-      <span className="agenda-body">
-        <strong>
-          {event.title}
-          {event.status === "cancelled" && (
-            <span className="status-tag" data-tone="danger">
-              {t.cancelled}
-            </span>
-          )}
-          {event.responseNeeded && event.status !== "cancelled" && (
-            <span className="status-tag" data-tone="warning">
-              {t.responseNeeded}
-            </span>
-          )}
-        </strong>
-        <span>
-          <span className="sr-only">
-            {part({ day: "numeric", month: "long" }).format(start)},{" "}
-          </span>
-          {details.join(" · ")}
+      <Link className="agenda-link" href={`/${locale}/calendar?event=${event.id}`}>
+        <span className="agenda-date" aria-hidden="true">
+          <strong>{part({ day: "numeric" }).format(start)}</strong>
+          <span>{part({ month: "short" }).format(start)}</span>
         </span>
-      </span>
+        <span className="agenda-body">
+          <strong>
+            {event.title}
+            {event.status === "cancelled" && (
+              <span className="status-tag" data-tone="danger">
+                {t.cancelled}
+              </span>
+            )}
+            {event.responseNeeded && event.status !== "cancelled" && (
+              <span className="status-tag" data-tone="warning">
+                {t.responseNeeded}
+              </span>
+            )}
+          </strong>
+          <span>
+            <span className="sr-only">
+              {part({ day: "numeric", month: "long" }).format(start)},{" "}
+            </span>
+            {details.join(" · ")}
+          </span>
+          {r && (
+            <span className="readiness" title={t.readiness[r.tone]}>
+              <span>
+                <span className="readiness-dot" data-tone={r.playersTone} />
+                {r.players} {t.players} {t.present}
+              </span>
+              <span>
+                <span className="readiness-dot" data-tone={r.coachesTone} />
+                {r.coaches} {t.coaches} {t.present}
+              </span>
+              <span className="sr-only">{t.readiness[r.tone]}</span>
+            </span>
+          )}
+        </span>
+      </Link>
+    </li>
+  );
+}
+function DeadlineRow({
+  locale,
+  deadline,
+}: {
+  locale: Locale;
+  deadline: Dashboard["deadlines"][number];
+}) {
+  const t = homeCopy[locale];
+  const part = (o: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(tag(locale), { timeZone: "UTC", ...o });
+  const day = new Date(deadline.date + "T12:00:00Z");
+  const label = t.deadlines[deadline.kind];
+  const extra =
+    deadline.kind === "documents"
+      ? `${deadline.count}`
+      : deadline.kind === "dues"
+        ? `${deadline.count} · ${formatCents(deadline.cents ?? 0, locale)}`
+        : deadline.title;
+  return (
+    <li className="agenda-deadline">
+      <Link className="agenda-link" href={`/${locale}${deadline.href}`}>
+        <span className="agenda-date" data-kind={deadline.kind} aria-hidden="true">
+          <strong>{part({ day: "numeric" }).format(day)}</strong>
+          <span>{part({ month: "short" }).format(day)}</span>
+        </span>
+        <span className="agenda-body">
+          <strong>{label}</strong>
+          <span>
+            <span className="sr-only">{part({ day: "numeric", month: "long" }).format(day)}, </span>
+            {part({ weekday: "long" }).format(day)} · {extra}
+          </span>
+        </span>
+      </Link>
     </li>
   );
 }

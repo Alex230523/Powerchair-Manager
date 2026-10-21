@@ -1,4 +1,5 @@
 import { installmentsFrom } from "../registrations/schema";
+import { duesState, settle } from "./schema";
 import type { Pool, PoolClient } from "pg";
 import {
   active,
@@ -186,7 +187,7 @@ export async function duesView(db: Pool, p: Principal) {
       o = s.a.organization_id;
     const debts = (
       await s.c.query(
-        "SELECT d.*,c.full_name,se.name AS season_name FROM dues_receivable d JOIN club_person c ON c.id=d.profile_id JOIN season se ON se.id=d.season_id WHERE d.organization_id=$1 AND ($2 OR d.profile_id=ANY($3::uuid[])) ORDER BY d.created_at DESC",
+        "SELECT d.*,c.full_name,se.name AS season_name,(SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents FROM dues_receivable d JOIN club_person c ON c.id=d.profile_id JOIN season se ON se.id=d.season_id WHERE d.organization_id=$1 AND ($2 OR d.profile_id=ANY($3::uuid[])) ORDER BY se.starts_on DESC,c.full_name",
         [o, s.readAll, own],
       )
     ).rows;
@@ -203,16 +204,24 @@ export async function duesView(db: Pool, p: Principal) {
           [d.id],
         )
       ).rows;
+      // Payments settle the earliest instalments first; the rest is still due.
+      d.settled = settle(d.installments, d.paid_cents);
+      d.state = duesState(d, d.settled, today());
       d.overdue_cents =
         d.status === "open"
-          ? d.installments
+          ? d.settled
               .filter((i: { due_on: string }) => i.due_on < today())
               .reduce(
-                (sum: number, i: { amount_cents: number }) =>
-                  sum + i.amount_cents,
+                (sum: number, i: { left_cents: number }) => sum + i.left_cents,
                 0,
               )
           : 0;
+      d.payments = (
+        await s.c.query(
+          "SELECT id,occurred_on::text AS occurred_on,amount_cents,method,reference,cancelled_at FROM finance_transaction WHERE receivable_id=$1 AND direction='in' ORDER BY occurred_on,created_at",
+          [d.id],
+        )
+      ).rows;
     }
     return {
       organizationId: o,
@@ -287,6 +296,50 @@ export async function duesExecute(
         throw new AccessError(
           mfaSatisfied(s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
         );
+      if (cmd.action === "pay") {
+        const d = (
+          await s.c.query(
+            "SELECT d.*,c.full_name FROM dues_receivable d JOIN club_person c ON c.id=d.profile_id WHERE d.id=$1 AND d.organization_id=$2 FOR UPDATE",
+            [cmd.id, o],
+          )
+        ).rows[0];
+        if (!d) throw new AccessError("NOT_FOUND", 404);
+        if (d.status !== "open") throw new AccessError("INVALID_TRANSITION", 409);
+        if (cmd.occurredOn > today()) throw new AccessError("INVALID_DATE", 400);
+        const paid = (
+          await s.c.query(
+            "SELECT COALESCE(sum(amount_cents),0)::int AS n FROM finance_transaction WHERE receivable_id=$1 AND cancelled_at IS NULL AND direction='in'",
+            [d.id],
+          )
+        ).rows[0].n as number;
+        if (paid + cmd.amountCents > d.net_cents) throw new AccessError("OVERPAID", 409);
+        const row = (
+          await s.c.query(
+            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id) VALUES($1,$2,$3,'in','dues',$4,$5,$6,$7,'',$8,$9) RETURNING id",
+            [
+              o,
+              cmd.occurredOn,
+              `Cotisation ${d.full_name}`.slice(0, 160),
+              cmd.amountCents,
+              cmd.method,
+              d.full_name,
+              cmd.reference,
+              p.userId,
+              d.id,
+            ],
+          )
+        ).rows[0];
+        await log(
+          s,
+          "payment",
+          d.plan_id,
+          d.id,
+          { paid_cents: paid },
+          { paid_cents: paid + cmd.amountCents, transaction: row.id, method: cmd.method },
+          `${(cmd.amountCents / 100).toFixed(2)} € · ${cmd.method}`,
+        );
+        return { id: row.id as string };
+      }
       if (cmd.action === "plan") {
         if (
           !(
