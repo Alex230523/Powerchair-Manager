@@ -619,6 +619,8 @@ progress {
 /* Cards laid out by a grid or a list keep the grid's own gap. */
 .grid > .card,
 li > .card,
+ul > .card,
+ol > .card,
 .card-body .card {
   margin-block: 0;
 }
@@ -1215,27 +1217,6 @@ caption {
   width: 100%;
   margin-bottom: 0;
 }
-.statistics-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
-  margin-block: 18px;
-}
-.statistics-cards article {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: var(--shadow-sm);
-}
-.statistics-cards strong {
-  font-size: 2rem;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
 .statistics-bar {
   display: grid;
   grid-template-columns: 160px minmax(80px, 1fr) 65px 65px;
@@ -1427,21 +1408,16 @@ caption {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 16px;
 }
-.chair-card {
+.chair-card .card-body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 20px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  min-width: 0;
+  height: 100%;
 }
 .chair-card[data-status="retired"] {
   opacity: 0.75;
 }
-.chair-card > .button {
+.chair-card .card-body > .button {
   align-self: flex-start;
   margin-top: auto;
 }
@@ -3311,13 +3287,10 @@ input.narrow {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   margin-top: 16px;
 }
-.trip-card,
-.vehicle-card,
-.venue-card,
 .book-people > li {
   padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   background: var(--surface);
 }
 .trip-card[data-status="cancelled"] {
@@ -3501,11 +3474,7 @@ input.narrow {
 .pot-list {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
 }
-.pot-card {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+.pot-card .card-body {
   display: grid;
   gap: 8px;
 }
@@ -3519,7 +3488,7 @@ input.narrow {
 .pot-progress progress {
   width: 100%;
   height: 12px;
-  accent-color: var(--brand-500);
+  accent-color: var(--primary);
 }
 .pot-progress p {
   margin: 4px 0 0;

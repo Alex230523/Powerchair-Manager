@@ -435,7 +435,7 @@ export function MoveDialog({
           </div>
         </form>
       ) : (
-        <p className="muted">{sh.noOther}</p>
+        <EmptyState title={sh.noOther} />
       )}
     </Modal>
   );

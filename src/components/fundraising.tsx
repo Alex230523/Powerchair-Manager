@@ -600,7 +600,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
             {pots.length ? (
               <ul className="pot-list">
                 {pots.map((pot) => (
-                  <li key={pot.id} className="pot-card" data-status={pot.status}>
+                  <Card as="li" key={pot.id} className="pot-card" data={{ status: pot.status }}>
                     {editing === `potedit-${pot.id}` ? (
                       potForm(g.id, pot)
                     ) : (
@@ -687,11 +687,11 @@ export function Fundraising({ locale }: { locale: Locale }) {
                         )}
                       </>
                     )}
-                  </li>
+                  </Card>
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noPot}</p>
+              <EmptyState title={t.noPot} />
             )}
           </section>
         );

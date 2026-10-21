@@ -8,7 +8,7 @@ import type {
 import { refereesCopy, weekendDays } from "./referees-copy";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
-import { Badge, PageHeader, Card } from "./ui";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const when = (l: Locale, d: string) =>
@@ -219,7 +219,7 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
                 })}
               </ul>
             ) : (
-              <p className="muted">{t.noAssignment}</p>
+              <EmptyState title={t.noAssignment} />
             )}
           </Card>
           <Card title={t.availability} labelledBy="ref-availability" headingId="ref-availability">
@@ -430,7 +430,7 @@ export function Designations({ locale }: { locale: Locale }) {
               })}
             </ul>
           ) : (
-            <p className="muted">{t.noMatch}</p>
+            <EmptyState title={t.noMatch} />
           )}
         </>
       )}

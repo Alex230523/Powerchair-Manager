@@ -575,7 +575,7 @@ export function Finance({ locale }: { locale: Locale }) {
                 </table>
               </div>
             ) : (
-              <p className="muted">{x.noBudget}</p>
+              <EmptyState title={x.noBudget} />
             )}
           </Card>
 

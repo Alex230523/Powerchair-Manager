@@ -11,7 +11,7 @@ import type {
 import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
-import { Badge, PageHeader, Card } from "./ui";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 export function ClubLicenses({ locale }: { locale: Locale }) {
@@ -221,7 +221,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
               </table>
             </div>
           ) : (
-            <p className="muted">{t.noPlayer}</p>
+            <EmptyState title={t.noPlayer} />
           )}
           {data.can.manage && data.federation && (
             <p>
@@ -368,7 +368,7 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 )}
               </>
             ) : (
-              <p className="muted">{t.none}</p>
+              <EmptyState title={t.none} />
             )}
             {decided.length > 0 && (
               <details>
@@ -540,7 +540,7 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.none}</p>
+              <EmptyState title={t.none} />
             )}
           </Card>
 
@@ -572,7 +572,7 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                 </table>
               </div>
             ) : (
-              <p className="muted">{t.none}</p>
+              <EmptyState title={t.none} />
             )}
           </Card>
         </>
@@ -632,7 +632,7 @@ export function FederalCalendar({ locale }: { locale: Locale }) {
             ))}
           </ul>
         ) : (
-          <p className="muted">{t.noEvent}</p>
+          <EmptyState title={t.noEvent} />
         ))}
     </main>
   );

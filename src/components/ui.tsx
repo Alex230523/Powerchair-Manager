@@ -163,6 +163,7 @@ export function Card({
   as,
   headingId,
   label,
+  data,
 }: {
   title?: ReactNode;
   subtitle?: ReactNode;
@@ -185,7 +186,10 @@ export function Card({
   headingId?: string;
   /** Accessible name of a card without a visible title. */
   label?: string;
+  /** data-* attributes of the card element (a status the styles react to, say). */
+  data?: Record<string, string | number | boolean | undefined>;
 }) {
+  const dataAttrs = Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => ["data-" + k, v === undefined || v === false ? undefined : String(v)]));
   const titleId = headingId ?? (title && id ? id + "-title" : undefined);
   const classes = `card ${flat ? "flat" : ""} ${href || onClick ? "interactive" : ""} ${className}`.replace(/\s+/g, " ").trim();
   const body = (
@@ -211,7 +215,7 @@ export function Card({
     );
   const Tag = as ?? "section";
   return (
-    <Tag id={id} className={classes} aria-labelledby={labelledBy ?? titleId} aria-label={label}>
+    <Tag id={id} className={classes} aria-labelledby={labelledBy ?? titleId} aria-label={label} {...dataAttrs}>
       {body}
     </Tag>
   );

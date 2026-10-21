@@ -299,7 +299,7 @@ export function Venues({ locale }: { locale: Locale }) {
       {visible.length ? (
         <ul className="venue-list">
           {visible.map((v) => (
-            <li key={v.id} className="venue-card">
+            <Card as="li" key={v.id} className="venue-card">
               {editing === v.id ? (
                 form(v)
               ) : (
@@ -344,7 +344,7 @@ export function Venues({ locale }: { locale: Locale }) {
                   {v.notes && <p className="small pre-line">{v.notes}</p>}
                 </>
               )}
-            </li>
+            </Card>
           ))}
         </ul>
       ) : (

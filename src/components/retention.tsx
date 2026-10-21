@@ -2,7 +2,7 @@
 import { useCallback } from "react";
 import type { Locale } from "@/lib/locale";
 import { useData } from "./use-api";
-import { Card } from "./ui";
+import { Card, EmptyState } from "./ui";
 
 const copy = {
   fr: {
@@ -59,7 +59,7 @@ export function RetentionCard({ locale }: { locale: Locale }) {
     <Card title={t.title} labelledBy="retention-title" headingId="retention-title">
       <p className="muted">{t.intro}</p>
       {rows.length < 2 ? (
-        <p className="muted">{t.none}</p>
+        <EmptyState title={t.none} />
       ) : (
         <div className="table-scroll" role="region" aria-label={t.title} tabIndex={0}>
           <table className="ledger">

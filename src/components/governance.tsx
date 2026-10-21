@@ -16,7 +16,7 @@ import type { PresenceRules } from "@/domains/dashboard/presence";
 import { governanceCopy } from "./governance-copy";
 import { settingsCopy } from "./settings-copy";
 import { errors } from "./access-copy";
-import { Card } from "./ui";
+import { Card, EmptyState } from "./ui";
 
 export type Governance = {
   organizationId: string;
@@ -209,7 +209,7 @@ export function ProfilesPanel({
           ))}
         </ul>
       ) : (
-        <p className="muted">{g.noProfile}</p>
+        <EmptyState title={g.noProfile} />
       )}
       {editing && (
         <form className="profile-form" onSubmit={save}>
@@ -544,7 +544,7 @@ export function Journal({
             </table>
           </div>
         ) : (
-          <p className="muted">{g.empty}</p>
+          <EmptyState title={g.empty} />
         ))}
     </Card>
   );

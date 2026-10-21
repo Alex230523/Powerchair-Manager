@@ -5,7 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { clubView } from "@/domains/club/service";
 import { errors } from "./access-copy";
 import { initials } from "./app-shell";
-import { Card } from "./ui";
+import { Card, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof clubView>>;
 const copy = {
@@ -227,7 +227,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                 )}
               </div>
             ) : (
-              !o.logo_version && <p className="muted">{t.noLogo}</p>
+              !o.logo_version && <EmptyState title={t.noLogo} />
             )}
           </div>
           {view.canEdit ? (
@@ -358,7 +358,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noTeam}</p>
+              <EmptyState title={t.noTeam} />
             )}
           </Card>
         )}

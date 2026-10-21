@@ -241,7 +241,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                   c.status,
                 );
                 return (
-                  <li key={c.id} className="chair-card" data-status={c.status}>
+                  <Card as="li" key={c.id} className="chair-card" data={{ status: c.status }}>
                     <div className="chair-head">
                       <span className="feature-icon">
                         <Icon name="wheelchair" />
@@ -314,7 +314,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                             ))}
                         </ul>
                       ) : (
-                        <p className="muted">{t.noPlayers}</p>
+                        <EmptyState title={t.noPlayers} />
                       )}
                       {c.others > 0 && (
                         <p className="muted">
@@ -335,7 +335,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                         {editing === c.id ? t.close : `${t.manage} · ${c.name}`}
                       </button>
                     )}
-                  </li>
+                  </Card>
                 );
               })}
             </ul>

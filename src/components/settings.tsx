@@ -19,7 +19,7 @@ import { errors } from "./access-copy";
 import { Modal } from "./modal";
 import { Notifications } from "./notifications";
 import { DuesSettingsPanel } from "./dues-settings";
-import { Badge, Card, PageHeader } from "./ui";
+import { Badge, Card, PageHeader, EmptyState } from "./ui";
 
 type Member = {
   id: string;
@@ -288,7 +288,7 @@ export function Settings({ locale }: { locale: Locale }) {
               </table>
             </div>
           ) : (
-            <p className="muted">{t.noMember}</p>
+            <EmptyState title={t.noMember} />
           )}
           {others.length > 0 && (
             <details className="others-box">

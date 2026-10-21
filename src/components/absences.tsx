@@ -4,7 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { absencesView } from "@/domains/absences/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
-import { Card } from "./ui";
+import { Card, EmptyState } from "./ui";
 
 export const absenceCopy = {
   fr: {
@@ -153,7 +153,7 @@ export function AbsencesPanel({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <p className="muted">{t.none}</p>
+        <EmptyState title={t.none} />
       )}
       {data.profiles.length > 0 && (
         <form className="inline-form" onSubmit={submit}>

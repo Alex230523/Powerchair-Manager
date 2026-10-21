@@ -18,7 +18,7 @@ import { errors } from "./access-copy";
 import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
-import { Badge, Tabs } from "./ui";
+import { Badge, Tabs, EmptyState } from "./ui";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
@@ -233,7 +233,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               <dd>{p.has_account ? t.yes : t.no}</dd>
             </dl>
           ) : (
-            <p className="muted">{t.noDetails}</p>
+            <EmptyState title={t.noDetails} />
           )}
         </Card>
 
@@ -392,7 +392,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noGuardians}</p>
+              <EmptyState title={t.noGuardians} />
             )}
           </Card>
         )}
@@ -484,7 +484,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               </ul>
             </>
           ) : (
-            <p className="muted">{t.noAttendance}</p>
+            <EmptyState title={t.noAttendance} />
           )}
         </Card>
 
@@ -701,7 +701,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               })}
             </ul>
           ) : (
-            <p className="muted">{t.noChair}</p>
+            <EmptyState title={t.noChair} />
           )}
           <Link href={`/${locale}/equipment`}>{t.equipmentLink} →</Link>
         </Card>

@@ -423,7 +423,7 @@ function Transport({ locale, d, list, busy, send, name }: Props & { list: List |
           editing === v.id ? (
             <li key={v.id}>{form(v as Detail["vehicles"][number])}</li>
           ) : (
-            <li key={v.id} className="vehicle-card">
+            <Card as="li" key={v.id} className="vehicle-card">
               <div className="trip-card-head">
                 <strong>{v.name}</strong>
                 <Badge>{t.legsLabels[v.legs]}</Badge>
@@ -464,7 +464,7 @@ function Transport({ locale, d, list, busy, send, name }: Props & { list: List |
                   </button>
                 </div>
               )}
-            </li>
+            </Card>
           ),
         )}
       </ul>

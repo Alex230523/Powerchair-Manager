@@ -281,7 +281,7 @@ function EventMails({ data, t, locale, busy, send, eventId }: Props & { eventId?
           </button>
         )}
       </div>
-      {!data.plannable.length && <p className="muted">{t.noPlannable}</p>}
+      {!data.plannable.length && <EmptyState title={t.noPlannable} />}
       {editing === "new" && form()}
       {!data.eventMails.length && <EmptyState title={t.noEventMail} />}
       <ul className="records com-list">

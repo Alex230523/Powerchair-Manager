@@ -10,7 +10,7 @@ import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { initials } from "./app-shell";
 import { Card, Stat } from "./player-profile";
-import { Badge } from "./ui";
+import { Badge, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof coachProfileView>>;
 const record = {
@@ -190,7 +190,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
               <dd>{c.has_account ? t.yes : t.no}</dd>
             </dl>
           ) : (
-            <p className="muted">{t.noDetails}</p>
+            <EmptyState title={t.noDetails} />
           )}
         </Card>
 
@@ -213,7 +213,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
               ))}
             </ol>
           ) : (
-            <p className="muted">{t.noTeam}</p>
+            <EmptyState title={t.noTeam} />
           )}
           {view.results.played > 0 && (
             <p className="team-record">
@@ -269,7 +269,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
               ))}
             </ul>
           ) : (
-            <p className="muted">{t.noUpcoming}</p>
+            <EmptyState title={t.noUpcoming} />
           )}
         </Card>
 
@@ -323,7 +323,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
               ))}
             </ul>
           ) : (
-            <p className="muted">{t.noFormation}</p>
+            <EmptyState title={t.noFormation} />
           )}
           {view.can.request &&
             (view.courses.length ? (

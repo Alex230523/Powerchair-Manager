@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { remindersView } from "@/domains/reminders/service";
 import { errors } from "./access-copy";
-import { Badge, PageHeader, Card } from "./ui";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof remindersView>>;
 type Kind = "dues" | "documents";
@@ -481,7 +481,7 @@ export function Reminders({
                   </button>
                 </>
               ) : (
-                <p className="muted">{t.empty}</p>
+                <EmptyState title={t.empty} />
               )}
             </Card>
             <Card title={t.template} labelledBy="reminders-template" headingId="reminders-template">

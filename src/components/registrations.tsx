@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
-import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone } from "./ui";
+import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone, EmptyState } from "./ui";
 import {
   fieldVisible,
   mappings,
@@ -1179,7 +1179,7 @@ export function Registrations({
                   </table>
                 </div>
               ) : (
-                <p className="muted">{t.empty}</p>
+                <EmptyState title={t.empty} />
               )}
             </Card>
             {sharing && data.forms?.some((f) => f.id === sharing) && (
@@ -1267,7 +1267,7 @@ export function Registrations({
                   </li>
                 ))}
             </ul>
-            {!data.applications.length && <p className="muted">{t.empty}</p>}
+            {!data.applications.length && <EmptyState title={t.empty} />}
           </Card>
         )}
         {application && (mode !== "public" || applicant) && (

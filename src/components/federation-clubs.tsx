@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { coursesView } from "@/domains/coaches/service";
 import { errors } from "./access-copy";
-import { PageHeader } from "./ui";
+import { PageHeader, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof coursesView>>;
 const copy = {
@@ -138,7 +138,7 @@ export function FederationClubs({ locale }: { locale: Locale }) {
             </table>
           </div>
         ) : (
-          <p className="muted">{t.empty}</p>
+          <EmptyState title={t.empty} />
         ))}
     </main>
   );

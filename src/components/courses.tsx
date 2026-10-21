@@ -4,7 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { coursesView } from "@/domains/coaches/service";
 import { coursesCopy } from "./courses-copy";
 import { errors } from "./access-copy";
-import { Badge, PageHeader, Card } from "./ui";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof coursesView>>;
 type Course = View["courses"][number];
@@ -273,7 +273,7 @@ export function Courses({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noCourse}</p>
+              <EmptyState title={t.noCourse} />
             )}
             {view.can.manage && (
               <form
@@ -378,7 +378,7 @@ export function Courses({ locale }: { locale: Locale }) {
                 ))}
               </ul>
             ) : (
-              <p className="muted">{t.noRequest}</p>
+              <EmptyState title={t.noRequest} />
             )}
           </Card>
         </div>

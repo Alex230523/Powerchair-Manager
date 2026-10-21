@@ -238,7 +238,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
       {data.trips.length ? (
         <ul className="trip-list">
           {data.trips.map((x) => (
-            <li key={x.id} className="trip-card" data-status={x.status}>
+            <Card as="li" key={x.id} className="trip-card" data={{ status: x.status }}>
               <div className="trip-card-head">
                 <Link href={`/${locale}/trips/${x.id}`}>
                   <strong>{x.title}</strong>
@@ -255,7 +255,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
                 <span>{t.travelling.replace("{n}", String(x.travelling))}</span>
                 {x.powerchairs > 0 && <span>{t.powerchairs.replace("{n}", String(x.powerchairs))}</span>}
               </p>
-            </li>
+            </Card>
           ))}
         </ul>
       ) : (

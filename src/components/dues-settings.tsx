@@ -4,7 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { DuesRules } from "@/domains/dues/rules";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
-import { Badge, Card } from "./ui";
+import { Badge, Card, EmptyState } from "./ui";
 import { Modal } from "./modal";
 import { duesSettingsCopy } from "./dues-settings-copy";
 export { duesSettingsCopy };
@@ -106,7 +106,7 @@ export function DuesSettingsPanel({
       >
         {error && <p role="alert">{error}</p>}
         {message && <p role="status">{message}</p>}
-        {data && !data.plans.some((p) => !p.archived) && <p className="muted">{t.empty}</p>}
+        {data && !data.plans.some((p) => !p.archived) && <EmptyState title={t.empty} />}
         {data && data.plans.some((p) => !p.archived) && (
           <div className="table-scroll">
             <table className="compact-table">

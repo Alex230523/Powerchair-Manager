@@ -4,7 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { privacyView } from "@/domains/privacy/service";
 import { privacyCopy } from "./privacy-copy";
 import { errors } from "./access-copy";
-import { Badge, PageHeader, Card } from "./ui";
+import { Badge, PageHeader, Card, EmptyState } from "./ui";
 
 type View = Awaited<ReturnType<typeof privacyView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -165,7 +165,7 @@ export function Privacy({ locale }: { locale: Locale }) {
                 })}
               </ul>
             ) : (
-              <p className="muted">{t.noDuplicate}</p>
+              <EmptyState title={t.noDuplicate} />
             )}
           </Card>
 
@@ -301,7 +301,7 @@ export function Privacy({ locale }: { locale: Locale }) {
                   ))}
                 </ul>
               ) : (
-                <p className="muted">{t.noFormer}</p>
+                <EmptyState title={t.noFormer} />
               )}
               <p>{fill(t.applications, { n: view.retention.applications })}</p>
               {view.retention.applications > 0 && (

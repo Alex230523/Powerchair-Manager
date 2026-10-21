@@ -709,7 +709,7 @@ export function Dues({ locale }: { locale: Locale }) {
               ))}
             </ul>
           ) : (
-            <p className="muted">{t.noPayment}</p>
+            <EmptyState title={t.noPayment} />
           )}
           {view?.manage && detail.status === "open" && (
             <>
