@@ -12,6 +12,8 @@ import { duesTotals } from "@/domains/dues/schema";
 import { DataGrid, postCommand } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 const copy = {
   fr: {
     collected: "Encaissé",
@@ -405,13 +407,13 @@ export function Dues({ locale }: { locale: Locale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...body, organizationId: view?.organizationId }),
       });
-      if (!r.ok) {
-        const v = await r.json().catch(() => ({}));
-        throw new Error(v.error);
-      }
+      const v = (await r.json().catch(() => ({}))) as { error?: string; undo?: string; id?: string };
+      if (!r.ok) throw new Error(v.error);
       await load();
       setMessage(t.saved);
       setConfirmation("");
+      // The payment can be undone for a moment, ledger line included (wave 15, C10).
+      if (body.action === "pay" && v.undo) undoToast(locale, toastCopy[locale].paid.replace("{amount}", money(Number(body.amountCents))), v.undo, view?.organizationId, load);
       return true;
     } catch (e) {
       const code = e instanceof Error ? e.message : "";

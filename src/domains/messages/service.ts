@@ -8,6 +8,7 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
+import { offerUndo } from "../undo/service";
 import { isAdmin, permissions } from "../access/policy";
 import { ageOn } from "../people/schema";
 import { brusselsToday } from "../people/service";
@@ -384,16 +385,24 @@ export async function messagesExecute(
         )
       ).rows[0];
       if (!m) throw new AccessError("NOT_FOUND", 404);
+      const was = (await c.query("SELECT hidden_at,hidden_by FROM internal_message WHERE id=$1 FOR UPDATE", [m.id])).rows[0];
       await c.query(
         "UPDATE internal_message SET hidden_at=CASE WHEN $2='hidden' THEN COALESCE(hidden_at,now()) ELSE NULL END,hidden_by=CASE WHEN $2='hidden' THEN $3 ELSE NULL END WHERE id=$1",
         [m.id, cmd.outcome, x.userId],
       );
-      await c.query(
-        "UPDATE message_report SET resolved_at=now(),resolved_by=$2,outcome=$3 WHERE message_id=$1 AND resolved_at IS NULL",
-        [m.id, x.userId, cmd.outcome],
-      );
+      const reports = (
+        await c.query(
+          "UPDATE message_report SET resolved_at=now(),resolved_by=$2,outcome=$3 WHERE message_id=$1 AND resolved_at IS NULL RETURNING id",
+          [m.id, x.userId, cmd.outcome],
+        )
+      ).rows.map((r) => r.id as string);
       await audit(c, org, x.userId, "messages.moderated." + cmd.outcome, m.id);
-      return { id: m.thread_id as string };
+      // Wave 15, C10: hiding a message can be undone for two minutes.
+      const undo =
+        cmd.outcome === "hidden" && !was.hidden_at
+          ? await offerUndo(c, org, x.userId, "messageHide", m.id, { hidden_at: null, hidden_by: was.hidden_by ?? null, reports })
+          : undefined;
+      return { id: m.thread_id as string, ...(undo ? { undo } : {}) };
     }
     const previous = (
       await c.query(

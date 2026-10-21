@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { AccessError, account, active, type Principal } from "../access/service";
+import { offerUndo } from "../undo/service";
 import { permissions } from "../access/policy";
 import { resolveScope, seasonOptions, teamOptions } from "../scope/service";
 import { teamColors, type TeamColor } from "./colors";
@@ -224,7 +225,7 @@ export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, ex
           const current = cmd.fromTeamId
             ? (
                 await s.c.query(
-                  "SELECT m.id,m.team_id,m.position,t.season_id FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.organization_id=$1 AND m.team_id=$2 AND m.profile_id=$3 AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND (m.ends_on IS NULL OR m.ends_on>=$4::date) FOR UPDATE",
+                  "SELECT m.id,m.team_id,m.position,t.season_id,m.ends_on::text,m.closed_at,m.cancelled FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.organization_id=$1 AND m.team_id=$2 AND m.profile_id=$3 AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND (m.ends_on IS NULL OR m.ends_on>=$4::date) FOR UPDATE",
                   [s.org, cmd.fromTeamId, cmd.profileId, cmd.effectiveOn],
                 )
               ).rows[0]
@@ -249,7 +250,14 @@ export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, ex
             )
           ).rows[0].id as string;
           await audit(s, "team.move", cmd.profileId, { from: cmd.fromTeamId, to: to.id, effectiveOn: cmd.effectiveOn, keep: cmd.keep });
-          return { id };
+          const undo = await offerUndo(s.c, s.org, s.userId, "move", cmd.profileId, {
+            created: id,
+            previous:
+              current && !cmd.keep
+                ? { id: current.id, ends_on: current.ends_on, closed_at: current.closed_at ? new Date(current.closed_at).toISOString() : null, cancelled: current.cancelled }
+                : null,
+          });
+          return { id, undo };
         }
       }
     },

@@ -6,6 +6,8 @@ import type { teamsView, teamDetail, TeamCard, RosterRow } from "@/domains/teams
 import { teamColors } from "@/domains/teams/colors";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 import { useScope, scopedHref } from "./use-scope";
 import { teamsCopy } from "./teams-copy";
 import { shellCopy } from "./shell-copy";
@@ -238,7 +240,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
   const sh = t.sheet;
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
   const { data, error, setError, reload } = useData<Detail>(`/api/teams?id=${id}`, failure);
-  const { busy, message, post } = usePost("/api/teams", reload, setError, failure);
+  const { busy, message, post, postFor } = usePost("/api/teams", reload, setError, failure);
   const [tab, setTab] = useState<"roster" | "staff" | "settings">("roster"),
     [moving, setMoving] = useState<RosterRow | null>(null);
   if (!data)
@@ -368,7 +370,13 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
           others={data.others}
           busy={busy}
           close={() => setMoving(null)}
-          move={(body) => post({ organizationId: data.organization_id, action: "move", ...body }, sh.moved).then((ok) => ok && setMoving(null))}
+          move={(body) =>
+            postFor({ organizationId: data.organization_id, action: "move", ...body }, sh.moved).then((r) => {
+              if (!r) return;
+              setMoving(null);
+              undoToast(locale, toastCopy[locale].moved, r.undo, data.organization_id, reload);
+            })
+          }
         />
       )}
     </main>

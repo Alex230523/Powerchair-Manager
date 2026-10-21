@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { CommandPalette } from "./command-palette";
+import { ToastHost } from "./toast";
 import { ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
 import { menuGroups, type NavItem, type Workspace } from "./menu";
@@ -486,6 +487,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
           </header>
           <ScopeChip t={t} />
           {children}
+          <ToastHost locale={locale} />
         </div>
       </div>
     </ScopeProvider>

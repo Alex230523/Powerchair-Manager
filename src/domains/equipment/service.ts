@@ -8,6 +8,7 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
+import { offerUndo } from "../undo/service";
 import { permissions } from "../access/policy";
 import { ownProfiles, type Actor } from "../calendar/access";
 import { commandSchema, type Command } from "./schema";
@@ -294,13 +295,22 @@ export async function equipmentExecute(
           )
         ).rows[0];
         // Retiring a chair closes its current links; the history stays.
-        if (input.status === "retired")
-          await s.c.query(
-            "UPDATE equipment_chair_assignment SET ends_on=GREATEST(starts_on,CURRENT_DATE) WHERE chair_id=$1 AND ends_on IS NULL",
-            [input.id],
-          );
+        const closed =
+          input.status === "retired"
+            ? (
+                await s.c.query(
+                  "UPDATE equipment_chair_assignment SET ends_on=GREATEST(starts_on,CURRENT_DATE) WHERE chair_id=$1 AND ends_on IS NULL RETURNING id",
+                  [input.id],
+                )
+              ).rows.map((r) => r.id as string)
+            : [];
         await log(s, input.id, "update", before, after);
-        return { id: input.id };
+        // Wave 15, C10: retiring can be undone for two minutes.
+        const undo =
+          input.status === "retired" && before.status !== "retired"
+            ? await offerUndo(s.c, o, s.p.userId, "chairRetire", input.id, { status: before.status, links: closed })
+            : undefined;
+        return { id: input.id, ...(undo ? { undo } : {}) };
       }
       if (input.action === "assign") {
         const chair = (

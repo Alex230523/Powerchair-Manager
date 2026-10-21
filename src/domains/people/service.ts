@@ -12,6 +12,7 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
+import { offerUndo } from "../undo/service";
 import { permissions, type Permission } from "../access/policy";
 import {
   ageOn,
@@ -646,6 +647,8 @@ export async function peopleExecute(
   skipped?: number;
   guardians?: number;
   unknownTeams?: number;
+  /** Wave 15, C10: what to send to /api/undo to put it back. */
+  undo?: string;
 }> {
   return transaction(
     db,
@@ -676,6 +679,7 @@ export async function peopleExecute(
             : "people.manage",
         );
       let target = "";
+      let undo: string | undefined;
       const event = command.action;
       if (command.action === "gameInfo") {
         const existing = await profile(s, command.id);
@@ -865,12 +869,11 @@ export async function peopleExecute(
         command.action === "teamArchive"
       ) {
         const table = command.action === "seasonArchive" ? "season" : "team";
-        const result = await c.query(
-          `UPDATE ${table} SET archived=$3 WHERE id=$1 AND organization_id=$2 RETURNING id`,
-          [command.id, org, command.archived],
-        );
-        if (!result.rowCount) throw new AccessError("NOT_FOUND", 404);
+        const before = (await c.query(`SELECT archived FROM ${table} WHERE id=$1 AND organization_id=$2 FOR UPDATE`, [command.id, org])).rows[0];
+        if (!before) throw new AccessError("NOT_FOUND", 404);
+        await c.query(`UPDATE ${table} SET archived=$3 WHERE id=$1 AND organization_id=$2`, [command.id, org, command.archived]);
         target = command.id;
+        if (before.archived !== command.archived) undo = await offerUndo(c, org, p.userId, command.action, command.id, { archived: before.archived });
       } else if (command.action === "team") {
         const season = await c.query(
           "SELECT id FROM season WHERE id=$1 AND organization_id=$2 AND NOT archived",
@@ -937,12 +940,14 @@ export async function peopleExecute(
           )
         ).rows[0].id;
       } else if (command.action === "endAssignment") {
+        const previous = (await c.query("SELECT ends_on::text,closed_at FROM team_membership WHERE id=$1 AND organization_id=$2 FOR UPDATE", [command.id, org])).rows[0];
         const result = await c.query(
           "UPDATE team_membership SET ends_on=$3,closed_at=CASE WHEN $3::date<=CURRENT_DATE THEN now() ELSE NULL END WHERE id=$1 AND organization_id=$2 AND starts_on<=$3 AND closed_at IS NULL AND (ends_on IS NULL OR ends_on>=$3) AND EXISTS (SELECT 1 FROM team t JOIN season s ON s.id=t.season_id WHERE t.id=team_membership.team_id AND s.ends_on>=$3) RETURNING id",
           [command.id, org, command.endsOn],
         );
         if (!result.rowCount) throw new AccessError("INVALID_DATE", 400);
         target = command.id;
+        undo = await offerUndo(c, org, p.userId, "endAssignment", command.id, { ends_on: previous.ends_on, closed_at: previous.closed_at ? new Date(previous.closed_at).toISOString() : null });
       } else if (command.action === "selfCoach") {
         // Reuse the actor's own club profile when it exists, so a president who
         // also coaches appears once in every list and statistic.
@@ -1314,7 +1319,7 @@ export async function peopleExecute(
         );
       }
       await audit(c, org, p.userId, "people." + event, target);
-      return { ok: true, id: target };
+      return { ok: true, id: target, ...(undo ? { undo } : {}) };
     },
     command.action === "acceptTransfer" ? command.token : undefined,
   );
