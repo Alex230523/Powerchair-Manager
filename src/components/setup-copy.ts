@@ -23,6 +23,7 @@ export const setupCopy = {
       dues: { title: "Créer un barème de cotisation", text: "Le montant de la saison, en une ou plusieurs échéances." },
       modules: { title: "Choisir les modules utiles", text: "Ce que le club n’utilise pas quitte le menu de tout le monde." },
       presence: { title: "Régler l’effectif attendu aux séances", text: "Les pastilles de l’accueil passent au rouge en dessous." },
+      palette: { title: "Choisir la palette du club", text: "Les couleurs de la plateforme et des pages publiques du club." },
     } satisfies Record<SetupStep, { title: string; text: string }>,
     empty: {
       players: "Importer vos joueurs depuis Excel",
@@ -51,6 +52,7 @@ export const setupCopy = {
       dues: { title: "Een lidgeldtarief aanmaken", text: "Het bedrag van het seizoen, in één of meer termijnen." },
       modules: { title: "De nuttige modules kiezen", text: "Wat de club niet gebruikt, verdwijnt uit ieders menu." },
       presence: { title: "Het verwachte aantal per sessie instellen", text: "De bolletjes op de startpagina worden rood daaronder." },
+      palette: { title: "Het palet van de club kiezen", text: "De kleuren van het platform en van de openbare pagina's van de club." },
     } satisfies Record<SetupStep, { title: string; text: string }>,
     empty: {
       players: "Uw spelers uit Excel importeren",
@@ -79,6 +81,7 @@ export const setupCopy = {
       dues: { title: "Create a membership fee rate", text: "The season's amount, in one or more instalments." },
       modules: { title: "Choose the useful modules", text: "What the club does not use leaves everyone's menu." },
       presence: { title: "Set the expected numbers at sessions", text: "The home page dots turn red below them." },
+      palette: { title: "Choose the club's palette", text: "The colours of the platform and of the club's public pages." },
     } satisfies Record<SetupStep, { title: string; text: string }>,
     empty: {
       players: "Import your players from Excel",

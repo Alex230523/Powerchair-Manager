@@ -3,9 +3,9 @@ import { z } from "zod";
 /**
  * Getting started of a new club (wave 15, C3). Each step is computed from the
  * club's data, never ticked by hand; "Commencer" opens the form that does it.
- * The club's palette (prompt 2.9) will add its step when it exists.
+ * The club's palette (prompt 2.9) is the ninth step.
  */
-export const setupSteps = ["identity", "season", "team", "coach", "players", "dues", "modules", "presence"] as const;
+export const setupSteps = ["identity", "season", "team", "coach", "players", "dues", "modules", "presence", "palette"] as const;
 export type SetupStep = (typeof setupSteps)[number];
 export const setupLinks: Record<SetupStep, string> = {
   identity: "/settings/club#club-identity-title",
@@ -16,6 +16,7 @@ export const setupLinks: Record<SetupStep, string> = {
   dues: "/settings/money#settings-dues-title",
   modules: "/settings/club#settings-modules",
   presence: "/settings/activities#settings-presence",
+  palette: "/settings/club#settings-appearance",
 };
 export const setupIcons = {
   identity: "club",
@@ -26,6 +27,7 @@ export const setupIcons = {
   dues: "dues",
   modules: "settings",
   presence: "attendance",
+  palette: "settings",
 } as const satisfies Record<SetupStep, string>;
 export type SetupState = { steps: { id: SetupStep; done: boolean }[]; hidden: boolean };
 export const setupDone = (s: SetupState) => s.steps.filter((x) => x.done).length;

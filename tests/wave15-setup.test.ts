@@ -10,12 +10,12 @@ describe("getting started", () => {
   it("counts the steps done and shows the card until all are done or it is hidden", () => {
     expect(setupDone(state(3))).toBe(3);
     expect(setupShown(state(0))).toBe(true);
-    expect(setupShown(state(8))).toBe(false);
+    expect(setupShown(state(9))).toBe(false);
     expect(setupShown(state(2, true))).toBe(false);
   });
   it("opens existing forms and anchors", () => {
     const anchors = settingsEntries.map((e) => `/settings/${e.category}#${e.anchor}`);
-    for (const step of ["identity", "dues", "modules", "presence"] as const) expect(anchors).toContain(setupLinks[step]);
+    for (const step of ["identity", "dues", "modules", "presence", "palette"] as const) expect(anchors).toContain(setupLinks[step]);
     expect(setupLinks.players).toBe("/players?import=1");
     expect(readFileSync("src/components/access.tsx", "utf8")).toContain('id="access-invite"');
     expect(readFileSync("src/components/people.tsx", "utf8")).toContain('<section id="teams">');

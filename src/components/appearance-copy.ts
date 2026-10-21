@@ -1,0 +1,47 @@
+import type { Locale } from "@/lib/locale";
+
+/** The club's palette and tint (prompt 2.9). */
+export const appearanceCopy = {
+  fr: {
+    title: "Apparence",
+    intro: "La palette et la teinte du fond de toute la plateforme pour les membres du club, ainsi que des pages publiques d’inscription et de cagnotte. Le thème clair ou sombre reste un choix personnel.",
+    palette: "Palette",
+    palettes: { night: "Bleu nuit", bordeaux: "Bordeaux", aubergine: "Violet aubergine", brown: "Brun profond" },
+    tint: "Teinte du fond",
+    tints: { neutral: "Neutre", light: "Légère", strong: "Marquée" },
+    sampleTitle: "Titre",
+    sampleButton: "Bouton",
+    sampleChip: "Pastille",
+    save: "Enregistrer",
+    saved: "Apparence enregistrée.",
+    preview: "Aperçu en direct : la page prend la palette choisie tant que vous ne quittez pas.",
+  },
+  nl: {
+    title: "Uitzicht",
+    intro: "Het palet en de achtergrondtint van het hele platform voor de clubleden, en van de openbare inschrijvings- en potpagina's. Licht of donker blijft een persoonlijke keuze.",
+    palette: "Palet",
+    palettes: { night: "Nachtblauw", bordeaux: "Bordeaux", aubergine: "Aubergine", brown: "Diepbruin" },
+    tint: "Achtergrondtint",
+    tints: { neutral: "Neutraal", light: "Licht", strong: "Uitgesproken" },
+    sampleTitle: "Titel",
+    sampleButton: "Knop",
+    sampleChip: "Label",
+    save: "Opslaan",
+    saved: "Uitzicht opgeslagen.",
+    preview: "Live voorbeeld: de pagina neemt het gekozen palet over zolang u blijft.",
+  },
+  en: {
+    title: "Appearance",
+    intro: "The palette and background tint of the whole platform for the club's members, and of the public registration and fundraising pages. Light or dark stays a personal choice.",
+    palette: "Palette",
+    palettes: { night: "Night blue", bordeaux: "Burgundy", aubergine: "Aubergine purple", brown: "Deep brown" },
+    tint: "Background tint",
+    tints: { neutral: "Neutral", light: "Light", strong: "Strong" },
+    sampleTitle: "Title",
+    sampleButton: "Button",
+    sampleChip: "Chip",
+    save: "Save",
+    saved: "Appearance saved.",
+    preview: "Live preview: the page takes the chosen palette while you stay.",
+  },
+} satisfies Record<Locale, unknown>;

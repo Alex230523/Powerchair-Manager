@@ -71,6 +71,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 15, C5 : barre de navigation mobile en bas d’écran](evolutions/2026-10-21-zj-vague-15-barre-mobile.md) |
 | 21/10/2026 | [Vague 15, C6 : actions rapides dans la recherche Ctrl+K](evolutions/2026-10-21-zk-vague-15-actions-ctrlk.md) |
 | 21/10/2026 | [Vague 15, C3 : démarrage guidé d’un nouveau club](evolutions/2026-10-21-zl-vague-15-demarrage-guide.md) |
+| 21/10/2026 | [Vague 15, 2.9 : palette du club et nettoyage final](evolutions/2026-10-21-zm-vague-15-palette-club-nettoyage.md) |
 
 ## Convention
 
