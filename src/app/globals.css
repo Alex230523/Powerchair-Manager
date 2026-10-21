@@ -861,6 +861,25 @@ caption {
 .notifications textarea {
   max-width: 100%;
 }
+/* Weekly digest settings (wave 15, C7). */
+.digest-form,
+.digest-club {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.digest-form > fieldset,
+.digest-form > .form-grid,
+.digest-club > .form-grid {
+  justify-self: stretch;
+}
+.digest-club {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.digest-club h3 {
+  margin: 0;
+}
 .notification-preview {
   padding: 20px;
   background: var(--surface-2);

@@ -101,6 +101,8 @@ export type Deadline = {
   count: number;
   cents?: number;
   href: string;
+  /** A sponsor condition or a grant step (wave 15), not a date of the file itself. */
+  task?: boolean;
 };
 /** The money card of the president's home (wave 14): club-wide figures of the season in view. */
 export type FinanceCard = {

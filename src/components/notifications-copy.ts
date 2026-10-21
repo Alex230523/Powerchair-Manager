@@ -200,6 +200,11 @@ export const notificationErrors: Record<
     nl: "Deze verzending heeft een andere status. Vernieuw eerst.",
     en: englishErrors["JOB_STATE"] ?? "Action unavailable.",
   },
+  DIGEST_SECTIONS: {
+    fr: "Cochez au moins une rubrique.",
+    nl: "Vink minstens één rubriek aan.",
+    en: "Tick at least one section.",
+  },
   UNCERTAIN_CONFIRM: {
     fr: "Confirmez la vérification du résultat avant cette nouvelle tentative.",
     nl: "Bevestig dat u het resultaat hebt gecontroleerd voordat u opnieuw probeert.",

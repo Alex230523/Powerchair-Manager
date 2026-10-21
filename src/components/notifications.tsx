@@ -9,6 +9,7 @@ import { notificationCopy, notificationErrors } from "./notifications-copy";
 import { errors } from "./access-copy";
 import { peopleErrors } from "./people-copy";
 import { Panel, Button, PageHeader, Card } from "./ui";
+import { WeeklyDigest } from "./weekly-digest";
 type View = Awaited<ReturnType<typeof notificationView>>;
 const variables: Record<string, string[]> = {
   invitation: ["organization", "role", "url"],
@@ -113,6 +114,18 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
     if (!response.ok) throw new Error(value.error);
     await load();
     setMessage(t.saved);
+  }
+  /** The weekly digest's commands (wave 15, C7): the answer matters (a preview may find nothing to say). */
+  async function digestSend(command: Record<string, unknown>) {
+    const response = await fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...command, organizationId: data?.context.id }),
+    });
+    const value = await response.json();
+    if (!response.ok) throw new Error(explain(value.error));
+    await load();
+    return value as { sent?: boolean };
   }
   function submit(
     e: FormEvent<HTMLFormElement>,
@@ -310,6 +323,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                 {t.test}
               </Button>
             </Panel>
+            {data.digest && <WeeklyDigest locale={locale} digest={data.digest} send={digestSend} />}
             {data.manage && (
               <>
                 <Panel id="notif-templates" title={t.templates}>
