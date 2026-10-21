@@ -579,7 +579,7 @@ export async function attendanceView(
       }
     const teams = (
       await s.c.query(
-        "SELECT id,name FROM team WHERE organization_id=$1 ORDER BY name",
+        "SELECT id,name,color,season_id FROM team WHERE organization_id=$1 ORDER BY name",
         [s.a.organization_id],
       )
     ).rows;

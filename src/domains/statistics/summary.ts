@@ -116,3 +116,72 @@ export function retention(seasons: { name: string; members: string[] }[]) {
     };
   });
 }
+
+/** The months of a period, "YYYY-MM", from the month of `from` to the month of `to` (wave 15, 2.6). */
+export function monthsBetween(from: string, to: string) {
+  const out: string[] = [];
+  let [y, m] = [Number(from.slice(0, 4)), Number(from.slice(5, 7))];
+  const end = to.slice(0, 7);
+  while (out.length < 240) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    if (key > end) break;
+    out.push(key);
+    if (++m > 12) [y, m] = [y + 1, 1];
+  }
+  return out;
+}
+
+/**
+ * Monthly attendance rate of the club and of each team, on closed registers
+ * only (same rules as summarize): null for a month without a closed register.
+ */
+export function monthlyRates(events: (StatisticalEvent & { team_id?: string | null })[], months: string[], kind = "") {
+  const blank = () => months.map(() => ({ attended: 0, closed: 0 }));
+  const club = blank(),
+    teams = new Map<string, ReturnType<typeof blank>>();
+  const index = new Map(months.map((m, i) => [m, i]));
+  for (const e of events) {
+    if (e.status === "cancelled" || (kind && e.kind !== kind) || !e.register?.closed_at) continue;
+    const i = index.get(localAt(e.starts_at, "Europe/Brussels").slice(0, 7));
+    if (i === undefined) continue;
+    const team = e.team_id ? (teams.get(e.team_id) ?? blank()) : null;
+    if (e.team_id && team) teams.set(e.team_id, team);
+    for (const inv of e.invitations) {
+      if (inv.withdrawn_at) continue;
+      const came = ["present", "late", "early"].includes(inv.actual);
+      for (const row of team ? [club[i], team[i]] : [club[i]]) {
+        row.closed++;
+        if (came) row.attended++;
+      }
+    }
+  }
+  const rate = (rows: { attended: number; closed: number }[]) => rows.map((r) => percentage(r.attended, r.closed));
+  return { club: rate(club), teams: new Map([...teams].map(([id, rows]) => [id, rate(rows)])) };
+}
+
+/**
+ * Players per season, split by team or by category (wave 15, 2.6). A player in
+ * several teams counts once, in the first team by name, so the segments add
+ * up to the season's total.
+ */
+export function headcount(seasons: { name: string; players: { profile: string; team: string; color: string | null; category: string }[] }[]) {
+  return seasons.map((s) => {
+    const seen = new Set<string>();
+    const teams = new Map<string, { name: string; color: string | null; count: number }>(),
+      categories = new Map<string, number>();
+    for (const p of [...s.players].sort((a, b) => a.team.localeCompare(b.team))) {
+      if (seen.has(p.profile)) continue;
+      seen.add(p.profile);
+      const t = teams.get(p.team) ?? { name: p.team, color: p.color, count: 0 };
+      t.count++;
+      teams.set(p.team, t);
+      categories.set(p.category.trim(), (categories.get(p.category.trim()) ?? 0) + 1);
+    }
+    return {
+      season: s.name,
+      total: seen.size,
+      teams: [...teams.values()],
+      categories: [...categories].map(([name, count]) => ({ name, count })),
+    };
+  });
+}

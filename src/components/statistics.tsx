@@ -1,5 +1,5 @@
 "use client";
-import { RetentionCard } from "./retention";
+import { SeasonHeadcount } from "./retention";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
@@ -9,138 +9,18 @@ import {
   summarize,
   percentage,
   statisticsCsv,
+  monthlyRates,
+  monthsBetween,
   type StatisticalEvent,
 } from "@/domains/statistics/summary";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import { kindLabels } from "./calendar-copy";
-import { Button, Card, EmptyState, PageHeader, StatCard, Toolbar } from "./ui";
-const copies = {
-  fr: {
-    title: "Statistiques",
-    intro:
-      "Les présences et réponses enregistrées dans votre périmètre d’accès.",
-    from: "Du",
-    to: "Au",
-    team: "Équipe",
-    kind: "Type d’événement",
-    all: "Tous",
-    apply: "Afficher",
-    season: "Saison",
-    custom: "Période personnalisée",
-    sessions: "Événements",
-    closed: "Registres clôturés",
-    people: "Personnes convoquées",
-    rate: "Assiduité",
-    answers: "Réponses aux convocations",
-    invited: "Convocations",
-    attended: "Participations",
-    absent: "Absences",
-    late: "Retards",
-    early: "Départs anticipés",
-    monthly: "Évolution mensuelle",
-    individual: "Détail par personne",
-    name: "Personne",
-    month: "Mois",
-    observed: "Présences attendues sur registres clôturés",
-    empty:
-      "Aucune donnée pour cette période. Ajoutez des événements et renseignez leurs présences pour alimenter les statistiques.",
-    hint: "L’assiduité porte uniquement sur les registres clôturés, hors événements annulés et convocations retirées. Retards et départs anticipés comptent comme une participation. Une réponse « présent » ne vaut pas un pointage.",
-    partial:
-      "Résultats incomplets : la limite de 500 événements est atteinte. Réduisez la période ; l’export est désactivé.",
-    error:
-      "Chargement impossible. Vérifiez votre connexion et votre profil actif.",
-    loading: "Chargement…",
-    export: "Exporter CSV",
-    calendar: "Calendrier",
-    attendance: "Gérer les présences",
-    future:
-      "Les statistiques de matchs (buts, résultats, classement) seront disponibles avec le module de matchs officiels.",
-    invalid: "Choisissez une période de 1 à 366 jours.",
-  },
-  en: {
-    title: "Statistics",
-    intro: "Recorded attendance and responses within your access scope.",
-    from: "From",
-    to: "To",
-    team: "Team",
-    kind: "Event type",
-    all: "All",
-    apply: "Show",
-    season: "Season",
-    custom: "Custom period",
-    sessions: "Events",
-    closed: "Closed registers",
-    people: "Invited people",
-    rate: "Attendance rate",
-    answers: "Invitation responses",
-    invited: "Invitations",
-    attended: "Attendances",
-    absent: "Absences",
-    late: "Late arrivals",
-    early: "Early departures",
-    monthly: "Monthly trend",
-    individual: "By person",
-    name: "Person",
-    month: "Month",
-    observed: "Expected attendances in closed registers",
-    empty:
-      "No data for this period. Add events and record attendance to populate statistics.",
-    hint: "Attendance rates use closed registers only, excluding cancelled events and withdrawn invitations. Late arrivals and early departures count as attendance. A positive response is not an attendance mark.",
-    partial:
-      "Incomplete results: 500-event limit reached. Narrow the period; export is disabled.",
-    error: "Unable to load. Check your connection and active profile.",
-    loading: "Loading…",
-    export: "Export CSV",
-    calendar: "Calendar",
-    attendance: "Manage attendance",
-    future:
-      "Match statistics (goals, results, standings) will follow the official matches module.",
-    invalid: "Choose a period of 1 to 366 days.",
-  },
-  nl: {
-    title: "Statistieken",
-    intro:
-      "Geregistreerde aanwezigheid en antwoorden binnen je toegangsrechten.",
-    from: "Van",
-    to: "Tot",
-    team: "Team",
-    kind: "Evenementtype",
-    all: "Alle",
-    apply: "Tonen",
-    season: "Seizoen",
-    custom: "Aangepaste periode",
-    sessions: "Evenementen",
-    closed: "Afgesloten registers",
-    people: "Opgeroepen personen",
-    rate: "Aanwezigheidspercentage",
-    answers: "Antwoorden op oproepen",
-    invited: "Oproepen",
-    attended: "Deelnames",
-    absent: "Afwezigheden",
-    late: "Te laat",
-    early: "Vroeg vertrek",
-    monthly: "Maandelijkse evolutie",
-    individual: "Per persoon",
-    name: "Persoon",
-    month: "Maand",
-    observed: "Verwachte aanwezigheid in afgesloten registers",
-    empty:
-      "Geen gegevens voor deze periode. Voeg evenementen toe en registreer aanwezigheid.",
-    hint: "Alleen afgesloten registers tellen mee, zonder geannuleerde evenementen en ingetrokken oproepen. Te laat komen en vroeg vertrekken tellen als deelname. Een positief antwoord is geen aanwezigheidsregistratie.",
-    partial:
-      "Onvolledige resultaten: limiet van 500 evenementen bereikt. Beperk de periode; export is uitgeschakeld.",
-    error: "Laden mislukt. Controleer je verbinding en actieve profiel.",
-    loading: "Laden…",
-    export: "CSV exporteren",
-    calendar: "Kalender",
-    attendance: "Aanwezigheid beheren",
-    future: "Wedstrijdstatistieken volgen met de officiële wedstrijdmodule.",
-    invalid: "Kies een periode van 1 tot 366 dagen.",
-  },
-};
+import { Button, Card, DataTable, EmptyState, PageHeader, StatCard, Toolbar } from "./ui";
+import { ChartFrame, LineChart, trendSentence, type ChartSeries } from "./charts";
+import { statisticsCopy } from "./statistics-copy";
 type View = Awaited<ReturnType<typeof attendanceView>>;
 export function Statistics({ locale }: { locale: Locale }) {
-  const t = copies[locale],
+  const t = statisticsCopy[locale],
     today = localAt(new Date(), "Europe/Brussels").slice(0, 10);
   const scope = useScope();
   // The top bar choice (wave 12) seeds the team filter and re-seeds it when it changes.
@@ -185,6 +65,19 @@ export function Statistics({ locale }: { locale: Locale }) {
       .finally(() => {
         if (!c.signal.aborted) setLoading(false);
       });
+    return () => c.abort();
+  }, [filters]);
+  // With a team chosen, the club's average comes from a second reading without the team filter.
+  const [club, setClub] = useState<{ key: string; events: StatisticalEvent[] } | null>(null);
+  useEffect(() => {
+    if (!filters.team) return;
+    const c = new AbortController();
+    fetch("/api/attendance?" + new URLSearchParams({ from: filters.from, to: filters.to, team: "", place: "" }), { cache: "no-store", signal: c.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && !c.signal.aborted) setClub({ key: filters.from + filters.to, events: d.events });
+      })
+      .catch(() => {});
     return () => c.abort();
   }, [filters]);
   const report = summarize(
@@ -365,30 +258,18 @@ export function Statistics({ locale }: { locale: Locale }) {
             />
           ) : (
             <div className="statistics-columns">
-              <Card title={t.monthly} subtitle={t.hint} id="stats-monthly">
-                <div className="statistics-bars">
-                  {report.months.map((m) => (
-                    <div className="statistics-bar" key={m.month}>
-                      <span>
-                        {new Intl.DateTimeFormat(locale, {
-                          month: "long",
-                          year: "numeric",
-                          timeZone: "UTC",
-                        }).format(new Date(m.month + "-01T12:00Z"))}
-                      </span>
-                      <meter
-                        min={0}
-                        max={100}
-                        value={percentage(m.attended, m.closed) ?? 0}
-                        aria-label={m.month + " · " + t.rate}
-                      />
-                      <strong>{rate(m.attended, m.closed)}</strong>
-                      <span>
-                        {m.attended} / {m.closed}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <Card title={t.monthly} subtitle={t.monthlyIntro} id="stats-monthly">
+                <MonthlyChart
+                  locale={locale}
+                  from={filters.from}
+                  to={filters.to}
+                  kind={kind}
+                  team={filters.team}
+                  events={(data.events ?? []) as unknown as (StatisticalEvent & { team_id: string | null })[]}
+                  club={filters.team && club?.key === filters.from + filters.to ? club.events : null}
+                  teams={data.teams as { id: string; name: string; color: string | null }[]}
+                />
+                <p className="muted small">{t.hint}</p>
               </Card>
               <Card title={t.individual} subtitle={t.observed} id="stats-people" className="card-flush">
                 <div className="statistics-table-scroll" tabIndex={0} role="region" aria-label={t.individual}>
@@ -427,8 +308,88 @@ export function Statistics({ locale }: { locale: Locale }) {
           )}
         </>
       )}
-      <RetentionCard locale={locale} />
+      <SeasonHeadcount locale={locale} />
       <p className="muted small">{t.future}</p>
     </main>
+  );
+}
+
+/**
+ * "Évolution mensuelle" (wave 15, 2.6): one line per team (2 px, team colour)
+ * and the club (3 px, --primary), from 0 to 100 %; with a team chosen, its
+ * line and the club's average dashed.
+ */
+function MonthlyChart({
+  locale,
+  from,
+  to,
+  kind,
+  team,
+  events,
+  club,
+  teams,
+}: {
+  locale: Locale;
+  from: string;
+  to: string;
+  kind: string;
+  team: string;
+  events: (StatisticalEvent & { team_id: string | null })[];
+  club: StatisticalEvent[] | null;
+  teams: { id: string; name: string; color: string | null }[];
+}) {
+  const t = statisticsCopy[locale];
+  const months = monthsBetween(from, to);
+  const labels = months.map((m) => new Intl.DateTimeFormat(locale, { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(m + "-01T12:00Z")));
+  const long = (i: number) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(months[i] + "-01T12:00Z"));
+  const rates = monthlyRates(events, months, kind);
+  const colour = (id: string, i: number) => {
+    const c = teams.find((x) => x.id === id)?.color;
+    return c ? `var(--team-${c}-border)` : `var(--chart-${(i % 8) + 1})`;
+  };
+  const series: ChartSeries[] = [];
+  if (team) {
+    const name = teams.find((x) => x.id === team)?.name ?? t.team;
+    series.push({ id: team, label: name, color: colour(team, 0), width: 3, values: rates.club });
+    if (club) series.push({ id: "club", label: t.clubAverage, color: "var(--primary)", width: 2, dashed: true, values: monthlyRates(club, months, kind).club });
+  } else {
+    [...rates.teams]
+      .filter(([, v]) => v.some((x) => x !== null))
+      .map(([id, values]) => ({ id, values, name: teams.find((x) => x.id === id)?.name ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach((x, i) => series.push({ id: x.id, label: x.name, color: colour(x.id, i), values: x.values }));
+    series.push({ id: "club", label: t.club, color: "var(--primary)", width: 3, values: rates.club });
+  }
+  const pct = (v: number) => `${Math.round(v)} %`;
+  const summary = `${t.monthlySummary}. ${series.map((s) => trendSentence(s.label, months.map((_, i) => long(i)), s.values, pct)).join(". ")}`;
+  return (
+    <ChartFrame
+      locale={locale}
+      legend={series}
+      table={
+        <DataTable label={t.monthly}>
+          <thead>
+            <tr>
+              <th scope="col">{t.month}</th>
+              {series.map((s) => (
+                <th scope="col" className="num" key={s.id}>{s.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {months.map((m, i) => (
+              <tr key={m}>
+                <th scope="row">{long(i)}</th>
+                {series.map((s) => (
+                  <td className="num" key={s.id}>{s.values[i] === null ? "…" : pct(s.values[i] as number)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      }
+    >
+      {(hidden) => <LineChart locale={locale} summary={summary} categories={labels} series={series.filter((s) => !hidden.has(s.id))} format={pct} />}
+    </ChartFrame>
   );
 }
