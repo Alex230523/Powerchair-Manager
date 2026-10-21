@@ -88,25 +88,27 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await expect(bar.getByRole("combobox", { name: "Saison", exact: true })).toHaveValue(season);
     await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe B" });
     await expect(page).toHaveURL(/[?&]team=/);
-    await expect(page.locator(".scope-chip")).toContainText("Équipe B");
+    // Wave 16 (B1): no chip under the bar; the team capsule is tinted instead.
+    await expect(page.locator(".scope-chip")).toHaveCount(0);
+    await expect(bar.locator(".capsule").filter({ has: page.getByRole("combobox", { name: "Équipe", exact: true }) })).toHaveAttribute("data-active", "");
     await axe(page, "dashboard with a team");
     // Players, then calendar: the local filter already holds the team.
     await page.goto("/fr/players");
     await loaded(page, "/fr/players");
     await expect(page.locator("#directory-team")).toHaveValue(teamB);
-    await expect(page.locator(".scope-chip")).toContainText("Équipe B");
+    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveValue(teamB);
     await expect(page.locator("main")).toContainText("Yanis El Amrani");
     await expect(page.locator("main table")).not.toContainText("Emma Peeters");
     await axe(page, "players filtered");
     await page.goto("/fr/calendar");
     await loaded(page, "/fr/calendar");
     await expect(page.locator("#calendar-team")).toHaveValue(teamB);
-    await expect(page.locator(".scope-chip")).toContainText("Équipe B");
+    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveValue(teamB);
     await axe(page, "calendar filtered");
-    // A local change offers to apply it everywhere; the chip then goes away.
+    // A local change offers to apply it everywhere; the capsule then goes back to neutral.
     await page.locator("#calendar-team").selectOption("");
     await page.getByRole("button", { name: "Appliquer à toute la plateforme", exact: true }).click();
-    await expect(page.locator(".scope-chip")).toHaveCount(0);
+    await expect(bar.locator(".capsule").filter({ has: page.getByRole("combobox", { name: "Équipe", exact: true }) })).not.toHaveAttribute("data-active", "");
     await expect(page).not.toHaveURL(/[?&]team=/);
     // Wave 15: the dues page follows the team chosen in the top bar (no whole-club note any more).
     await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe A" });
@@ -114,7 +116,8 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await loaded(page, "/fr/dues");
     await expect(page.locator(".scope-note")).toHaveCount(0);
     await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamA);
-    await page.locator(".scope-chip .scope-clear").click();
+    // Back to all teams through the capsule itself.
+    await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Toutes les équipes" });
     await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue("");
 
     // 2. Mes équipes: one card per team, a new team with its colour.

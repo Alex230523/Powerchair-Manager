@@ -10,7 +10,7 @@ import { shellCopy } from "./shell-copy";
 import { CommandPalette, scopeFocusEvent } from "./command-palette";
 import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
-import { ScopeProvider, useScope } from "./use-scope";
+import { defaultSeasonId, ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
 import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
@@ -567,7 +567,6 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
               )}
             </div>
           </header>
-          <ScopeChip t={t} />
           {children}
           <ToastHost locale={locale} />
         </div>
@@ -627,7 +626,8 @@ function ScopeBar({ t }: { t: Copy }) {
     archived = scope.seasons.filter((s) => s.archived);
   return (
     <div className="scope-bar">
-      <label className="capsule">
+      {/* Wave 16 (B1): a capsule whose choice narrows the view is tinted; no chip under the bar any more. */}
+      <label className="capsule" data-active={scope.seasonId && scope.seasonId !== defaultSeasonId(scope.seasons) ? "" : undefined}>
         <span className="capsule-label">{t.season}</span>
         <select ref={season} aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
           {open.map((s) => (
@@ -647,7 +647,7 @@ function ScopeBar({ t }: { t: Copy }) {
         </select>
       </label>
       {scope.seasonTeams.length > 1 && (
-        <label className="capsule">
+        <label className="capsule" data-active={scope.teamId ? "" : undefined}>
           <span className="team-dot" data-color={scope.team?.color ?? "none"} aria-hidden="true" />
           <span className="capsule-label">{t.team}</span>
           <select ref={team} aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
@@ -660,23 +660,6 @@ function ScopeBar({ t }: { t: Copy }) {
           </select>
         </label>
       )}
-    </div>
-  );
-}
-/** Under the top bar when one team is chosen: "Équipe A · 2026-2027", with a cross. */
-function ScopeChip({ t }: { t: Copy }) {
-  const scope = useScope();
-  if (!scope.team) return null;
-  return (
-    <div className="scope-chip-row">
-      <span className="scope-chip">
-        <span className="team-dot" data-color={scope.team.color ?? "none"} aria-hidden="true" />
-        {scope.team.name}
-        {scope.season && <span className="muted"> · {scope.season.name}</span>}
-        <button type="button" className="scope-clear" aria-label={t.scopeClear} onClick={() => scope.setTeam(null)}>
-          ×
-        </button>
-      </span>
     </div>
   );
 }
