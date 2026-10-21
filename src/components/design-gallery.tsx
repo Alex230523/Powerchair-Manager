@@ -4,6 +4,9 @@ import type { Locale } from "@/lib/locale";
 import { designCopy } from "./design-copy";
 import { Badge, Button, Card, DataTable, EmptyState, Field, IconTile, KpiCard, PageHeader, Segmented, Tabs, describedBy } from "./ui";
 import { ChartFrame, LineChart, StackedBarChart, type ChartSeries } from "./charts";
+import { PaletteSample } from "./club-appearance";
+import { appearanceCopy } from "./appearance-copy";
+import { palettes } from "@/domains/club/appearance";
 
 /** The gallery of shared components, rendered once per theme (development only). */
 export function DesignGallery({ locale }: { locale: Locale }) {
@@ -134,6 +137,17 @@ function Samples({ locale, theme }: { locale: Locale; theme: "light" | "dark" })
         <Card>
           <EmptyState icon="players" title={t.empty.title} text={t.empty.text} action={<Button>{t.empty.action}</Button>} />
         </Card>
+      </section>
+      <section aria-labelledby={id("h-palettes")}>
+        <h3 id={id("h-palettes")}>{t.sections.palettes}</h3>
+        <ul className="palette-grid design-palettes">
+          {palettes.map((p) => (
+            <li key={p} className="palette-option">
+              <PaletteSample locale={locale} palette={p} />
+              <span className="palette-name">{appearanceCopy[locale].palettes[p]}</span>
+            </li>
+          ))}
+        </ul>
       </section>
       <section aria-labelledby={id("h-charts")}>
         <h3 id={id("h-charts")}>{t.sections.charts}</h3>

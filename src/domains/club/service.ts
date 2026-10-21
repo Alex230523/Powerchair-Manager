@@ -11,6 +11,7 @@ import {
   type Principal,
 } from "../access/service";
 import { permissions } from "../access/policy";
+import { palettes, tints } from "./appearance";
 
 export const identitySchema = z.object({
   action: z.literal("identity"),
@@ -35,10 +36,13 @@ export const logoSchema = z.object({
   data: z.string().max(720000), // base64 of at most 512 KB
 });
 export const removeLogoSchema = z.object({ action: z.literal("removeLogo") });
+/** The club's palette and background tint (prompt 2.9). */
+export const appearanceSchema = z.object({ action: z.literal("appearance"), palette: z.enum(palettes), tint: z.enum(tints) });
 export const commandSchema = z.discriminatedUnion("action", [
   identitySchema,
   logoSchema,
   removeLogoSchema,
+  appearanceSchema,
 ]);
 export type Command = z.infer<typeof commandSchema>;
 
@@ -65,7 +69,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -154,6 +158,9 @@ export async function clubExecute(
           input.federationId,
         ]);
       }
+    } else if (input.action === "appearance") {
+      if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+      await c.query("UPDATE organization SET theme_palette=$2,theme_tint=$3 WHERE id=$1", [a.organization_id, input.palette, input.tint]);
     } else if (input.action === "logo") {
       const bytes = Buffer.from(input.data, "base64");
       if (!validLogo(input.mediaType, bytes))
@@ -204,3 +211,4 @@ export async function clubLogoForForm(db: Pool, formId: string) {
     )
   ).rows[0] as { media_type: string; content: Buffer } | undefined;
 }
+

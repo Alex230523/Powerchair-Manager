@@ -44,9 +44,9 @@ afterAll(async () => {
   await root.end();
 });
 
-it("starts at 0 of 8 and moves with the real data, one step at a time", async () => {
+it("starts at 0 of 9 and moves with the real data, one step at a time", async () => {
   const first = (await dashboardView(db, president)).setup!;
-  expect(first.steps).toHaveLength(8);
+  expect(first.steps).toHaveLength(9);
   expect(first.steps.filter((s) => s.done)).toEqual([]);
   const season = (await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-10,CURRENT_DATE+300) RETURNING id", [club])).rows[0].id;
   expect(await done(president)).toEqual(["season"]);
@@ -75,6 +75,8 @@ it("is for the president only, and can be hidden, then shown again from Settings
 
 it("disappears once the club is fully set up", async () => {
   await db.query("INSERT INTO dues_plan(organization_id,season_id,category,amount_cents,max_installments,first_due) SELECT $1,id,'Cotisation',20000,2,CURRENT_DATE FROM season WHERE organization_id=$1", [club]);
+  expect((await setupView(db, president)).steps.filter((s) => !s.done).map((s) => s.id)).toEqual(["palette"]);
+  await db.query("INSERT INTO audit_log(organization_id,actor_id,action,target_id) VALUES($1,$2,'organization.appearance',$3)", [club, president.userId, club]);
   expect((await setupView(db, president)).steps.every((s) => s.done)).toBe(true);
   expect((await dashboardView(db, president)).setup).toBeUndefined();
 });

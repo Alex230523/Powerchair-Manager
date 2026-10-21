@@ -16,7 +16,8 @@ export async function setupState(c: PoolClient, org: string): Promise<SetupState
               EXISTS(SELECT 1 FROM club_person p WHERE p.organization_id=o.id AND p.status='active' AND 'player'=ANY(p.directory_roles)) AS players,
               EXISTS(SELECT 1 FROM dues_plan d WHERE d.organization_id=o.id) AS dues,
               EXISTS(SELECT 1 FROM audit_log a WHERE a.organization_id=o.id AND a.action='modules.changed') AS modules,
-              o.presence_rules<>'{}'::jsonb AS presence
+              o.presence_rules<>'{}'::jsonb AS presence,
+              EXISTS(SELECT 1 FROM audit_log a WHERE a.organization_id=o.id AND a.action='organization.appearance') AS palette
          FROM organization o WHERE o.id=$1`,
       [org],
     )

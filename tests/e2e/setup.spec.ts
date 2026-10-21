@@ -36,13 +36,13 @@ test("getting started of a new club", async ({ page }) => {
     await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // 1. A new club: 0 of 8, each step with "Commencer".
+    // 1. A new club: 0 of 9, each step with "Commencer".
     await page.goto("/fr");
     const setup = page.getByRole("region", { name: "Bien démarrer" });
     await expect(setup).toBeVisible();
-    await expect(setup).toContainText("0 sur 8");
+    await expect(setup).toContainText("0 sur 9");
     await expect(setup.getByRole("progressbar", { name: "Configuration du club" })).toHaveAttribute("aria-valuenow", "0");
-    await expect(setup.getByRole("link", { name: /^Commencer/ })).toHaveCount(8);
+    await expect(setup.getByRole("link", { name: /^Commencer/ })).toHaveCount(9);
     await axe(page, "home with getting started");
 
     // 2. "Commencer" opens the right form; the real data moves the card on.
@@ -50,8 +50,8 @@ test("getting started of a new club", async ({ page }) => {
     await expect(page).toHaveURL(/\/fr\/club\/manage#teams$/);
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-10,CURRENT_DATE+300)", [club]);
     await page.goto("/fr");
-    await expect(setup).toContainText("1 sur 8");
-    await expect(setup.getByRole("link", { name: /^Commencer/ })).toHaveCount(7);
+    await expect(setup).toContainText("1 sur 9");
+    await expect(setup.getByRole("link", { name: /^Commencer/ })).toHaveCount(8);
 
     // 3. Hidden, then shown again from Settings > Club.
     await setup.getByRole("button", { name: "Masquer" }).click();
@@ -65,7 +65,7 @@ test("getting started of a new club", async ({ page }) => {
     await again.getByRole("button", { name: "Afficher à nouveau sur l’accueil" }).click();
     await expect(again.getByRole("button", { name: "Afficher à nouveau sur l’accueil" })).toHaveCount(0);
     await page.goto("/fr");
-    await expect(setup).toContainText("1 sur 8");
+    await expect(setup).toContainText("1 sur 9");
 
     // 4. An empty page offers its first action: the players' import.
     await page.goto("/fr/players");

@@ -15,7 +15,7 @@ En haut du tableau de bord du président d’un club, tant que le club n’est p
 7. choisir les modules utiles (le choix des modules a été enregistré au moins une fois) ;
 8. régler l’effectif attendu aux séances (seuils enregistrés).
 
-L’étape « palette du club » s’ajoutera avec le prompt 2.9.
+Le prompt 2.9 ajoute une neuvième étape : choisir la palette du club (enregistrée au moins une fois).
 
 Apparence : titre serif, fine barre de progression `--primary` avec « 3 sur 8 » (`role="progressbar"`), étapes avec une icône ronde (coche verte une fois faite), titre, une phrase d’aide et un bouton « Commencer » qui ouvre directement le bon formulaire (Réglages > Club, Gestion du club, invitation de l’accès, import Excel, Réglages > Argent, Réglages > Activités). Lien « Masquer », mémorisé pour le club ; la carte reste dans Réglages > Club (trouvable par la recherche) avec « Afficher à nouveau sur l’accueil ».
 
