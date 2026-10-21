@@ -27,11 +27,19 @@ export async function prepareSignIn(page: Page, db: Pool, name: string, email: s
 }
 
 /** Former `request.post("/api/auth/sign-up/email")`: creates the account, then signs this page's context in; answers like a sign-in (with `user`). */
+type SignedUser = { id: string; email: string; name: string; emailVerified: boolean };
+/** What a sign-in answers, typed for the tests (`.user.id`). */
+export type SignUpAnswer = {
+  status(): number;
+  ok(): boolean;
+  text(): Promise<string>;
+  json(): Promise<{ user: SignedUser }>;
+};
 export async function signUpVia(
   target: Page,
   db: Pool,
   options: { headers?: Record<string, string>; data: { name: string; email: string; password: string } },
-): Promise<Awaited<ReturnType<Page["request"]["post"]>>> {
+): Promise<SignUpAnswer> {
   await createAccount(db, options.data.name, options.data.email, options.data.password);
-  return target.request.post("/api/auth/sign-in/email", { headers: options.headers, data: { email: options.data.email, password: options.data.password } });
+  return target.request.post("/api/auth/sign-in/email", { headers: options.headers, data: { email: options.data.email, password: options.data.password } }) as Promise<SignUpAnswer>;
 }
