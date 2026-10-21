@@ -6,8 +6,10 @@ import { Pool } from "pg";
  * Wave 14: the white sidebar and its account menu, the quiet top bar with the
  * search field, the season capsule and the bell, and the mobile drawer.
  */
-async function axe(page: Page, label: string) {
-  const violations = (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations.map(
+/** With `within`, only that part of the page is analysed (an open popover covers the buttons beneath it, which is not a defect of theirs). */
+async function axe(page: Page, label: string, within?: string) {
+  const builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]);
+  const violations = (await (within ? builder.include(within) : builder).analyze()).violations.map(
     (v) => `${label} ${v.id}: ${v.nodes[0]?.target.join(" ")}`,
   );
   expect(violations, label).toEqual([]);
@@ -85,7 +87,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await expect(panel).toBeVisible();
     await expect(panel.getByText(/^Test de notification/)).toBeVisible();
     await expect(panel.getByRole("link", { name: /Tout voir/ })).toHaveAttribute("href", "/fr/notifications");
-    await axe(page, "bell panel");
+    await axe(page, "bell panel", ".bell-panel");
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     await expect(bellButton).toBeFocused();
