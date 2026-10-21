@@ -577,26 +577,30 @@ export function PartnerSheet({
       </section>
       <section aria-labelledby="sheet-history">
         <h3 id="sheet-history">{s.history}</h3>
-        {history.length ? (
-          <ol className="history-list">
-            {history.map((h, i) => (
-              <li key={i}>
-                <span className="muted small">{new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(h.created_at))}</span>{" "}
-                <strong>{s.historyActions[h.action] ?? h.action}</strong>
-                {h.action === "partner.package" && h.details.from ? (
-                  <span> · {fill(s.previousPackage, { from: String(h.details.from), season: String(h.details.season ?? ""), delivered: Number(h.details.delivered ?? 0), total: Number(h.details.total ?? 0) })}</span>
-                ) : typeof h.details.title === "string" ? (
-                  <span> · {h.details.title}</span>
-                ) : null}
-                {h.actor && <span className="muted small"> · {h.actor}</span>}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="muted">{s.noHistory}</p>
-        )}
+        <HistoryList locale={locale} items={history} />
       </section>
     </Modal>
+  );
+}
+/** The history of a file (partner or grant): who did what, when. */
+export function HistoryList({ locale, items, labels = {} }: { locale: Locale; items: View["history"]; labels?: Record<string, string> }) {
+  const s = sponsorsCopy[locale];
+  if (!items.length) return <p className="muted">{s.noHistory}</p>;
+  return (
+    <ol className="history-list">
+      {items.map((h, i) => (
+        <li key={i}>
+          <span className="muted small">{new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(h.created_at))}</span>{" "}
+          <strong>{labels[h.action] ?? s.historyActions[h.action] ?? h.action}</strong>
+          {h.action === "partner.package" && h.details.from ? (
+            <span> · {fill(s.previousPackage, { from: String(h.details.from), season: String(h.details.season ?? ""), delivered: Number(h.details.delivered ?? 0), total: Number(h.details.total ?? 0) })}</span>
+          ) : typeof h.details.title === "string" ? (
+            <span> · {h.details.title}</span>
+          ) : null}
+          {h.actor && <span className="muted small"> · {h.actor}</span>}
+        </li>
+      ))}
+    </ol>
   );
 }
 export function PaymentBadge({ locale, payment }: { locale: Locale; payment: Partner["payment"] }) {
@@ -614,14 +618,15 @@ export function PaymentBadge({ locale, payment }: { locale: Locale; payment: Par
 
 /* ---------- Tasks page (/tasks): every task for money people, one's own otherwise ---------- */
 type Tasks = Awaited<ReturnType<typeof fundingTasksView>>;
-export function FundingTasks({ locale }: { locale: Locale }) {
+export function FundingTasks({ locale, kind: initialKind = "all" }: { locale: Locale; kind?: "all" | "partner" | "grant" }) {
   const s = sponsorsCopy[locale],
     t = fundingCopy[locale] as (typeof fundingCopy)["fr"];
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
   const { data, error, setError, reload } = useData<Tasks>("/api/funding/tasks", failure);
   const { busy, message, post } = usePost("/api/funding", reload, setError, failure);
   const [mine, setMine] = useState(false),
-    [show, setShow] = useState<"todo" | "done">("todo");
+    [show, setShow] = useState<"todo" | "done">("todo"),
+    [kind, setKind] = useState(initialKind);
   const { ticked, tick } = useTick();
   if (!data)
     return (
@@ -631,7 +636,12 @@ export function FundingTasks({ locale }: { locale: Locale }) {
       </main>
     );
   const own = new Set(data.own);
-  const rows = data.tasks.filter((x) => x.status === show && (!mine || (x.responsible_id && own.has(x.responsible_id))));
+  const rows = data.tasks.filter(
+    (x) =>
+      x.status === show &&
+      (kind === "all" || (kind === "partner" ? !!x.partner_id : !!x.grant_id)) &&
+      (!mine || (x.responsible_id && own.has(x.responsible_id))),
+  );
   return (
     <main id="main" className="access funding-tasks">
       <PageHeader title={s.tasksTitle} subtitle={s.tasksIntro} />
@@ -641,6 +651,16 @@ export function FundingTasks({ locale }: { locale: Locale }) {
         actions={
           <Toolbar label={t.status}>
             <Segmented label={t.status} items={[{ id: "todo", label: s.pending }, { id: "done", label: s.tasksDone }]} value={show} onChange={(v) => setShow(v as "todo" | "done")} />
+            <Segmented
+              label={s.tasksSource}
+              items={[
+                { id: "all", label: s.sourceAll },
+                { id: "partner", label: s.sourcePartner },
+                { id: "grant", label: s.sourceGrant },
+              ]}
+              value={kind}
+              onChange={(v) => setKind(v as "all" | "partner" | "grant")}
+            />
             {data.can.all && (
               <label className="check">
                 <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />

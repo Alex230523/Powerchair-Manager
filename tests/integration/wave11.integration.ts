@@ -135,7 +135,7 @@ it("follows grants and partners with their next dates on the home page", async (
   expect(view.partners[0]).toMatchObject({ name: "Boulangerie Dupont", next: { kind: "renewal", date: inDays(20) } });
   expect((await contactsView(db, president)).contacts[0].grants).toBe(1);
   const dash = await dashboardView(db, president);
-  expect(dash.deadlines.find((d) => d.kind === "grant")).toMatchObject({ date: inDays(12), title: "Commune de Schaerbeek · Sport pour tous", href: "/funding/grants" });
+  expect(dash.deadlines.find((d) => d.kind === "grant")).toMatchObject({ date: inDays(12), title: "Commune de Schaerbeek · Sport pour tous", href: `/funding/grants?grant=${view.grants[0].id}` });
   expect(dash.deadlines.find((d) => d.kind === "partner")).toMatchObject({ date: inDays(20), title: "Boulangerie Dupont", href: "/funding/partners" });
   // A family sees none of the club's money matters; a coach without money rights neither.
   expect((await dashboardView(db, parent)).deadlines.some((d) => d.kind === "grant" || d.kind === "partner")).toBe(false);
