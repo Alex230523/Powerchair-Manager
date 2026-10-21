@@ -48,7 +48,15 @@ import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
 const CLUB = "Club démo Powerchair";
-export const DEMO_PASSWORD = "Demo-Powerchair-2026";
+/**
+ * Local and Codespaces demo: the public password below. An online preview
+ * (Vercel) must use its own secret instead, PFM_DEMO_PASSWORD, which is
+ * never printed.
+ */
+const ownPassword = process.env.PFM_DEMO_PASSWORD;
+if (process.env.VERCEL_ENV && (!ownPassword || ownPassword.length < 12))
+  throw new Error("PFM_DEMO_PASSWORD (12 characters minimum) is required for an online preview.");
+export const DEMO_PASSWORD = ownPassword || "Demo-Powerchair-2026";
 const accounts = [
   {
     key: "president",
@@ -1586,7 +1594,11 @@ try {
 }
 
 function printAccounts() {
-  console.log(`\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`);
+  console.log(
+    ownPassword
+      ? "\nComptes de démonstration (mot de passe : celui de PFM_DEMO_PASSWORD)"
+      : `\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`,
+  );
   for (const a of [...accounts, federationAccount, refereeAccount])
     console.log(`  ${a.email.padEnd(22)} ${a.profile}`);
   console.log("\nConnexion : /fr/access\n");

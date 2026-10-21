@@ -116,6 +116,7 @@ Chaque dossier principal de `src/` a son propre README qui détaille son contenu
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Couches, modèle d'autorisation, conventions, ajout d'un module |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | Règles de contribution et définition de « terminé »            |
 | [docs/GUIDE-LOCAL.md](docs/GUIDE-LOCAL.md)   | Installation locale détaillée et usage de chaque module        |
+| [docs/APERCUS-VERCEL.md](docs/APERCUS-VERCEL.md) | Aperçu en ligne de chaque branche et PR (Vercel) |
 | [docs/README.md](docs/README.md)             | Index : notes de lots, rapports de recette, évolutions         |
 
 ---
