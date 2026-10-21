@@ -39,7 +39,7 @@ const stamp = (date: Date) =>
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}/, "");
-export function calendarIcs(events: IcsEvent[], baseUrl: string) {
+export function calendarIcs(events: IcsEvent[], baseUrl: string, days: { uid: string; date: string; title: string }[] = []) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -62,6 +62,21 @@ export function calendarIcs(events: IcsEvent[], baseUrl: string) {
       "URL:" + baseUrl + "/fr/calendar",
       "END:VEVENT",
     );
+  // Whole-day dates (money deadlines, wave 15).
+  for (const d of days) {
+    const next = new Date(d.date + "T12:00:00Z");
+    next.setUTCDate(next.getUTCDate() + 1);
+    lines.push(
+      "BEGIN:VEVENT",
+      "UID:" + d.uid + "-" + d.date + "@pfm",
+      "DTSTAMP:" + stamp(new Date()),
+      "DTSTART;VALUE=DATE:" + d.date.replaceAll("-", ""),
+      "DTEND;VALUE=DATE:" + next.toISOString().slice(0, 10).replaceAll("-", ""),
+      "SUMMARY:" + escapeIcs(d.title),
+      "TRANSP:TRANSPARENT",
+      "END:VEVENT",
+    );
+  }
   lines.push("END:VCALENDAR");
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }

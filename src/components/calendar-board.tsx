@@ -1,6 +1,8 @@
 "use client";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import type { Locale } from "@/lib/locale";
+import type { MoneyDeadline } from "@/domains/funding/service";
+import { DeadlineChip } from "./money-layer";
 type Event = {
   id: string;
   title: string;
@@ -19,12 +21,15 @@ export function CalendarBoard({
   events,
   onSelect,
   onCreate,
+  deadlines = [],
 }: {
   locale: Locale;
   view: string;
   from: string;
   to: string;
   events: Event[];
+  /** The "Échéances" layer (wave 15): whole-day capsules on top of each day. */
+  deadlines?: MoneyDeadline[];
   onSelect: (id: string) => void;
   onCreate?: (day: string) => void;
 }) {
@@ -103,6 +108,11 @@ export function CalendarBoard({
                   </button>
                 )}
               </header>
+              {deadlines
+                .filter((d) => d.date === day)
+                .map((d) => (
+                  <DeadlineChip key={d.id} locale={locale} d={d} />
+                ))}
               {items.map((e) => (
                 <button
                   type="button"

@@ -98,6 +98,9 @@ const official = {
     company: "Numéro d'entreprise (BCE)",
     signatory: "Signataire",
     signatoryHint: "Ex. Alex Martin, président",
+    iban: "Compte bancaire (IBAN)",
+    ibanHint: "Repris sur les conventions de sponsoring.",
+    invalid: "Vérifiez le numéro d’entreprise et l’IBAN : l’un des deux n’est pas valide.",
     rollover: "Passage de saison",
   },
   nl: {
@@ -107,6 +110,9 @@ const official = {
     company: "Ondernemingsnummer (KBO)",
     signatory: "Ondertekenaar",
     signatoryHint: "Bv. Alex Martin, voorzitter",
+    iban: "Bankrekening (IBAN)",
+    ibanHint: "Overgenomen op de sponsorovereenkomsten.",
+    invalid: "Controleer het ondernemingsnummer en de IBAN: een van beide is ongeldig.",
     rollover: "Seizoensovergang",
   },
   en: {
@@ -116,6 +122,9 @@ const official = {
     company: "Company number (BCE/KBO)",
     signatory: "Signatory",
     signatoryHint: "E.g. Alex Martin, president",
+    iban: "Bank account (IBAN)",
+    ibanHint: "Printed on sponsorship agreements.",
+    invalid: "Check the company number and the IBAN: one of them is not valid.",
     rollover: "Season rollover",
   },
 };
@@ -163,9 +172,11 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
       setError(
-        code === "INVALID_FILE" || code === "INVALID_INPUT"
-          ? t.invalidFile
-          : (errors[code]?.[locale] ?? code),
+        code === "INVALID_INPUT" && body.action === "identity"
+          ? official[locale].invalid
+          : code === "INVALID_FILE" || code === "INVALID_INPUT"
+            ? t.invalidFile
+            : (errors[code]?.[locale] ?? code),
       );
     } finally {
       setBusy(false);
@@ -247,7 +258,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
           </div>
           {view.canEdit ? (
             <form
-              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "")}
+              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "") + (o.iban ?? "")}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -261,6 +272,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                         address: String(f.get("address") ?? "").trim(),
                         companyNumber: String(f.get("company") ?? "").trim(),
                         signatory: String(f.get("signatory") ?? "").trim(),
+                        iban: String(f.get("iban") ?? "").trim(),
                       }
                     : {}),
                 });
@@ -333,6 +345,11 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                       defaultValue={o.signatory ?? ""}
                     />
                   </label>
+                  <label htmlFor="club-iban">
+                    {official[locale].iban}
+                    <input id="club-iban" name="iban" maxLength={42} placeholder="BE68 5390 0754 7034" defaultValue={o.iban ?? ""} aria-describedby="club-iban-hint" autoComplete="off" />
+                  </label>
+                  <p className="muted small" id="club-iban-hint">{official[locale].ibanHint}</p>
                 </fieldset>
               )}
               <button className="button" disabled={busy}>

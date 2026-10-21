@@ -1,7 +1,9 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
+import { sponsorsCopy } from "./sponsors-copy";
 import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
@@ -669,6 +671,18 @@ export function Fundraising({ locale }: { locale: Locale }) {
                                     {m.kind === "expense" ? "−" : ""}
                                     {euro(locale, m.amount_cents ?? 0)}
                                   </strong>
+                                  {data.can.manage && !m.cancelled_at && m.kind === "sponsor" && (
+                                    // Wave 15: a sponsor brought to a pot can be followed as a partner (sheet prefilled).
+                                    <Link
+                                      className="text-button"
+                                      href={`/${locale}/funding/partners?new=1&name=${encodeURIComponent((m.donor || m.label).slice(0, 160))}&note=${encodeURIComponent(
+                                        sponsorsCopy[locale].fromPot.replace("{name}", m.collector ?? "").replace("{pot}", pot.name),
+                                      )}`}
+                                    >
+                                      {sponsorsCopy[locale].followAsPartner}
+                                      <span className="sr-only"> : {m.donor || m.label}</span>
+                                    </Link>
+                                  )}
                                   {data.can.manage && !m.cancelled_at && (
                                     <button type="button" className="text-button" disabled={busy} onClick={() => void send({ action: "cancelMovement", id: m.id })}>
                                       {t.remove}

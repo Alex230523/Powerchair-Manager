@@ -120,6 +120,7 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   myApplications: "userPlus",
   registrationsReview: "userPlus",
   duesLate: "dues",
+  sponsorTasks: "handshake",
   documentsReview: "document",
   registrationFollowups: "userPlus",
   equipmentService: "wrench",

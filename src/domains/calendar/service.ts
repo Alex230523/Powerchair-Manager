@@ -31,6 +31,8 @@ import {
 } from "./schema";
 import { shiftLocal, toInstant } from "./time";
 import { calendarIcs } from "./ics";
+import { permissions } from "../access/policy";
+import { moneyDeadlinesIn } from "../funding/service";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
 async function tx<T>(db: Pool, fn: (c: PoolClient) => Promise<T>) {
@@ -669,7 +671,7 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING id",
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
               [
                 s.a.organization_id,
                 p.userId,
@@ -677,6 +679,7 @@ export async function calendarExecute(
                 createHash("sha256").update(token).digest("hex"),
                 input.name,
                 input.teamId,
+                !!input.includeMoney,
               ],
             )
           ).rows[0].id;
@@ -1079,6 +1082,17 @@ export async function calendarFeed(db: Pool, token: string) {
     ).rows as (Event & { location: string })[];
     const allowed = [];
     for (const e of rows) if (await canRead(c, a, e)) allowed.push(e);
-    return calendarIcs(allowed, process.env.BETTER_AUTH_URL!);
+    // Wave 15: money deadlines, when asked and while the person keeps money rights.
+    let days: { uid: string; date: string; title: string }[] = [];
+    if (f.include_money) {
+      const rights = permissions(a.role, a.grants);
+      const off = (await c.query("SELECT disabled_modules FROM organization WHERE id=$1", [f.organization_id])).rows[0]?.disabled_modules ?? [];
+      if (mfaSatisfied(!!a.twoFactorEnabled) && (rights.includes("dues.read") || rights.includes("dues.manage")) && !off.includes("finance")) {
+        const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
+          to = new Date(Date.now() + 366 * 86400000).toISOString().slice(0, 10);
+        days = (await moneyDeadlinesIn(c, f.organization_id, from, to, true, [])).map((d) => ({ uid: d.id.replace(":", "-"), date: d.date, title: d.title }));
+      }
+    }
+    return calendarIcs(allowed, process.env.BETTER_AUTH_URL!, days);
   });
 }

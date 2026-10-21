@@ -5200,3 +5200,239 @@ input.narrow {
   gap: var(--space-4);
   max-width: 420px;
 }
+
+/* ---------- Wave 15 (C1): sponsor packages, partner sheet, tasks, deadlines layer, agreement ---------- */
+.player-dialog.side-sheet {
+  width: min(480px, 100%);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+  border-right: 0;
+  box-shadow: var(--shadow-pop);
+}
+.side-sheet section {
+  display: grid;
+  gap: var(--space-2);
+}
+.side-sheet h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-lg);
+}
+@media (max-width: 640px) {
+  .player-dialog.side-sheet {
+    width: 100%;
+    border-radius: 0;
+  }
+}
+.sheet-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+.sheet-facts dt {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.sheet-facts dd {
+  margin: 0;
+  font-weight: 500;
+}
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: var(--card-gap);
+  list-style: none;
+  margin: 0 0 var(--card-gap);
+  padding: 0;
+}
+.package-grid > li {
+  display: grid;
+}
+.package-card .card-heading h2 {
+  font-family: var(--font-display);
+}
+.package-amount {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--heading);
+  font-variant-numeric: tabular-nums;
+}
+.package-conditions {
+  display: grid;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-2) 0;
+  padding: 0;
+}
+.package-conditions li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+.package-conditions svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--success-ink);
+}
+.condition-editor {
+  display: grid;
+  gap: var(--space-3);
+}
+.condition-editor ol {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.condition-editor ol > li {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+.task-list > ul,
+ul.task-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.task-list li {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.task-list li[data-status="done"] .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.task-check {
+  min-height: 32px;
+  font-weight: 600;
+}
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0;
+}
+.task-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.task-progress progress {
+  width: 72px;
+  height: 6px;
+  accent-color: var(--success);
+}
+.partners-table .partner-open {
+  font-weight: 600;
+  text-align: left;
+}
+.history-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.board-deadline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--warning-ink);
+  border-radius: var(--radius-xs);
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.board-deadline[data-source="grant"] {
+  border-color: var(--info-ink);
+  background: var(--info-soft);
+  color: var(--info-ink);
+}
+.board-deadline svg {
+  flex: none;
+}
+.deadline-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0;
+  padding: 0;
+}
+.deadline-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.layer-toggle {
+  align-self: end;
+  min-height: 44px;
+}
+.agreement-doc {
+  max-width: 760px;
+  padding: var(--space-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.agreement-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.agreement-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+.signature-boxes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+.signature-boxes > div {
+  min-height: 140px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+@media print {
+  .no-print,
+  .agreement ~ *,
+  .page-header .page-actions {
+    display: none !important;
+  }
+  .agreement-doc {
+    border: 0;
+    padding: 0;
+    max-width: none;
+  }
+}
