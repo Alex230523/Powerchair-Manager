@@ -14,7 +14,9 @@ Cette livraison ne touche qu'aux fondations : polices, variables, mode sombre, t
 - Arrondis 8, 12, 14, 20 px et pilule ; ombres `--shadow-card`, `--shadow-hover`, `--shadow-pop` ; espacements `--space-1` à `--space-12` ; échelle de texte 12 à 30 px (`--text-xs` à `--text-2xl`), rien en dessous de 12 px ; dimensions (menu 256 px, barre 60 px, marge de contenu `clamp(16px, 3vw, 40px)`, carte 24 px, écart 16 px) ; `--transition: 180ms ease-out`.
 - Le menu de gauche devient une colonne blanche : ses jetons (`--sidebar-*`) pointent vers la carte, le texte, la bordure et l'accent doux ; seule l'entrée active porte la primaire.
 
-Deux écarts par rapport aux valeurs demandées, mesurés et assumés :
+Trois écarts par rapport aux valeurs demandées, mesurés et assumés :
+
+- `--muted` passe de `#5F6E80` à `#5A697B` : la valeur demandée lisait à 4,49:1 sur l'accent doux `#E8EFF6` (entrée de menu active, puces), juste sous 4,5:1.
 
 - `--info-ink` passe de `#2F73A8` à `#29679A` : la valeur demandée lisait à 4,4:1 sur le fond info `#E4F0F9`, sous le minimum de 4,5:1.
 - `--border-strong` (`#D3DCE6`) lit à 1,4:1 sur blanc, bien sous les 3:1 attendus pour la bordure d'un champ (WCAG 1.4.11). Un jeton dédié `--field-border` (`#8290A1` en clair, `#64758A` en sombre, 3,1 à 3,9:1) habille les champs ; `--border-strong` reste pour les bordures décoratives (carte survolée).
@@ -35,6 +37,8 @@ Les anciens noms (`--ink`, `--line`, `--line-strong`, `--bg`, `--surface-2`, `--
 
 `BrandLogo` prend sa couleur d'accent dans `--logo-accent` (`#F97316` en clair, `#FB923C` en sombre). C'est le seul orange qui reste dans l'interface ; la couleur de thème du manifeste et des métadonnées passe au bleu nuit et au fond de page.
 
+Les 68 tailles de texte écrites en rem sous 12 px (0,68 à 0,85 rem, devenues plus petites avec le corps à 14 px) passent à `var(--text-xs)`, soit 12 px.
+
 ## Contrastes mesurés
 
 Calcul WCAG (luminance relative), fonds translucides composés sur la carte. Minimum 4,5:1 pour le texte, 3:1 pour les bordures de champ, l'anneau de focus et les icônes utiles.
@@ -45,8 +49,8 @@ Calcul WCAG (luminance relative), fonds translucides composés sur la carte. Min
 | Texte sur fond de page | 4.5:1 | 12.17:1 | 15.29:1 |
 | Texte sur fond doux | 4.5:1 | 11.74:1 | 13.21:1 |
 | Titres sur carte | 4.5:1 | 12.33:1 | 15.50:1 |
-| Texte secondaire sur carte | 4.5:1 | 5.21:1 | 6.99:1 |
-| Texte secondaire sur fond doux | 4.5:1 | 4.85:1 | 6.53:1 |
+| Texte secondaire sur carte | 4.5:1 | 5.61:1 | 6.99:1 |
+| Texte secondaire sur fond doux | 4.5:1 | 5.22:1 | 6.53:1 |
 | Liens et texte primaire sur carte | 4.5:1 | 11.17:1 | 7.82:1 |
 | Entrée de menu active | 4.5:1 | 9.63:1 | 5.99:1 |
 | Texte sur bouton primaire | 4.5:1 | 11.17:1 | 8.38:1 |
