@@ -56,7 +56,7 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
     await page.getByRole("link", { name: "Comptes annuels", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/funding\/annual-accounts$/);
     await expect(page.locator(".accounts-banner")).toContainText("Projet généré depuis la plateforme");
-    const statement = page.getByRole("region", { name: "État des recettes et des dépenses" });
+    const statement = page.locator("#accounts-statement");
     await expect(statement.getByRole("row", { name: /^Cotisations/ })).toContainText("500,00");
     await expect(statement.getByRole("row", { name: /^Résultat de l’exercice/ })).toContainText(/1.400,00/);
     await expect(page.getByRole("combobox", { name: /^Exercice/ })).toHaveValue(`${last}-01-01`);
@@ -104,7 +104,7 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
     // 390 px: the statement fits.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/funding/annual-accounts");
-    await expect(page.getByRole("region", { name: "État des recettes et des dépenses" })).toBeVisible();
+    await expect(page.locator("#accounts-statement")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
   } finally {
     await db.end();
