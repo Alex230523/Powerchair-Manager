@@ -33,13 +33,13 @@ test("command window: actions, keyboard, rights, recent items", async ({ page })
       "WITH p AS (INSERT INTO person DEFAULT VALUES RETURNING id) INSERT INTO club_person(organization_id,person_id,full_name,birth_date,directory_roles) SELECT $1,p.id,'Noa Palette','2011-01-01','{player}' FROM p",
       [club],
     );
-    const use = async (mandate: string) => {
+    const switchTo = async (mandate: string) => {
       await page.goto("/fr");
       await page.locator(".profile-menu > summary").click();
       await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
     };
     await page.setViewportSize({ width: 1280, height: 900 });
-    await use(president);
+    await switchTo(president);
     await page.goto("/fr");
 
     // 1. Empty field: the actions of the president, first section.
@@ -82,7 +82,7 @@ test("command window: actions, keyboard, rights, recent items", async ({ page })
     await page.keyboard.press("Escape");
 
     // 6. A coach without the calendar right sees no "Créer un événement".
-    await use(coach);
+    await switchTo(coach);
     await page.goto("/fr");
     await page.keyboard.press("Control+k");
     await expect(palette.getByRole("option", { name: /Créer un événement/ })).toHaveCount(0);
