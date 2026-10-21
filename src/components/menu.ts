@@ -256,3 +256,29 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
     };
   return [...groups, admin].filter((g) => g.items.length > 0);
 }
+
+/**
+ * The bar at the bottom of a phone screen (wave 15, C5): home and three
+ * shortcuts taken from the role's own menu (so rights and switched-off
+ * modules apply), then "Plus" opens the whole menu.
+ * President: calendar, players, dues. Coach: calendar, attendance, players.
+ * Player or parent: calendar, my file (or the child's), dues.
+ */
+export function bottomNav(state: Workspace | null): NavItem[] {
+  if (!state?.selected) return [];
+  const all = menuGroups(state).flatMap((g) => g.items);
+  const role = state.contexts.find((c) => c.id === state.selected?.id)?.role;
+  const wanted =
+    role === "club_president"
+      ? ["/calendar", "/players", "/dues"]
+      : role === "coach"
+        ? ["/calendar", "/attendance", "/players"]
+        : role === "player" || role === "guardian"
+          ? ["/calendar", "/players", "/dues"]
+          : null;
+  const items = wanted
+    ? wanted.map((route) => all.find((i) => i.route === route)).filter((i): i is NavItem => !!i)
+    : all.filter((i) => i.route !== "/settings").slice(0, 3);
+  const home: NavItem = { route: "", label: "home", icon: "home" };
+  return [home, ...items].slice(0, 4);
+}

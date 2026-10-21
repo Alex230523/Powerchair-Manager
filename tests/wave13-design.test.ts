@@ -35,15 +35,16 @@ describe("design tokens", () => {
     expect(readFileSync("src/components/icons.tsx", "utf8")).toContain("var(--logo-accent");
   });
   it("sets the text scale with nothing below 12 px", () => {
-    const sizes = [...root.matchAll(/--text-[a-z0-9]+: (\d+)px/g)].map((m) => Number(m[1]));
+    // In rem since wave 15 (C4), 1rem = 16px at the normal text size.
+    const sizes = [...root.matchAll(/--text-[a-z0-9]+: ([\d.]+)rem/g)].map((m) => Number(m[1]) * 16);
     expect(sizes.length).toBe(7);
     expect(Math.min(...sizes)).toBe(12);
-    expect(root).toMatch(/--text-base: 14px/);
+    expect(root).toMatch(/--text-base: 0\.875rem/);
   });
   it("uses the serif for h1 and h2, the sans for h3, and drops the bar before card titles", () => {
     expect(css).toMatch(/h1 \{[^}]*font-family: var\(--font-display\)[^}]*font-size: var\(--text-2xl\)[^}]*font-weight: 700/s);
     expect(css).toMatch(/h2 \{[^}]*font-family: var\(--font-display\)[^}]*font-size: var\(--text-lg\)/s);
-    expect(css).toMatch(/h3 \{[^}]*font-family: var\(--font-ui\)[^}]*font-size: 15px[^}]*font-weight: 600/s);
+    expect(css).toMatch(/h3 \{[^}]*font-family: var\(--font-ui\)[^}]*font-size: 0\.9375rem[^}]*font-weight: 600/s);
     expect(css).not.toContain(".panel > h2::before");
     expect(css).toContain("prefers-reduced-motion: reduce");
   });

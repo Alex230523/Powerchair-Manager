@@ -11,7 +11,7 @@ import { CommandPalette } from "./command-palette";
 import { ToastHost } from "./toast";
 import { ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
-import { menuGroups, type NavItem, type Workspace } from "./menu";
+import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
 import { settingsEntries, visibleCategories } from "./settings-nav";
@@ -36,7 +36,8 @@ export function contextChanged() {
   }
 }
 // Runs before paint (see layout) so the stored theme never flashes.
-export const themeScript = `try{var t=localStorage.getItem("pfm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+// Text size and contrast (wave 15, C4) are applied the same way.
+export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast");if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
 const darkQuery = "(prefers-color-scheme: dark)";
 function subscribeTheme(change: () => void) {
   const media = window.matchMedia(darkQuery);
@@ -75,6 +76,58 @@ export function ThemeChoice({ t }: { t: Copy }) {
     </div>
   );
 }
+/* Text size and contrast (wave 15, C4): kept on this device, applied before paint by themeScript. */
+const textSizes = ["normal", "large", "xlarge"] as const;
+type TextSize = (typeof textSizes)[number];
+const contrastQuery = "(prefers-contrast: more)";
+function subscribeDisplay(change: () => void) {
+  const media = window.matchMedia(contrastQuery);
+  media.addEventListener("change", change);
+  window.addEventListener("pfm-display", change);
+  return () => {
+    media.removeEventListener("change", change);
+    window.removeEventListener("pfm-display", change);
+  };
+}
+function displayState() {
+  const d = document.documentElement.dataset;
+  const size = (textSizes as readonly string[]).includes(d.textSize ?? "") ? (d.textSize as TextSize) : "normal";
+  const more = d.contrast ? d.contrast === "more" : window.matchMedia(contrastQuery).matches;
+  return `${size}|${more ? "more" : "normal"}`;
+}
+function setDisplay(key: "textSize" | "contrast", value: string) {
+  const d = document.documentElement.dataset;
+  if (key === "textSize" && value === "normal") delete d.textSize;
+  else d[key] = value;
+  try {
+    window.localStorage.setItem(key === "textSize" ? "pfm-text-size" : "pfm-contrast", value);
+  } catch {
+    /* Kept for this page only. */
+  }
+  window.dispatchEvent(new Event("pfm-display"));
+}
+/** Text size and stronger contrast, in the account menu and in Settings > My account. */
+export function DisplayChoice({ t }: { t: Copy }) {
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
+  if (state === null) return null;
+  const [size, contrast] = state.split("|");
+  const label: Record<TextSize, string> = { normal: t.textNormal, large: t.textLarge, xlarge: t.textXLarge };
+  return (
+    <div className="display-choice">
+      <div className="segmented text-size" role="group" aria-label={t.textSize}>
+        {textSizes.map((s) => (
+          <button key={s} type="button" aria-pressed={size === s} onClick={() => setDisplay("textSize", s)}>
+            {label[s]}
+          </button>
+        ))}
+      </div>
+      <label className="check">
+        <input type="checkbox" data-nodirty="" checked={contrast === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
+        {t.contrast}
+      </label>
+    </div>
+  );
+}
 const drawerQuery = "(max-width: 1023px)";
 const counterRoutes: Record<string, Todo["key"]> = {
   "/registrations": "registrationsReview",
@@ -92,7 +145,8 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
     [todos, setTodos] = useState<Todo[]>([]),
     [brief, setBrief] = useState<Brief | null>(null),
     [drawer, setDrawer] = useState(false),
-    [bell, setBell] = useState(false);
+    [bell, setBell] = useState(false),
+    [typing, setTyping] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     aside = useRef<HTMLElement>(null),
@@ -173,6 +227,19 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       menuButton.current?.focus();
     };
   }, [drawer]);
+  // The bottom bar steps aside while the phone keyboard is open in a form (wave 15, C5).
+  useEffect(() => {
+    const field = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.matches('textarea, select, [contenteditable="true"]') || (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(el.type)));
+    const focusIn = (e: FocusEvent) => setTyping(field(e.target));
+    const focusOut = () => setTyping(false);
+    document.addEventListener("focusin", focusIn);
+    document.addEventListener("focusout", focusOut);
+    return () => {
+      document.removeEventListener("focusin", focusIn);
+      document.removeEventListener("focusout", focusOut);
+    };
+  }, []);
   // The notification panel: Escape or a click elsewhere closes it; focus goes back to the bell.
   useEffect(() => {
     if (!bell) return;
@@ -266,6 +333,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
+  const bottom = bottomNav(state);
   // Settings are found by Ctrl+K too (wave 15): each category and each setting it holds.
   const h = settingsHubCopy[locale];
   const shownSettings = state?.selected
@@ -391,6 +459,10 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                 <span className="menu-heading">{t.theme}</span>
                 <ThemeChoice t={t} />
               </div>
+              <div className="menu-row">
+                <span className="menu-heading">{t.textSize}</span>
+                <DisplayChoice t={t} />
+              </div>
               {state && (
                 <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
                   <Icon name="logOut" size={16} /> {t.signOut}
@@ -489,6 +561,33 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
           {children}
           <ToastHost locale={locale} />
         </div>
+        {bottom.length > 0 && (
+          <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
+            {bottom.map((i) => {
+              const todo = counterRoutes[i.route] ? counts.get(counterRoutes[i.route]) : undefined;
+              return (
+                <Link key={i.route} href={`/${locale}${i.route}`} aria-current={current(i.route)}>
+                  <span className="bottom-icon">
+                    <Icon name={i.icon} size={22} />
+                    {todo && todo.count > 0 && (
+                      <span className="bottom-badge" aria-hidden="true">
+                        <Badge tone={todo.tone === "danger" ? "danger" : "warning"}>{todo.count}</Badge>
+                      </span>
+                    )}
+                  </span>
+                  <span className="bottom-label">{t[i.label]}</span>
+                  {todo && todo.count > 0 && <span className="sr-only"> · {t.pendingCount.replace("{n}", String(todo.count))}</span>}
+                </Link>
+              );
+            })}
+            <button type="button" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+              <span className="bottom-icon">
+                <Icon name="menu" size={22} />
+              </span>
+              <span className="bottom-label">{t.groupMore}</span>
+            </button>
+          </nav>
+        )}
       </div>
     </ScopeProvider>
   );

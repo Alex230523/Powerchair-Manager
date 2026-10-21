@@ -49,6 +49,7 @@ export const settingsEntries = [
   { id: "photo", category: "account", anchor: "settings-photo" },
   { id: "language", category: "account", anchor: "settings-language" },
   { id: "theme", category: "account", anchor: "settings-theme" },
+  { id: "display", category: "account", anchor: "settings-display" },
   { id: "selfCoach", category: "account", anchor: "settings-self" },
   { id: "inbox", category: "notifications", anchor: "notif-inbox" },
   { id: "notifPreferences", category: "notifications", anchor: "notif-preferences" },
