@@ -29,8 +29,8 @@ export function ChartMenu({
   onTable?: () => void;
   onCsv?: () => void;
   onPng?: () => void;
-  /** More entries, under the others. */
-  children?: (close: () => void) => ReactNode;
+  /** More entries (buttons), under the others: a click on one closes the menu. */
+  children?: ReactNode;
 }) {
   const t = statisticsCopy[locale].menu;
   const [open, setOpen] = useState(false),
@@ -175,7 +175,7 @@ export function ChartMenu({
                 {t.png}
               </button>
             )}
-            {children?.(() => close())}
+            {children && <div onClick={() => setOpen(false)}>{children}</div>}
           </div>
         </div>
       )}

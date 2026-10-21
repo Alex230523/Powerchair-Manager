@@ -100,21 +100,12 @@ export function HallOfFame({ locale }: { locale: Locale }) {
             onCsv={data ? () => downloadCsv(`${slug(w.title)}.csv`, rows) : undefined}
             onPng={() => area.current && void exportPng(area.current, w.title, w.intro, `${slug(w.title)}.png`)}
           >
-            {(close) =>
-              groups.length > recentSeasons && (
-                <button
-                  type="button"
-                  aria-pressed={older}
-                  onClick={() => {
-                    setOlder((v) => !v);
-                    close();
-                  }}
-                >
-                  <Icon name="calendar" size={16} />
-                  {older ? t.menu.recent : t.menu.older}
-                </button>
-              )
-            }
+            {groups.length > recentSeasons && (
+              <button type="button" aria-pressed={older} onClick={() => setOlder((v) => !v)}>
+                <Icon name="calendar" size={16} />
+                {older ? t.menu.recent : t.menu.older}
+              </button>
+            )}
           </ChartMenu>
         </span>
       }

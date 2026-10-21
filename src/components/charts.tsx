@@ -450,15 +450,14 @@ export function DonutChart({
 /** One horizontal bar split in parts (wave 16, S1: the storage), 1 px of background between them. */
 export function SplitBar({ parts, label, height = 20 }: { parts: { id: string; share: number; color: string }[]; label: string; height?: number }) {
   const { ref, width } = useWidth();
-  let at = 0;
+  // Where each part starts: the sum of the parts before it.
+  const starts = parts.map((_, i) => parts.slice(0, i).reduce((n, p) => n + Math.max(0, p.share * width), 0));
   return (
     <div ref={ref} className="split-bar">
       <svg width={width} height={height} role="img" aria-label={label}>
-        {parts.map((p) => {
+        {parts.map((p, i) => {
           const w = Math.max(0, p.share * width);
-          const x = at;
-          at += w;
-          return w > 0 ? <rect key={p.id} x={x} y={0} width={w} height={height} fill={p.color} stroke="var(--surface)" strokeWidth={1} /> : null;
+          return w > 0 ? <rect key={p.id} x={starts[i]} y={0} width={w} height={height} fill={p.color} stroke="var(--surface)" strokeWidth={1} /> : null;
         })}
       </svg>
     </div>
