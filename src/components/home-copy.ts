@@ -20,7 +20,35 @@ type HomeCopy = {
   players: string;
   coaches: string;
   readiness: Record<"ok" | "warn" | "low", string>;
-  deadlines: Record<"documents" | "dues" | "fundraising" | "trip" | "grant" | "partner", string>;
+  /** One word next to the presence badge: the colour never carries the meaning alone. */
+  readinessWord: Record<"ok" | "warn" | "low", string>;
+  season: string;
+  create: string;
+  createEvent: string;
+  createPlayer: string;
+  createOperation: string;
+  createMail: string;
+  listView: string;
+  weekView: string;
+  viewLabel: string;
+  previousWeek: string;
+  nextWeek: string;
+  thisWeek: string;
+  weekOf: string;
+  weekEmpty: string;
+  weekError: string;
+  allFigures: string;
+  fewerFigures: string;
+  financeTitle: string;
+  treasury: string;
+  income: string;
+  expenses: string;
+  duesCollected: string;
+  noDues: string;
+  playersLate: string;
+  seeFinances: string;
+  seeDues: string;
+  deadlines: Record<"documents" | "dues" | "fundraising" | "trip" | "grant" | "partner" | "accounts", string>;
   responseNeeded: string;
   cancelled: string;
   loading: string;
@@ -70,6 +98,33 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     players: "joueurs",
     coaches: "coachs",
     readiness: { ok: "Effectif suffisant", warn: "Effectif tendu", low: "Effectif insuffisant" },
+    readinessWord: { ok: "Suffisant", warn: "Tendu", low: "Insuffisant" },
+    season: "Saison",
+    create: "Créer",
+    createEvent: "Événement",
+    createPlayer: "Joueur",
+    createOperation: "Opération financière",
+    createMail: "Mail",
+    listView: "Liste",
+    weekView: "Semaine",
+    viewLabel: "Affichage des événements",
+    previousWeek: "Semaine précédente",
+    nextWeek: "Semaine suivante",
+    thisWeek: "Aujourd'hui",
+    weekOf: "Semaine du {day}",
+    weekEmpty: "Aucun événement cette semaine.",
+    weekError: "La semaine n'a pas pu être chargée.",
+    allFigures: "Tous les chiffres",
+    fewerFigures: "Moins de chiffres",
+    financeTitle: "Situation financière",
+    treasury: "Trésorerie",
+    income: "Recettes de la saison",
+    expenses: "Dépenses de la saison",
+    duesCollected: "Cotisations encaissées",
+    noDues: "Aucune cotisation émise cette saison.",
+    playersLate: "{n} joueurs en retard",
+    seeFinances: "Voir les finances",
+    seeDues: "Voir les cotisations",
     deadlines: {
       documents: "Documents à renouveler",
       dues: "Échéance de cotisation",
@@ -77,6 +132,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Départ en déplacement",
       grant: "Subside : dossier ou justificatif",
       partner: "Partenaire : relance ou renouvellement",
+      accounts: "Comptes annuels : assemblée ou dépôt",
     },
     responseNeeded: "Réponse attendue",
     cancelled: "Annulé",
@@ -112,6 +168,14 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       duesLate: {
         title: "Cotisations en retard",
         text: "Joueurs avec une échéance dépassée",
+      },
+      sponsorTasks: {
+        title: "Conditions de sponsor à livrer",
+        text: "À faire dans les 14 jours ou en retard",
+      },
+      grantTasks: {
+        title: "Tâches de subsides",
+        text: "Étapes de dossier à faire dans les 14 jours ou en retard",
       },
       documentsReview: {
         title: "Documents à vérifier",
@@ -199,6 +263,33 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     players: "spelers",
     coaches: "coaches",
     readiness: { ok: "Voldoende volk", warn: "Krap", low: "Te weinig volk" },
+    readinessWord: { ok: "Voldoende", warn: "Krap", low: "Onvoldoende" },
+    season: "Seizoen",
+    create: "Aanmaken",
+    createEvent: "Evenement",
+    createPlayer: "Speler",
+    createOperation: "Financiële verrichting",
+    createMail: "Mail",
+    listView: "Lijst",
+    weekView: "Week",
+    viewLabel: "Weergave van de evenementen",
+    previousWeek: "Vorige week",
+    nextWeek: "Volgende week",
+    thisWeek: "Vandaag",
+    weekOf: "Week van {day}",
+    weekEmpty: "Geen evenement deze week.",
+    weekError: "De week kon niet geladen worden.",
+    allFigures: "Alle cijfers",
+    fewerFigures: "Minder cijfers",
+    financeTitle: "Financiële toestand",
+    treasury: "Kas",
+    income: "Inkomsten van het seizoen",
+    expenses: "Uitgaven van het seizoen",
+    duesCollected: "Geïnde bijdragen",
+    noDues: "Geen bijdrage uitgegeven dit seizoen.",
+    playersLate: "{n} spelers achter",
+    seeFinances: "Financiën bekijken",
+    seeDues: "Bijdragen bekijken",
     deadlines: {
       documents: "Documenten te vernieuwen",
       dues: "Vervaldag lidgeld",
@@ -206,6 +297,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Vertrek verplaatsing",
       grant: "Subsidie: dossier of verantwoording",
       partner: "Partner: opvolging of verlenging",
+      accounts: "Jaarrekening: algemene vergadering of neerlegging",
     },
     responseNeeded: "Antwoord verwacht",
     cancelled: "Geannuleerd",
@@ -241,6 +333,14 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       duesLate: {
         title: "Achterstallige bijdragen",
         text: "Spelers met een vervallen termijn",
+      },
+      sponsorTasks: {
+        title: "Sponsorvoorwaarden te leveren",
+        text: "Binnen 14 dagen te doen of te laat",
+      },
+      grantTasks: {
+        title: "Subsidietaken",
+        text: "Dossierstappen binnen 14 dagen of te laat",
       },
       documentsReview: {
         title: "Documenten te controleren",
@@ -328,6 +428,33 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     players: "players",
     coaches: "coaches",
     readiness: { ok: "Enough people", warn: "Tight", low: "Not enough people" },
+    readinessWord: { ok: "Enough", warn: "Tight", low: "Not enough" },
+    season: "Season",
+    create: "Create",
+    createEvent: "Event",
+    createPlayer: "Player",
+    createOperation: "Financial operation",
+    createMail: "Mail",
+    listView: "List",
+    weekView: "Week",
+    viewLabel: "Events display",
+    previousWeek: "Previous week",
+    nextWeek: "Next week",
+    thisWeek: "Today",
+    weekOf: "Week of {day}",
+    weekEmpty: "No event this week.",
+    weekError: "The week could not be loaded.",
+    allFigures: "All figures",
+    fewerFigures: "Fewer figures",
+    financeTitle: "Financial situation",
+    treasury: "Treasury",
+    income: "Season income",
+    expenses: "Season expenses",
+    duesCollected: "Dues collected",
+    noDues: "No dues issued this season.",
+    playersLate: "{n} players late",
+    seeFinances: "See the finances",
+    seeDues: "See the dues",
     deadlines: {
       documents: "Documents to renew",
       dues: "Dues instalment due",
@@ -335,6 +462,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Trip departure",
       grant: "Grant: application or report",
       partner: "Partner: follow-up or renewal",
+      accounts: "Annual accounts: assembly or filing",
     },
     responseNeeded: "Answer needed",
     cancelled: "Cancelled",
@@ -370,6 +498,14 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       duesLate: {
         title: "Late dues",
         text: "Players with an overdue instalment",
+      },
+      sponsorTasks: {
+        title: "Sponsor conditions to deliver",
+        text: "Due within 14 days or late",
+      },
+      grantTasks: {
+        title: "Grant tasks",
+        text: "File steps due within 14 days or overdue",
       },
       documentsReview: {
         title: "Documents to check",

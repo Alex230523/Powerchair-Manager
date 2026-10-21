@@ -15,14 +15,18 @@ export const editableKinds = [
   "match_update",
   "registration_link",
   "license_update",
+  "funding_task",
 ] as const;
 /** Club-written mails: the text comes from the club, not from a template. */
 export const clubWrittenKinds = ["club_newsletter", "event_mail"] as const;
+/** Built by the platform from the person's own figures (wave 15, C7); not editable by the club. */
+export const builtKinds = ["weekly_digest"] as const;
 export const allKinds = [
   "auth_verify",
   "auth_reset",
   ...editableKinds,
   ...clubWrittenKinds,
+  ...builtKinds,
 ] as const;
 export type Kind = (typeof allKinds)[number];
 export type Variables = {
@@ -60,6 +64,12 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
       subject: "{title}",
       body: "{message}\n\n{organization}\nStop receiving club news: {url}",
     },
+  },
+  // The digest's text already carries its links (dashboard, settings, stop).
+  weekly_digest: {
+    fr: { subject: "{title}", body: "{message}" },
+    nl: { subject: "{title}", body: "{message}" },
+    en: { subject: "{title}", body: "{message}" },
   },
   event_mail: {
     fr: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
@@ -120,6 +130,20 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     en: {
       subject: "Licence · {person}",
       body: "Hello {name},\nLicence of {person}: {status}.\n{url}",
+    },
+  },
+  funding_task: {
+    fr: {
+      subject: "À faire · {title}",
+      body: "Bonjour {name},\nCette tâche vous est confiée pour {organization} : {title}.\nÉchéance : {due}.\n{url}",
+    },
+    nl: {
+      subject: "Te doen · {title}",
+      body: "Hallo {name},\nDeze taak is aan jou toevertrouwd voor {organization}: {title}.\nDeadline: {due}.\n{url}",
+    },
+    en: {
+      subject: "To do · {title}",
+      body: "Hello {name},\nThis task is yours for {organization}: {title}.\nDue: {due}.\n{url}",
     },
   },
   match_update: {
@@ -308,6 +332,7 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
 const allowed: Record<Kind, string[]> = {
   club_newsletter: ["title", "message", "organization", "url"],
   event_mail: ["title", "message", "organization", "url"],
+  weekly_digest: ["title", "message", "url"],
   attendance_update: ["name", "organization", "url"],
   dues_reminder: [
     "name",
@@ -330,6 +355,7 @@ const allowed: Record<Kind, string[]> = {
   match_update: ["name", "organization", "url", "match", "status"],
   registration_link: ["name", "organization", "url"],
   license_update: ["name", "organization", "url", "person", "status"],
+  funding_task: ["name", "organization", "url", "title", "due"],
   calendar_update: ["name", "organization", "url"],
   document_update: ["name", "organization", "url"],
   registration_update: ["name", "organization", "url"],

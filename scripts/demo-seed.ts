@@ -11,6 +11,7 @@
  * Never run against a production database: the passwords below are public.
  */
 import { Pool } from "pg";
+import { seedTournaments } from "./demo-tournaments";
 import { randomUUID } from "node:crypto";
 import { createAuth } from "../src/lib/auth";
 import { execute, type Principal } from "../src/domains/access/service";
@@ -48,7 +49,15 @@ import { tigerstormTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
 const CLUB = "Club démo Powerchair";
-export const DEMO_PASSWORD = "Demo-Powerchair-2026";
+/**
+ * Local and Codespaces demo: the public password below. An online preview
+ * (Vercel) must use its own secret instead, PFM_DEMO_PASSWORD, which is
+ * never printed.
+ */
+const ownPassword = process.env.PFM_DEMO_PASSWORD;
+if (process.env.VERCEL_ENV && (!ownPassword || ownPassword.length < 12))
+  throw new Error("PFM_DEMO_PASSWORD (12 characters minimum) is required for an online preview.");
+export const DEMO_PASSWORD = ownPassword || "Demo-Powerchair-2026";
 const accounts = [
   {
     key: "president",
@@ -92,10 +101,13 @@ const refereeAccount = {
   profile: "Arbitre · BPCF (démo)",
 };
 
-if (process.env.NODE_ENV === "production" && !process.argv.includes("--force"))
+// Never in a Vercel production deployment. Elsewhere in production mode (a
+// Vercel preview builds with NODE_ENV=production), only with the project's
+// own secret password, never the public one written above.
+if (process.env.VERCEL_ENV === "production")
+  throw new Error("Refusing to create demo accounts in production.");
+if (process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
-// The seed acts through the services as the president; MFA is not set up for demo accounts.
-process.env.PFM_MFA_SUSPENDED = "true";
 
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth(db);
@@ -135,8 +147,11 @@ try {
     (await db.query("SELECT 1 FROM organization WHERE name=$1", [CLUB]))
       .rowCount
   ) {
-    console.log(`« ${CLUB} » existe déjà : rien à faire.`);
+    console.log(`« ${CLUB} » existe déjà.`);
+    // Tournaments came later (21/10/2026): added to an existing demo once.
+    await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
     printAccounts();
+    await db.end();
     process.exit(0);
   }
 
@@ -179,14 +194,14 @@ try {
   ).rows[0].id as string;
   const team = (
     await db.query(
-      "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc') RETURNING id",
+      "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc','blue') RETURNING id",
       [org, season],
     )
   ).rows[0].id as string;
   // A second team: one club can run several teams in the same season.
   const teamB = (
     await db.query(
-      "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,'Équipe B','Powerchair','Loisir','Hall sportif du Parc') RETURNING id",
+      "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color) VALUES($1,$2,'Équipe B','Powerchair','Loisir','Hall sportif du Parc','amber') RETURNING id",
       [org, season],
     )
   ).rows[0].id as string;
@@ -293,6 +308,29 @@ try {
     "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'coach',$4)",
     [org, team, people.coach, `${year}-07-01`],
   );
+  // Two earlier seasons, so the headcount chart and the retention rate have a history (wave 15).
+  for (const [back, who] of [
+    [2, [people.camille, people.yanis, people.thomas]],
+    [1, [people.camille, people.yanis, people.thomas, people.emma]],
+  ] as const) {
+    const past = (
+      await db.query(
+        "INSERT INTO season(organization_id,name,starts_on,ends_on,archived) VALUES($1,$2,$3,$4,true) RETURNING id",
+        [org, `${year - back}-${String(year - back + 1).slice(2)}`, `${year - back}-07-01`, `${year - back + 1}-06-30`],
+      )
+    ).rows[0].id as string;
+    const pastTeam = (
+      await db.query(
+        "INSERT INTO team(organization_id,season_id,name,category,level,home_location,color,archived) VALUES($1,$2,'Équipe A','Powerchair','Championnat','Hall sportif du Parc','blue',true) RETURNING id",
+        [org, past],
+      )
+    ).rows[0].id as string;
+    for (const id of who)
+      await db.query(
+        "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on,ends_on) VALUES($1,$2,$3,'player',$4,$5)",
+        [org, pastTeam, id, `${year - back}-07-01`, `${year - back + 1}-06-30`],
+      );
+  }
   await db.query(
     "INSERT INTO guardian_relationship(organization_id,guardian_profile_id,subject_profile_id,kind,can_view,can_edit,starts_on,authorization_note,verified_by) VALUES($1,$2,$3,'legal_verified',true,true,$4,'Données de démonstration',$5)",
     [org, people.nadia, people.lucas, `${year}-07-01`, users.president],
@@ -1552,6 +1590,7 @@ try {
     org,
   );
 
+  await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();
 } finally {
@@ -1563,7 +1602,11 @@ try {
 }
 
 function printAccounts() {
-  console.log(`\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`);
+  console.log(
+    ownPassword
+      ? "\nComptes de démonstration (mot de passe : celui de PFM_DEMO_PASSWORD)"
+      : `\nComptes de démonstration (mot de passe : ${DEMO_PASSWORD})`,
+  );
   for (const a of [...accounts, federationAccount, refereeAccount])
     console.log(`  ${a.email.padEnd(22)} ${a.profile}`);
   console.log("\nConnexion : /fr/access\n");

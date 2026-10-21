@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "node scripts/vercel-build.mjs",
+  "ignoreCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then echo 'Production is not set up yet: skipped.'; exit 0; else exit 1; fi"
+}

@@ -1,5 +1,5 @@
 import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
-import { mfaSatisfied, mfaRequired } from "../../lib/security-policy";
+import { mfaSatisfied } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { Pool, PoolClient } from "pg";
 import { z } from "zod";
@@ -110,6 +110,14 @@ async function active(db: Db, p: Principal) {
     disabled_modules: string[];
   };
 }
+/** A mandate's context without a session (wave 15, C7: the weekly digest), with the same validity checks as active(). */
+async function mandateContext(db: Db, mandateId: string) {
+  const result = await db.query(
+    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
+    [mandateId],
+  );
+  return (result.rows[0] ?? null) as Awaited<ReturnType<typeof active>> | null;
+}
 function requirePermission(
   role: Role,
   grants: string[],
@@ -169,7 +177,6 @@ async function readWorkspace(db: Db, p: Principal) {
   );
   const result: {
     user: typeof user;
-    mfaRequired: boolean;
     contexts: unknown[];
     profiles: {
       id: string;
@@ -198,7 +205,6 @@ async function readWorkspace(db: Db, p: Principal) {
           [p.userId],
         )
       ).rows[0]?.v ?? null,
-    mfaRequired: mfaRequired(),
     contexts: contexts.rows,
     profiles: (
       await db.query(
@@ -609,4 +615,4 @@ export async function execute(
   }
 }
 
-export { account, active, audit, requirePermission };
+export { account, active, mandateContext, audit, requirePermission };

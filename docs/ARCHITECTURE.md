@@ -57,7 +57,7 @@ Modules : `access` (comptes, mandats, profils), `people` (personnes, familles, �
 | `db.ts`                                       | Pools PostgreSQL (`getDb`, `getMailDb`), timeout de requête 3 s                             |
 | `auth.ts`, `auth-server.ts`, `auth-client.ts` | Configuration Better Auth (serveur et navigateur)                                           |
 | `http.ts`                                     | `principal`, `origin`, `bounded`, `failure`, `noStore` : utilisés par toutes les routes API |
-| `security-policy.ts`                          | `mfaSatisfied()` : interrupteur temporaire `PFM_MFA_SUSPENDED`                              |
+| `security-policy.ts`                          | `mfaSatisfied()` : toujours satisfait (double authentification retirée le 21/10/2026)        |
 | `locale.ts`, `english.ts`                     | Langues supportées et textes partagés                                                       |
 | `env.ts`                                      | Validation des variables d'environnement                                                    |
 
@@ -69,7 +69,7 @@ C'est le cœur du projet. À lire avant toute modification.
 2. **Un contexte actif par session.** L'utilisateur choisit un profil (`active_context`). Toutes les lectures et écritures sont bornées à l'organisation de ce mandat. Les droits de deux mandats ne se cumulent jamais.
 3. **Permissions.** `src/domains/access/policy.ts` calcule les permissions d'un mandat (`permissions(role, grants)`). Les présidents ont les permissions de base de leur organisation ; les autres rôles reçoivent des permissions explicites (`documents.manage`, `dues.manage`…).
 4. **Contrôle ligne par ligne.** Les fichiers `access.ts` vérifient chaque enregistrement : un parent ne voit que les enfants pour lesquels une relation vérifiée lui donne accès, un coach que ses équipes, les documents sensibles exigent `documents.sensitive`.
-5. **Double authentification.** Les actions sensibles exigent la MFA (`mfaSatisfied`). `PFM_MFA_SUSPENDED=true` la désactive temporairement (pilote, démo), sans jamais toucher aux droits.
+5. **Connexion.** Email et mot de passe uniquement : la double authentification a été retirée le 21/10/2026 à la demande du porteur du projet. `mfaSatisfied` reste l’unique point de cette règle et répond toujours oui ; les droits par rôle et par ressource sont inchangés.
 6. **Côté serveur uniquement.** Masquer un bouton dans l'interface n'est jamais une protection. Chaque service revérifie.
 7. **Concurrence.** Les commandes posent un verrou `FOR UPDATE` sur l'organisation et vérifient `expectedVersion` sur les lignes modifiées : deux personnes ne peuvent pas écraser la même donnée sans le savoir (`STALE_VERSION`).
 

@@ -5,6 +5,8 @@ import type { Locale } from "@/lib/locale";
 import { messagesCopy } from "./messages-copy";
 import { Modal } from "./modal";
 import { Button, Panel, Badge, PageHeader } from "./ui";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 type Thread = {
   id: string;
   subject: string;
@@ -89,7 +91,7 @@ export function Messages({ locale }: { locale: Locale }) {
       });
       const b = await r.json();
       if (!r.ok) throw Error(b.error);
-      return b as { id: string };
+      return b as { id: string; undo?: string };
     } catch (e) {
       setError(t.errors[e instanceof Error ? e.message : ""] ?? t.error);
       return null;
@@ -174,9 +176,12 @@ export function Messages({ locale }: { locale: Locale }) {
                         className="button"
                         disabled={busy}
                         onClick={() =>
-                          void command({ action: "moderate", messageId: r.message_id, outcome: "hidden" }).then(
-                            (ok) => ok && setRevision((v) => v + 1),
-                          )
+                          void command({ action: "moderate", messageId: r.message_id, outcome: "hidden" }).then((ok) => {
+                            if (!ok) return;
+                            setRevision((v) => v + 1);
+                            // Hiding can be undone for a moment (wave 15, C10).
+                            undoToast(locale, toastCopy[locale].messageHidden, ok.undo, data?.organizationId, () => setRevision((v) => v + 1));
+                          })
                         }
                       >
                         {t.hide}

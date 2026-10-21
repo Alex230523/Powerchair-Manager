@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
+import { previewRedirects, previewSettings } from "./src/lib/preview";
 const config: NextConfig = {
   poweredByHeader: false,
+  // Vercel previews: the branch address, inlined at build time (src/lib/preview.ts).
+  env: previewSettings(process.env),
+  async redirects() {
+    return previewRedirects(process.env);
+  },
   // `npm run dev` inside GitHub Codespaces is served through *.app.github.dev.
   allowedDevOrigins: ["*.app.github.dev"],
   distDir: process.env.PFM_BUILD_DIR ?? ".next",

@@ -158,15 +158,26 @@ export async function allowed(
         [target.resource_id, target.organization_id, user.id],
       )
     ).rowCount;
+  // The weekly digest (wave 15, C7): built for a club manager who still holds the mandate.
+  if (target.resource_type === "digest")
+    return !!(
+      await db.query(
+        `SELECT 1 FROM digest_send s JOIN role_assignment r ON r.organization_id=s.organization_id AND r.user_id=s.user_id
+           JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id
+          WHERE s.id::text=$1 AND s.organization_id=$2 AND s.user_id=$3 AND r.role IN ('club_president','coach') AND m.active
+            AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())`,
+        [target.resource_id, target.organization_id, user.id],
+      )
+    ).rowCount;
   const roles = await db.query(
     `SELECT r.role FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id WHERE r.organization_id=$1 AND r.user_id=$2 AND m.active AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())`,
     [target.organization_id, user.id],
   );
   if (!roles.rowCount) return false;
-  // Membership news and federation follow-ups (courses, matches, licences)
-  // go to accounts that still hold a current mandate in the organisation.
+  // Membership news, federation follow-ups (courses, matches, licences) and the
+  // sponsor and grant task reminders (wave 15) go to accounts that still hold a current mandate in the organisation.
   if (
-    ["membership", "training", "match", "license"].includes(target.resource_type)
+    ["membership", "training", "match", "license", "funding"].includes(target.resource_type)
   )
     return true;
   if (target.resource_type === "team") {

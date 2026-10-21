@@ -3,6 +3,10 @@ import { useState } from "react";
 import type { Locale } from "@/lib/locale";
 import { designCopy } from "./design-copy";
 import { Badge, Button, Card, DataTable, EmptyState, Field, IconTile, KpiCard, PageHeader, Segmented, Tabs, describedBy } from "./ui";
+import { ChartFrame, LineChart, StackedBarChart, type ChartSeries } from "./charts";
+import { PaletteSample } from "./club-appearance";
+import { appearanceCopy } from "./appearance-copy";
+import { palettes } from "@/domains/club/appearance";
 
 /** The gallery of shared components, rendered once per theme (development only). */
 export function DesignGallery({ locale }: { locale: Locale }) {
@@ -12,7 +16,7 @@ export function DesignGallery({ locale }: { locale: Locale }) {
       <PageHeader title={t.title} subtitle={t.subtitle} />
       <div className="design-themes">
         {(["light", "dark"] as const).map((theme) => (
-          <section key={theme} className="theme-scope design-theme" style={{ colorScheme: theme }} aria-label={t[theme]}>
+          <section key={theme} className="theme-scope design-theme" data-scheme={theme} aria-label={t[theme]}>
             <h2 className="design-theme-title">{t[theme]}</h2>
             <Samples locale={locale} theme={theme} />
           </section>
@@ -134,6 +138,21 @@ function Samples({ locale, theme }: { locale: Locale; theme: "light" | "dark" })
           <EmptyState icon="players" title={t.empty.title} text={t.empty.text} action={<Button>{t.empty.action}</Button>} />
         </Card>
       </section>
+      <section aria-labelledby={id("h-palettes")}>
+        <h3 id={id("h-palettes")}>{t.sections.palettes}</h3>
+        <ul className="palette-grid design-palettes">
+          {palettes.map((p) => (
+            <li key={p} className="palette-option">
+              <PaletteSample locale={locale} palette={p} />
+              <span className="palette-name">{appearanceCopy[locale].palettes[p]}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-labelledby={id("h-charts")}>
+        <h3 id={id("h-charts")}>{t.sections.charts}</h3>
+        <ChartSamples locale={locale} />
+      </section>
       <section aria-labelledby={id("h-fields")}>
         <h3 id={id("h-fields")}>{t.sections.fields}</h3>
         <form className="design-form" onSubmit={(e) => e.preventDefault()}>
@@ -152,6 +171,57 @@ function Samples({ locale, theme }: { locale: Locale; theme: "light" | "dark" })
           </Field>
         </form>
       </section>
+    </div>
+  );
+}
+
+/** One example of each chart; fixed figures, this page being a style gallery. */
+function ChartSamples({ locale }: { locale: Locale }) {
+  const c = designCopy[locale].charts;
+  const lines: ChartSeries[] = [
+    { id: "a", label: c.teamA, color: "var(--team-blue-border)", values: [72, 75, null, 80, 78, 84] },
+    { id: "b", label: c.teamB, color: "var(--team-amber-border)", values: [65, 70, 68, 74, 79, 81] },
+    { id: "club", label: c.club, color: "var(--primary)", width: 3, values: [70, 73, 68, 77, 79, 83] },
+  ];
+  const bars: ChartSeries[] = [
+    { id: "a", label: c.teamA, color: "var(--chart-1)", values: [10, 11, 12, 13, 14] },
+    { id: "b", label: c.teamB, color: "var(--chart-2)", values: [8, 9, 9, 11, 12] },
+  ];
+  const pct = (v: number) => `${Math.round(v)} %`;
+  const table = (series: ChartSeries[], categories: string[], format: (v: number) => string) => (
+    <DataTable label={c.lineTitle}>
+      <thead>
+        <tr>
+          <th scope="col">{c.lineTitle}</th>
+          {series.map((s) => (
+            <th scope="col" className="num" key={s.id}>{s.label}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {categories.map((m, i) => (
+          <tr key={m}>
+            <th scope="row">{m}</th>
+            {series.map((s) => (
+              <td className="num" key={s.id}>{s.values[i] === null ? "…" : format(s.values[i] as number)}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </DataTable>
+  );
+  return (
+    <div className="design-charts">
+      <Card title={c.lineTitle}>
+        <ChartFrame locale={locale} legend={lines} table={table(lines, c.months, pct)}>
+          {(hidden) => <LineChart locale={locale} summary={c.lineSummary} categories={c.months} series={lines.filter((s) => !hidden.has(s.id))} format={pct} />}
+        </ChartFrame>
+      </Card>
+      <Card title={c.barTitle}>
+        <ChartFrame locale={locale} legend={bars} table={table(bars, c.seasons, String)}>
+          {(hidden) => <StackedBarChart locale={locale} summary={c.barSummary} categories={c.seasons} segments={bars.filter((s) => !hidden.has(s.id))} />}
+        </ChartFrame>
+      </Card>
     </div>
   );
 }

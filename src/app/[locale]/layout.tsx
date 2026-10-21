@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { copy, isLocale } from "@/lib/locale";
 import { fontClass } from "../fonts";
 import "../globals.css";
+import { paletteColor, sessionAppearance } from "@/lib/appearance";
 export const metadata: Metadata = {
   title: "Powerchair Football Manager",
   applicationName: "Powerchair Football Manager",
@@ -15,14 +16,18 @@ export const metadata: Metadata = {
   },
   appleWebApp: { capable: true, title: "PFM", statusBarStyle: "default" },
 };
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f9fbfe" },
-    { media: "(prefers-color-scheme: dark)", color: "#10151c" },
-  ],
-  width: "device-width",
-  initialScale: 1,
-};
+/** The browser's bar follows the club's primary colour (prompt 2.9); dark keeps the dark background. */
+export async function generateViewport(): Promise<Viewport> {
+  const { palette } = await sessionAppearance();
+  return {
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: paletteColor[palette] },
+      { media: "(prefers-color-scheme: dark)", color: "#10151c" },
+    ],
+    width: "device-width",
+    initialScale: 1,
+  };
+}
 export default async function Layout({
   children,
   params,
@@ -32,9 +37,11 @@ export default async function Layout({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  // The club's palette and tint are on <html> from the first paint (prompt 2.9).
+  const { palette, tint } = await sessionAppearance();
   return (
     // The theme script may set data-theme before hydration.
-    <html lang={locale} className={fontClass} suppressHydrationWarning>
+    <html lang={locale} className={fontClass} data-palette={palette === "night" ? undefined : palette} data-tint={tint === "light" ? undefined : tint} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

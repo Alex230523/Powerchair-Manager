@@ -1,7 +1,9 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { WholeClubNote } from "./use-scope";
+import { useScope } from "./use-scope";
+import { sponsorsCopy } from "./sponsors-copy";
 import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
@@ -12,6 +14,9 @@ export const fundraisingCopy = {
     playersJoin: "Les joueurs y participent",
     playersJoinHint: "Chaque joueur (ou sa famille) voit la cagnotte dans son espace, voit qui a rapporté quoi et note lui-même ce qu'il a récolté.",
     withPlayers: "Avec les joueurs",
+    team: "Équipe",
+    wholeClub: "Club entier",
+    teamHint: "Une cagnotte d’équipe n’est proposée qu’aux joueurs de cette équipe.",
     collectors: "Qui a rapporté quoi",
     noCollector: "Personne n'a encore noté de récolte.",
     collector: "Récolté par",
@@ -83,6 +88,9 @@ export const fundraisingCopy = {
     playersJoin: "De spelers doen mee",
     playersJoinHint: "Elke speler (of zijn gezin) ziet de pot in zijn omgeving, ziet wie wat binnenbracht en noteert zelf wat hij inzamelde.",
     withPlayers: "Met de spelers",
+    team: "Team",
+    wholeClub: "Hele club",
+    teamHint: "Een teampot wordt alleen aan de spelers van dat team aangeboden.",
     collectors: "Wie bracht wat binnen",
     noCollector: "Nog niemand noteerde een inzameling.",
     collector: "Ingezameld door",
@@ -154,6 +162,9 @@ export const fundraisingCopy = {
     playersJoin: "The players take part",
     playersJoinHint: "Each player (or their family) sees the pot in their space, sees who brought what and notes what they collected themselves.",
     withPlayers: "With the players",
+    team: "Team",
+    wholeClub: "Whole club",
+    teamHint: "A team pot is offered to that team’s players only.",
     collectors: "Who brought what",
     noCollector: "Nobody has noted a collection yet.",
     collector: "Collected by",
@@ -384,6 +395,8 @@ export function Fundraising({ locale }: { locale: Locale }) {
   const { busy, message, post } = usePost("/api/fundraising", reload, setError, failure);
   const [editing, setEditing] = useState<string | null>(null),
     [copied, setCopied] = useState("");
+  // The team chosen in the top bar (wave 15): its pots and the whole-club ones.
+  const team = useScope().teamId;
   if (!data)
     return (
       <main id="main" className="access fundraising">
@@ -448,6 +461,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
             deadline: String(f.get("deadline") ?? "") || null,
             status: String(f.get("status") ?? "open"),
             playersJoin: f.get("playersJoin") === "on",
+            ...(data?.teams.length ? { teamId: String(f.get("teamId") ?? "") || null } : {}),
           }).then((ok) => ok && setEditing(null));
         }}
       >
@@ -471,6 +485,20 @@ export function Fundraising({ locale }: { locale: Locale }) {
               <option value="closed">{t.closed}</option>
             </select>
           </label>
+          {(data?.teams.length ?? 0) > 0 && (
+            <div>
+              <label>
+                {t.team}
+                <select name="teamId" defaultValue={pot?.team_id ?? ""} aria-describedby="pot-team-hint">
+                  <option value="">{t.wholeClub}</option>
+                  {data?.teams.map((x) => (
+                    <option key={x.id} value={x.id}>{x.name}</option>
+                  ))}
+                </select>
+              </label>
+              <p className="muted small" id="pot-team-hint">{t.teamHint}</p>
+            </div>
+          )}
         </div>
         <label>
           {t.description}
@@ -542,9 +570,11 @@ export function Fundraising({ locale }: { locale: Locale }) {
             {t.collector}
             <select name="collector" defaultValue="">
               <option value="">…</option>
-              {data.players.map((p) => (
-                <option key={p.id} value={p.id}>{p.full_name}</option>
-              ))}
+              {data.players
+                .filter((p) => !pot.team_id || pot.team_members.includes(p.id))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
             </select>
           </label>
         )}
@@ -556,9 +586,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
     <main id="main" className="access fundraising">
       <PageHeader title={t.title} subtitle={t.intro} actions={data.can.manage && editing !== "group" && (
           <button type="button" className="button" onClick={() => setEditing("group")}>{t.newGroup}</button>
-        )}>
-        <WholeClubNote locale={locale} />
-      </PageHeader>
+        )} />
       {error && <p role="alert">{error}</p>}
       {(message || copied) && <p role="status">{copied || message}</p>}
       {editing === "group" && <Card label={t.newGroup}>{groupForm()}</Card>}
@@ -571,7 +599,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
       )}
       {data.groups.map((g) => {
         const pots = data.pots.filter(
-          (p) => p.group_id === g.id && (data.can.manage || data.can.detail || p.players_join),
+          (p) => p.group_id === g.id && (data.can.manage || data.can.detail || p.players_join) && (!team || !p.team_id || p.team_id === team),
         );
         if (!pots.length && !data.can.manage) return null;
         return (
@@ -608,6 +636,12 @@ export function Fundraising({ locale }: { locale: Locale }) {
                         <div className="trip-card-head">
                           <h3>{pot.name}</h3>
                           <span>
+                            {pot.team_name && (
+                              <span className="team-chip" data-color={pot.team_color ?? "none"}>
+                                <span className="team-dot" aria-hidden="true" />
+                                {pot.team_name}
+                              </span>
+                            )}
                             {pot.players_join && <Badge tone="success">{t.withPlayers}</Badge>}
                             <Badge>{pot.status === "open" ? t.open : t.closed}</Badge>
                           </span>
@@ -637,6 +671,18 @@ export function Fundraising({ locale }: { locale: Locale }) {
                                     {m.kind === "expense" ? "−" : ""}
                                     {euro(locale, m.amount_cents ?? 0)}
                                   </strong>
+                                  {data.can.manage && !m.cancelled_at && m.kind === "sponsor" && (
+                                    // Wave 15: a sponsor brought to a pot can be followed as a partner (sheet prefilled).
+                                    <Link
+                                      className="text-button"
+                                      href={`/${locale}/funding/partners?new=1&name=${encodeURIComponent((m.donor || m.label).slice(0, 160))}&note=${encodeURIComponent(
+                                        sponsorsCopy[locale].fromPot.replace("{name}", m.collector ?? "").replace("{pot}", pot.name),
+                                      )}`}
+                                    >
+                                      {sponsorsCopy[locale].followAsPartner}
+                                      <span className="sr-only"> : {m.donor || m.label}</span>
+                                    </Link>
+                                  )}
                                   {data.can.manage && !m.cancelled_at && (
                                     <button type="button" className="text-button" disabled={busy} onClick={() => void send({ action: "cancelMovement", id: m.id })}>
                                       {t.remove}

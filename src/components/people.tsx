@@ -14,6 +14,11 @@ import { labels } from "@/domains/access/policy";
 import { peopleCopy, peopleErrors } from "./people-copy";
 import { errors } from "./access-copy";
 import { Panel, Button } from "./ui";
+import { DataGrid, downloadCsv, postCommand } from "./data-grid";
+import { eachRow } from "./table-state";
+import { bulkCopy } from "./bulk-copy";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 type View = Awaited<ReturnType<typeof peopleView>>;
 type Profile = View["profiles"][number];
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -137,6 +142,8 @@ export function People({
     data?.profiles.find((profile) => profile.id === id)?.full_name ?? t.person;
   const statusName = (status: string) =>
     t[status as "active" | "inactive" | "archived" | "transferred"] ?? status;
+  const teamsLabel = (profile: Profile) => [...new Set(profile.assignments.map((a) => teamName(a.team_id)))].join(", ");
+  const b = bulkCopy[locale];
   function profileFields(profile?: Profile) {
     return (
       <>
@@ -346,52 +353,51 @@ export function People({
                     )}
                     <Button disabled={busy}>{t.filter}</Button>
                   </form>
-                  <div
-                    className="table-scroll"
-                    role="region"
-                    aria-label={t.people}
-                    tabIndex={0}
-                  >
-                    <table>
-                      <caption>
-                        {t.people} · {data.total}
-                      </caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">{t.name}</th>
-                          <th scope="col">{t.status}</th>
-                          <th scope="col">{t.team}</th>
-                          <th scope="col">{t.actions}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.profiles.map((profile) => (
-                          <tr key={profile.id}>
-                            <th scope="row">{profile.full_name}</th>
-                            <td>{statusName(profile.status)}</td>
-                            <td>
-                              {[
-                                ...new Set(
-                                  profile.assignments.map((a) =>
-                                    teamName(a.team_id),
-                                  ),
-                                ),
-                              ].join(", ") || "—"}
-                            </td>
-                            <td>
-                              <button
-                                className="text-button"
-                                onClick={() => setSelected(profile.id)}
-                                aria-label={`${t.open} : ${profile.full_name}`}
-                              >
-                                {t.open}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <DataGrid
+                    locale={locale}
+                    label={t.people}
+                    caption={`${t.people} · ${data.total}`}
+                    storageKey="club-directory"
+                    rows={data.profiles}
+                    rowId={(r) => r.id}
+                    rowName={(r) => r.full_name}
+                    onDone={load}
+                    columns={[
+                      { key: "name", header: t.name, rowHeader: true, hideable: false, sort: (r) => r.full_name, cell: (r) => r.full_name },
+                      { key: "status", header: t.status, sort: (r) => statusName(r.status), cell: (r) => statusName(r.status) },
+                      { key: "team", header: t.team, sort: (r) => teamsLabel(r), cell: (r) => teamsLabel(r) || "—" },
+                      {
+                        key: "actions",
+                        header: t.actions,
+                        hideable: false,
+                        cell: (r) => (
+                          <button className="text-button" onClick={() => setSelected(r.id)} aria-label={`${t.open} : ${r.full_name}`}>
+                            {t.open}
+                          </button>
+                        ),
+                      },
+                    ]}
+                    actions={[
+                      {
+                        id: "status",
+                        label: b.status,
+                        icon: "user",
+                        hidden: !data.capabilities.peopleManage,
+                        choose: { label: b.newStatus, options: (["active", "inactive", "archived"] as const).map((v) => ({ value: v, label: statusName(v) })) },
+                        run: (rows, status) =>
+                          eachRow(rows, (r) => r.id, async (r) => {
+                            await postCommand("/api/people", { organizationId: data.context.id, action: "status", id: r.id, status });
+                          }),
+                      },
+                      {
+                        id: "export",
+                        label: b.export,
+                        icon: "document",
+                        hidden: !data.capabilities.canExport,
+                        run: async (rows) => downloadCsv(`club-${day}`, [t.name, t.status, t.team], rows.map((r) => [r.full_name, statusName(r.status), teamsLabel(r)])),
+                      },
+                    ]}
+                  />
                   {!data.profiles.length && <p>{t.empty}</p>}
                   {!data.capabilities.peopleRead && (
                     <p className="muted">{t.readonly}</p>
@@ -536,11 +542,12 @@ export function People({
                           <form
                             onSubmit={(e) =>
                               submit(e, async (f) => {
-                                await send({
+                                const r = await send({
                                   action: "endAssignment",
                                   id: a.id,
                                   endsOn: f.get("endDate"),
                                 });
+                                undoToast(locale, toastCopy[locale].assignmentEnded, r.undo, data?.context.id, load);
                               })
                             }
                           >
@@ -710,13 +717,15 @@ export function People({
                         <Button
                           disabled={busy}
                           onClick={() =>
-                            void task(() =>
-                              confirm("season" + season.id, {
+                            void task(async () => {
+                              // Reversible: no confirmation, a message with "Annuler" instead (wave 15, C10).
+                              const r = await send({
                                 action: "seasonArchive",
                                 id: season.id,
                                 archived: !season.archived,
-                              }),
-                            )
+                              });
+                              undoToast(locale, season.archived ? toastCopy[locale].seasonRestored : toastCopy[locale].seasonArchived, r.undo, data?.context.id, load);
+                            })
                           }
                         >
                           {season.archived ? t.restore : t.archive}
@@ -829,13 +838,15 @@ export function People({
                         <Button
                           disabled={busy}
                           onClick={() =>
-                            void task(() =>
-                              confirm("team" + team.id, {
+                            void task(async () => {
+                              // Reversible: no confirmation, a message with "Annuler" instead (wave 15, C10).
+                              const r = await send({
                                 action: "teamArchive",
                                 id: team.id,
                                 archived: !team.archived,
-                              }),
-                            )
+                              });
+                              undoToast(locale, team.archived ? toastCopy[locale].teamRestored : toastCopy[locale].teamArchived, r.undo, data?.context.id, load);
+                            })
                           }
                         >
                           {team.archived ? t.restore : t.archive}

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { contactsView } from "@/domains/funding/service";
@@ -124,9 +125,15 @@ export function Contacts({ locale }: { locale: Locale }) {
                       {x.tags.map((k) => (
                         <Badge key={k} tone={k === "sponsor" || k === "donor" ? "brand" : "neutral"}>{c.tag[k] ?? k}</Badge>
                       ))}
-                      {(x.grants > 0 || x.partners > 0) && (
-                        <span className="muted small">
-                          {" "}{c.usedIn} {[x.grants ? `${x.grants} ${c.grants}` : "", x.partners ? `${x.partners} ${c.partners}` : ""].filter(Boolean).join(", ")}
+                      {x.files.length > 0 && (
+                        <span className="muted small contact-files">
+                          {" "}{c.usedIn}{" "}
+                          {x.files.map((f, i) => (
+                            <span key={f.kind + f.id}>
+                              {i > 0 && ", "}
+                              <Link href={f.kind === "partner" ? `/${locale}/funding/partners?partner=${f.id}` : f.kind === "grant" ? `/${locale}/funding/grants?grant=${f.id}` : `/${locale}/funding/grants?funder=${f.id}`}>{f.name}</Link>
+                            </span>
+                          ))}
                         </span>
                       )}
                     </td>

@@ -19,6 +19,8 @@ import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
 import { Badge, Tabs, EmptyState } from "./ui";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
@@ -810,9 +812,13 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               return;
             }
             setMoving(false);
-            const fresh = await fetch("/api/player-profile?id=" + encodeURIComponent(id), { cache: "no-store" });
-            if (fresh.ok) setView(await fresh.json());
+            const refresh = async () => {
+              const fresh = await fetch("/api/player-profile?id=" + encodeURIComponent(id), { cache: "no-store" });
+              if (fresh.ok) setView(await fresh.json());
+            };
+            await refresh();
             setMessage(t.saved);
+            undoToast(locale, toastCopy[locale].moved, v.undo, view.context.id, refresh);
           }}
         />
       )}

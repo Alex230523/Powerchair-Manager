@@ -9,6 +9,7 @@ import { notificationCopy, notificationErrors } from "./notifications-copy";
 import { errors } from "./access-copy";
 import { peopleErrors } from "./people-copy";
 import { Panel, Button, PageHeader, Card } from "./ui";
+import { WeeklyDigest } from "./weekly-digest";
 type View = Awaited<ReturnType<typeof notificationView>>;
 const variables: Record<string, string[]> = {
   invitation: ["organization", "role", "url"],
@@ -41,6 +42,7 @@ const variables: Record<string, string[]> = {
   match_update: ["name", "match", "status", "organization", "url"],
   registration_link: ["name", "organization", "url"],
   license_update: ["name", "person", "status", "organization", "url"],
+  funding_task: ["name", "title", "due", "organization", "url"],
 };
 /** `embedded`: rendered inside Réglages (wave 11) as a section instead of a page. */
 export function Notifications({ locale, embedded = false }: { locale: Locale; embedded?: boolean }) {
@@ -112,6 +114,18 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
     if (!response.ok) throw new Error(value.error);
     await load();
     setMessage(t.saved);
+  }
+  /** The weekly digest's commands (wave 15, C7): the answer matters (a preview may find nothing to say). */
+  async function digestSend(command: Record<string, unknown>) {
+    const response = await fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...command, organizationId: data?.context.id }),
+    });
+    const value = await response.json();
+    if (!response.ok) throw new Error(explain(value.error));
+    await load();
+    return value as { sent?: boolean };
   }
   function submit(
     e: FormEvent<HTMLFormElement>,
@@ -199,11 +213,12 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
             <p className="muted">
               {data.transport === "smtp" ? t.smtp : t.local}
             </p>
-            <Panel title={`${t.inbox} · ${t.unread} : ${data.unread}`}>
+            <Panel id="notif-inbox" title={`${t.inbox} · ${t.unread} : ${data.unread}`}>
               <p className="muted">{t.inboxLimit}</p>
               <label className="check">
                 <input
                   type="checkbox"
+                  data-nodirty=""
                   checked={unreadOnly}
                   onChange={(e) => setUnreadOnly(e.target.checked)}
                 />
@@ -248,7 +263,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                 <p>{t.empty}</p>
               )}
             </Panel>
-            <Panel title={t.preferences}>
+            <Panel id="notif-preferences" title={t.preferences}>
               <p>{t.security}</p>
               {!data.globalEnabled && (
                 <p className="notice">
@@ -308,12 +323,14 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                 {t.test}
               </Button>
             </Panel>
+            {data.digest && <WeeklyDigest locale={locale} digest={data.digest} send={digestSend} />}
             {data.manage && (
               <>
-                <Panel title={t.templates}>
+                <Panel id="notif-templates" title={t.templates}>
                   <label>
                     {t.kind}
                     <select
+                      data-nodirty=""
                       value={
                         template ? `${template.kind}:${template.locale}` : ""
                       }
@@ -419,7 +436,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                     </section>
                   )}
                 </Panel>
-                <Panel title={t.queue}>
+                <Panel id="notif-queue" title={t.queue}>
                   <p className="muted">{t.queueLimit}</p>
                   {data.paused && <p className="notice">{t.paused}</p>}
                   <Button

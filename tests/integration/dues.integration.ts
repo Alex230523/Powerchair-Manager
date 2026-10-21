@@ -113,6 +113,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.stubEnv("PFM_MFA_SUSPENDED", "false");
   await db.query("DELETE FROM dues_history WHERE receivable_id IS NOT NULL");
+  await db.query("DELETE FROM finance_transaction WHERE receivable_id IS NOT NULL");
   await db.query("DELETE FROM dues_installment");
   await db.query("DELETE FROM dues_receivable");
   await db.query("DELETE FROM guardian_relationship");
@@ -223,12 +224,10 @@ it("does not issue new debts against archived seasons or plans", async () => {
   await run(admin, { action: "archivePlan", id: planId });
   await expect(issue()).rejects.toThrow("NOT_FOUND");
 });
-it("honours strict MFA and the explicitly suspended pilot policy", async () => {
+it("issues dues without a second factor (removed)", async () => {
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
     admin.userId,
   ]);
-  await expect(issue()).rejects.toThrow("MFA_REQUIRED");
-  vi.stubEnv("PFM_MFA_SUSPENDED", "true");
   await expect(issue()).resolves.toHaveProperty("id");
 });
 it("saved profiles cannot grant another user’s access and English preferences persist", async () => {
@@ -310,6 +309,27 @@ it("consumes only the matching admission dues follow-up, once", async () => {
   ]);
   await expect(issue({ applicationId: a })).rejects.toThrow("NOT_FOUND");
   expect((await duesView(db, admin)).debts).toHaveLength(1);
+});
+it("exempts a whole receivable while nothing is paid, and only in its own club (wave 15, C8)", async () => {
+  const profile = async (name: string) =>
+    (await db.query("WITH p AS (INSERT INTO person DEFAULT VALUES RETURNING id) INSERT INTO club_person(organization_id,person_id,full_name,birth_date) SELECT $1,p.id,$2,'2014-01-01' FROM p RETURNING id", [org, name])).rows[0].id as string;
+  const free = (await run(admin, { action: "issue", planId, profileId: await profile("Exempt One"), installments: 2, firstDue: "2026-10-31" })).id;
+  const paid = (await run(admin, { action: "issue", planId, profileId: await profile("Exempt Two"), installments: 2, firstDue: "2026-10-31" })).id;
+  await run(admin, { action: "pay", id: paid, amountCents: 1000, method: "cash", occurredOn: "2026-09-01", reference: "" });
+  const version = async (id: string) => (await db.query("SELECT version FROM dues_receivable WHERE id=$1", [id])).rows[0].version as number;
+  await run(admin, { action: "exempt", id: free, version: await version(free), reason: "Exonération décidée par le club" });
+  const row = (await duesView(db, admin)).debts.find((d) => d.id === free)!;
+  expect([row.net_cents, row.state]).toEqual([0, "exempt"]);
+  expect((await db.query("SELECT sum(amount_cents)::int AS n FROM dues_installment WHERE receivable_id=$1", [free])).rows[0].n).toBe(0);
+  await expect(run(admin, { action: "exempt", id: paid, version: await version(paid), reason: "Exonération décidée par le club" })).rejects.toThrow("ALREADY_PAID");
+  await expect(run(outsider, { action: "exempt", id: paid, version: await version(paid), reason: "Exonération décidée par le club" })).rejects.toThrow(/FORBIDDEN|MFA_REQUIRED|CONTEXT_REQUIRED/);
+  // Another club: the receivable is not found there.
+  const other = (await db.query("INSERT INTO organization(name,kind) VALUES('Other dues club','club') RETURNING id")).rows[0].id;
+  await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)", [other, admin.userId]);
+  const m = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,'club_president') RETURNING id", [other, admin.userId])).rows[0].id;
+  await execute(db, admin, { action: "context", mandateId: m });
+  await expect(run(admin, { action: "exempt", id: paid, version: await version(paid), reason: "Exonération décidée par le club" }, other)).rejects.toThrow("NOT_FOUND");
+  await execute(db, admin, { action: "context", mandateId: admin.mandateId });
 });
 it("switching from a saved president profile to a player profile removes management rights", async () => {
   const m = (

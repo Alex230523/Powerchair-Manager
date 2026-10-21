@@ -11,6 +11,7 @@ import {
 } from "../../src/domains/calendar/service";
 import { localAt, shiftLocal } from "../../src/domains/calendar/time";
 import { processOne } from "../../src/domains/notifications/worker";
+import { dashboardView } from "../../src/domains/dashboard/service";
 const schema = "calendar_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({
@@ -267,15 +268,14 @@ it("persists a place and event with local times and planned participants", async
     cost_cents: 2500,
   });
 });
-it("requires MFA for planning but does not require email verification", async () => {
+it("plans without a second factor (removed) nor email verification", async () => {
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
     admin.userId,
   ]);
-  await expect(create()).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+  expect(await create()).toBeTruthy();
   await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [
     admin.userId,
   ]);
-  expect(await create()).toBeTruthy();
 });
 it("allows a coach only on their active team and no private participants outside it", async () => {
   await create({ responsibleId: coach.userId }, coach);
@@ -549,6 +549,11 @@ it("does not grant document access through an event or remove an unseen protecte
       [org, profile, season],
     )
   ).rows[0].id;
+  // A president has the habilitation from the start (21/10/2026); once removed, the event gives no way around it.
+  await db.query(
+    "UPDATE role_assignment SET grants=ARRAY[]::text[] WHERE id=$1",
+    [admin.mandateId],
+  );
   await expect(create({ documents: [doc] })).rejects.toMatchObject({
     code: "NOT_FOUND",
   });
@@ -560,9 +565,10 @@ it("does not grant document access through an event or remove an unseen protecte
   expect(
     (await calendarView(db, admin, range)).events[0].documents,
   ).toHaveLength(1);
+  // Player A sees their own document; no second factor is asked any more (removed 21/10/2026).
   expect(
     (await calendarView(db, player, range)).events[0].documents,
-  ).toHaveLength(0);
+  ).toHaveLength(1);
   await db.query(
     "UPDATE role_assignment SET grants=ARRAY[]::text[] WHERE id=$1",
     [admin.mandateId],
@@ -631,7 +637,7 @@ it("shares only public venue details and keeps free locations out of the directo
       name: "Denied arena",
       address: "Street",
     }),
-  ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
   const id = await create({ placeId: null, sharedVenueId: v.id });
   expect(
     (await calendarView(db, admin, range)).events.find((e) => e.id === id)
@@ -776,4 +782,43 @@ it("keeps messages private to participants, checks recipients and revocations, a
   await db.query("UPDATE club_person SET birth_date='2015-01-01' WHERE id=$1", [
     playerProfile,
   ]);
+});
+
+it("C9: follows one team or only my events, renews a link and keeps another club out", async () => {
+  await create({ title: "Séance A", visibility: "organization", placeId: null });
+  await create({ title: "Séance B", teamId: teamB, visibility: "organization", placeId: null });
+  await create({ title: "Assemblée", teamId: null, visibility: "organization", placeId: null });
+  const team = await run(admin, { action: "feed", name: "Team B", teamId: teamB });
+  const teamIcs = await calendarFeed(db, team.url!.split("/").pop()!);
+  expect(teamIcs).toContain("SUMMARY:Séance B");
+  expect(teamIcs).not.toContain("SUMMARY:Séance A");
+  const mine = await run(player, { action: "feed", name: "Mes événements", teamId: null, mine: true });
+  const mineIcs = await calendarFeed(db, mine.url!.split("/").pop()!);
+  expect(mineIcs).toContain("SUMMARY:Séance A");
+  expect(mineIcs).not.toContain("SUMMARY:Séance B");
+  expect(mineIcs).not.toContain("SUMMARY:Assemblée");
+  // The whole club for the same person shows all three.
+  const all = await calendarFeed(db, (await feed()).token);
+  for (const t of ["Séance A", "Séance B", "Assemblée"]) expect(all).toContain("SUMMARY:" + t);
+  // Renewing: a new secret, the same choice, the old link dead.
+  await expect(run(outsider, { action: "renewFeed", id: mine.id }, orgB)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  const renewed = await run(player, { action: "renewFeed", id: mine.id });
+  await expect(calendarFeed(db, mine.url!.split("/").pop()!)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  const again = await calendarFeed(db, renewed.url!.split("/").pop()!);
+  expect(again).toContain("SUMMARY:Séance A");
+  expect(again).not.toContain("SUMMARY:Assemblée");
+  const view = await calendarView(db, player, range);
+  expect(view.feeds.filter((f: { revoked_at: string | null }) => !f.revoked_at).map((f: { name: string; only_mine: boolean }) => [f.name, f.only_mine]).sort()).toEqual([
+    ["Mes événements", true],
+    ["Mon planning", false],
+  ]);
+});
+
+it("C9: offers players and parents to subscribe until they have a link", async () => {
+  expect((await dashboardView(db, player)).start).toEqual({ calendarSubscribed: false });
+  expect((await dashboardView(db, admin)).start).toBeUndefined();
+  const f = await feed();
+  expect((await dashboardView(db, player)).start).toEqual({ calendarSubscribed: true });
+  await run(player, { action: "revokeFeed", id: f.id });
+  expect((await dashboardView(db, player)).start).toEqual({ calendarSubscribed: false });
 });

@@ -19,8 +19,6 @@ BETTER_AUTH_URL=${url}
 BETTER_AUTH_SECRET=${secret}
 PFM_LOCAL_MAIL=true
 MAIL_TRANSPORT=local
-# Demo accounts have no second factor; set to false to test MFA.
-PFM_MFA_SUSPENDED=true
 ENV
   echo "Created .env.local (BETTER_AUTH_URL=${url})"
 fi

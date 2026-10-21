@@ -3,20 +3,24 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { financeView } from "@/domains/finance/service";
-import { categories, methods } from "@/domains/finance/schema";
+import { budgetTone, categories, methods } from "@/domains/finance/schema";
+import { cssVars } from "./css-vars";
+import { accountsCopy } from "./accounts-copy";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
-import { PageHeader, Badge, EmptyState, Card, KpiCard } from "./ui";
+import { PageHeader, Badge, EmptyState, Card, KpiCard, Toolbar } from "./ui";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
 import { Modal } from "./modal";
+import { setupCopy } from "./setup-copy";
 
 type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
-export function Finance({ locale }: { locale: Locale }) {
+/** `create` opens the "add an operation" form at once (the "Créer" menu of the home page). */
+export function Finance({ locale, create = false }: { locale: Locale; create?: boolean }) {
   const t = financeCopy[locale],
     x = financeExtras[locale];
   const [view, setView] = useState<View | null>(null),
@@ -24,7 +28,7 @@ export function Finance({ locale }: { locale: Locale }) {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [adding, setAdding] = useState(false),
+    [adding, setAdding] = useState(create),
     [cancelling, setCancelling] = useState(""),
     [q, setQ] = useState(""),
     [direction, setDirection] = useState(""),
@@ -254,6 +258,9 @@ export function Finance({ locale }: { locale: Locale }) {
               <Link className="button secondary" href={`/${locale}/funding/report?season=${view.season.label}`}>
                 {x.report}
               </Link>
+              <Link className="button secondary" href={`/${locale}/funding/annual-accounts`}>
+                {accountsCopy[locale].title}
+              </Link>
               <button className="button secondary" type="button" onClick={exportCsv} disabled={!entries.length}>
                 {t.export}
               </button>
@@ -457,11 +464,11 @@ export function Finance({ locale }: { locale: Locale }) {
                     <span className="bar-pair" aria-hidden="true">
                       <span
                         className="bar in"
-                        style={{ width: `${(v.in / biggest) * 100}%` }}
+                        style={cssVars({ value: Math.round((v.in / biggest) * 1000) / 10 })}
                       />
                       <span
                         className="bar out"
-                        style={{ width: `${(v.out / biggest) * 100}%` }}
+                        style={cssVars({ value: Math.round((v.out / biggest) * 1000) / 10 })}
                       />
                     </span>
                     <span className="bar-values">
@@ -533,11 +540,9 @@ export function Finance({ locale }: { locale: Locale }) {
                       <th scope="col">{t.category}</th>
                       <th scope="col">{t.direction}</th>
                       <th scope="col" className="num">
-                        {x.planned}
+                        {x.actual} / {x.planned}
                       </th>
-                      <th scope="col" className="num">
-                        {x.actual}
-                      </th>
+                      <th scope="col">{x.progress}</th>
                       <th scope="col" className="num">
                         {x.gap}
                       </th>
@@ -549,15 +554,20 @@ export function Finance({ locale }: { locale: Locale }) {
                         <td>{t.categories[r.category] ?? r.category}</td>
                         <td>{r.direction === "in" ? t.in : t.out}</td>
                         <td className="num">
-                          {r.planned ? money(r.planned) : ""}
+                          {r.planned ? x.ofBudget.replace("{actual}", money(r.actual)).replace("{planned}", money(r.planned)) : money(r.actual)}
                         </td>
-                        <td className="num">
-                          {money(r.actual)}
-                          {r.ratio !== null && (
-                            <span className="muted">
-                              {" "}
-                              · {r.ratio} % {x.used}
+                        <td>
+                          {r.ratio !== null ? (
+                            <span className="budget-progress" data-tone={budgetTone(r.direction, r.ratio)}>
+                              <span className="budget-meter" aria-hidden="true">
+                                <span style={cssVars({ value: Math.min(r.ratio, 100) })} />
+                              </span>
+                              <span className="budget-pct">
+                                {r.ratio} % {x.used}
+                              </span>
                             </span>
+                          ) : (
+                            <span className="muted">…</span>
                           )}
                         </td>
                         <td
@@ -581,10 +591,7 @@ export function Finance({ locale }: { locale: Locale }) {
 
           <section aria-labelledby="finance-history">
             <h2 id="finance-history">{t.history}</h2>
-            <form
-              className="directory-filters"
-              onSubmit={(e) => e.preventDefault()}
-            >
+            <Toolbar label={x.ledgerFilters}>
               <label>
                 {t.search}
                 <input
@@ -618,7 +625,7 @@ export function Finance({ locale }: { locale: Locale }) {
                   ))}
                 </select>
               </label>
-            </form>
+            </Toolbar>
             {entries.length ? (
               <div
                 className="table-scroll"
@@ -675,14 +682,11 @@ export function Finance({ locale }: { locale: Locale }) {
                             </Badge>
                           )}
                         </td>
-                        <td>{t.categories[e.category] ?? e.category}</td>
+                        <td>
+                          <Badge tone="neutral">{t.categories[e.category] ?? e.category}</Badge>
+                        </td>
                         <td>{t.methods[e.method] ?? e.method}</td>
-                        <td
-                          className={
-                            "num " +
-                            (e.direction === "in" ? "amount-in" : "amount-out")
-                          }
-                        >
+                        <td className={"num " + (e.direction === "in" ? "amount-in" : "amount-spent")}>
                           {e.direction === "in" ? "+" : "−"}
                           {money(e.amount_cents)}
                         </td>
@@ -793,7 +797,16 @@ export function Finance({ locale }: { locale: Locale }) {
             {entries.length ? (
               <ShowMore locale={locale} {...moreEntries} />
             ) : (
-              <EmptyState title={t.empty} />
+              <EmptyState
+                title={t.empty}
+                action={
+                  view.can_edit && (
+                    <button className="button" type="button" onClick={() => setAdding(true)}>
+                      {setupCopy[locale].empty.finance}
+                    </button>
+                  )
+                }
+              />
             )}
           </section>
         </>

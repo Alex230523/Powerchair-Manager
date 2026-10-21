@@ -24,6 +24,8 @@ const copy = {
     noLogo: "Aucun logo pour l’instant.",
     saved: "Enregistré.",
     readOnly: "Seul un président peut modifier l’identité du club.",
+    movedText: "Le nom, le logo, l’email de contact et la fédération du club se règlent dans Réglages, catégorie Club.",
+    movedLink: "Ouvrir les réglages du club",
     teams: "Équipes du club",
     teamsIntro:
       "Un club peut aligner plusieurs équipes la même saison. Créez-les et modifiez-les dans la section « Équipes » plus bas.",
@@ -48,6 +50,8 @@ const copy = {
     noLogo: "Nog geen logo.",
     saved: "Opgeslagen.",
     readOnly: "Alleen een voorzitter kan de identiteit van de club wijzigen.",
+    movedText: "Naam, logo, contactadres en federatie van de club stel je in bij Instellingen, categorie Club.",
+    movedLink: "De clubinstellingen openen",
     teams: "Teams van de club",
     teamsIntro:
       "Een club kan meerdere teams in hetzelfde seizoen hebben. Maak en wijzig ze in de sectie ‘Teams’ hieronder.",
@@ -72,6 +76,8 @@ const copy = {
     noLogo: "No logo yet.",
     saved: "Saved.",
     readOnly: "Only a president can change the club identity.",
+    movedText: "The club name, logo, contact email and federation are set in Settings, Club category.",
+    movedLink: "Open the club settings",
     teams: "Club teams",
     teamsIntro:
       "A club can field several teams in the same season. Create and edit them in the ‘Teams’ section below.",
@@ -92,6 +98,9 @@ const official = {
     company: "Numéro d'entreprise (BCE)",
     signatory: "Signataire",
     signatoryHint: "Ex. Alex Martin, président",
+    iban: "Compte bancaire (IBAN)",
+    ibanHint: "Repris sur les conventions de sponsoring.",
+    invalid: "Vérifiez le numéro d’entreprise et l’IBAN : l’un des deux n’est pas valide.",
     rollover: "Passage de saison",
   },
   nl: {
@@ -101,6 +110,9 @@ const official = {
     company: "Ondernemingsnummer (KBO)",
     signatory: "Ondertekenaar",
     signatoryHint: "Bv. Alex Martin, voorzitter",
+    iban: "Bankrekening (IBAN)",
+    ibanHint: "Overgenomen op de sponsorovereenkomsten.",
+    invalid: "Controleer het ondernemingsnummer en de IBAN: een van beide is ongeldig.",
     rollover: "Seizoensovergang",
   },
   en: {
@@ -110,10 +122,14 @@ const official = {
     company: "Company number (BCE/KBO)",
     signatory: "Signatory",
     signatoryHint: "E.g. Alex Martin, president",
+    iban: "Bank account (IBAN)",
+    ibanHint: "Printed on sponsorship agreements.",
+    invalid: "Check the company number and the IBAN: one of them is not valid.",
     rollover: "Season rollover",
   },
 };
-export function ClubIdentity({ locale }: { locale: Locale }) {
+/** `only`: "identity" in Settings > Club (wave 15), "teams" in Gestion du club, which links to the identity. */
+export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identity" | "teams" }) {
   const t = copy[locale];
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -156,9 +172,11 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
       setError(
-        code === "INVALID_FILE" || code === "INVALID_INPUT"
-          ? t.invalidFile
-          : (errors[code]?.[locale] ?? code),
+        code === "INVALID_INPUT" && body.action === "identity"
+          ? official[locale].invalid
+          : code === "INVALID_FILE" || code === "INVALID_INPUT"
+            ? t.invalidFile
+            : (errors[code]?.[locale] ?? code),
       );
     } finally {
       setBusy(false);
@@ -189,6 +207,14 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <div className="grid">
+        {only === "teams" ? (
+          <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
+            <p className="muted">{t.movedText}</p>
+            <p>
+              <Link href={`/${locale}/settings/club#club-identity-title`}>{t.movedLink}</Link>
+            </p>
+          </Card>
+        ) : (
         <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
           <p className="muted">{t.intro}</p>
           <div className="logo-row">
@@ -232,7 +258,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
           </div>
           {view.canEdit ? (
             <form
-              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "")}
+              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "") + (o.iban ?? "")}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -246,6 +272,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                         address: String(f.get("address") ?? "").trim(),
                         companyNumber: String(f.get("company") ?? "").trim(),
                         signatory: String(f.get("signatory") ?? "").trim(),
+                        iban: String(f.get("iban") ?? "").trim(),
                       }
                     : {}),
                 });
@@ -318,6 +345,11 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
                       defaultValue={o.signatory ?? ""}
                     />
                   </label>
+                  <label htmlFor="club-iban">
+                    {official[locale].iban}
+                    <input id="club-iban" name="iban" maxLength={42} placeholder="BE68 5390 0754 7034" defaultValue={o.iban ?? ""} aria-describedby="club-iban-hint" autoComplete="off" />
+                  </label>
+                  <p className="muted small" id="club-iban-hint">{official[locale].ibanHint}</p>
                 </fieldset>
               )}
               <button className="button" disabled={busy}>
@@ -328,7 +360,8 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
             <p className="muted">{t.readOnly}</p>
           )}
         </Card>
-        {o.kind === "club" && (
+        )}
+        {o.kind === "club" && only !== "identity" && (
           <Card title={t.teams} labelledBy="club-teams-title" headingId="club-teams-title">
             <p className="muted">{t.teamsIntro}</p>
             <p>

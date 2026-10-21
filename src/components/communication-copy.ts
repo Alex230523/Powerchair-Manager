@@ -400,6 +400,14 @@ export const unsubscribeCopy = {
     done: "C'est fait : vous ne recevrez plus les nouvelles de {club}. Les messages liés à vos inscriptions et activités continuent.",
     resume: "Je me réinscris",
     resumed: "Vous recevrez à nouveau les nouvelles de {club}.",
+    digest: {
+      title: "Résumé hebdomadaire",
+      question: "Ne plus recevoir le résumé hebdomadaire de {club} ?",
+      stop: "Ne plus le recevoir",
+      done: "C'est fait : vous ne recevrez plus le résumé hebdomadaire de {club}. Vous pouvez le réactiver dans vos réglages.",
+      resume: "Le réactiver",
+      resumed: "Vous recevrez à nouveau le résumé hebdomadaire de {club}.",
+    },
   },
   nl: {
     title: "Clubnieuws",
@@ -410,6 +418,14 @@ export const unsubscribeCopy = {
     done: "Gebeurd: u ontvangt het nieuws van {club} niet meer. Berichten over uw inschrijvingen en activiteiten gaan verder.",
     resume: "Mij opnieuw inschrijven",
     resumed: "U ontvangt opnieuw het nieuws van {club}.",
+    digest: {
+      title: "Wekelijks overzicht",
+      question: "Het wekelijkse overzicht van {club} niet meer ontvangen?",
+      stop: "Niet meer ontvangen",
+      done: "Gebeurd: u ontvangt het wekelijkse overzicht van {club} niet meer. U kunt het opnieuw aanzetten in uw instellingen.",
+      resume: "Opnieuw aanzetten",
+      resumed: "U ontvangt opnieuw het wekelijkse overzicht van {club}.",
+    },
   },
   en: {
     title: "Club news",
@@ -420,5 +436,13 @@ export const unsubscribeCopy = {
     done: "Done: you will no longer receive news from {club}. Messages about your registrations and activities continue.",
     resume: "Subscribe again",
     resumed: "You will receive news from {club} again.",
+    digest: {
+      title: "Weekly digest",
+      question: "Stop receiving the weekly digest of {club}?",
+      stop: "Stop receiving it",
+      done: "Done: you will no longer receive the weekly digest of {club}. You can switch it on again in your settings.",
+      resume: "Switch it on again",
+      resumed: "You will receive the weekly digest of {club} again.",
+    },
   },
 };

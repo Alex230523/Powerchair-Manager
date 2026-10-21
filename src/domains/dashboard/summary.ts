@@ -1,5 +1,6 @@
 // Pure dashboard shaping. No I/O here so ordering and visibility rules are unit-tested.
 import type { Readiness } from "./presence";
+import type { SetupState } from "../setup/schema";
 export type Tone = "danger" | "warning" | "info";
 export const todoKeys = [
   "documentsExpired",
@@ -9,6 +10,8 @@ export const todoKeys = [
   "myApplications",
   "registrationsReview",
   "duesLate",
+  "sponsorTasks",
+  "grantTasks",
   "documentsReview",
   "registrationFollowups",
   "equipmentService",
@@ -27,6 +30,8 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   myApplications: { href: "/registrations/mine", tone: "warning" },
   registrationsReview: { href: "/registrations", tone: "warning" },
   duesLate: { href: "/dues?state=late", tone: "danger" },
+  sponsorTasks: { href: "/tasks", tone: "warning" },
+  grantTasks: { href: "/tasks?kind=grant", tone: "warning" },
   documentsReview: { href: "/documents", tone: "warning" },
   registrationFollowups: { href: "/registrations", tone: "warning" },
   equipmentService: { href: "/equipment", tone: "warning" },
@@ -90,13 +95,35 @@ export type AgendaItem = {
 /** An administrative date shown with the events: documents, dues, fundraising, trips. */
 export type Deadline = {
   id: string;
-  kind: "documents" | "dues" | "fundraising" | "trip" | "grant" | "partner";
+  kind: "documents" | "dues" | "fundraising" | "trip" | "grant" | "partner" | "accounts";
   /** YYYY-MM-DD */
   date: string;
   title: string;
   count: number;
   cents?: number;
   href: string;
+  /** A sponsor condition or a grant step (wave 15), not a date of the file itself. */
+  task?: boolean;
+};
+/** The money card of the president's home (wave 14): club-wide figures of the season in view. */
+export type FinanceCard = {
+  /** Null when the finance module is off (the dues figures stay). */
+  treasury: number | null;
+  income: number;
+  expenses: number;
+  dues: { due: number; collected: number; late: number; playersLate: number; rate: number | null } | null;
+};
+/** One event of the week view (wave 14): the calendar's own visibility rules apply. */
+export type WeekEvent = {
+  id: string;
+  title: string;
+  kind: string;
+  status: string;
+  startsAt: string;
+  endsAt: string;
+  team: string | null;
+  teamColor: string | null;
+  place: string | null;
 };
 export type Dashboard = {
   /** Server time of the snapshot; the page renders dates from it, not from the client clock. */
@@ -109,12 +136,24 @@ export type Dashboard = {
     /** False when the club switched the statistics module off. */
     statistics?: boolean;
   };
+  /** The season in view (top bar choice, else the current one). */
+  season?: { id: string; name: string } | null;
+  /** What the "Créer" menu may offer this actor. */
+  can?: { event: boolean; player: boolean; operation: boolean; mail: boolean };
   todos: Todo[];
   metrics: Metric[];
   agenda: AgendaItem[];
   deadlines: Deadline[];
   /** Modules whose figures were computed for this actor; others are hidden, not zero. */
   scopes: string[];
+  /** Only for people trusted with the club's money, with the modules on. */
+  finance?: FinanceCard;
+  /** The week asked for (?week=YYYY-MM-DD, a Monday), with its events. */
+  week?: { from: string; to: string; events: WeekEvent[] };
+  /** Getting started of players and parents (wave 15, C9). */
+  start?: { calendarSubscribed: boolean };
+  /** Getting started of a new club, for its president (wave 15, C3). */
+  setup?: SetupState;
 };
 export function formatCents(cents: number, locale: string) {
   return new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {

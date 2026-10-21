@@ -54,6 +54,27 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 13, prompt 2.1 : fondations du design, polices, jetons, mode sombre factorisé](evolutions/2026-10-21-s-vague-13-design-fondations.md) |
 | 21/10/2026 | [Vague 13, prompt 2.2 : composants partagés et migration des pages](evolutions/2026-10-21-t-vague-13-composants-migration.md) |
 | 21/10/2026 | [Vague 14, prompts 2.3 et 2.4 : barre latérale claire, menu réorganisé, barre du haut](evolutions/2026-10-21-u-vague-14-barre-laterale-barre-du-haut.md) |
+| 21/10/2026 | [Vague 14, prompt 2.5 : accueil du président](evolutions/2026-10-21-v-vague-14-accueil-president.md) |
+| 21/10/2026 | [Vague 15, C13 : réglages rangés en sous-pages](evolutions/2026-10-21-w-vague-15-reglages-sous-pages.md) |
+| 21/10/2026 | [Vague 15, prompt 1.C : cotisations, déplacements et cagnottes par équipe](evolutions/2026-10-21-x-vague-15-equipe-cotisations-deplacements-cagnottes.md) |
+| 21/10/2026 | [Vague 15, C1 : sponsors, formules du club, conditions et calendrier](evolutions/2026-10-21-y-vague-15-sponsors-formules.md) |
+| 21/10/2026 | [Vague 15, C2 : subsides, dossier complet, check-list, organismes et année suivante](evolutions/2026-10-21-z-vague-15-subsides-dossier.md) |
+| 21/10/2026 | [Vague 15, prompt 2.6 : statistiques et graphiques](evolutions/2026-10-21-za-vague-15-statistiques-graphiques.md) |
+| 21/10/2026 | [Vague 15, prompt 2.7 et C9 : calendrier en grille horaire, couleurs par type, abonnement mis en avant](evolutions/2026-10-21-zb-vague-15-calendrier-abonnement.md) |
+| 21/10/2026 | [Vague 15, prompt 2.8 : finances et cotisations](evolutions/2026-10-21-zc-vague-15-finances-cotisations.md) |
+| 21/10/2026 | [Vague 15, C12 : comptes annuels générés depuis la plateforme](evolutions/2026-10-21-zd-vague-15-comptes-annuels.md) |
+| 21/10/2026 | [Vague 15, C11 : rapport d’activité en PowerPoint pour Canva](evolutions/2026-10-21-ze-vague-15-rapport-activite.md) |
+| 21/10/2026 | [Vague 15, C7 : résumé hebdomadaire par email](evolutions/2026-10-21-zf-vague-15-resume-hebdomadaire.md) |
+| 21/10/2026 | [Vague 15, C8 : tableaux triables, sélection multiple et actions groupées](evolutions/2026-10-21-zg-vague-15-tableaux.md) |
+| 21/10/2026 | [Vague 15, C10 : annulation après une action importante](evolutions/2026-10-21-zh-vague-15-annulation.md) |
+| 21/10/2026 | [Vague 15, C4 : taille du texte et contraste renforcé](evolutions/2026-10-21-zi-vague-15-taille-texte-contraste.md) |
+| 21/10/2026 | [Vague 15, C5 : barre de navigation mobile en bas d’écran](evolutions/2026-10-21-zj-vague-15-barre-mobile.md) |
+| 21/10/2026 | [Vague 15, C6 : actions rapides dans la recherche Ctrl+K](evolutions/2026-10-21-zk-vague-15-actions-ctrlk.md) |
+| 21/10/2026 | [Vague 15, C3 : démarrage guidé d’un nouveau club](evolutions/2026-10-21-zl-vague-15-demarrage-guide.md) |
+| 21/10/2026 | [Vague 15, 2.9 : palette du club et nettoyage final](evolutions/2026-10-21-zm-vague-15-palette-club-nettoyage.md) |
+| 21/10/2026 | [Aperçus en ligne sur Vercel](evolutions/2026-10-21-zn-apercus-vercel.md) |
+| 21/10/2026 | [Connexion vers l’accueil, sans double authentification, président avec tous les droits](evolutions/2026-10-21-zo-accueil-sans-mfa-droits-president.md) |
+| 21/10/2026 | [Tournois : le calendrier fédéral devient « Tournois »](evolutions/2026-10-21-zp-tournois.md) |
 
 ## Convention
 

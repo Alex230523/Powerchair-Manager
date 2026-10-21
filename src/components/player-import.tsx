@@ -156,15 +156,17 @@ export function PlayerImport({
   teams,
   done,
   role = "player",
+  initiallyOpen = false,
 }: {
   locale: Locale;
   role?: "player" | "coach";
+  initiallyOpen?: boolean;
   organizationId: string;
   teams: { id: string; name: string }[];
   done: (message: string) => void;
 }) {
   const t = copy[locale];
-  const [open, setOpen] = useState(false),
+  const [open, setOpen] = useState(initiallyOpen),
     [rows, setRows] = useState<ImportRow[]>([]),
     [issues, setIssues] = useState<ImportIssue[]>([]),
     [recognised, setRecognised] = useState<string[]>([]),

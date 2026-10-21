@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { remindersView } from "@/domains/reminders/service";
 import { errors } from "./access-copy";
 import { Badge, PageHeader, Card, EmptyState } from "./ui";
+import { useScope } from "./use-scope";
 
 type View = Awaited<ReturnType<typeof remindersView>>;
 type Kind = "dues" | "documents";
@@ -212,7 +213,10 @@ export function Reminders({
     };
   }, [failure]);
 
-  const rows = view ? (kind === "dues" ? view.dues : view.documents) : [];
+  // The team chosen in the top bar (wave 15): only its late payers are listed, ticked and reminded.
+  const scopeTeam = useScope().teamId;
+  const duesRows = (view?.dues ?? []).filter((r) => !scopeTeam || r.team_ids.includes(scopeTeam));
+  const rows = view ? (kind === "dues" ? duesRows : view.documents) : [];
   const ids = [...new Set(rows.map((r) => r.profile_id))];
   const chosen = ids.filter((id) => picked.has(id));
   const template = view?.templates.find(
@@ -304,7 +308,7 @@ export function Reminders({
                 >
                   {k === "dues" ? t.dues : t.documents} (
                   {k === "dues"
-                    ? new Set(view.dues.map((r) => r.profile_id)).size
+                    ? new Set(duesRows.map((r) => r.profile_id)).size
                     : view.documents.length}
                   )
                 </button>
@@ -325,7 +329,7 @@ export function Reminders({
                         onClick={() =>
                           setPicked(
                             new Set(
-                              (view?.dues ?? [])
+                              duesRows
                                 .filter((r) => r.overdueCents > 0)
                                 .map((r) => r.profile_id),
                             ),

@@ -1,7 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
-import { totp } from "../support/totp";
 import { localAt, shiftLocal } from "../../src/domains/calendar/time";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
@@ -47,22 +46,6 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     }
     const admin = await signup(page, "Calendar President"),
       player = await signup(playerPage, "Calendar Player");
-    const enabled = await page.request.post("/api/auth/two-factor/enable", {
-      headers: { origin },
-      data: { password },
-    });
-    expect(enabled.status()).toBe(200);
-    const secret = new URL((await enabled.json()).totpURI).searchParams.get(
-      "secret",
-    )!;
-    expect(
-      (
-        await page.request.post("/api/auth/two-factor/verify-totp", {
-          headers: { origin },
-          data: { code: totp(secret) },
-        })
-      ).status(),
-    ).toBe(200);
     const org = (
       await db.query(
         "INSERT INTO organization(name,kind) VALUES('Club Planning','club') RETURNING id",
@@ -115,12 +98,8 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     );
     for (const locale of ["fr", "nl"]) {
       await page.goto("/" + locale + "/calendar");
-      await expect(
-        page.getByRole("heading", {
-          name: locale === "fr" ? "Agenda" : "Agenda",
-          exact: true,
-        }),
-      ).toBeVisible();
+      // Wave 15: the agenda card is titled with the period, its views in a segmented control.
+      await expect(page.getByRole("group", { name: locale === "fr" ? "Vue" : "Weergave", exact: true })).toBeVisible();
       await accessible(page);
     }
     await page.goto("/fr/calendar");
@@ -149,10 +128,13 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         0,
         10,
       );
+    // Wave 15: each event is a button named in full ("…, mardi 4 novembre de 18 h à 20 h, Salle pilote").
+    const scheduled = /^Entraînement pilote(?!.*Annulé$)/,
+      cancelled = /^Entraînement pilote.*Annulé$/;
     await page.getByLabel("Date de référence", { exact: true }).fill(date);
-    await page.getByLabel("Vue", { exact: true }).selectOption("list");
+    await page.getByRole("group", { name: "Vue", exact: true }).getByRole("button", { name: "Liste", exact: true }).click();
     await page
-      .getByRole("button", { name: "Ajouter un événement", exact: true })
+      .getByRole("button", { name: "Nouvel événement", exact: true })
       .click();
     await expect(page.locator("#event-zone")).toHaveCount(0);
     await page.getByLabel("Titre", { exact: true }).fill("Entraînement pilote");
@@ -162,17 +144,13 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     await page
       .getByLabel("Fin (heure locale)", { exact: true })
       .fill(date + "T20:00");
-    await page
-      .getByLabel("Équipe", { exact: true })
-      .filter({ visible: true })
-      .nth(1)
-      .selectOption(team);
     const editor = page.locator("form").filter({
       has: page.getByRole("button", {
         name: "Enregistrer l’événement",
         exact: true,
       }),
     });
+    await editor.getByLabel("Équipe", { exact: true }).selectOption(team);
     await editor.getByLabel("Lieu", { exact: true }).selectOption(place);
     await editor.getByLabel("Visibilité", { exact: true }).selectOption("team");
     await editor.getByLabel("Récurrence", { exact: true }).selectOption("7");
@@ -183,10 +161,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       .getByRole("button", { name: "Enregistrer l’événement", exact: true })
       .click();
     await expect(
-      page.getByRole("button", {
-        name: "Entraînement pilote · Programmé",
-        exact: true,
-      }),
+      page.getByRole("button", { name: scheduled }),
     ).toHaveCount(3);
     const records = (
       await db.query(
@@ -195,10 +170,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       )
     ).rows;
     await page
-      .getByRole("button", {
-        name: "Entraînement pilote · Programmé",
-        exact: true,
-      })
+      .getByRole("button", { name: scheduled })
       .nth(1)
       .click();
     await page
@@ -226,10 +198,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       )
       .toBe(true);
     await page
-      .getByRole("button", {
-        name: "Entraînement pilote · Programmé",
-        exact: true,
-      })
+      .getByRole("button", { name: scheduled })
       .nth(2)
       .click();
     await page
@@ -241,17 +210,15 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         exact: true,
       })
       .click();
+    // The sheet shows the cancellation, then closes.
+    const sheet = page.getByRole("dialog", { name: "Entraînement pilote" });
+    await expect(sheet.getByText("Annulé", { exact: true }).first()).toBeVisible();
+    await sheet.getByRole("button", { name: "Fermer / Sluiten / Close" }).click();
     await expect(
-      page.getByRole("button", {
-        name: "Entraînement pilote · Annulé",
-        exact: true,
-      }),
+      page.getByRole("button", { name: cancelled }),
     ).toHaveCount(1);
     await page
-      .getByRole("button", {
-        name: "Entraînement pilote · Programmé",
-        exact: true,
-      })
+      .getByRole("button", { name: scheduled })
       .first()
       .click();
     await page
@@ -299,36 +266,33 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       .locator("summary")
       .filter({ hasText: /^Lieux$/ })
       .click();
-    for (const mode of ["month", "week", "list"]) {
-      await page.getByLabel("Vue", { exact: true }).selectOption(mode);
-      if (mode === "week" || mode === "month")
+    for (const mode of ["Mois", "Semaine", "Liste"]) {
+      await page.getByRole("group", { name: "Vue", exact: true }).getByRole("button", { name: mode, exact: true }).click();
+      if (mode !== "Liste")
         await page.screenshot({
           path: "test-results/calendar-" + mode + ".png",
           fullPage: true,
         });
       await accessible(page);
     }
-    await page.getByLabel("Vue", { exact: true }).selectOption("list");
+    await page.getByRole("group", { name: "Vue", exact: true }).getByRole("button", { name: "Liste", exact: true }).click();
     await page.screenshot({
       path: "test-results/calendar.png",
       fullPage: true,
     });
     await playerPage.goto("/fr/calendar");
-    await playerPage.getByLabel("Vue", { exact: true }).selectOption("list");
+    await playerPage.getByRole("group", { name: "Vue", exact: true }).getByRole("button", { name: "Liste", exact: true }).click();
     await playerPage
       .getByLabel("Date de référence", { exact: true })
       .fill(date);
     await expect(
-      playerPage.getByRole("button", {
-        name: "Entraînement pilote · Annulé",
-        exact: true,
-      }),
+      playerPage.getByRole("button", { name: cancelled }),
     ).toHaveCount(1);
     await playerPage
-      .getByRole("link", { name: "S’abonner au calendrier", exact: true })
+      .getByRole("button", { name: "S’abonner", exact: true })
       .click();
     await playerPage
-      .getByLabel("Nom de l’abonnement", { exact: true })
+      .getByLabel("Nom du lien (pour vous y retrouver)", { exact: true })
       .fill("Mon planning");
     await playerPage
       .getByRole("button", { name: "Créer mon lien privé", exact: true })
@@ -343,13 +307,13 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     expect(ics).toContain("UID:" + records[0].id + "@pfm");
     expect(ics).not.toContain("Calendar Player");
     await playerPage
-      .getByRole("button", { name: "Révoquer", exact: true })
+      .getByRole("button", { name: /^Révoquer/ })
       .click();
     await expect
       .poll(async () => (await anon.request.get(feed)).status())
       .toBe(404);
     await page
-      .getByRole("button", { name: "Ajouter un événement", exact: true })
+      .getByRole("button", { name: "Nouvel événement", exact: true })
       .click();
     await page.getByLabel("Titre", { exact: true }).fill("Autre événement");
     await page

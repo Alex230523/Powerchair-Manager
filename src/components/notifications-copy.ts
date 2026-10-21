@@ -11,6 +11,7 @@ export const notificationCopy = {
     match_update: "Matchs et arbitrage",
     registration_link: "Lien d’inscription par e-mail",
     license_update: "Licences",
+    funding_task: "Tâches de sponsors et subsides",
     calendar_update: "Calendrier",
     intro: "Vos notifications restent liées à l’organisation active.",
     access: "Mon espace",
@@ -102,6 +103,7 @@ export const notificationCopy = {
     match_update: "Wedstrijden en arbitrage",
     registration_link: "Inschrijvingslink per e-mail",
     license_update: "Licenties",
+    funding_task: "Taken van sponsors en subsidies",
     calendar_update: "Kalender",
     intro: "Uw meldingen horen bij de actieve organisatie.",
     access: "Accounts en context",
@@ -197,6 +199,11 @@ export const notificationErrors: Record<
     fr: "Cet envoi a changé d’état. Actualisez avant de recommencer.",
     nl: "Deze verzending heeft een andere status. Vernieuw eerst.",
     en: englishErrors["JOB_STATE"] ?? "Action unavailable.",
+  },
+  DIGEST_SECTIONS: {
+    fr: "Cochez au moins une rubrique.",
+    nl: "Vink minstens één rubriek aan.",
+    en: "Tick at least one section.",
   },
   UNCERTAIN_CONFIRM: {
     fr: "Confirmez la vérification du résultat avant cette nouvelle tentative.",

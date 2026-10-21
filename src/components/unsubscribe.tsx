@@ -5,14 +5,15 @@ import { unsubscribeCopy } from "./communication-copy";
 import { useData } from "./use-api";
 import { PageHeader } from "./ui";
 
-/** Public page reached from the link at the bottom of a newsletter. */
+/** Public page reached from the link at the bottom of a newsletter or of a weekly digest (wave 15, C7). */
 export function Unsubscribe({ locale, id }: { locale: Locale; id: string }) {
-  const t = unsubscribeCopy[locale];
-  const failure = useCallback(() => t.invalid, [t.invalid]);
-  const { data, error, reload } = useData<{ club: string; unsubscribed: boolean }>(
+  const base = unsubscribeCopy[locale];
+  const failure = useCallback(() => base.invalid, [base.invalid]);
+  const { data, error, reload } = useData<{ club: string; unsubscribed: boolean; kind?: "news" | "digest" }>(
     `/api/unsubscribe?id=${encodeURIComponent(id)}`,
     failure,
   );
+  const t = { ...base, ...(data?.kind === "digest" ? base.digest : {}) };
   const [busy, setBusy] = useState(false),
     [status, setStatus] = useState(""),
     [failed, setFailed] = useState(false);

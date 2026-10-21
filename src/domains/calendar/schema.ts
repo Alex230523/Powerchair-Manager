@@ -35,6 +35,8 @@ export const eventFields = z.object({
   instructions: text(5000),
   participants: z.array(id).max(200),
   documents: z.array(id).max(20),
+  /** A big event of the season (wave 15, C11): club party, open day, camp. */
+  highlight: z.boolean().optional(),
 });
 export const commandSchema = z.discriminatedUnion("action", [
   z.object({
@@ -89,8 +91,14 @@ export const commandSchema = z.discriminatedUnion("action", [
     action: z.literal("feed"),
     name: text(80).min(2),
     teamId: id.nullable(),
+    /** Wave 15: money deadlines in the feed (only kept for a person with money rights). */
+    includeMoney: z.boolean().optional(),
+    /** Wave 15 (C9): only the events that concern me (invited, participant or in charge). */
+    mine: z.boolean().optional(),
   }),
   z.object({ action: z.literal("revokeFeed"), id }),
+  /** Wave 15 (C9): a new link with the same choices; the old one stops working. */
+  z.object({ action: z.literal("renewFeed"), id }),
   /** Copies the scheduled events of one week to another (both Mondays). */
   z.object({
     action: z.literal("copyWeek"),

@@ -221,15 +221,63 @@ export function Card({
   );
 }
 /** The former Panel: a titled card. */
-export function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return <Card title={title}>{children}</Card>;
+export function Panel({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+  return (
+    <Card title={title} headingId={id} labelledBy={id}>
+      {children}
+    </Card>
+  );
+}
+
+/* ---------- Toast (wave 15, C10) ---------- */
+/**
+ * A short dark message after an action, bottom right (above the mobile bar
+ * on a phone), with an optional text button such as "Annuler". Hovering or
+ * focusing it pauses its timer; the region around it is a status, so screen
+ * readers announce it.
+ */
+export function Toast({
+  message,
+  icon = "check",
+  actionLabel,
+  onAction,
+  busy,
+  closeLabel,
+  onClose,
+  onPause,
+  onResume,
+}: {
+  message: string;
+  icon?: IconName;
+  actionLabel?: string;
+  onAction?: () => void;
+  busy?: boolean;
+  closeLabel: string;
+  onClose: () => void;
+  onPause: () => void;
+  onResume: () => void;
+}) {
+  return (
+    <div className="toast" onMouseEnter={onPause} onMouseLeave={onResume} onFocus={onPause} onBlur={onResume}>
+      <Icon name={icon} size={18} />
+      <span className="toast-text">{message}</span>
+      {actionLabel && onAction && (
+        <button type="button" className="toast-action" disabled={busy} onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
+      <button type="button" className="toast-close" aria-label={closeLabel} onClick={onClose}>
+        <Icon name="close" size={16} />
+      </button>
+    </div>
+  );
 }
 
 /* ---------- Icon tile, badge ---------- */
-export function IconTile({ icon, tone = "primary", size = 36 }: { icon: IconName; tone?: Tone; size?: 36 | 44 }) {
+export function IconTile({ icon, tone = "primary", size = 36 }: { icon: IconName; tone?: Tone; size?: 28 | 36 | 44 }) {
   return (
-    <span className="icon-tile" data-tone={toneName(tone)} data-size={size === 44 ? "lg" : undefined} aria-hidden="true">
-      <Icon name={icon} size={size === 44 ? 22 : 18} />
+    <span className="icon-tile" data-tone={toneName(tone)} data-size={size === 44 ? "lg" : size === 28 ? "sm" : undefined} aria-hidden="true">
+      <Icon name={icon} size={size === 44 ? 22 : size === 28 ? 16 : 18} />
     </span>
   );
 }

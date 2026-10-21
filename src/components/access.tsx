@@ -1,9 +1,9 @@
 "use client";
-import { shellCopy, contextChanged, initials } from "./app-shell";
+import { shellCopy } from "./app-shell";
 import { clearOfflineData } from "@/lib/offline-queue";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import {
   labels,
@@ -33,13 +33,11 @@ type State = {
     name: string;
     is_default: boolean;
   }[];
-  mfaRequired: boolean;
   user: {
     id: string;
     name: string;
     email: string;
     emailVerified: boolean;
-    twoFactorEnabled: boolean;
   };
   contexts: {
     id: string;
@@ -81,11 +79,6 @@ export function Access({ locale }: { locale: Locale }) {
   const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">(
     "login",
   );
-  const [challenge, setChallenge] = useState(false),
-    [setup, setSetup] = useState<{
-      secret: string;
-      backupCodes: string[];
-    } | null>(null);
   const [invitationToken, setInvitationToken] = useState(""),
     [invitationLink, setInvitationLink] = useState(""),
     [resetToken, setResetToken] = useState("");
@@ -218,12 +211,10 @@ export function Access({ locale }: { locale: Locale }) {
           })
         : await authClient.signIn.email({ email, password });
     if (result.error) throw new Error(result.error.code);
-    if (
-      result.data &&
-      "twoFactorRedirect" in result.data &&
-      result.data.twoFactorRedirect
-    ) {
-      setChallenge(true);
+    // Signed in: straight to the home page. A new account, or someone opening an
+    // invitation link, stays here to join the club.
+    if (mode === "login" && !invitationToken) {
+      router.push(`/${locale}`);
       return;
     }
     await load();
@@ -238,7 +229,7 @@ export function Access({ locale }: { locale: Locale }) {
     await command(body);
     setConfirmation("");
   }
-  const secured = state && (!state.mfaRequired || state.user.twoFactorEnabled);
+  const secured = !!state;
   const roleText = (role: Role) => labels[role][locale];
   const grantLabels = {
     "equipment.manage":
@@ -376,7 +367,7 @@ export function Access({ locale }: { locale: Locale }) {
             {failure}
           </p>
         )}
-        {!loading && !state && !challenge && (
+        {!loading && !state && (
           <Panel key={mode} title={t[mode]}>
             <form onSubmit={(e) => submit(e, authenticate)}>
               {mode === "signup" && (
@@ -438,59 +429,10 @@ export function Access({ locale }: { locale: Locale }) {
             <p className="muted">{t.verifyHint}</p>
           </Panel>
         )}
-        {challenge && (
-          <Panel title={t.security}>
-            <form
-              onSubmit={(e) =>
-                submit(e, async (data) => {
-                  const result = await authClient.twoFactor.verifyTotp({
-                    code: String(data.get("code")),
-                    trustDevice: false,
-                  });
-                  if (result.error) throw new Error(result.error.code);
-                  setChallenge(false);
-                  await load();
-                })
-              }
-            >
-              <label>
-                {t.code}
-                <input
-                  name="code"
-                  required
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                />
-              </label>
-              <Button disabled={busy}>{t.check}</Button>
-            </form>
-            <form
-              onSubmit={(e) =>
-                submit(e, async (data) => {
-                  const result = await authClient.twoFactor.verifyBackupCode({
-                    code: String(data.get("backup")),
-                    trustDevice: false,
-                  });
-                  if (result.error) throw new Error(result.error.code);
-                  setChallenge(false);
-                  await load();
-                })
-              }
-            >
-              <label>
-                {t.backup}
-                <input name="backup" required autoComplete="off" />
-              </label>
-              <Button disabled={busy}>{t.backupCheck}</Button>
-            </form>
-          </Panel>
-        )}
         {state && (
           <>
             <p>
-              <Link href={`/${locale}/notifications`}>
+              <Link href={`/${locale}/settings/notifications`}>
                 {locale === "en"
                   ? "Notifications"
                   : locale === "fr"
@@ -509,8 +451,6 @@ export function Access({ locale }: { locale: Locale }) {
                     await authClient.signOut();
                     clearOfflineData();
                     setMode("login");
-                    setChallenge(false);
-                    setSetup(null);
                     setInvitationLink("");
                     await load();
                   })
@@ -601,88 +541,6 @@ export function Access({ locale }: { locale: Locale }) {
               </ul>
               {!state.contexts.length && <p>{t.none}</p>}
             </Panel>
-            {state.mfaRequired && !state.user.twoFactorEnabled && (
-              <Panel title={t.security}>
-                <p>{t.mfa}</p>
-                {!setup ? (
-                  <form
-                    onSubmit={(e) =>
-                      submit(e, async (data) => {
-                        const result = await authClient.twoFactor.enable({
-                          password: String(data.get("password")),
-                        });
-                        if (result.error) throw new Error(result.error.code);
-                        if (result.data && "totpURI" in result.data)
-                          setSetup({
-                            secret:
-                              new URL(result.data.totpURI).searchParams.get(
-                                "secret",
-                              ) ?? "",
-                            backupCodes: result.data.backupCodes,
-                          });
-                      })
-                    }
-                  >
-                    <label htmlFor="mfa-password">{t.password}</label>
-                    <input
-                      id="mfa-password"
-                      name="password"
-                      type="password"
-                      required
-                      autoComplete="current-password"
-                    />
-                    <Button disabled={busy}>{t.enable}</Button>
-                  </form>
-                ) : (
-                  <>
-                    <label>
-                      {t.secret}
-                      <input value={setup.secret} readOnly autoComplete="off" />
-                    </label>
-                    <p>{t.codes}</p>
-                    <ul>
-                      {setup.backupCodes.map((code) => (
-                        <li key={code}>
-                          <code>{code}</code>
-                        </li>
-                      ))}
-                    </ul>
-                    <form
-                      onSubmit={(e) =>
-                        submit(e, async (data) => {
-                          const result = await authClient.twoFactor.verifyTotp({
-                            code: String(data.get("code")),
-                            trustDevice: false,
-                          });
-                          if (result.error) throw new Error(result.error.code);
-                          setSetup(null);
-                          if (state.selected)
-                            await command({
-                              action: "context",
-                              mandateId: state.selected.id,
-                            });
-                          else await load();
-                          setMessage(t.saved);
-                        })
-                      }
-                    >
-                      <label>
-                        {t.code}
-                        <input
-                          name="code"
-                          required
-                          inputMode="numeric"
-                          pattern="[0-9]{6}"
-                          autoComplete="one-time-code"
-                          maxLength={6}
-                        />
-                      </label>
-                      <Button disabled={busy}>{t.check}</Button>
-                    </form>
-                  </>
-                )}
-              </Panel>
-            )}
             <details className="panel">
               <summary>{t.accept}</summary>
               <form
@@ -714,7 +572,7 @@ export function Access({ locale }: { locale: Locale }) {
             {secured &&
               state.selected &&
               state.permissions.includes("invitations.create") && (
-                <Panel title={t.invite}>
+                <Panel title={t.invite} id="access-invite">
                   <form
                     onSubmit={(e) =>
                       submit(e, async (data) => {
@@ -941,99 +799,12 @@ export function Access({ locale }: { locale: Locale }) {
             {state.selected && !state.permissions.includes("members.read") && (
               <p>{t.readonly}</p>
             )}
-            <Panel title={t.photo}>
-              <p className="muted">{t.photoIntro}</p>
-              <div className="avatar-row">
-                {state.avatarVersion ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="avatar avatar-large" src={`/api/account/avatar?v=${state.avatarVersion}`} alt={t.photo} />
-                ) : (
-                  <span className="avatar avatar-large" aria-hidden="true">{initials(state.user.name)}</span>
-                )}
-                <div className="actions">
-                  <label className="button secondary file-button">
-                    {t.choosePhoto}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="sr-only"
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = "";
-                        if (!file) return;
-                        if (file.size > 262144 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-                          setFailure(t.invalidPhoto);
-                          return;
-                        }
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const data = String(reader.result).split(",")[1] ?? "";
-                          void task(async () => {
-                            await command({ action: "avatar", mediaType: file.type, data });
-                            contextChanged();
-                          });
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                  {state.avatarVersion && (
-                    <button
-                      type="button"
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() =>
-                        void task(async () => {
-                          await command({ action: "removeAvatar" });
-                          contextChanged();
-                        })
-                      }
-                    >
-                      {t.removePhoto}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </Panel>
-            <Panel title={t.preferences}>
-              <form
-                onSubmit={(e) =>
-                  submit(e, async (data) => {
-                    await command({
-                      action: "preferences",
-                      locale: data.get("locale"),
-                      notificationsEnabled: data.has("notifications"),
-                    });
-                    contextChanged();
-                    router.push(`/${String(data.get("locale"))}/access`);
-                  })
-                }
-              >
-                <label>
-                  {locale === "en"
-                    ? "Language"
-                    : locale === "fr"
-                      ? "Langue"
-                      : "Taal"}
-                  <select
-                    name="locale"
-                    defaultValue={state.preferences?.locale ?? locale}
-                  >
-                    <option value="fr">Français</option>
-                    <option value="nl">Nederlands</option>
-                    <option value="en">English</option>
-                  </select>
-                </label>
-                <label className="check">
-                  <input
-                    name="notifications"
-                    type="checkbox"
-                    defaultChecked={state.preferences?.notifications_enabled}
-                  />
-                  {t.notifications}
-                </label>
-                <Button disabled={busy}>{t.save}</Button>
-              </form>
+            {/* Photo, language and theme moved to Settings > My account (wave 15). */}
+            <Panel title={t.accountMoved} id="access-account">
+              <p className="muted">{t.accountMovedText}</p>
+              <p>
+                <Link href={`/${locale}/settings/account`}>{t.accountMovedLink}</Link>
+              </p>
             </Panel>
           </>
         )}

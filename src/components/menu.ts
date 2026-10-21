@@ -70,6 +70,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             icon: "user",
             items: [
               ...item("/calendar", "calendar", "calendar"),
+              ...item("/tournaments", "tournaments", "trophy"),
               ...item("/players", "myFile", "players"),
               ...item("/documents", "documents", "document"),
               ...item("/dues", "dues", "dues"),
@@ -103,7 +104,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                 ...item("/trips", "trips", "bus", has("calendar.read", "calendar.manage")),
                 ...item("/venues", "halls", "pin", has("calendar.manage")),
-                ...item("/federal-calendar", "federalCalendar", "landmark", has("calendar.read", "calendar.manage")),
+                ...item("/tournaments", "tournaments", "trophy"),
               ],
             },
             {
@@ -171,7 +172,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/calendar", "calendar", "calendar"),
                   ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                   // Trips and halls are reached from the calendar page (wave 11).
-                  ...item("/federal-calendar", "federalCalendar", "landmark", has("calendar.read", "calendar.manage")),
+                  ...item("/tournaments", "tournaments", "trophy"),
                   ...item("/documents", "documents", "document"),
                   // Club mails: newsletters (notifications.manage), event mails (planners).
                   ...item("/communication", "communication", "megaphone", has("notifications.manage", "calendar.manage") || role === "coach"),
@@ -217,6 +218,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           { route: "/federation/referees", label: "designations", icon: "whistle" },
                         ]) satisfies NavItem[]),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
+                    { route: "/tournaments", label: "tournaments", icon: "trophy" },
                     { route: "/venues", label: "venues", icon: "pin" },
                     { route: "/documents", label: "documents", icon: "document" },
                   ],
@@ -255,4 +257,30 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
       ],
     };
   return [...groups, admin].filter((g) => g.items.length > 0);
+}
+
+/**
+ * The bar at the bottom of a phone screen (wave 15, C5): home and three
+ * shortcuts taken from the role's own menu (so rights and switched-off
+ * modules apply), then "Plus" opens the whole menu.
+ * President: calendar, players, dues. Coach: calendar, attendance, players.
+ * Player or parent: calendar, my file (or the child's), dues.
+ */
+export function bottomNav(state: Workspace | null): NavItem[] {
+  if (!state?.selected) return [];
+  const all = menuGroups(state).flatMap((g) => g.items);
+  const role = state.contexts.find((c) => c.id === state.selected?.id)?.role;
+  const wanted =
+    role === "club_president"
+      ? ["/calendar", "/players", "/dues"]
+      : role === "coach"
+        ? ["/calendar", "/attendance", "/players"]
+        : role === "player" || role === "guardian"
+          ? ["/calendar", "/players", "/dues"]
+          : null;
+  const items = wanted
+    ? wanted.map((route) => all.find((i) => i.route === route)).filter((i): i is NavItem => !!i)
+    : all.filter((i) => i.route !== "/settings").slice(0, 3);
+  const home: NavItem = { route: "", label: "home", icon: "home" };
+  return [home, ...items].slice(0, 4);
 }

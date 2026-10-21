@@ -2,10 +2,18 @@
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
-import { WholeClubNote, useScope, useSeeded } from "./use-scope";
+import { ApplyScope, useScope, useScopedTeam, useSeeded } from "./use-scope";
 import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
+import { Icon } from "./icons";
+import { CollectionBar } from "./collection-bar";
+import { collectionCopy } from "./collection-copy";
 import { duesTotals } from "@/domains/dues/schema";
+import { DataGrid, postCommand } from "./data-grid";
+import { eachRow } from "./table-state";
+import { bulkCopy } from "./bulk-copy";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 const copy = {
   fr: {
     collected: "Encaissé",
@@ -14,6 +22,7 @@ const copy = {
     state: "Statut",
     states: { paid: "Payée", late: "En retard", due_soon: "Échéance proche", on_track: "En ordre", cancelled: "Annulée", exempt: "Exonérée" } as Record<string, string>,
     pay: "Encaisser",
+    payNext: "Encaisser la prochaine échéance de {name}",
     payTitle: "Encaisser un paiement",
     payHint: "Le montant est écrit dans la trésorerie (recette « cotisations ») et rattaché à cette cotisation.",
     method: "Moyen de paiement",
@@ -44,6 +53,8 @@ const copy = {
       "Les encaissements, virements, QR et rapprochements seront disponibles au lot 09. Aucun paiement n’est enregistré ici.",
     plans: "Barèmes",
     season: "Saison",
+    team: "Équipe",
+    allTeams: "Toutes les équipes",
     category: "Catégorie du barème",
     amount: "Montant (€)",
     count: "Nombre d’échéances",
@@ -84,6 +95,7 @@ const copy = {
     archiveAction: "Barème archivé",
     scheduleAction: "Échéancier modifié",
     cancelAction: "Créance annulée",
+    exemptAction: "Exonération",
   },
   nl: {
     collected: "Ontvangen",
@@ -92,6 +104,7 @@ const copy = {
     state: "Status",
     states: { paid: "Betaald", late: "Te laat", due_soon: "Vervalt binnenkort", on_track: "In orde", cancelled: "Geannuleerd", exempt: "Vrijgesteld" },
     pay: "Innen",
+    payNext: "De volgende termijn van {name} innen",
     payTitle: "Een betaling innen",
     payHint: "Het bedrag wordt in de boekhouding geschreven (inkomst « lidgeld ») en aan dit lidgeld gekoppeld.",
     method: "Betaalwijze",
@@ -122,6 +135,8 @@ const copy = {
       "Betalingen, overschrijvingen, QR en afstemming volgen in fase 09. Hier worden geen betalingen geboekt.",
     plans: "Tarieven",
     season: "Seizoen",
+    team: "Team",
+    allTeams: "Alle teams",
     category: "Tariefcategorie",
     amount: "Bedrag (€)",
     count: "Aantal termijnen",
@@ -162,6 +177,7 @@ const copy = {
     archiveAction: "Tarief gearchiveerd",
     scheduleAction: "Termijnen gewijzigd",
     cancelAction: "Vordering geannuleerd",
+    exemptAction: "Vrijstelling",
   },
   en: {
     collected: "Collected",
@@ -170,6 +186,7 @@ const copy = {
     state: "Status",
     states: { paid: "Paid", late: "Late", due_soon: "Due soon", on_track: "On track", cancelled: "Cancelled", exempt: "Exempt" },
     pay: "Collect",
+    payNext: "Collect the next instalment of {name}",
     payTitle: "Record a payment",
     payHint: "The amount is written in the ledger (income, dues) and linked to this receivable.",
     method: "Payment method",
@@ -200,6 +217,8 @@ const copy = {
       "Payments, bank transfers, QR codes and reconciliation will follow in lot 09. No payments are recorded here.",
     plans: "Rates",
     season: "Season",
+    team: "Team",
+    allTeams: "All teams",
     category: "Rate category",
     amount: "Amount (€)",
     count: "Number of instalments",
@@ -240,6 +259,7 @@ const copy = {
     archiveAction: "Rate archived",
     scheduleAction: "Instalments changed",
     cancelAction: "Receivable cancelled",
+    exemptAction: "Exemption",
   },
 };
 /** Sibling discount and attestation link (wave 8). */
@@ -281,6 +301,7 @@ type Plan = {
 };
 type Debt = {
   id: string;
+  profile_id: string;
   full_name: string;
   season_id: string;
   season_name: string;
@@ -298,6 +319,8 @@ type Debt = {
   state: "paid" | "late" | "due_soon" | "on_track" | "cancelled" | "exempt";
   payments: { id: string; occurred_on: string; amount_cents: number; method: string; reference: string; cancelled_at: string | null }[];
   history: { action: string; reason: string; created_at: string }[];
+  /** Teams the line belongs to (wave 15): its rate's team, or the player's current teams. */
+  team_ids: string[];
 };
 type View = {
   organizationId: string;
@@ -315,6 +338,7 @@ type View = {
     installments: number | null;
   }[];
   debts: Debt[];
+  teams: { id: string; name: string; season_id: string; color: string | null }[];
 };
 const remindLabel = {
   fr: "Relancer ceux qui ne sont pas en ordre",
@@ -337,6 +361,8 @@ export function Dues({ locale }: { locale: Locale }) {
   // The season chosen in the top bar (wave 12) seeds the season filter.
   const scope = useScope();
   const [filter, setFilter] = useSeeded(scope.seasonId ?? "");
+  // The team chosen in the top bar (wave 15): tiles, table and search follow it; a local choice can be applied everywhere.
+  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   // ?state=late (from the dashboard and the sidebar counter) seeds the state filter.
   const urlState = useSyncExternalStore(
     () => () => {},
@@ -344,6 +370,13 @@ export function Dues({ locale }: { locale: Locale }) {
     () => "",
   );
   const [stateFilter, setStateFilter] = useSeeded(urlState);
+  // ?pay=<player> (Ctrl+K "Encaisser la cotisation de …", wave 15 C6) opens that player's payment once.
+  const urlPay = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("pay") ?? "",
+    () => "",
+  );
+  const [autoPay, setAutoPay] = useState(true);
   const money = (v: number) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
@@ -381,13 +414,13 @@ export function Dues({ locale }: { locale: Locale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...body, organizationId: view?.organizationId }),
       });
-      if (!r.ok) {
-        const v = await r.json().catch(() => ({}));
-        throw new Error(v.error);
-      }
+      const v = (await r.json().catch(() => ({}))) as { error?: string; undo?: string; id?: string };
+      if (!r.ok) throw new Error(v.error);
       await load();
       setMessage(t.saved);
       setConfirmation("");
+      // The payment can be undone for a moment, ledger line included (wave 15, C10).
+      if (body.action === "pay" && v.undo) undoToast(locale, toastCopy[locale].paid.replace("{amount}", money(Number(body.amountCents))), v.undo, view?.organizationId, load);
       return true;
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
@@ -410,18 +443,29 @@ export function Dues({ locale }: { locale: Locale }) {
   const day = (d: string) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
   const tone: Record<Debt["state"], Tone> = { paid: "success", late: "danger", due_soon: "warning", on_track: "neutral", cancelled: "neutral", exempt: "info" };
+  const inTeam = (d: Debt) => !team || (d.team_ids ?? []).includes(team);
   const rows = (view?.debts ?? []).filter(
     (d) =>
+      inTeam(d) &&
       (!filter || d.season_id === filter) &&
       (!stateFilter || d.state === stateFilter) &&
       (!q || d.full_name.toLowerCase().includes(q.toLowerCase())),
   );
   const seasonRows = (view?.debts ?? []).filter((d) => (!filter || d.season_id === filter) && d.status === "open");
   // The same totals as the dashboard and the sidebar counter (domain function, no second calculation).
-  const totals = duesTotals(seasonRows, new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()));
+  const totals = duesTotals(seasonRows, new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()), team || null);
+  const teams = view?.teams ?? [];
+  const teamColumn = !team && teams.length > 0;
   const detail = view?.debts.find((d) => d.id === detailId);
-  const paying = view?.debts.find((d) => d.id === payId);
   const nextOpen = (d: Debt) => d.settled.find((i) => i.left_cents > 0);
+  const paying =
+    view?.debts.find((d) => d.id === payId) ??
+    (autoPay && urlPay && view?.manage ? view.debts.find((d) => d.profile_id === urlPay && d.status === "open" && nextOpen(d)) : undefined);
+  const closePay = () => {
+    setPayId("");
+    setAutoPay(false);
+  };
+  const b = bulkCopy[locale];
   return (
     <main id="main" className="access dues">
       <PageHeader
@@ -437,7 +481,7 @@ export function Dues({ locale }: { locale: Locale }) {
                 <Link className="button secondary" href={`/${locale}/reminders?kind=dues`}>
                   {remindLabel[locale]}
                 </Link>
-                <Link className="button secondary" href={`/${locale}/settings#settings-dues-title`}>
+                <Link className="button secondary" href={`/${locale}/settings/money#settings-dues-title`}>
                   {settingsLabel[locale]}
                 </Link>
                 <button type="button" className="button" onClick={() => setIssuing(true)} disabled={!view.plans.some((p) => !p.archived)}>
@@ -448,7 +492,6 @@ export function Dues({ locale }: { locale: Locale }) {
           </>
         }
       />
-      <WholeClubNote locale={locale} />
       {error && (
         <p role="alert">
           {error} <Link href={`/${locale}/access`}>{t.access}</Link>
@@ -466,6 +509,11 @@ export function Dues({ locale }: { locale: Locale }) {
               <li><StatCard label={t.playersLate} value={String(totals.playersLate)} icon="players" tone={totals.playersLate ? "warning" : "neutral"} /></li>
             </ul>
           )}
+          {(view.manage || view.readOnly) && (
+            <Card title={collectionCopy[locale].title} id="dues-collection" className="dues-collection">
+              <CollectionBar locale={locale} totals={totals} />
+            </Card>
+          )}
           <Card title={t.debts} id="dues-table" className="flush"
             actions={
               <Toolbar label={t.filters}>
@@ -474,6 +522,20 @@ export function Dues({ locale }: { locale: Locale }) {
                     {t.search}
                     <input type="search" value={q} onChange={(e) => setQ(e.target.value)} />
                   </label>
+                )}
+                {teams.length > 0 && (
+                  <>
+                    <label>
+                      {t.team}
+                      <select value={team} onChange={(e) => setTeam(e.target.value)}>
+                        <option value="">{t.allTeams}</option>
+                        {teams.map((x) => (
+                          <option key={x.id} value={x.id}>{x.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
+                  </>
                 )}
                 <label>
                   {t.season}
@@ -499,67 +561,146 @@ export function Dues({ locale }: { locale: Locale }) {
             {!rows.length ? (
               <EmptyState title={t.empty} icon="dues" />
             ) : (
-              <div className="table-scroll">
-                <table className="dues-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{t.person}</th>
-                      <th scope="col">{t.plan}</th>
-                      <th scope="col" className="num">{t.net}</th>
-                      <th scope="col" className="num">{t.collected}</th>
-                      <th scope="col" className="num">{t.remaining}</th>
-                      <th scope="col">{t.nextDue}</th>
-                      <th scope="col">{t.state}</th>
-                      <th scope="col"><span className="sr-only">{t.details}</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((d) => {
+              <DataGrid
+                locale={locale}
+                label={t.debts}
+                className="dues-table"
+                storageKey="dues"
+                rows={rows}
+                rowId={(d) => d.id}
+                rowName={(d) => d.full_name}
+                rowState={(d) => d.state}
+                onDone={load}
+                reasons={b.reasons}
+                columns={[
+                  { key: "person", header: t.person, rowHeader: true, hideable: false, sort: (d) => d.full_name, cell: (d) => d.full_name },
+                  ...(teamColumn
+                    ? [
+                        {
+                          key: "team",
+                          header: t.team,
+                          sort: (d: Debt) => (d.team_ids ?? []).map((id) => teams.find((v) => v.id === id)?.name ?? "").join(", "),
+                          cell: (d: Debt) =>
+                            (d.team_ids ?? []).map((id) => {
+                              const x = teams.find((v) => v.id === id);
+                              return x ? (
+                                <span key={id} className="team-chip" data-color={x.color ?? "none"}>
+                                  <span className="team-dot" aria-hidden="true" />
+                                  {x.name}
+                                </span>
+                              ) : null;
+                            }),
+                        },
+                      ]
+                    : []),
+                  {
+                    key: "plan",
+                    header: t.plan,
+                    sort: (d) => d.category,
+                    cell: (d) => (
+                      <>
+                        {d.category} <span className="muted small">· {d.season_name}</span>
+                      </>
+                    ),
+                  },
+                  { key: "net", header: t.net, className: "num", sort: (d) => d.net_cents, cell: (d) => money(d.net_cents) },
+                  { key: "collected", header: t.collected, className: "num", sort: (d) => Math.min(d.paid_cents, d.net_cents), cell: (d) => money(Math.min(d.paid_cents, d.net_cents)) },
+                  {
+                    key: "remaining",
+                    header: t.remaining,
+                    className: "num",
+                    sort: (d) => Math.max(0, d.net_cents - d.paid_cents),
+                    cell: (d) => <strong>{money(Math.max(0, d.net_cents - d.paid_cents))}</strong>,
+                  },
+                  {
+                    key: "next",
+                    header: t.nextDue,
+                    sort: (d) => (d.status === "open" ? nextOpen(d)?.due_on : null),
+                    cell: (d) => {
+                      const next = nextOpen(d);
+                      return d.status === "open" && next ? (
+                        next.due_on < today ? (
+                          <span className="danger-ink">
+                            <Icon name="alert" size={14} /> {day(next.due_on)} · {money(next.left_cents)}
+                            <span className="sr-only"> · {t.overdue}</span>
+                          </span>
+                        ) : (
+                          <>
+                            {day(next.due_on)} · {money(next.left_cents)}
+                          </>
+                        )
+                      ) : (
+                        <span className="muted">…</span>
+                      );
+                    },
+                  },
+                  {
+                    key: "state",
+                    header: t.state,
+                    sort: (d) => ["late", "due_soon", "on_track", "paid", "exempt", "cancelled"].indexOf(d.state),
+                    cell: (d) => (
+                      <Badge tone={tone[d.state]} dot>
+                        {t.states[d.state]}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: t.details,
+                    hideable: false,
+                    className: "dues-actions",
+                    cell: (d) => {
                       const next = nextOpen(d);
                       return (
-                        <tr key={d.id} data-state={d.state}>
-                          <th scope="row">{d.full_name}</th>
-                          <td>{d.category} <span className="muted small">· {d.season_name}</span></td>
-                          <td className="num">{money(d.net_cents)}</td>
-                          <td className="num">{money(Math.min(d.paid_cents, d.net_cents))}</td>
-                          <td className="num"><strong>{money(Math.max(0, d.net_cents - d.paid_cents))}</strong></td>
-                          <td>
-                            {d.status === "open" && next ? (
-                              <>
-                                {day(next.due_on)} · {money(next.left_cents)}
-                                {next.due_on < today && <Badge tone="danger">{t.overdue}</Badge>}
-                              </>
-                            ) : (
-                              <span className="muted">…</span>
-                            )}
-                          </td>
-                          <td><Badge tone={tone[d.state]} dot>{t.states[d.state]}</Badge></td>
-                          <td>
-                            <div className="row-actions">
-                              {view.manage && d.status === "open" && next && (
-                                <button
-                                  type="button"
-                                  className="button tick"
-                                  disabled={busy}
-                                  title={`${t.pay} · ${money(next.left_cents)}`}
-                                  aria-label={`${t.pay} : ${d.full_name}, ${money(next.left_cents)}`}
-                                  onClick={() => setPayId(d.id)}
-                                >
-                                  ✓
-                                </button>
-                              )}
-                              <button type="button" className="text-button" onClick={() => setDetailId(d.id)}>
-                                {t.details}
-                                <span className="sr-only"> : {d.full_name}</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                        <div className="row-actions">
+                          {view.manage && d.status === "open" && next && (
+                            <button
+                              type="button"
+                              className="icon-button round tick"
+                              disabled={busy}
+                              title={`${t.payNext.replace("{name}", d.full_name)} · ${money(next.left_cents)}`}
+                              aria-label={`${t.payNext.replace("{name}", d.full_name)}, ${money(next.left_cents)}`}
+                              onClick={() => setPayId(d.id)}
+                            >
+                              <Icon name="check" size={16} />
+                            </button>
+                          )}
+                          <button type="button" className="text-button" onClick={() => setDetailId(d.id)}>
+                            {t.details}
+                            <span className="sr-only"> : {d.full_name}</span>
+                          </button>
+                        </div>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    },
+                  },
+                ]}
+                actions={[
+                  {
+                    id: "remind",
+                    label: b.remind,
+                    icon: "bell",
+                    hidden: !view.manage,
+                    confirm: b.remindConfirm,
+                    run: (chosen) =>
+                      eachRow(chosen, (d) => d.id, async (d) => {
+                        const r = await postCommand("/api/reminders", { organizationId: view.organizationId, action: "send", kind: "dues", profileIds: [d.profile_id] });
+                        if (!r.people) throw new Error("NOT_CONCERNED");
+                        if (!r.messages) throw new Error("NO_EMAIL");
+                      }),
+                  },
+                  {
+                    id: "exempt",
+                    label: b.exempt,
+                    icon: "badgeCheck",
+                    hidden: !view.manage,
+                    confirm: b.exemptConfirm,
+                    run: (chosen) =>
+                      eachRow(chosen, (d) => d.id, async (d) => {
+                        await postCommand("/api/dues", { organizationId: view.organizationId, action: "exempt", id: d.id, version: d.version, reason: b.exemptReason });
+                      }),
+                  },
+                ]}
+              />
             )}
           </Card>
         </>
@@ -634,7 +775,7 @@ export function Dues({ locale }: { locale: Locale }) {
         </Modal>
       )}
       {paying && (
-        <Modal title={`${t.payTitle} · ${paying.full_name}`} close={() => setPayId("")}>
+        <Modal title={`${t.payTitle} · ${paying.full_name}`} close={closePay}>
           <p className="muted">{t.payHint}</p>
           <form
             onSubmit={(e) =>
@@ -645,7 +786,7 @@ export function Dues({ locale }: { locale: Locale }) {
                 method: d.get("method"),
                 occurredOn: d.get("date"),
                 reference: d.get("reference"),
-              })).then((ok) => ok && setPayId(""))
+              })).then((ok) => ok && closePay())
             }
           >
             <div className="form-pair">
@@ -674,7 +815,7 @@ export function Dues({ locale }: { locale: Locale }) {
             </div>
             <div className="actions">
               <Button disabled={busy}>{t.pay}</Button>
-              <button type="button" className="button secondary" onClick={() => setPayId("")}>{t.close}</button>
+              <button type="button" className="button secondary" onClick={closePay}>{t.close}</button>
             </div>
           </form>
         </Modal>
@@ -758,7 +899,7 @@ export function Dues({ locale }: { locale: Locale }) {
           <ul className="plain-list muted small">
             {detail.history.map((h, i) => (
               <li key={i}>
-                {new Date(h.created_at).toLocaleString(locale)} · {({ issue: t.issueAction, cancel: t.cancelAction, schedule: t.scheduleAction, payment: t.pay } as Record<string, string>)[h.action] ?? h.action} {h.reason}
+                {new Date(h.created_at).toLocaleString(locale)} · {({ issue: t.issueAction, cancel: t.cancelAction, exempt: t.exemptAction, schedule: t.scheduleAction, payment: t.pay } as Record<string, string>)[h.action] ?? h.action} {h.reason}
               </li>
             ))}
           </ul>

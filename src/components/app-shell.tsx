@@ -7,12 +7,16 @@ import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
 import { shellCopy } from "./shell-copy";
-import { CommandPalette } from "./command-palette";
+import { CommandPalette, scopeFocusEvent } from "./command-palette";
+import { paletteActions } from "./palette";
+import { ToastHost } from "./toast";
 import { ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
-import { menuGroups, type NavItem, type Workspace } from "./menu";
+import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
+import { settingsEntries, visibleCategories } from "./settings-nav";
+import { settingsHubCopy } from "./settings-hub-copy";
 export { shellCopy };
 type Copy = (typeof shellCopy)[Locale];
 export function initials(name: string) {
@@ -33,7 +37,8 @@ export function contextChanged() {
   }
 }
 // Runs before paint (see layout) so the stored theme never flashes.
-export const themeScript = `try{var t=localStorage.getItem("pfm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+// Text size and contrast (wave 15, C4) are applied the same way.
+export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast");if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
 const darkQuery = "(prefers-color-scheme: dark)";
 function subscribeTheme(change: () => void) {
   const media = window.matchMedia(darkQuery);
@@ -58,7 +63,7 @@ function setTheme(next: "light" | "dark") {
   window.dispatchEvent(new Event("pfm-theme"));
 }
 /** Light or dark, as a segmented pair in the account menu. */
-function ThemeChoice({ t }: { t: Copy }) {
+export function ThemeChoice({ t }: { t: Copy }) {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => null);
   if (dark === null) return null;
   return (
@@ -69,6 +74,58 @@ function ThemeChoice({ t }: { t: Copy }) {
       <button type="button" aria-pressed={dark} onClick={() => setTheme("dark")}>
         <Icon name="moon" size={16} /> {t.themeDark}
       </button>
+    </div>
+  );
+}
+/* Text size and contrast (wave 15, C4): kept on this device, applied before paint by themeScript. */
+const textSizes = ["normal", "large", "xlarge"] as const;
+type TextSize = (typeof textSizes)[number];
+const contrastQuery = "(prefers-contrast: more)";
+function subscribeDisplay(change: () => void) {
+  const media = window.matchMedia(contrastQuery);
+  media.addEventListener("change", change);
+  window.addEventListener("pfm-display", change);
+  return () => {
+    media.removeEventListener("change", change);
+    window.removeEventListener("pfm-display", change);
+  };
+}
+function displayState() {
+  const d = document.documentElement.dataset;
+  const size = (textSizes as readonly string[]).includes(d.textSize ?? "") ? (d.textSize as TextSize) : "normal";
+  const more = d.contrast ? d.contrast === "more" : window.matchMedia(contrastQuery).matches;
+  return `${size}|${more ? "more" : "normal"}`;
+}
+function setDisplay(key: "textSize" | "contrast", value: string) {
+  const d = document.documentElement.dataset;
+  if (key === "textSize" && value === "normal") delete d.textSize;
+  else d[key] = value;
+  try {
+    window.localStorage.setItem(key === "textSize" ? "pfm-text-size" : "pfm-contrast", value);
+  } catch {
+    /* Kept for this page only. */
+  }
+  window.dispatchEvent(new Event("pfm-display"));
+}
+/** Text size and stronger contrast, in the account menu and in Settings > My account. */
+export function DisplayChoice({ t }: { t: Copy }) {
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
+  if (state === null) return null;
+  const [size, contrast] = state.split("|");
+  const label: Record<TextSize, string> = { normal: t.textNormal, large: t.textLarge, xlarge: t.textXLarge };
+  return (
+    <div className="display-choice">
+      <div className="segmented text-size" role="group" aria-label={t.textSize}>
+        {textSizes.map((s) => (
+          <button key={s} type="button" aria-pressed={size === s} onClick={() => setDisplay("textSize", s)}>
+            {label[s]}
+          </button>
+        ))}
+      </div>
+      <label className="check">
+        <input type="checkbox" data-nodirty="" checked={contrast === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
+        {t.contrast}
+      </label>
     </div>
   );
 }
@@ -89,7 +146,8 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
     [todos, setTodos] = useState<Todo[]>([]),
     [brief, setBrief] = useState<Brief | null>(null),
     [drawer, setDrawer] = useState(false),
-    [bell, setBell] = useState(false);
+    [bell, setBell] = useState(false),
+    [typing, setTyping] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     aside = useRef<HTMLElement>(null),
@@ -170,6 +228,19 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       menuButton.current?.focus();
     };
   }, [drawer]);
+  // The bottom bar steps aside while the phone keyboard is open in a form (wave 15, C5).
+  useEffect(() => {
+    const field = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.matches('textarea, select, [contenteditable="true"]') || (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(el.type)));
+    const focusIn = (e: FocusEvent) => setTyping(field(e.target));
+    const focusOut = () => setTyping(false);
+    document.addEventListener("focusin", focusIn);
+    document.addEventListener("focusout", focusOut);
+    return () => {
+      document.removeEventListener("focusin", focusIn);
+      document.removeEventListener("focusout", focusOut);
+    };
+  }, []);
   // The notification panel: Escape or a click elsewhere closes it; focus goes back to the bell.
   useEffect(() => {
     if (!bell) return;
@@ -263,6 +334,18 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
+  const bottom = bottomNav(state);
+  // Settings are found by Ctrl+K too (wave 15): each category and each setting it holds.
+  const h = settingsHubCopy[locale];
+  const shownSettings = state?.selected
+    ? visibleCategories({ kind: state.selected.kind, role, permissions: state.permissions ?? [], disabled: state.selected.disabled_modules })
+    : [];
+  const settingsPages = [
+    ...shownSettings.map((c) => ({ route: `/settings/${c}`, label: `${t.settings} · ${h.categories[c].title}` })),
+    ...settingsEntries
+      .filter((e) => shownSettings.includes(e.category))
+      .map((e) => ({ route: `/settings/${e.category}#${e.anchor}`, label: `${h.entries[e.id].title} · ${t.settings}` })),
+  ];
   const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
   return (
     <ScopeProvider
@@ -348,9 +431,19 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                   </select>
                 </label>
               )}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/settings/account`}>
+                  <Icon name="userRound" size={16} /> {t.myAccount}
+                </Link>
+              )}
               <Link className="menu-link" href={`/${locale}/access`}>
-                <Icon name="userRound" size={16} /> {t.access}
+                <Icon name="lock" size={16} /> {t.access}
               </Link>
+              {state && (
+                <Link className="menu-link" href={`/${locale}/settings`}>
+                  <Icon name="settings" size={16} /> {t.settings}
+                </Link>
+              )}
               <div className="menu-row">
                 <span className="menu-heading">
                   <Icon name="globe" size={16} /> {t.language}
@@ -366,6 +459,10 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
               <div className="menu-row">
                 <span className="menu-heading">{t.theme}</span>
                 <ThemeChoice t={t} />
+              </div>
+              <div className="menu-row">
+                <span className="menu-heading">{t.textSize}</span>
+                <DisplayChoice t={t} />
               </div>
               {state && (
                 <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
@@ -394,7 +491,16 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] })))]}
+                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                actions={paletteActions({
+                  kind: state?.selected?.kind,
+                  role,
+                  permissions: state?.permissions ?? [],
+                  disabled: state?.selected?.disabled_modules ?? [],
+                  seasons: state?.seasons?.length ?? 0,
+                  teams: state?.teams?.length ?? 0,
+                })}
+                collect={club && !(state?.selected?.disabled_modules ?? []).includes("dues") && (state?.permissions ?? []).includes("dues.manage")}
               />
             </div>
             <div className="topbar-tools">
@@ -452,7 +558,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                       ) : (
                         <p className="muted bell-empty">{t.noNotifications}</p>
                       )}
-                      <Link className="menu-link bell-all" href={`/${locale}/notifications`} onClick={() => setBell(false)}>
+                      <Link className="menu-link bell-all" href={`/${locale}/settings/notifications`} onClick={() => setBell(false)}>
                         {t.seeAll} <Icon name="arrow" size={16} />
                       </Link>
                     </div>
@@ -463,7 +569,35 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
           </header>
           <ScopeChip t={t} />
           {children}
+          <ToastHost locale={locale} />
         </div>
+        {bottom.length > 0 && (
+          <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
+            {bottom.map((i) => {
+              const todo = counterRoutes[i.route] ? counts.get(counterRoutes[i.route]) : undefined;
+              return (
+                <Link key={i.route} href={`/${locale}${i.route}`} aria-current={current(i.route)}>
+                  <span className="bottom-icon">
+                    <Icon name={i.icon} size={22} />
+                    {todo && todo.count > 0 && (
+                      <span className="bottom-badge" aria-hidden="true">
+                        <Badge tone={todo.tone === "danger" ? "danger" : "warning"}>{todo.count}</Badge>
+                      </span>
+                    )}
+                  </span>
+                  <span className="bottom-label">{t[i.label]}</span>
+                  {todo && todo.count > 0 && <span className="sr-only"> · {t.pendingCount.replace("{n}", String(todo.count))}</span>}
+                </Link>
+              );
+            })}
+            <button type="button" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+              <span className="bottom-icon">
+                <Icon name="menu" size={22} />
+              </span>
+              <span className="bottom-label">{t.groupMore}</span>
+            </button>
+          </nav>
+        )}
       </div>
     </ScopeProvider>
   );
@@ -471,6 +605,23 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
 /** Season and team capsules of the top bar (wave 12): the choice every page follows. */
 function ScopeBar({ t }: { t: Copy }) {
   const scope = useScope();
+  const season = useRef<HTMLSelectElement>(null),
+    team = useRef<HTMLSelectElement>(null);
+  // "Changer de saison" and "Changer d'équipe" of the Ctrl+K window (wave 15, C6) land here.
+  useEffect(() => {
+    const focus = (e: Event) => {
+      const target = (e as CustomEvent<string>).detail === "team" ? team.current : season.current;
+      if (!target) return;
+      target.focus();
+      try {
+        target.showPicker();
+      } catch {
+        /* Some browsers only open a picker on a click; the focus is enough. */
+      }
+    };
+    window.addEventListener(scopeFocusEvent, focus);
+    return () => window.removeEventListener(scopeFocusEvent, focus);
+  }, []);
   if (!scope.organizationId || !scope.seasons.length) return null;
   const open = scope.seasons.filter((s) => !s.archived),
     archived = scope.seasons.filter((s) => s.archived);
@@ -478,7 +629,7 @@ function ScopeBar({ t }: { t: Copy }) {
     <div className="scope-bar">
       <label className="capsule">
         <span className="capsule-label">{t.season}</span>
-        <select aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
+        <select ref={season} aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
           {open.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -499,7 +650,7 @@ function ScopeBar({ t }: { t: Copy }) {
         <label className="capsule">
           <span className="team-dot" data-color={scope.team?.color ?? "none"} aria-hidden="true" />
           <span className="capsule-label">{t.team}</span>
-          <select aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
+          <select ref={team} aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
             <option value="">{t.allTeams}</option>
             {scope.seasonTeams.map((x) => (
               <option key={x.id} value={x.id}>

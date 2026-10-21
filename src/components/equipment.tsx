@@ -15,7 +15,10 @@ import { errors } from "./access-copy";
 import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { Stock } from "./equipment-stock";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 import { Badge, EmptyState, PageHeader, Card, KpiCard } from "./ui";
+import { setupCopy } from "./setup-copy";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Chair = View["chairs"][number];
@@ -103,7 +106,7 @@ export function Equipment({ locale }: { locale: Locale }) {
       if (!r.ok) throw new Error(v.error);
       await load();
       setMessage(t.saved);
-      return v as { id: string };
+      return v as { id: string; undo?: string };
     } catch (e) {
       setError(failure(e instanceof Error ? e.message : ""));
       return null;
@@ -134,6 +137,8 @@ export function Equipment({ locale }: { locale: Locale }) {
       storage: value("storage"),
     }).then((r) => {
       if (r && !chair) setEditing(r.id);
+      // Retiring a chair can be undone for a moment (wave 15, C10).
+      if (r?.undo) undoToast(locale, toastCopy[locale].chairRetired, r.undo, view?.context.organization_id, load);
     });
   }
 
@@ -340,7 +345,16 @@ export function Equipment({ locale }: { locale: Locale }) {
               })}
             </ul>
           ) : (
-            <EmptyState title={view.manage ? t.empty : t.emptyOwn} />
+            <EmptyState
+              title={view.manage ? t.empty : t.emptyOwn}
+              action={
+                view.manage && (
+                  <button className="button" type="button" onClick={() => setEditing("new")}>
+                    {setupCopy[locale].empty.equipment}
+                  </button>
+                )
+              }
+            />
           )}
           {view.manage && current && (
             <section
@@ -463,7 +477,7 @@ export function Equipment({ locale }: { locale: Locale }) {
               </div>
             </section>
           )}
-          <Stock locale={locale} view={view} busy={busy} send={send} />
+          <Stock locale={locale} view={view} busy={busy} send={send} reload={load} />
         </>
       )}
     </main>

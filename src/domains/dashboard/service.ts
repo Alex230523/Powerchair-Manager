@@ -25,15 +25,19 @@ import {
   type AgendaItem,
   type Dashboard,
   type Deadline,
+  type FinanceCard,
   type Metric,
   type TodoKey,
+  type WeekEvent,
 } from "./summary";
 import { presenceRules, readiness } from "./presence";
-import { fundingDeadlines } from "../funding/service";
-import { resolveScope, teamMembers } from "../scope/service";
+import { fundingDeadlines, moneyDeadlinesIn, openTasksCount } from "../funding/service";
+import { resolveScope, seasonOptions, teamMembers } from "../scope/service";
 import { duesSeasonRows } from "../dues/service";
 import { today } from "../calendar/access";
 import { duesTotals } from "../dues/schema";
+import { setupState } from "../setup/service";
+import { setupShown } from "../setup/schema";
 
 /**
  * Read-only operational summary for the active context.
@@ -45,7 +49,8 @@ import { duesTotals } from "../dues/schema";
  * Runs in one READ ONLY snapshot and takes no organization lock, unlike
  * module mutations, so it never blocks or delays them.
  */
-export async function dashboardView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
+export type DashboardQuery = { season?: string; team?: string; week?: string };
+export async function dashboardView(db: Pool, p: Principal, raw: DashboardQuery = {}) {
   const c = await db.connect();
   try {
     await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
@@ -61,8 +66,32 @@ export async function dashboardView(db: Pool, p: Principal, raw: { season?: stri
   }
 }
 
-async function compute(c: PoolClient, p: Principal, raw: { season?: string; team?: string }): Promise<Dashboard> {
-  const user = await account(c, p);
+async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promise<Dashboard> {
+  const user = (await account(c, p)) as DashboardUser;
+  let context: DashboardContext | null = null;
+  try {
+    context = await active(c, p);
+  } catch (e) {
+    if (!(e instanceof AccessError && e.code === "CONTEXT_REQUIRED")) throw e;
+  }
+  return computeFor(c, user, context, raw);
+}
+
+export type DashboardUser = { id: string; name: string; twoFactorEnabled: boolean | null };
+export type DashboardContext = Awaited<ReturnType<typeof active>>;
+/**
+ * The dashboard of one account in one mandate. The page resolves them from
+ * the session; the weekly digest (wave 15, C7) from the mandate itself, so
+ * both apply exactly the same rights. `limits` widens the agenda and the
+ * dates for the digest (the home keeps 8 of each).
+ */
+export async function computeFor(
+  c: PoolClient,
+  user: DashboardUser,
+  context: DashboardContext | null,
+  raw: DashboardQuery,
+  limits: { agenda: number; deadlines: number } = { agenda: 8, deadlines: 8 },
+): Promise<Dashboard> {
   const counts: Partial<Record<TodoKey, number>> = {};
   const metrics: Metric[] = [];
   const scopes: string[] = [];
@@ -70,25 +99,19 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
   counts.myApplications = await count(
     c,
     "SELECT count(*) FROM registration_application WHERE applicant_user_id=$1 AND status='incomplete'",
-    [p.userId],
+    [user.id],
   );
-  let context;
-  try {
-    context = await active(c, p);
-  } catch (e) {
-    if (e instanceof AccessError && e.code === "CONTEXT_REQUIRED")
-      return {
-        generatedAt: new Date().toISOString(),
-        user: { name: user.name },
-        context: null,
-        todos: buildTodos(counts),
-        metrics,
-        agenda: [],
-        deadlines: [],
-        scopes,
-      };
-    throw e;
-  }
+  if (!context)
+    return {
+      generatedAt: new Date().toISOString(),
+      user: { name: user.name },
+      context: null,
+      todos: buildTodos(counts),
+      metrics,
+      agenda: [],
+      deadlines: [],
+      scopes,
+    };
   const a: Actor = { ...context, twoFactorEnabled: !!user.twoFactorEnabled };
   const org = a.organization_id;
   const rights = permissions(a.role, a.grants);
@@ -100,7 +123,7 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
   const own = [...(await ownProfiles(c, a))];
   // The team chosen in the top bar (wave 12): validated here, never trusted from the URL.
   const scope = club
-    ? await resolveScope(c, { organization_id: org, role: a.role, user_id: p.userId, team_id: a.team_id }, raw)
+    ? await resolveScope(c, { organization_id: org, role: a.role, user_id: user.id, team_id: a.team_id }, raw)
     : { seasonId: null, teamId: null };
   const teamId = scope.teamId;
   const members = teamId ? await teamMembers(c, org, teamId) : null;
@@ -280,7 +303,7 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );
     // Players late with their dues (wave 14): the same totals as the dues page, for the season in view.
-    const totals = duesTotals(await duesSeasonRows(c, org, scope.seasonId, members), today());
+    const totals = duesTotals(await duesSeasonRows(c, org, scope.seasonId), today(), teamId);
     counts.duesLate = totals.playersLate;
   } else if (club && on("dues") && own.length) {
     const next = (
@@ -315,7 +338,7 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
   for (const e of events) {
     if (!(await canRead(c, a, e))) continue;
     if (e.status === "scheduled") upcoming++;
-    if (agenda.length < 8) {
+    if (agenda.length < limits.agenda) {
       // Who answered "present": coaches are the team's coaches (or listed as
       // coach in the directory), everyone else counts as a player.
       const present = (
@@ -403,25 +426,111 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
       push({ kind: "trip", date: r.day, title: r.title, count: 1, href: `/trips/${r.id}` });
   }
   // Grants to file or report on, partners to renew or call back (wave 11): money people only.
-  if (club && on("finance") && (has("dues.manage") || has("dues.read")))
+  const moneyPeople = has("dues.manage") || has("dues.read");
+  if (club && on("finance") && moneyPeople)
     for (const d of await fundingDeadlines(c, org, 30))
       push({ kind: d.kind, date: d.date, title: d.title, count: 1, href: d.href });
+  // Sponsor conditions, partner payments and renewals (wave 15): every one for money people, one's own tasks otherwise.
+  if (club && on("finance")) {
+    const until = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    for (const d of await moneyDeadlinesIn(c, org, today(), until, moneyPeople, own))
+      if (d.kind !== "grant" && d.kind !== "grantReport" && d.source !== "tournament")
+        push({ kind: d.source, date: d.date, title: d.title, count: 1, href: d.href, ...(d.kind === "condition" || d.kind === "task" ? { task: true } : {}) });
+    // Conditions to deliver within 14 days (late ones too): all for the president, one's own otherwise.
+    counts.sponsorTasks = await openTasksCount(c, org, "partner", 14, a.role === "club_president" && moneyPeople, own);
+    // Grant check-lists (wave 15, C2): same rule, the person in charge sees their own steps.
+    counts.grantTasks = await openTasksCount(c, org, "grant", 14, a.role === "club_president" && moneyPeople, own);
+  }
   deadlines.sort((x, y) => x.date.localeCompare(y.date));
 
+  // The season in view, for the subtitle and the money card.
+  const seasonRow = club && scope.seasonId ? (await seasonOptions(c, org)).find((s) => s.id === scope.seasonId) ?? null : null;
+  // The money card (wave 14): same totals as the dues page, ledger of the season, treasury of the club.
+  let finance: FinanceCard | undefined;
+  const money = club && (has("dues.manage") || has("dues.read"));
+  if (money && (on("finance") || on("dues"))) {
+    const from = seasonRow?.starts_on ?? null,
+      to = seasonRow?.ends_on ?? null;
+    const ledger = on("finance")
+      ? (
+          await c.query(
+            "SELECT COALESCE(sum(CASE WHEN direction='in' THEN amount_cents ELSE -amount_cents END),0)::int AS treasury,COALESCE(sum(amount_cents) FILTER (WHERE direction='in' AND ($2::date IS NULL OR occurred_on BETWEEN $2 AND $3)),0)::int AS income,COALESCE(sum(amount_cents) FILTER (WHERE direction='out' AND ($2::date IS NULL OR occurred_on BETWEEN $2 AND $3)),0)::int AS expenses FROM finance_transaction WHERE organization_id=$1 AND cancelled_at IS NULL",
+            [org, from, to],
+          )
+        ).rows[0]
+      : null;
+    finance = {
+      treasury: ledger ? ledger.treasury : null,
+      income: ledger ? ledger.income : 0,
+      expenses: ledger ? ledger.expenses : 0,
+      dues: on("dues") ? duesTotals(await duesSeasonRows(c, org, scope.seasonId), today(), teamId) : null,
+    };
+    scopes.push("money");
+  }
+  // The week asked for: events the actor may read, filtered like the calendar and the team in view.
+  let week: Dashboard["week"];
+  if (raw.week && /^\d{4}-\d{2}-\d{2}$/.test(raw.week) && !Number.isNaN(Date.parse(raw.week + "T00:00:00Z"))) {
+    const from = raw.week;
+    const rows = (
+      await c.query(
+        "SELECT e.*,t.name AS team_name,t.color AS team_color,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>($2::date)::timestamptz AND e.starts_at<($2::date+7)::timestamptz AND ($3::uuid IS NULL OR e.team_id=$3 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 200",
+        [org, from, teamId],
+      )
+    ).rows as (Event & { team_name: string | null; team_color: string | null; place_name: string | null })[];
+    const events: WeekEvent[] = [];
+    for (const e of rows)
+      if (await canRead(c, a, e))
+        events.push({
+          id: e.id,
+          title: e.title,
+          kind: e.kind,
+          status: e.status,
+          startsAt: new Date(e.starts_at).toISOString(),
+          endsAt: new Date(e.ends_at).toISOString(),
+          team: e.team_name,
+          teamColor: e.team_color ?? null,
+          place: e.place_name,
+        });
+    const end = new Date(from + "T00:00:00Z");
+    end.setUTCDate(end.getUTCDate() + 6);
+    week = { from, to: end.toISOString().slice(0, 10), events };
+  }
+  // Getting started for players and parents (wave 15, C9): the calendar in their phone.
+  const start =
+    club && (a.role === "player" || a.role === "guardian")
+      ? {
+          calendarSubscribed: !!(
+            await c.query("SELECT 1 FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 AND revoked_at IS NULL AND expires_at>now() LIMIT 1", [org, user.id, a.id])
+          ).rowCount,
+        }
+      : undefined;
+  // Getting started of a new club (wave 15, C3): for the president, until done or hidden.
+  const setup = club && a.role === "club_president" && has("mandates.manage") ? await setupState(c, org) : null;
   return {
     generatedAt: new Date().toISOString(),
     user: { name: user.name },
+    ...(start ? { start } : {}),
+    ...(setup && setupShown(setup) ? { setup } : {}),
     context: {
       organization: context.organization_name,
       kind: context.kind,
       role: a.role,
       statistics: on("statistics"),
     },
+    season: seasonRow ? { id: seasonRow.id, name: seasonRow.name } : null,
+    can: {
+      event: has("calendar.manage"),
+      player: club && has("people.manage"),
+      operation: club && on("finance") && has("dues.manage"),
+      mail: club && (has("notifications.manage") || has("calendar.manage")),
+    },
     todos: buildTodos(counts),
     metrics,
     agenda,
-    deadlines: deadlines.slice(0, 8),
+    deadlines: deadlines.slice(0, limits.deadlines),
     scopes,
+    ...(finance ? { finance } : {}),
+    ...(week ? { week } : {}),
   };
 }
 

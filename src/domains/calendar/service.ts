@@ -31,6 +31,8 @@ import {
 } from "./schema";
 import { shiftLocal, toInstant } from "./time";
 import { calendarIcs } from "./ics";
+import { permissions } from "../access/policy";
+import { moneyDeadlinesIn } from "../funding/service";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
 async function tx<T>(db: Pool, fn: (c: PoolClient) => Promise<T>) {
@@ -520,7 +522,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
         : [{ id: s.p.userId, name: (await account(s.c, s.p)).name }],
       feeds: (
         await s.c.query(
-          "SELECT id,name,team_id,created_at,expires_at,revoked_at FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 ORDER BY created_at DESC",
+          "SELECT id,name,team_id,only_mine,include_money,created_at,expires_at,revoked_at FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 ORDER BY created_at DESC",
           [s.a.organization_id, s.p.userId, s.a.id],
         )
       ).rows,
@@ -669,7 +671,7 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING id",
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
               [
                 s.a.organization_id,
                 p.userId,
@@ -677,6 +679,8 @@ export async function calendarExecute(
                 createHash("sha256").update(token).digest("hex"),
                 input.name,
                 input.teamId,
+                !!input.includeMoney,
+                !!input.mine && !input.teamId,
               ],
             )
           ).rows[0].id;
@@ -685,6 +689,25 @@ export async function calendarExecute(
           id,
           url: process.env.BETTER_AUTH_URL + "/api/calendar/feed/" + token,
         };
+      }
+      if (input.action === "renewFeed") {
+        // Same choices, a new secret: the old link stops at once (C9).
+        const old = (
+          await s.c.query(
+            "UPDATE calendar_feed SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 AND user_id=$3 AND mandate_id=$4 RETURNING name,team_id,include_money,only_mine",
+            [input.id, s.a.organization_id, p.userId, s.a.id],
+          )
+        ).rows[0];
+        if (!old) throw new AccessError("NOT_FOUND", 404);
+        const token = randomBytes(32).toString("base64url"),
+          id = (
+            await s.c.query(
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+              [s.a.organization_id, p.userId, s.a.id, createHash("sha256").update(token).digest("hex"), old.name, old.team_id, old.include_money, old.only_mine],
+            )
+          ).rows[0].id;
+        await audit(s.c, s.a.organization_id, p.userId, "calendar.feed.renewed", id);
+        return { id, url: process.env.BETTER_AUTH_URL + "/api/calendar/feed/" + token };
       }
       if (input.action === "revokeFeed") {
         const changed = await s.c.query(
@@ -752,7 +775,7 @@ export async function calendarExecute(
         for (const [i, item] of schedule.entries()) {
           const e = (
             await s.c.query(
-              "INSERT INTO calendar_event(organization_id,series_id,ordinal,title,kind,custom_type,timezone,starts_at,ends_at,local_start,local_end,team_id,place_id,responsible_user_id,visibility,equipment,instructions,shared_venue_id,free_location) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",
+              "INSERT INTO calendar_event(organization_id,series_id,ordinal,title,kind,custom_type,timezone,starts_at,ends_at,local_start,local_end,team_id,place_id,responsible_user_id,visibility,equipment,instructions,shared_venue_id,free_location,highlight) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *",
               [
                 s.a.organization_id,
                 input.requestId,
@@ -773,6 +796,7 @@ export async function calendarExecute(
                 item.instructions,
                 item.sharedVenueId ?? null,
                 item.freeLocation ?? "",
+                !!input.highlight,
               ],
             )
           ).rows[0] as Event;
@@ -881,7 +905,7 @@ export async function calendarExecute(
           };
           const e = (
             await s.c.query(
-              "UPDATE calendar_event SET title=$2,kind=$3,custom_type=$4,timezone=$5,starts_at=$6,ends_at=$7,local_start=$8,local_end=$9,team_id=$10,place_id=$11,responsible_user_id=$12,visibility=$13,equipment=$14,instructions=$15,shared_venue_id=$17,free_location=$18,is_exception=CASE WHEN $16 THEN true ELSE is_exception END,version=version+1,updated_at=now() WHERE id=$1 RETURNING *",
+              "UPDATE calendar_event SET title=$2,kind=$3,custom_type=$4,timezone=$5,starts_at=$6,ends_at=$7,local_start=$8,local_end=$9,team_id=$10,place_id=$11,responsible_user_id=$12,visibility=$13,equipment=$14,instructions=$15,shared_venue_id=$17,free_location=$18,highlight=COALESCE($19,highlight),is_exception=CASE WHEN $16 THEN true ELSE is_exception END,version=version+1,updated_at=now() WHERE id=$1 RETURNING *",
               [
                 old.id,
                 item.title,
@@ -901,6 +925,7 @@ export async function calendarExecute(
                 input.scope === "one",
                 item.sharedVenueId ?? null,
                 item.freeLocation ?? "",
+                input.highlight ?? null,
               ],
             )
           ).rows[0] as Event;
@@ -1043,6 +1068,17 @@ async function copyWeek(
   await audit(s.c, org, s.p.userId, "calendar.copyWeek", input.requestId);
   return { created: created.length, skipped };
 }
+/** One of these profiles is in the event's audience (team or participant) or invited to it. */
+async function concerns(c: PoolClient, e: Event, own: string[]) {
+  if (!own.length) return false;
+  if ((await audience(c, e)).some((x) => own.includes(x.id))) return true;
+  return !!(
+    await c.query(
+      "SELECT 1 FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$1 AND i.profile_id=ANY($2::uuid[]) AND i.withdrawn_at IS NULL LIMIT 1",
+      [e.id, own],
+    )
+  ).rowCount;
+}
 export async function calendarFeed(db: Pool, token: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new AccessError("NOT_FOUND", 404);
@@ -1078,7 +1114,27 @@ export async function calendarFeed(db: Pool, token: string) {
       )
     ).rows as (Event & { location: string })[];
     const allowed = [];
-    for (const e of rows) if (await canRead(c, a, e)) allowed.push(e);
-    return calendarIcs(allowed, process.env.BETTER_AUTH_URL!);
+    // "My events" (C9): those I lead, or where one of my profiles is invited or a participant.
+    const own = f.only_mine ? [...(await ownProfiles(c, a))] : [];
+    for (const e of rows)
+      if (await canRead(c, a, e))
+        if (!f.only_mine || e.responsible_user_id === a.user_id || (await concerns(c, e, own))) allowed.push(e);
+    // Wave 15: money deadlines, when asked and while the person keeps money rights.
+    let days: { uid: string; date: string; title: string }[] = [];
+    if (f.include_money) {
+      const rights = permissions(a.role, a.grants);
+      const off = (await c.query("SELECT disabled_modules FROM organization WHERE id=$1", [f.organization_id])).rows[0]?.disabled_modules ?? [];
+      if (mfaSatisfied(!!a.twoFactorEnabled) && (rights.includes("dues.read") || rights.includes("dues.manage")) && !off.includes("finance")) {
+        const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
+          to = new Date(Date.now() + 366 * 86400000).toISOString().slice(0, 10);
+        days = (await moneyDeadlinesIn(c, f.organization_id, from, to, true, [])).map((d) => ({
+          uid: d.id.replace(":", "-"),
+          date: d.date,
+          // The feed has no language: the accounts' dates carry their kind in the club's default language (French).
+          title: d.source === "accounts" ? `${d.kind === "accountsAssembly" ? "Comptes annuels : assemblée générale" : "Comptes annuels : dépôt au greffe"} ${d.title}` : d.title,
+        }));
+      }
+    }
+    return calendarIcs(allowed, process.env.BETTER_AUTH_URL!, days);
   });
 }

@@ -220,7 +220,7 @@ it("publishes a public form without applicant or club-private data", async () =>
   expect(f).not.toHaveProperty("applicant_email");
   expect(f).not.toHaveProperty("organization_id");
 });
-it("allows unverified accounts while retaining administrative MFA", async () => {
+it("allows unverified accounts, and administrators without a second factor (removed)", async () => {
   await db.query('UPDATE "user" SET "emailVerified"=false WHERE id=$1', [
     candidate.userId,
   ]);
@@ -228,7 +228,7 @@ it("allows unverified accounts while retaining administrative MFA", async () => 
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
     admin.userId,
   ]);
-  await expect(createForm()).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+  expect(await createForm()).toBeTruthy();
 });
 it("honours delegated secretary permission and rejects a coach without it", async () => {
   const coach = await actor(org, "coach");

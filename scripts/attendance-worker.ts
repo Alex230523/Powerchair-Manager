@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { attendanceTick } from "../src/domains/attendance/service";
 import { eventMailTick } from "../src/domains/communication/service";
 import { duesReminderTick } from "../src/domains/reminders/service";
+import { fundingTaskTick } from "../src/domains/funding/service";
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 console.log("Attendance worker ready");
 let stopping = false;
@@ -22,6 +23,9 @@ try {
       // Automatic dues reminders (wave 11), when a club switched them on.
       const reminders = await duesReminderTick(db);
       if (reminders) console.log("Dues reminders sent:", reminders);
+      // Sponsor conditions and grant tasks due in 7 days, partner renewals of the day (wave 15).
+      const tasks = await fundingTaskTick(db);
+      if (tasks) console.log("Funding task reminders sent:", tasks);
     } catch (e) {
       console.error(
         "Attendance worker:",

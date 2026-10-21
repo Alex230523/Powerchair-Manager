@@ -56,6 +56,13 @@ export const commandSchema = z.discriminatedUnion("action", [
     version: z.number().int().positive(),
     reason: z.string().trim().min(5).max(500),
   }),
+  /** The club waives the whole amount (wave 15, C8): only while nothing has been paid. */
+  z.object({
+    action: z.literal("exempt"),
+    id: z.uuid(),
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(5).max(500),
+  }),
   /** Money received for a receivable: written in the ledger (income, dues). */
   z.object({
     action: z.literal("pay"),
@@ -100,10 +107,12 @@ export function duesState(
  * many players are late. Cancelled receivables count for nothing.
  */
 export function duesTotals(
-  debts: { status: string; net_cents: number; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[] }[],
+  debts: { status: string; net_cents: number; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[]; team_ids?: readonly string[] }[],
   today: string,
+  /** The team in view (wave 15): only the receivables that belong to it (see receivableTeamsSql). */
+  teamId: string | null = null,
 ) {
-  const open = debts.filter((d) => d.status === "open");
+  const open = debts.filter((d) => d.status === "open" && (!teamId || (d.team_ids ?? []).includes(teamId)));
   let due = 0,
     collected = 0,
     late = 0,
@@ -116,6 +125,15 @@ export function duesTotals(
     if (duesState(d, settled, today) === "late") playersLate += 1;
   }
   return { due, collected, late, playersLate, rate: due > 0 ? Math.round((collected / due) * 100) : null };
+}
+/** The figures of the collection bar (wave 15, 2.8), the same on the home and on the dues page. */
+export function collectionFigures(t: { due: number; collected: number; late: number }) {
+  return {
+    rate: t.due > 0 ? Math.round((t.collected / t.due) * 100) : null,
+    collected: t.collected,
+    remaining: Math.max(0, t.due - t.collected),
+    late: t.late,
+  };
 }
 export type Command = z.infer<typeof commandSchema>;
 export function schedule(cents: number, count: number, first: string) {

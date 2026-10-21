@@ -7,12 +7,12 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ event?: string }>;
+  searchParams: Promise<{ event?: string; create?: string; subscribe?: string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const { event } = await searchParams;
+  const { event, create, subscribe } = await searchParams;
   // Opened from the dashboard: the event sheet is shown and its day focused.
   const eventId = event && /^[0-9a-f-]{36}$/.test(event) ? event : undefined;
-  return <Calendar locale={locale} eventId={eventId} />;
+  return <Calendar locale={locale} eventId={eventId} create={create === "1"} subscribe={subscribe === "1"} />;
 }

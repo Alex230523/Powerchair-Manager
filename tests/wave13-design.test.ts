@@ -23,10 +23,11 @@ describe("design tokens", () => {
     expect(css.match(/prefers-color-scheme: dark/g)?.length).toBe(1);
     expect(css.match(/:root\[data-theme="dark"\]/g)?.length).toBe(1);
   });
-  it("keeps the old names as temporary aliases of the new ones", () => {
-    for (const [old, now] of [["--ink", "--text"], ["--line", "--border"], ["--accent", "--primary"], ["--brand-500", "--primary"], ["--bg", "--background"], ["--font", "--font-ui"]])
-      expect(root).toContain(`${old}: var(${now});`);
-    expect(root).toContain("à supprimer au prompt 2.9");
+  it("has no alias of the former names any more (prompt 2.9)", () => {
+    for (const old of ["--ink", "--line", "--line-strong", "--bg", "--surface-2", "--surface-3", "--accent", "--accent-hover", "--accent-solid", "--accent-ink", "--on-accent", "--brand-500", "--radius", "--radius-lg", "--shadow-sm", "--shadow", "--font"]) {
+      expect(css, old).not.toMatch(new RegExp(`${old}:\\s`));
+      expect(css, old).not.toMatch(new RegExp(`var\\(${old}[,)]`));
+    }
   });
   it("leaves orange to the logo only", () => {
     const oranges = css.split("\n").filter((l) => /#f97316|#fb923c|#fa6f1d|#c2410c|#ea580c|249 115 22|251 146 60/i.test(l));
@@ -35,15 +36,16 @@ describe("design tokens", () => {
     expect(readFileSync("src/components/icons.tsx", "utf8")).toContain("var(--logo-accent");
   });
   it("sets the text scale with nothing below 12 px", () => {
-    const sizes = [...root.matchAll(/--text-[a-z0-9]+: (\d+)px/g)].map((m) => Number(m[1]));
+    // In rem since wave 15 (C4), 1rem = 16px at the normal text size.
+    const sizes = [...root.matchAll(/--text-[a-z0-9]+: ([\d.]+)rem/g)].map((m) => Number(m[1]) * 16);
     expect(sizes.length).toBe(7);
     expect(Math.min(...sizes)).toBe(12);
-    expect(root).toMatch(/--text-base: 14px/);
+    expect(root).toMatch(/--text-base: 0\.875rem/);
   });
   it("uses the serif for h1 and h2, the sans for h3, and drops the bar before card titles", () => {
     expect(css).toMatch(/h1 \{[^}]*font-family: var\(--font-display\)[^}]*font-size: var\(--text-2xl\)[^}]*font-weight: 700/s);
     expect(css).toMatch(/h2 \{[^}]*font-family: var\(--font-display\)[^}]*font-size: var\(--text-lg\)/s);
-    expect(css).toMatch(/h3 \{[^}]*font-family: var\(--font-ui\)[^}]*font-size: 15px[^}]*font-weight: 600/s);
+    expect(css).toMatch(/h3 \{[^}]*font-family: var\(--font-ui\)[^}]*font-size: var\(--text-md\)[^}]*font-weight: 600/s);
     expect(css).not.toContain(".panel > h2::before");
     expect(css).toContain("prefers-reduced-motion: reduce");
   });

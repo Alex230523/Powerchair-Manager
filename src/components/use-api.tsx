@@ -54,7 +54,8 @@ export function usePost(
 ) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
-  async function post(body: Record<string, unknown>, done: string) {
+  /** The answer of the server (an id, an undo offer of wave 15), or null when it failed. */
+  async function postFor(body: Record<string, unknown>, done: string): Promise<{ undo?: string; id?: string } | null> {
     setBusy(true);
     setError("");
     setMessage("");
@@ -68,15 +69,18 @@ export function usePost(
       if (!r.ok) throw new Error(v.error);
       await reload();
       setMessage(done);
-      return true;
+      return v as { undo?: string; id?: string };
     } catch (e) {
       setError(failure(e instanceof Error ? e.message : ""));
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
   }
-  return { busy, message, post };
+  async function post(body: Record<string, unknown>, done: string) {
+    return (await postFor(body, done)) !== null;
+  }
+  return { busy, message, post, postFor };
 }
 
 const more = {

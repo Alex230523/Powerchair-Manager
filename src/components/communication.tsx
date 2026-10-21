@@ -25,9 +25,12 @@ const fill = (s: string, v: Record<string, string | number>) =>
 export function Communication({
   locale,
   eventId,
+  create = false,
 }: {
   locale: Locale;
   eventId?: string;
+  /** Opens a new newsletter at once (the "Créer" menu of the home page). */
+  create?: boolean;
 }) {
   const t = communicationCopy[locale] as Copy;
   const failure = useCallback(
@@ -69,7 +72,9 @@ export function Communication({
       ? chosen
       : eventId && data.can.plan
         ? "events"
-        : tabs[data.can.manage ? Math.min(1, tabs.length - 1) : 0];
+        : create && data.can.manage
+          ? "newsletter"
+          : tabs[data.can.manage ? Math.min(1, tabs.length - 1) : 0];
   const send = (body: Record<string, unknown>, done = t.saved) =>
     post({ organizationId: data.organization_id, ...body }, done);
   return (
@@ -88,7 +93,7 @@ export function Communication({
           <EventMails data={data} t={t} locale={locale} busy={busy} send={send} eventId={eventId} />
         )}
         {tab === "newsletter" && (
-          <Newsletters data={data} t={t} locale={locale} busy={busy} send={send} />
+          <Newsletters data={data} t={t} locale={locale} busy={busy} send={send} create={create} />
         )}
         {tab === "groups" && <Groups data={data} t={t} busy={busy} send={send} />}
         {tab === "alumni" && <Alumni data={data} t={t} locale={locale} busy={busy} send={send} />}
@@ -363,8 +368,8 @@ function emptyBlock(type: (typeof blockTypes)[number]): Block {
   if (type === "events") return { type, eventIds: [] };
   return { type: "divider" };
 }
-function Newsletters({ data, t, locale, busy, send }: Props) {
-  const [editing, setEditing] = useState<string | null>(null);
+function Newsletters({ data, t, locale, busy, send, create }: Props & { create?: boolean }) {
+  const [editing, setEditing] = useState<string | null>(create ? "new" : null);
   const [confirming, setConfirming] = useState<View["newsletters"][number] | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const sizes = useMemo(() => new Map(data.groups.map((g) => [g.id, g.size ?? 0])), [data.groups]);
