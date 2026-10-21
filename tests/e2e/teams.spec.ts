@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 12: the president of a club with two teams picks "Équipe B" once in
@@ -28,14 +29,10 @@ test("the team chosen in the top bar follows the president; teams are created, c
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `teams-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Teams test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Teams test president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;

@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { readFile } from "node:fs/promises";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 function section(page: Page, title: string) {
   return page.locator("main details").filter({
@@ -22,7 +23,7 @@ test("persistent club directory, seasons, teams, families, archives and CSV", as
   try {
     // Reset only the isolated E2E database counters between independent fixtures.
     await db.query('DELETE FROM "rateLimit"');
-    const signup = await page.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(page, db, {
       headers: { origin },
       data: { email, name: "Directory Admin", password },
     });

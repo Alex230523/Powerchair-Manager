@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /** Wave 16 (R1): places per team, set in Settings > Activities, shown on the cards and when moving a player. */
 async function axe(page: Page, label: string) {
@@ -15,12 +16,8 @@ test("places per team: settings, card, move warning", async ({ page }) => {
   const email = `places-${Date.now()}@example.test`;
   try {
     await db.query('DELETE FROM "rateLimit"');
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Places president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+    await prepareSignIn(page, db, "Places president", email, "Browser-test-passphrase-2026!");
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     const club = (await db.query("INSERT INTO organization(name,kind) VALUES('Places club','club') RETURNING id")).rows[0].id;

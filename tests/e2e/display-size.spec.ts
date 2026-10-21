@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C4): text size and stronger contrast. Chosen in the account
@@ -21,12 +22,8 @@ test("display: very large text and stronger contrast", async ({ page }) => {
   const email = `display-${Date.now()}@example.test`;
   try {
     await db.query('DELETE FROM "rateLimit"');
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Display president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+    await prepareSignIn(page, db, "Display president", email, "Browser-test-passphrase-2026!");
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [user]);

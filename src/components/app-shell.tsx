@@ -176,7 +176,37 @@ const counterRoutes: Record<string, Todo["key"]> = {
 };
 type Brief = { unread: number; latest: { id: string; title: string; body: string | null; href: string | null; read_at: string | null; created_at: string }[] };
 
-export function AppShell({ locale, children }: { locale: Locale; children: ReactNode }) {
+/** A visitor (wave 16, I1): no menu, no season or team, no bell; the brand, the language and « Se connecter ». */
+function GuestShell({ locale, children }: { locale: Locale; children: ReactNode }) {
+  const t = shellCopy[locale];
+  const path = usePathname();
+  const onAccess = /\/access\/?$/.test(path);
+  return (
+    <div className="guest-shell">
+      <header className="guest-bar">
+        <Link className="brand" href={`/${locale}/access`}>
+          <BrandMark size={28} />
+          <span className="brand-name">{t.brandName}</span>
+        </Link>
+        <div className="guest-tools">
+          <label className="sr-only" htmlFor="guest-language">
+            {t.language}
+          </label>
+          <LanguageChoice t={t} locale={locale} id="guest-language" />
+          {!onAccess && (
+            <Link className="button sm" href={`/${locale}/access`}>
+              {t.signIn}
+            </Link>
+          )}
+        </div>
+      </header>
+      {children}
+      <ToastHost locale={locale} />
+    </div>
+  );
+}
+
+export function AppShell({ locale, signedIn = true, children }: { locale: Locale; signedIn?: boolean; children: ReactNode }) {
   const path = usePathname(),
     t = shellCopy[locale];
   const [state, setState] = useState<Workspace | null>(null),
@@ -369,7 +399,6 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       window.location.assign(`/${locale}/access`);
     }
   }
-  const localePath = (l: Locale) => path.replace(/^\/(fr|nl|en)(?=\/|$)/, `/${l}`);
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
@@ -386,6 +415,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       .map((e) => ({ route: `/settings/${e.category}#${e.anchor}`, label: `${h.entries[e.id].title} · ${t.settings}` })),
   ];
   const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
+  if (!signedIn) return <GuestShell locale={locale}>{children}</GuestShell>;
   return (
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}

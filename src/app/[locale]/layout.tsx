@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { copy, isLocale } from "@/lib/locale";
 import { fontClass } from "../fonts";
 import "../globals.css";
-import { paletteColor, sessionAppearance } from "@/lib/appearance";
+import { paletteColor, sessionAppearance, sessionShell } from "@/lib/appearance";
 export const metadata: Metadata = {
   title: "Powerchair Football Manager",
   applicationName: "Powerchair Football Manager",
@@ -38,7 +38,10 @@ export default async function Layout({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   // The club's palette and tint are on <html> from the first paint (prompt 2.9).
-  const { palette, tint } = await sessionAppearance();
+  const {
+    appearance: { palette, tint },
+    signedIn,
+  } = await sessionShell();
   return (
     // The theme script may set data-theme before hydration.
     <html lang={locale} className={fontClass} data-palette={palette === "night" ? undefined : palette} data-tint={tint === "light" ? undefined : tint} suppressHydrationWarning>
@@ -49,7 +52,9 @@ export default async function Layout({
         <a className="skip" href="#main">
           {copy[locale].skip}
         </a>
-        <AppShell locale={locale}>{children}</AppShell>
+        <AppShell locale={locale} signedIn={signedIn}>
+          {children}
+        </AppShell>
         <OfflineSupport />
       </body>
     </html>

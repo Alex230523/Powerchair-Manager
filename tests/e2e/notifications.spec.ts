@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 test("notification inbox, FR/NL models, preferences and local delivery queue", async ({
   page,
@@ -13,7 +14,7 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
     await db.query('DELETE FROM "rateLimit"');
     const email = `notifications-${Date.now()}@example.test`,
       password = "Notifications-fixture-2026!";
-    const signup = await page.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(page, db, {
       headers: { origin },
       data: { email, name: "Notifications Admin", password },
     });

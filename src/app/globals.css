@@ -6989,6 +6989,60 @@ ul.task-list {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* ---------- Visitor (wave 16, I1): no menu, a simple bar ---------- */
+.guest-shell {
+  min-height: 100vh;
+}
+.guest-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  min-height: var(--topbar-height);
+  padding: var(--space-2) var(--content-padding);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.guest-bar .brand {
+  flex: 0 1 auto;
+}
+.guest-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.guest-tools .button {
+  min-height: 2.75rem;
+}
+.access-card {
+  max-width: 420px;
+  margin: var(--space-8) auto 0;
+}
+.access-card h1 {
+  font-size: var(--text-xl);
+  margin: 0 0 var(--space-4);
+}
+.access-card form {
+  display: grid;
+  gap: var(--space-4);
+}
+.access-card .button {
+  justify-self: stretch;
+}
+.access-join {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.join-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--card-gap);
+  margin-block: var(--space-6);
+}
+
 /* ---------- Places per team (wave 16, R1) ---------- */
 .team-places {
   display: grid;

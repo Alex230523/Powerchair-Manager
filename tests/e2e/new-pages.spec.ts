@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Smoke test of the pages added by waves 1 to 5: each one opens for the right
@@ -46,23 +47,13 @@ test("new club, federation and referee pages load and pass axe", async ({
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `pages-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
-    await page
-      .getByLabel("Nom complet", { exact: true })
-      .fill("Pages test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page
-      .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
-      .fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Pages test president", email, "Browser-test-passphrase-2026!");
     // Sign-up is rate limited (3 per 10 s per address) and the previous spec
     // has just created accounts: wait for the window once if refused.
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
       await page
-        .getByRole("button", { name: "Créer mon compte", exact: true })
+        .getByRole("button", { name: "Se connecter", exact: true })
         .click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });

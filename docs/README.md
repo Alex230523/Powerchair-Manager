@@ -78,6 +78,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 16, B1 : plus de puce sous la barre du haut](evolutions/2026-10-21-zq-vague-16-b1-puce-barre-haut.md) |
 | 21/10/2026 | [Vague 16, M1 : menu du compte compact](evolutions/2026-10-21-zr-vague-16-m1-menu-compte.md) |
 | 21/10/2026 | [Vague 16, R1 : places disponibles par équipe](evolutions/2026-10-21-zs-vague-16-r1-places-equipe.md) |
+| 21/10/2026 | [Vague 16, I1 : visiteur sans menu, inscription sur invitation](evolutions/2026-10-21-zt-vague-16-i1-visiteur-rejoindre.md) |
 
 ## Convention
 
