@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Locale } from "@/lib/locale";
 import { messagesCopy } from "./messages-copy";
 import { Modal } from "./modal";
-import { Button, Panel } from "./ui";
+import { Button, Panel, Badge, PageHeader } from "./ui";
 type Thread = {
   id: string;
   subject: string;
@@ -140,8 +140,7 @@ export function Messages({ locale }: { locale: Locale }) {
   );
   return (
     <main id="main" className="access messages-page">
-      <h1>{t.title}</h1>
-      <p>{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       <div className="actions">
         <Link href={"/" + locale + "/documents"}>{t.documents}</Link>
         <Link href={"/" + locale + "/access"}>{t.access}</Link>
@@ -274,7 +273,7 @@ export function Messages({ locale }: { locale: Locale }) {
                       <strong>{m.sender}</strong>
                       <p>
                         <time dateTime={m.created_at}>{time(m.created_at)}</time>
-                        {m.hidden && data.moderator && <span className="status-tag" data-tone="warning">{t.hiddenTag}</span>}
+                        {m.hidden && data.moderator && <Badge tone="warning">{t.hiddenTag}</Badge>}
                       </p>
                       <p className="message-body">{m.hidden && !data.moderator ? <em>{t.hiddenText}</em> : m.body}</p>
                       {!m.mine && !m.hidden && (

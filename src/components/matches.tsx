@@ -11,6 +11,7 @@ import {
 import { matchesCopy } from "./matches-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
+import { Badge, EmptyState, PageHeader } from "./ui";
 
 type View = Awaited<ReturnType<typeof matchesView>>;
 type Match = View["matches"][number];
@@ -125,7 +126,7 @@ export function Matches({ locale }: { locale: Locale }) {
   if (!view)
     return (
       <main id="main" className="access matches">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -149,12 +150,7 @@ export function Matches({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access matches">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p>{t.intro}</p>
-        </div>
-        {manageable.length > 0 && (
+      <PageHeader title={t.title} subtitle={t.intro} actions={manageable.length > 0 && (
           <div className="directory-actions">
             <button
               type="button"
@@ -164,8 +160,7 @@ export function Matches({ locale }: { locale: Locale }) {
               {t.add}
             </button>
           </div>
-        )}
-      </div>
+        )} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
@@ -282,18 +277,15 @@ export function Matches({ locale }: { locale: Locale }) {
                           {m.our_score}-{m.their_score}
                         </strong>
                       ) : (
-                        <span
-                          className="status-tag"
-                          data-tone={
+                        <Badge tone={
                             m.status === "cancelled"
                               ? "danger"
                               : m.status === "postponed"
                                 ? "warning"
                                 : ""
-                          }
-                        >
+                          }>
                           {t.statuses[m.status]}
-                        </span>
+                        </Badge>
                       )}
                       {report && (
                         <details className="report-details">
@@ -348,7 +340,7 @@ export function Matches({ locale }: { locale: Locale }) {
           </table>
         </div>
       ) : (
-        <p className="empty-directory">{t.empty}</p>
+        <EmptyState title={t.empty} />
       )}
 
       {editing && (

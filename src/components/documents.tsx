@@ -18,7 +18,7 @@ import {
   documentErrors,
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel } from "./ui";
+import { Button, Panel, Badge, PageHeader } from "./ui";
 import { SignaturePad, signatureCopy } from "./signature-pad";
 type View = Awaited<ReturnType<typeof documentView>>;
 function Field({
@@ -144,8 +144,7 @@ export function Documents({ locale }: { locale: Locale }) {
   return (
     <>
       <main id="main" className="access documents">
-        <h1>{t.title}</h1>
-        <p>{t.intro}</p>
+        <PageHeader title={t.title} subtitle={t.intro} />
         {data?.manage && (
           <p>
             <Link
@@ -307,7 +306,7 @@ export function Documents({ locale }: { locale: Locale }) {
                         i: number,
                       ) => (
                         <li key={i}>
-                          <span className="status-tag" data-tone="success">
+                          <Badge tone="success">
                             {signatureCopy[locale].signed
                               .replace("{name}", g.signer_name)
                               .replace(
@@ -317,7 +316,7 @@ export function Documents({ locale }: { locale: Locale }) {
                                   { timeZone: "Europe/Brussels" },
                                 ),
                               )}
-                          </span>
+                          </Badge>
                         </li>
                       ),
                     )}

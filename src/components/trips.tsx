@@ -9,6 +9,7 @@ import { tripsCopy } from "./trips-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { TripDetailSections } from "./trip-detail";
+import { Badge, EmptyState, PageHeader, Card } from "./ui";
 
 type List = Awaited<ReturnType<typeof tripsView>>;
 export type Detail = Awaited<ReturnType<typeof tripDetail>>;
@@ -53,9 +54,9 @@ export function Countdown({
 }) {
   const t = tripsCopy[locale];
   return (
-    <span className="status-tag" data-tone={c.past ? undefined : c.urgent ? "warning" : "info"}>
+    <Badge tone={c.past ? undefined : c.urgent ? "warning" : "info"}>
       {c.past ? t.past : c.left === 0 ? t.today : t.days.replace("{n}", String(c.left))}
-    </span>
+    </Badge>
   );
 }
 
@@ -204,29 +205,24 @@ export function TripsPage({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access trips">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error || denied ? <p role="alert">{error || t.unavailable}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
   const org = data.organization_id;
   return (
     <main id="main" className="access trips">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p className="muted">{t.intro}</p>
-          <WholeClubNote locale={locale} />
-        </div>
-        {data.can.manage && (
+      <PageHeader title={t.title} subtitle={t.intro} actions={data.can.manage && (
           <button type="button" className="button" aria-expanded={creating} onClick={() => setCreating(!creating)}>
             {creating ? t.close : t.create}
           </button>
-        )}
-      </div>
+        )}>
+        <WholeClubNote locale={locale} />
+      </PageHeader>
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {creating && (
-        <section className="panel" aria-label={t.create}>
+        <Card label={t.create}>
           <TripForm
             locale={locale}
             list={data}
@@ -237,7 +233,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
               )
             }
           />
-        </section>
+        </Card>
       )}
       {data.trips.length ? (
         <ul className="trip-list">
@@ -255,7 +251,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
                 {x.destination && ` · ${x.destination}`}
               </p>
               <p className="trip-meta">
-                <span className="status-tag">{t.statuses[x.status]}</span>
+                <Badge>{t.statuses[x.status]}</Badge>
                 <span>{t.travelling.replace("{n}", String(x.travelling))}</span>
                 {x.powerchairs > 0 && <span>{t.powerchairs.replace("{n}", String(x.powerchairs))}</span>}
               </p>
@@ -263,7 +259,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <p className="empty-directory">{t.none}</p>
+        <EmptyState title={t.none} />
       )}
       {(data.can.manage || data.fleet.length > 0) && (
         <Fleet locale={locale} data={data} busy={busy} post={post} />
@@ -368,13 +364,9 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
     </form>
   );
   return (
-    <section className="panel" aria-labelledby="trips-fleet">
-      <div className="panel-head">
-        <h2 id="trips-fleet">{t.fleet}</h2>
-        {editing === null && (
+    <Card title={t.fleet} labelledBy="trips-fleet" headingId="trips-fleet" actions={editing === null && (
           <button type="button" className="button secondary" onClick={() => setEditing("new")}>{t.addFleet}</button>
-        )}
-      </div>
+        )}>
       <p className="muted">{t.fleetIntro}</p>
       {editing === "new" && form()}
       <ul className="profile-list">
@@ -392,10 +384,10 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
                       .join(" · ")}
                   </p>
                   {v.insurance_until && v.insurance_until < today && (
-                    <p className="status-tag" data-tone="danger">{t.warnings.insurance}</p>
+                    <p><Badge tone="danger">{t.warnings.insurance}</Badge></p>
                   )}
                   {v.inspection_until && v.inspection_until < today && (
-                    <p className="status-tag" data-tone="danger">{t.warnings.inspection}</p>
+                    <p><Badge tone="danger">{t.warnings.inspection}</Badge></p>
                   )}
                 </div>
                 {data.can.manage && (
@@ -409,7 +401,7 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }
 
@@ -417,8 +409,7 @@ function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; bus
   const t = tripsCopy[locale];
   const [cats, setCats] = useState<string[]>([]);
   return (
-    <section className="panel" aria-labelledby="trips-drivers">
-      <h2 id="trips-drivers">{t.drivers}</h2>
+    <Card title={t.drivers} labelledBy="trips-drivers" headingId="trips-drivers">
       <p className="muted">{t.driversIntro}</p>
       {data.drivers.length > 0 && (
         <ul className="profile-list">
@@ -480,7 +471,7 @@ function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; bus
         </label>
         <button className="button secondary" disabled={busy}>{t.saveLicence}</button>
       </form>
-    </section>
+    </Card>
   );
 }
 
@@ -513,17 +504,10 @@ export function TripPage({ locale, id }: { locale: Locale; id: string }) {
       <p className="back-link">
         <Link href={`/${locale}/trips`}>{t.back}</Link>
       </p>
-      <div className="directory-heading">
-        <div>
-          <h1>{d.trip.title}</h1>
-          <p className="muted">
-            {t.kinds[d.trip.kind]} · {dayLabel(locale, d.trip.starts_on)}
+      <PageHeader title={d.trip.title} subtitle={<>{t.kinds[d.trip.kind]} · {dayLabel(locale, d.trip.starts_on)}
             {d.trip.ends_on !== d.trip.starts_on && ` → ${dayLabel(locale, d.trip.ends_on)}`}{" "}
             <Countdown locale={locale} c={d.countdown} />{" "}
-            <span className="status-tag">{t.statuses[d.trip.status]}</span>
-          </p>
-        </div>
-      </div>
+            <Badge>{t.statuses[d.trip.status]}</Badge></>} />
       {detail.error && <p role="alert">{detail.error}</p>}
       {message && <p role="status">{message}</p>}
       <TripDetailSections locale={locale} d={d} list={list.data} busy={busy} post={post} />
