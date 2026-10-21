@@ -103,7 +103,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
       .click();
     await expect(page).toHaveURL("/en/settings/account");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.locator("header")).not.toContainText("Language");
+    await expect(page.getByRole("banner")).not.toContainText("Language");
     // Rates are set in Settings > Money (waves 11 and 15); receivables are issued from Dues.
     await page.goto("/en/settings/money");
     await page.getByRole("button", { name: "New rate", exact: true }).click();
