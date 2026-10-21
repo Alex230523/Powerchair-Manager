@@ -59,7 +59,7 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
     const statement = page.getByRole("region", { name: "État des recettes et des dépenses" });
     await expect(statement.getByRole("row", { name: /^Cotisations/ })).toContainText("500,00");
     await expect(statement.getByRole("row", { name: /^Résultat de l’exercice/ })).toContainText(/1.400,00/);
-    await expect(page.getByLabel("Exercice", { exact: true })).toHaveValue(`${last}-01-01`);
+    await expect(page.getByRole("combobox", { name: /^Exercice/ })).toHaveValue(`${last}-01-01`);
     await axe(page, "accounts draft");
 
     // 2. A debt entered by hand and a commitment.
