@@ -1218,9 +1218,13 @@ caption {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-.directory-filters label {
+.directory-filters label,
+.directory-filters .directory-field {
   flex: 1 1 180px;
   font-size: 0.82rem;
+}
+.directory-filters .directory-field label {
+  display: block;
 }
 .directory-filters label:first-child {
   flex-basis: 280px;

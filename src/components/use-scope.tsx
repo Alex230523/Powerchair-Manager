@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { SeasonOption, TeamOption } from "@/domains/scope/service";
 import { defaultSeasonId, isUuid, resolve } from "@/domains/scope/resolve";
 export { defaultSeasonId, resolve };
@@ -39,8 +39,18 @@ const empty: ScopeValue = {
 const ScopeContext = createContext<ScopeValue>(empty);
 export const storageKey = (org: string) => `pfm-scope-${org}`;
 export function readStored(org: string): { season?: string; team?: string } {
+  return parseStored(readRaw(org));
+}
+function readRaw(org: string) {
   try {
-    const v = JSON.parse(window.localStorage.getItem(storageKey(org)) ?? "{}");
+    return window.localStorage.getItem(storageKey(org)) ?? "";
+  } catch {
+    return "";
+  }
+}
+function parseStored(raw: string): { season?: string; team?: string } {
+  try {
+    const v = JSON.parse(raw || "{}");
     return {
       season: isUuid(v.season) ? v.season : undefined,
       team: isUuid(v.team) ? v.team : undefined,
@@ -55,6 +65,24 @@ function store(org: string, scope: { season: string | null; team: string | null 
   } catch {
     /* Private mode or quota: the URL still carries the choice. */
   }
+}
+const scopeEvent = "pfm-scope";
+function subscribe(onChange: () => void) {
+  window.addEventListener(scopeEvent, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(scopeEvent, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+/** The browser's memory of the choice, read after hydration (the server knows nothing of it). */
+function useStored(org: string | null) {
+  const raw = useSyncExternalStore(
+    subscribe,
+    () => (org ? readRaw(org) : ""),
+    () => "",
+  );
+  return useMemo(() => parseStored(raw), [raw]);
 }
 type Raw = { season?: string | null; team?: string | null };
 /** Reads ?season= and ?team= (inside its own Suspense boundary, as Next asks). */
@@ -80,12 +108,8 @@ export function ScopeProvider({
 }) {
   const router = useRouter(),
     path = usePathname();
-  const [url, setUrl] = useState<Raw>({}),
-    [stored, setStored] = useState<Raw>({});
-  useEffect(() => {
-    // The browser's memory is read after the first paint (nothing to hydrate against on the server).
-    setStored(organizationId ? readStored(organizationId) : {});
-  }, [organizationId]);
+  const [url, setUrl] = useState<Raw>({});
+  const stored = useStored(organizationId);
   const { seasonId, teamId } = resolve(seasons, teams, {
     season: url.season ?? stored.season,
     team: url.team ?? stored.team,
@@ -94,7 +118,6 @@ export function ScopeProvider({
     (season: string | null, team: string | null) => {
       if (!organizationId) return;
       store(organizationId, { season, team });
-      setStored({ season, team });
       const next = new URLSearchParams(window.location.search);
       const seasonDefault = defaultSeasonId(seasons);
       if (season && season !== seasonDefault) next.set("season", season);
@@ -103,13 +126,16 @@ export function ScopeProvider({
       else next.delete("team");
       const q = next.toString();
       router.replace(q ? `${path}?${q}` : path, { scroll: false });
-      window.dispatchEvent(new Event("pfm-scope"));
+      window.dispatchEvent(new Event(scopeEvent));
     },
     [organizationId, path, router, seasons],
   );
   useEffect(() => {
     // A shared link's choice is remembered too.
-    if (organizationId && (url.season || url.team)) store(organizationId, { season: seasonId, team: teamId });
+    if (organizationId && (url.season || url.team)) {
+      store(organizationId, { season: seasonId, team: teamId });
+      window.dispatchEvent(new Event(scopeEvent));
+    }
   }, [organizationId, url.season, url.team, seasonId, teamId]);
   const value = useMemo<ScopeValue>(
     () => ({
@@ -153,13 +179,28 @@ export function scopedHref(base: string, scope: { seasonId: string | null; teamI
  * changes it locally, `differs` is true and `apply` pushes the local choice
  * to the whole platform.
  */
+/**
+ * Local state re-seeded whenever `seed` changes, derived during render (no
+ * effect, no extra paint): the page's filter follows the top bar until the
+ * member touches it.
+ */
+export function useSeeded<T>(seed: T): [T, (next: T | ((prev: T) => T)) => void] {
+  const [state, setState] = useState({ seed, value: seed });
+  const value = Object.is(state.seed, seed) ? state.value : seed;
+  const set = useCallback(
+    (next: T | ((prev: T) => T)) =>
+      setState((s) => {
+        const prev = Object.is(s.seed, seed) ? s.value : seed;
+        return { seed, value: typeof next === "function" ? (next as (prev: T) => T)(prev) : next };
+      }),
+    [seed],
+  );
+  return [value, set];
+}
 export function useScopedTeam() {
   const scope = useScope();
   const global = scope.teamId ?? "";
-  const [team, setTeam] = useState(global);
-  useEffect(() => {
-    setTeam(global);
-  }, [global]);
+  const [team, setTeam] = useSeeded(global);
   return {
     team,
     setTeam,

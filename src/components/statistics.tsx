@@ -1,9 +1,9 @@
 "use client";
 import { RetentionCard } from "./retention";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
-import { useScope, ApplyScope } from "./use-scope";
+import { useScope, useSeeded, ApplyScope } from "./use-scope";
 import type { attendanceView } from "@/domains/attendance/service";
 import {
   summarize,
@@ -143,21 +143,23 @@ export function Statistics({ locale }: { locale: Locale }) {
   const t = copies[locale],
     today = localAt(new Date(), "Europe/Brussels").slice(0, 10);
   const scope = useScope();
-  const [filters, setFilters] = useState({
+  // The top bar choice (wave 12) seeds the team filter and re-seeds it when it changes.
+  const globalTeam = scope.teamId ?? "";
+  const [dates, setDates] = useState({
       from: shiftLocal(today + "T12:00", -90).slice(0, 10),
       to: today,
-      team: scope.teamId ?? "",
     }),
+    [team, setTeam] = useSeeded(globalTeam),
     [kind, setKind] = useState(""),
     [data, setData] = useState<View | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(false),
     [invalid, setInvalid] = useState(false);
-  const globalTeam = scope.teamId ?? "";
-  useEffect(() => {
-    // The top bar choice (wave 12) re-seeds the local filter.
-    setFilters((f) => (f.team === globalTeam ? f : { ...f, team: globalTeam }));
-  }, [globalTeam]);
+  const filters = useMemo(() => ({ ...dates, team }), [dates, team]);
+  const setFilters = (f: { from: string; to: string; team: string }) => {
+    setDates({ from: f.from, to: f.to });
+    setTeam(f.team);
+  };
   useEffect(() => {
     const c = new AbortController();
     fetch("/api/attendance?" + new URLSearchParams({ ...filters, place: "" }), {

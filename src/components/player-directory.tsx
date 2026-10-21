@@ -432,9 +432,9 @@ export function PlayerDirectory({
                 placeholder={p.name}
               />
             </label>
-            <label>
-              {p.team}
-              <select value={team} onChange={(e) => setTeam(e.target.value)}>
+            <div className="directory-field">
+              <label htmlFor="directory-team">{p.team}</label>
+              <select id="directory-team" value={team} onChange={(e) => setTeam(e.target.value)}>
                 <option value="">{t.all}</option>
                 {data.teams.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -443,7 +443,7 @@ export function PlayerDirectory({
                 ))}
               </select>
               <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
-            </label>
+            </div>
             {role === "player" && (
               <label>
                 {t.position}
