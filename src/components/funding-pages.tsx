@@ -85,7 +85,7 @@ export function Grants({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access funding-grants">
-        <h1>{g.title}</h1>
+        <PageHeader title={g.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -320,7 +320,7 @@ export function Partners({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access funding-partners">
-        <h1>{p.title}</h1>
+        <PageHeader title={p.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );

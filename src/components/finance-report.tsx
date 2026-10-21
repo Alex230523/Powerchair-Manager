@@ -7,6 +7,7 @@ import type { financeReport } from "@/domains/finance/service";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
+import { Card } from "./ui";
 
 type Report = Awaited<ReturnType<typeof financeReport>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -116,8 +117,7 @@ export function FinanceReport({
             </div>
           </dl>
           {report.byTeam.length > 1 && (
-            <section className="panel" aria-labelledby="report-teams">
-              <h2 id="report-teams">{x.byTeam}</h2>
+            <Card title={x.byTeam} labelledBy="report-teams" headingId="report-teams">
               <div className="table-scroll">
                 <table className="ledger">
                   <thead>
@@ -140,10 +140,9 @@ export function FinanceReport({
                   </tbody>
                 </table>
               </div>
-            </section>
+            </Card>
           )}
-          <section className="panel" aria-labelledby="report-budget">
-            <h2 id="report-budget">{t.byCategory}</h2>
+          <Card title={t.byCategory} labelledBy="report-budget" headingId="report-budget">
             <div className="table-scroll">
               <table className="ledger">
                 <thead>
@@ -180,9 +179,8 @@ export function FinanceReport({
                 </tbody>
               </table>
             </div>
-          </section>
-          <section className="panel" aria-labelledby="report-lines">
-            <h2 id="report-lines">{x.lines}</h2>
+          </Card>
+          <Card title={x.lines} labelledBy="report-lines" headingId="report-lines">
             <div className="table-scroll">
               <table className="ledger">
                 <thead>
@@ -222,7 +220,7 @@ export function FinanceReport({
                 </tbody>
               </table>
             </div>
-          </section>
+          </Card>
         </>
       )}
     </main>
