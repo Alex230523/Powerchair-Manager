@@ -36,6 +36,8 @@ import { resolveScope, seasonOptions, teamMembers } from "../scope/service";
 import { duesSeasonRows } from "../dues/service";
 import { today } from "../calendar/access";
 import { duesTotals } from "../dues/schema";
+import { setupState } from "../setup/service";
+import { setupShown } from "../setup/schema";
 
 /**
  * Read-only operational summary for the active context.
@@ -502,10 +504,13 @@ export async function computeFor(
           ).rowCount,
         }
       : undefined;
+  // Getting started of a new club (wave 15, C3): for the president, until done or hidden.
+  const setup = club && a.role === "club_president" && has("mandates.manage") ? await setupState(c, org) : null;
   return {
     generatedAt: new Date().toISOString(),
     user: { name: user.name },
     ...(start ? { start } : {}),
+    ...(setup && setupShown(setup) ? { setup } : {}),
     context: {
       organization: context.organization_name,
       kind: context.kind,

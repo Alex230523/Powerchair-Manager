@@ -714,7 +714,7 @@ export function Access({ locale }: { locale: Locale }) {
             {secured &&
               state.selected &&
               state.permissions.includes("invitations.create") && (
-                <Panel title={t.invite}>
+                <Panel title={t.invite} id="access-invite">
                   <form
                     onSubmit={(e) =>
                       submit(e, async (data) => {

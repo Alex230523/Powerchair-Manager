@@ -1,5 +1,6 @@
 // Pure dashboard shaping. No I/O here so ordering and visibility rules are unit-tested.
 import type { Readiness } from "./presence";
+import type { SetupState } from "../setup/schema";
 export type Tone = "danger" | "warning" | "info";
 export const todoKeys = [
   "documentsExpired",
@@ -151,6 +152,8 @@ export type Dashboard = {
   week?: { from: string; to: string; events: WeekEvent[] };
   /** Getting started of players and parents (wave 15, C9). */
   start?: { calendarSubscribed: boolean };
+  /** Getting started of a new club, for its president (wave 15, C3). */
+  setup?: SetupState;
 };
 export function formatCents(cents: number, locale: string) {
   return new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {

@@ -14,6 +14,7 @@ import { homeCopy } from "./home-copy";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
+import { SetupCard } from "./setup-card";
 import { Badge, Button, Card, EmptyState, IconTile, KpiCard, PageHeader, Segmented } from "./ui";
 type State =
   | { kind: "loading" }
@@ -157,6 +158,8 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
   const [weekStart, setWeekStart] = useState(() => mondayOf(todayIso));
   const [moreFigures, setMoreFigures] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [setupClosed, setSetupClosed] = useState(false);
+  const organizationId = useScope().organizationId;
   // Events and administrative dates, one list ordered by day.
   const timeline = [
     ...data.agenda.map((e) => ({ kind: "event" as const, day: e.startsAt, e })),
@@ -217,6 +220,9 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
         </p>
       )}
       {data.start && !data.start.calendarSubscribed && <StartCard locale={locale} href={href("/calendar?subscribe=1")} />}
+      {data.setup && organizationId && !setupClosed && (
+        <SetupCard locale={locale} organizationId={organizationId} state={data.setup} where="home" changed={(next) => setSetupClosed(next.hidden)} />
+      )}
       <section className="dash-section" aria-labelledby="dash-todo">
         <h2 id="dash-todo" className="dash-section-title">
           {t.todo}

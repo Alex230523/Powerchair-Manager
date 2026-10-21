@@ -14,6 +14,7 @@ import { PageHeader, Badge, EmptyState, Card, KpiCard, Toolbar } from "./ui";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
 import { Modal } from "./modal";
+import { setupCopy } from "./setup-copy";
 
 type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -796,7 +797,16 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
             {entries.length ? (
               <ShowMore locale={locale} {...moreEntries} />
             ) : (
-              <EmptyState title={t.empty} />
+              <EmptyState
+                title={t.empty}
+                action={
+                  view.can_edit && (
+                    <button className="button" type="button" onClick={() => setAdding(true)}>
+                      {setupCopy[locale].empty.finance}
+                    </button>
+                  )
+                }
+              />
             )}
           </section>
         </>

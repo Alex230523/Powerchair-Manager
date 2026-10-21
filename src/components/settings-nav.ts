@@ -56,6 +56,7 @@ export const settingsEntries = [
   { id: "digest", category: "notifications", anchor: "notif-digest" },
   { id: "templates", category: "notifications", anchor: "notif-templates" },
   { id: "queue", category: "notifications", anchor: "notif-queue" },
+  { id: "setup", category: "club", anchor: "settings-setup" },
   { id: "identity", category: "club", anchor: "club-identity-title" },
   { id: "modules", category: "club", anchor: "settings-modules" },
   { id: "coachRights", category: "members", anchor: "settings-access-title" },
