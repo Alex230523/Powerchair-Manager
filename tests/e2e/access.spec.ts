@@ -162,7 +162,8 @@ test("real account without email verification, MFA, contexts, invitation, revoca
         .selectOption({ label: "Club test B · Président de club" }),
     ]);
 
-    await expect(page.locator("header")).toContainText("Club test B");
+    // The active organisation is named in the sidebar brand (wave 14).
+    await expect(page.locator(".brand-org")).toContainText("Club test B");
     // The profile select lives in the sidebar foot menu (wave 12): open it first.
     await page.locator(".profile-menu > summary").click();
     await Promise.all([

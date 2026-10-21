@@ -52,7 +52,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await expect(sidebar.locator(".brand-name")).toHaveText("Powerchair Manager");
     await expect(sidebar.locator(".brand-org")).toHaveText("Shell club");
     for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"]) await expect(sidebar.locator("nav summary").filter({ hasText: name })).toBeVisible();
-    await expect(sidebar.getByRole("link", { name: "Mon espace", exact: true, includeHidden: true })).toHaveCount(0);
+    await expect(sidebar.locator("nav").getByRole("link", { name: "Mon espace", exact: true, includeHidden: true })).toHaveCount(0);
     await expect(page.locator("header select")).toHaveCount(1);
     await expect(page.getByRole("banner").getByLabel("Saison", { exact: true })).toBeVisible();
     const search = page.getByRole("banner").getByRole("button", { name: /Rechercher un joueur/ });
