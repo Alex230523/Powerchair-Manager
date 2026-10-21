@@ -16,7 +16,8 @@ import { Modal } from "./modal";
 type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
-export function Finance({ locale }: { locale: Locale }) {
+/** `create` opens the "add an operation" form at once (the "Créer" menu of the home page). */
+export function Finance({ locale, create = false }: { locale: Locale; create?: boolean }) {
   const t = financeCopy[locale],
     x = financeExtras[locale];
   const [view, setView] = useState<View | null>(null),
@@ -24,7 +25,7 @@ export function Finance({ locale }: { locale: Locale }) {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [adding, setAdding] = useState(false),
+    [adding, setAdding] = useState(create),
     [cancelling, setCancelling] = useState(""),
     [q, setQ] = useState(""),
     [direction, setDirection] = useState(""),

@@ -2419,93 +2419,55 @@ caption {
 }
 
 /* ---------- Home: dashboard (signed in) ---------- */
-.dash-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-.dash-head h1 {
-  margin-bottom: 4px;
-}
-.dash-head p {
-  margin: 0;
-  color: var(--muted);
-}
 .dash-section {
-  margin-block: 20px;
+  margin-block: var(--space-6);
 }
-.dash-section > h2 {
+.dash-section-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
 }
 .todo-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: var(--card-gap);
 }
-.todo-item {
+/* A to-do: a small white card, tile, figure, text and chevron. */
+.todo-list > li {
+  display: grid;
+}
+.todo-card .card-body {
+  padding: var(--space-4);
+  height: 100%;
+}
+.todo-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 76px;
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  color: var(--text);
-  text-decoration: none;
-  box-shadow: var(--shadow-card);
-  transition:
-    border-color var(--transition),
-    box-shadow var(--transition);
-}
-.todo-item:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-hover);
+  gap: var(--space-3);
+  height: 100%;
 }
 .todo-count {
-  flex: 0 0 auto;
-  display: inline-grid;
-  place-items: center;
-  min-width: 48px;
-  height: 48px;
-  padding: 0 8px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
   font-family: var(--font-display);
-  font-size: var(--text-xl);
+  font-size: 24px;
   font-weight: 700;
   line-height: 1;
-  color: var(--primary);
-}
-.todo-item[data-tone="danger"] .todo-count {
-  background: var(--danger-soft);
-  color: var(--danger-ink);
-}
-.todo-item[data-tone="warning"] .todo-count {
-  background: var(--warning-soft);
-  color: var(--warning-ink);
-}
-.todo-item[data-tone="info"] .todo-count {
-  background: var(--surface-soft);
-  color: var(--text);
+  color: var(--heading);
+  min-width: 28px;
 }
 .todo-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 2px;
 }
 .todo-text strong {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 .todo-text span {
   font-size: var(--text-xs);
@@ -2516,11 +2478,295 @@ caption {
   color: var(--muted);
   flex: 0 0 auto;
 }
-.dash-columns {
+@media (max-width: 1000px) {
+  .todo-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .todo-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Below: the agenda on two thirds, figures and money on one third. */
+.dash-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--card-gap);
   align-items: start;
+}
+.dash-grid > .card,
+.dash-side > .card {
+  margin-block: 0;
+}
+.dash-side {
+  display: grid;
+  gap: var(--card-gap);
+  min-width: 0;
+}
+.dash-side .stat-row-grid {
+  margin-bottom: 0;
+}
+/* The side column is narrow: tighter stat cards, the tile only when there is room for it. */
+.dash-side .stat-card {
+  min-height: 104px;
+  padding: var(--space-4) var(--space-3);
+}
+.dash-side .stat-label {
+  font-size: var(--text-xs);
+}
+@media (max-width: 1440px) and (min-width: 1101px) {
+  .dash-side .stat-top .icon-tile {
+    display: none;
+  }
+}
+@media (max-width: 1100px) {
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.card-link-row {
+  margin: var(--space-3) 0 0;
+}
+.create-menu {
+  position: relative;
+}
+.create-menu-body {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  display: grid;
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  z-index: 15;
+}
+.create-menu-body a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+}
+.create-menu-body a:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+/* The money card. */
+.finance-treasury {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 var(--space-3);
+}
+.finance-lines {
+  margin: 0 0 var(--space-4);
+  display: grid;
+  gap: 6px;
+}
+.finance-lines div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.finance-lines dt {
+  color: var(--muted);
+}
+.finance-lines dd {
+  margin: 0;
+  font-weight: 600;
+}
+.finance-dues-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+  margin-bottom: 6px;
+}
+.finance-late {
+  text-decoration: none;
+}
+.finance-progress {
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--surface-soft);
+  accent-color: var(--warning);
+}
+.finance-progress::-webkit-progress-bar {
+  background: var(--surface-soft);
+  border-radius: var(--radius-pill);
+}
+.finance-progress::-webkit-progress-value {
+  background: var(--warning);
+  border-radius: var(--radius-pill);
+}
+.finance-progress::-moz-progress-bar {
+  background: var(--warning);
+  border-radius: var(--radius-pill);
+}
+.finance-dues-text {
+  margin: 6px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+/* The week view of the agenda card. */
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+.week-nav strong {
+  font-size: var(--text-sm);
+  flex: 1 1 auto;
+}
+.week-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.week-grid[aria-busy] {
+  opacity: 0.6;
+}
+.week-day {
+  min-width: 0;
+  min-height: 140px;
+  border-right: 1px solid var(--border);
+}
+.week-day:last-child {
+  border-right: 0;
+}
+.week-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--surface-soft);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-transform: capitalize;
+}
+.week-day-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  color: var(--text);
+}
+.week-day[data-today] .week-day-num {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.week-events {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+.week-event {
+  display: grid;
+  gap: 1px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--team-border);
+  border-left-width: 3px;
+  background: var(--team-bg);
+  color: var(--team-ink);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  min-height: 40px;
+}
+.week-event[data-color="none"] {
+  --team-bg: var(--accent-soft);
+  --team-border: var(--primary);
+  --team-ink: var(--primary);
+}
+.week-event[data-status="cancelled"] {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+.week-event:hover {
+  filter: brightness(0.97);
+}
+.week-event-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.week-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.week-empty,
+.week-error {
+  margin: var(--space-3) 0 0;
+}
+@media (max-width: 760px) {
+  .week-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .week-day {
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .week-day:last-child {
+    border-bottom: 0;
+  }
+  .week-day:not([data-today]) .week-events:empty {
+    display: none;
+  }
+}
+/* Loading: skeletons shaped like the cards. */
+.skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--card-gap);
+}
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--card-gap);
+}
+.skeleton-card {
+  min-height: 88px;
+  border-radius: var(--radius-card);
+}
+.skeleton-tall {
+  min-height: 320px;
+}
+@media (max-width: 760px) {
+  .skeleton-cards,
+  .skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .agenda {
   list-style: none;
@@ -2605,12 +2851,12 @@ caption {
   color: var(--accent);
 }
 .skeleton {
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   background: linear-gradient(
     90deg,
-    var(--surface-2) 0%,
-    var(--surface-3) 50%,
-    var(--surface-2) 100%
+    var(--surface-soft) 0%,
+    var(--accent-soft) 50%,
+    var(--surface-soft) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
@@ -2629,11 +2875,6 @@ caption {
 }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1100px) {
-  .dash-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (max-width: 860px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
@@ -4395,16 +4636,6 @@ input.narrow {
   gap: var(--space-2);
 }
 /* Three equal blocks per row in the dashboard to-do list. */
-.todo-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-}
-.todo-item {
-  height: 100%;
-}
-.dash-columns {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-}
 .agenda li {
   grid-template-columns: 56px minmax(0, 1fr);
   padding: 10px 0;
@@ -4438,32 +4669,7 @@ input.narrow {
 }
 .readiness {
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 3px;
-  font-size: var(--text-xs);
-  color: var(--muted);
-}
-.readiness span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.readiness-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-  background: var(--line-strong);
-}
-.readiness-dot[data-tone="ok"] {
-  background: var(--success);
-}
-.readiness-dot[data-tone="warn"] {
-  background: var(--warning);
-}
-.readiness-dot[data-tone="low"] {
-  background: var(--danger);
+  margin-top: 4px;
 }
 @media (max-width: 900px) {
   .todo-list {

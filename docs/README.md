@@ -54,6 +54,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 13, prompt 2.1 : fondations du design, polices, jetons, mode sombre factorisé](evolutions/2026-10-21-s-vague-13-design-fondations.md) |
 | 21/10/2026 | [Vague 13, prompt 2.2 : composants partagés et migration des pages](evolutions/2026-10-21-t-vague-13-composants-migration.md) |
 | 21/10/2026 | [Vague 14, prompts 2.3 et 2.4 : barre latérale claire, menu réorganisé, barre du haut](evolutions/2026-10-21-u-vague-14-barre-laterale-barre-du-haut.md) |
+| 21/10/2026 | [Vague 14, prompt 2.5 : accueil du président](evolutions/2026-10-21-v-vague-14-accueil-president.md) |
 
 ## Convention
 

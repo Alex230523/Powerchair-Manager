@@ -25,12 +25,14 @@ import {
   type AgendaItem,
   type Dashboard,
   type Deadline,
+  type FinanceCard,
   type Metric,
   type TodoKey,
+  type WeekEvent,
 } from "./summary";
 import { presenceRules, readiness } from "./presence";
 import { fundingDeadlines } from "../funding/service";
-import { resolveScope, teamMembers } from "../scope/service";
+import { resolveScope, seasonOptions, teamMembers } from "../scope/service";
 import { duesSeasonRows } from "../dues/service";
 import { today } from "../calendar/access";
 import { duesTotals } from "../dues/schema";
@@ -45,7 +47,8 @@ import { duesTotals } from "../dues/schema";
  * Runs in one READ ONLY snapshot and takes no organization lock, unlike
  * module mutations, so it never blocks or delays them.
  */
-export async function dashboardView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
+export type DashboardQuery = { season?: string; team?: string; week?: string };
+export async function dashboardView(db: Pool, p: Principal, raw: DashboardQuery = {}) {
   const c = await db.connect();
   try {
     await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
@@ -61,7 +64,7 @@ export async function dashboardView(db: Pool, p: Principal, raw: { season?: stri
   }
 }
 
-async function compute(c: PoolClient, p: Principal, raw: { season?: string; team?: string }): Promise<Dashboard> {
+async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promise<Dashboard> {
   const user = await account(c, p);
   const counts: Partial<Record<TodoKey, number>> = {};
   const metrics: Metric[] = [];
@@ -408,6 +411,58 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
       push({ kind: d.kind, date: d.date, title: d.title, count: 1, href: d.href });
   deadlines.sort((x, y) => x.date.localeCompare(y.date));
 
+  // The season in view, for the subtitle and the money card.
+  const seasonRow = club && scope.seasonId ? (await seasonOptions(c, org)).find((s) => s.id === scope.seasonId) ?? null : null;
+  // The money card (wave 14): same totals as the dues page, ledger of the season, treasury of the club.
+  let finance: FinanceCard | undefined;
+  const money = club && (has("dues.manage") || has("dues.read"));
+  if (money && (on("finance") || on("dues"))) {
+    const from = seasonRow?.starts_on ?? null,
+      to = seasonRow?.ends_on ?? null;
+    const ledger = on("finance")
+      ? (
+          await c.query(
+            "SELECT COALESCE(sum(CASE WHEN direction='in' THEN amount_cents ELSE -amount_cents END),0)::int AS treasury,COALESCE(sum(amount_cents) FILTER (WHERE direction='in' AND ($2::date IS NULL OR occurred_on BETWEEN $2 AND $3)),0)::int AS income,COALESCE(sum(amount_cents) FILTER (WHERE direction='out' AND ($2::date IS NULL OR occurred_on BETWEEN $2 AND $3)),0)::int AS expenses FROM finance_transaction WHERE organization_id=$1 AND cancelled_at IS NULL",
+            [org, from, to],
+          )
+        ).rows[0]
+      : null;
+    finance = {
+      treasury: ledger ? ledger.treasury : null,
+      income: ledger ? ledger.income : 0,
+      expenses: ledger ? ledger.expenses : 0,
+      dues: on("dues") ? duesTotals(await duesSeasonRows(c, org, scope.seasonId, members), today()) : null,
+    };
+    scopes.push("money");
+  }
+  // The week asked for: events the actor may read, filtered like the calendar and the team in view.
+  let week: Dashboard["week"];
+  if (raw.week && /^\d{4}-\d{2}-\d{2}$/.test(raw.week) && !Number.isNaN(Date.parse(raw.week + "T00:00:00Z"))) {
+    const from = raw.week;
+    const rows = (
+      await c.query(
+        "SELECT e.*,t.name AS team_name,t.color AS team_color,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>($2::date)::timestamptz AND e.starts_at<($2::date+7)::timestamptz AND ($3::uuid IS NULL OR e.team_id=$3 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 200",
+        [org, from, teamId],
+      )
+    ).rows as (Event & { team_name: string | null; team_color: string | null; place_name: string | null })[];
+    const events: WeekEvent[] = [];
+    for (const e of rows)
+      if (await canRead(c, a, e))
+        events.push({
+          id: e.id,
+          title: e.title,
+          kind: e.kind,
+          status: e.status,
+          startsAt: new Date(e.starts_at).toISOString(),
+          endsAt: new Date(e.ends_at).toISOString(),
+          team: e.team_name,
+          teamColor: e.team_color ?? null,
+          place: e.place_name,
+        });
+    const end = new Date(from + "T00:00:00Z");
+    end.setUTCDate(end.getUTCDate() + 6);
+    week = { from, to: end.toISOString().slice(0, 10), events };
+  }
   return {
     generatedAt: new Date().toISOString(),
     user: { name: user.name },
@@ -417,11 +472,20 @@ async function compute(c: PoolClient, p: Principal, raw: { season?: string; team
       role: a.role,
       statistics: on("statistics"),
     },
+    season: seasonRow ? { id: seasonRow.id, name: seasonRow.name } : null,
+    can: {
+      event: has("calendar.manage"),
+      player: club && has("people.manage"),
+      operation: club && on("finance") && has("dues.manage"),
+      mail: club && (has("notifications.manage") || has("calendar.manage")),
+    },
     todos: buildTodos(counts),
     metrics,
     agenda,
     deadlines: deadlines.slice(0, 8),
     scopes,
+    ...(finance ? { finance } : {}),
+    ...(week ? { week } : {}),
   };
 }
 

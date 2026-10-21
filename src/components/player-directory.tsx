@@ -144,10 +144,13 @@ export function PlayerDirectory({
   locale,
   role = "player",
   former = false,
+  create = false,
 }: {
   locale: Locale;
   role?: "player" | "coach";
   former?: boolean;
+  /** Opens the creation window at once (the "Créer" menu of the home page). */
+  create?: boolean;
 }) {
   const t = copy[locale],
     p = peopleCopy[locale],
@@ -156,7 +159,7 @@ export function PlayerDirectory({
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState(""),
-    [creating, setCreating] = useState(false),
+    [creating, setCreating] = useState(create),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
     [position, setPosition] = useState(""),
