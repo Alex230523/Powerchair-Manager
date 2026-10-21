@@ -99,8 +99,7 @@ export function SubscribePanel({
         <Button disabled={busy}>{p.createLink}</Button>
       </form>
       {links && (
-        <section className="subscribe-result" aria-labelledby="subscribe-result-title">
-          <h3 id="subscribe-result-title" className="sr-only">{p.link}</h3>
+        <div className="subscribe-result">
           <ul className="subscribe-services">
             {(
               [
@@ -142,7 +141,7 @@ export function SubscribePanel({
               <figcaption className="muted small">{p.qr}</figcaption>
             </figure>
           )}
-        </section>
+        </div>
       )}
       <p className="notice small">{p.privacy}</p>
       {feeds.length > 0 && (
