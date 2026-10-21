@@ -78,6 +78,8 @@ test("guided account creation from an invitation, and « Ce n'est pas mon rôle 
     await axe(page, "password");
     await page.getByRole("button", { name: "Créer mon compte" }).click();
     await page.waitForURL(/\/fr$/, { timeout: 15000 });
+    // Signed in: « Mon espace » offers to sign out (the home keeps it in the account menu).
+    await page.goto("/fr/access");
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     expect((await db.query("SELECT role FROM role_assignment WHERE organization_id=$1 AND user_id=$2", [club, user])).rows).toEqual([{ role: "player" }]);
