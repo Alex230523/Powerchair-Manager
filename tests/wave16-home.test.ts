@@ -81,8 +81,11 @@ describe("copy and layout", () => {
   it("keeps two columns down to 860 px and counts matches, never match days", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     expect(css).toContain("@media (max-width: 860px) {\n  .dash-grid {");
-    const service = readFileSync("src/domains/dashboard/service.ts", "utf8");
+    // One function for the home and the statistics tiles (wave 16, S1).
+    expect(readFileSync("src/domains/dashboard/service.ts", "utf8")).toContain("await seasonKeyFigures(c, org, seasonRow, teamId ? [teamId] : null)");
+    const service = readFileSync("src/domains/statistics/key-figures.ts", "utf8");
     expect(service).toContain("FROM match x WHERE x.organization_id=$1 AND x.status='played'");
     expect(service).toContain("count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role='player'");
+    expect(readFileSync("src/components/statistics.tsx", "utf8")).toContain('useStat<Summary>("summary"');
   });
 });

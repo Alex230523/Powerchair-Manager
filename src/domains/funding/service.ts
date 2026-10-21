@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { randomBytes } from "node:crypto";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -845,6 +846,7 @@ export async function taskProofUpload(db: Pool, p: Principal, taskId: string, fi
       if (!s.moneyManage && !(await responsibleOf(s, taskId))) throw new AccessError("FORBIDDEN");
       const type = receiptType(file.bytes);
       if (!type || file.bytes.length > receiptMaxBytes) throw new AccessError("INVALID_FILE", 400);
+      await ensureStorage(s.c, s.org, file.bytes.length);
       const name = file.name.replace(/[\\/\u0000-\u001f]/g, "_").trim().slice(0, 200) || "preuve";
       const id = (
         await s.c.query(

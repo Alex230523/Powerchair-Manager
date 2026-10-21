@@ -219,6 +219,11 @@ export const documentStatuses = {
   en: english.documentStatuses,
 };
 export const documentErrors: Record<string, [string, string, string]> = {
+  STORAGE_FULL: [
+    "L'espace de stockage du club est plein : le fichier n'a pas été envoyé. Le président voit ce qui prend de la place dans Statistiques, carte Stockage.",
+    "De opslagruimte van de club is vol: het bestand werd niet verstuurd. De voorzitter ziet wat ruimte inneemt in Statistieken, kaart Opslag.",
+    "The club's storage is full: the file was not sent. The president sees what takes up space in Statistics, Storage card.",
+  ],
   SENSITIVE_PERMISSION_REQUIRED: [
     "Une habilitation explicite aux documents sensibles est nécessaire.",
     "Expliciete bevoegdheid voor gevoelige documenten is vereist.",

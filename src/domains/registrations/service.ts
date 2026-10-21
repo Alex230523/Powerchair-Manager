@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import { Pool, type PoolClient } from "pg";
 import { z } from "zod";
 import {
@@ -953,6 +954,8 @@ export async function attachmentUpload(
         b[2] === 255);
     if (!valid || b.length > 2097152 || !b.length)
       throw new AccessError("INVALID_FILE", 400);
+    const previous = Number((await c.query("SELECT size_bytes FROM registration_attachment WHERE application_id=$1 AND field_key=$2", [a.id, key])).rows[0]?.size_bytes ?? 0);
+    await ensureStorage(c, org, b.length, previous);
     await c.query(
       "INSERT INTO registration_attachment(application_id,field_key,filename,media_type,content) VALUES($1,$2,$3,$4,$5) ON CONFLICT(application_id,field_key) DO UPDATE SET filename=EXCLUDED.filename,media_type=EXCLUDED.media_type,content=EXCLUDED.content,created_at=now()",
       [

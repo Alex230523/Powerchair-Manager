@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { account, active, audit, AccessError, validImage, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
@@ -212,7 +213,7 @@ async function clubTrips(s: Scope, year: number) {
   const rows = (
     await s.c.query(
       `SELECT tr.id,tr.title,tr.status,tr.starts_on::text AS starts_on,tr.ends_on::text AS ends_on,COALESCE(sv.name,pl.name,NULLIF(tr.destination,'')) AS place,
-              tr.final_rank,tr.teams_count,tr.result_note,tr.calendar_event_id AS event_id,tm.name AS team,
+              tr.final_rank,tr.teams_count,tr.result_note,tr.calendar_event_id AS event_id,tm.name AS team,EXISTS(SELECT 1 FROM award w WHERE w.trip_id=tr.id) AS awarded,
               (SELECT count(*)::int FROM trip_vehicle v WHERE v.trip_id=tr.id) AS vehicles,
               (SELECT COALESCE(sum(v.wheelchair_places),0)::int FROM trip_vehicle v WHERE v.trip_id=tr.id) AS wheelchair_places,
               COALESCE((SELECT json_agg(json_build_object('id',m.id,'opponent',m.opponent,'our',m.our_score,'their',m.their_score) ORDER BY m.starts_at)
@@ -239,6 +240,7 @@ async function clubTrips(s: Scope, year: number) {
     vehicles: number;
     wheelchair_places: number;
     matches: { id: string; opponent: string; our: number; their: number }[];
+    awarded: boolean;
   }[];
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
   const plan = s.a.role === "club_president" || rights.includes("calendar.manage") || s.a.role === "coach";
@@ -261,6 +263,8 @@ async function clubTrips(s: Scope, year: number) {
       past: rows.filter((r) => r.ends_on < today).reverse(),
       // « Préparer un tournoi »: the teams this person plans for, the club's tournament type, who is in charge.
       prepare: plan && teams.length ? { teams, typeId: type, userId: s.p.userId } : null,
+      // « Ajouter au Hall of fame » (wave 16, S1): for those who write the prizes, Statistics on.
+      award: (s.a.role === "club_president" || rights.includes("mandates.manage") || rights.includes("teams.manage")) && !off.includes("statistics"),
     },
   };
 }
@@ -468,6 +472,8 @@ export async function trophyPhotoSave(db: Pool, p: Principal, trophyId: string, 
       if (!isPresident(s.a) || (r.organization_id !== s.a.organization_id && r.owner_id !== s.a.organization_id)) throw new AccessError("FORBIDDEN");
       const bytes = Buffer.from(data, "base64");
       if (!validImage(mediaType, bytes, 1_572_864)) throw new AccessError("INVALID_FILE", 400);
+      const previous = Number((await s.c.query("SELECT size_bytes FROM tournament_trophy WHERE id=$1", [r.id])).rows[0]?.size_bytes ?? 0);
+      await ensureStorage(s.c, r.organization_id, bytes.length, previous);
       await s.c.query("UPDATE tournament_trophy SET photo=$2,photo_type=$3,photo_updated_at=now() WHERE id=$1", [r.id, bytes, mediaType]);
       await audit(s.c, s.a.organization_id, s.p.userId, "tournament.trophyPhoto", r.id);
       return { ok: true as const };

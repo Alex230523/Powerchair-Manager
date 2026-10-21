@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { validIban } from "../../lib/iban";
@@ -180,6 +181,8 @@ export async function clubExecute(
       const bytes = Buffer.from(input.data, "base64");
       if (!validLogo(input.mediaType, bytes))
         throw new AccessError("INVALID_FILE", 400);
+      const previous = Number((await c.query("SELECT size_bytes FROM organization_logo WHERE organization_id=$1", [a.organization_id])).rows[0]?.size_bytes ?? 0);
+      await ensureStorage(c, a.organization_id, bytes.length, previous);
       await c.query(
         "INSERT INTO organization_logo(organization_id,media_type,content,updated_by) VALUES($1,$2,$3,$4) ON CONFLICT(organization_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,updated_by=EXCLUDED.updated_by,updated_at=now()",
         [a.organization_id, input.mediaType, bytes, p.userId],

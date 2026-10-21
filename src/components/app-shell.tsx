@@ -344,7 +344,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
       first.focus();
     }
   }, []);
-  if (path.includes("/registration-widget/")) return children;
+  if (path.includes("/registration-widget/") || path.includes("/hall-of-fame-widget/")) return children;
   function current(route: string) {
     const href = `/${locale}${route}`;
     if (path === href) return "page" as const;

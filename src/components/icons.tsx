@@ -16,6 +16,12 @@ import {
   Handshake,
   ClipboardCheck,
   ClipboardList,
+  Download,
+  Ellipsis,
+  HardDrive,
+  Image as ImageGlyph,
+  Medal,
+  Star,
   Clock,
   FileText,
   Flag,
@@ -105,6 +111,12 @@ const icons = {
   logOut: LogOut,
   plus: Plus,
   clipboardList: ClipboardList,
+  ellipsis: Ellipsis,
+  download: Download,
+  image: ImageGlyph,
+  medal: Medal,
+  star: Star,
+  storage: HardDrive,
 } satisfies Record<string, LucideIcon>;
 export type IconName = keyof typeof icons;
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

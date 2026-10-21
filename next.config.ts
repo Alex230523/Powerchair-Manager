@@ -21,8 +21,16 @@ const config: NextConfig = {
         ],
       },
       {
+        source: "/:locale/hall-of-fame-widget/:id",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
+      {
         source:
-          "/:path((?!fr/registration-widget/|nl/registration-widget/|en/registration-widget/).*)",
+          "/:path((?!fr/registration-widget/|nl/registration-widget/|en/registration-widget/|fr/hall-of-fame-widget/|nl/hall-of-fame-widget/|en/hall-of-fame-widget/).*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

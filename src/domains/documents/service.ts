@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { Pool, type PoolClient } from "pg";
@@ -762,6 +763,7 @@ export async function documentExecute(
         )
       ).rows[0];
       if (!f) throw new AccessError("NOT_FOUND", 404);
+      await ensureStorage(s.c, s.a.organization_id, Math.ceil((f.content.length * 4) / 3));
       return addVersion(
         s,
         d,
@@ -790,6 +792,8 @@ export async function documentUpload(
       const d = await record(s, id, true);
       if (d.version !== expectedVersion)
         throw new AccessError("STALE_VERSION", 409);
+      // Stored encrypted in base64: about four thirds of the file.
+      await ensureStorage(s.c, s.a.organization_id, Math.ceil((file.bytes.length * 4) / 3));
       return addVersion(s, d, file);
     },
     org,

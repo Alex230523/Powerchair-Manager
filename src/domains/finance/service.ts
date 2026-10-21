@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { resolveScope } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -323,6 +324,7 @@ export async function financeReceiptUpload(
         [transactionId, organization],
       );
       if (!line.rowCount) throw new AccessError("NOT_FOUND", 404);
+      await ensureStorage(c, organization, file.bytes.length);
       const name =
         file.name
           .replace(/[\\/\u0000-\u001f]/g, "_")
