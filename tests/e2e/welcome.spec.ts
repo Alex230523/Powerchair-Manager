@@ -55,7 +55,7 @@ test("guided account creation from an invitation, and « Ce n'est pas mon rôle 
     // 2. Basic information, filled from the club's file.
     await expect(page.getByRole("heading", { level: 1, name: "Mes informations" })).toBeFocused();
     await expect(page.getByLabel("Prénom")).toHaveValue("Camille");
-    await expect(page.getByLabel("Nom", { exact: true })).toHaveValue("Joueuse");
+    await expect(page.locator("#welcome-lastName")).toHaveValue("Joueuse");
     await expect(page.getByLabel("Date de naissance")).toHaveValue("2000-05-04");
     await axe(page, "details");
     await page.getByRole("button", { name: "Continuer" }).click();

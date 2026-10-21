@@ -345,7 +345,8 @@ test("real registration builder, family application, attachment, complement, adm
     await expect(candidatePage.getByText(/Après admission/)).toBeVisible();
     expect(
       (
-        await db.query("SELECT id FROM club_person WHERE organization_id=$1", [
+        // One player file (since wave 16, I2 the parent invited at admission has their own file).
+        await db.query("SELECT id FROM club_person WHERE organization_id=$1 AND 'player'=ANY(directory_roles)", [
           org,
         ])
       ).rowCount,
