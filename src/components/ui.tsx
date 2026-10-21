@@ -16,8 +16,9 @@ import { Icon, type IconName } from "./icons";
  */
 
 export type Tone = "neutral" | "primary" | "brand" | "success" | "warning" | "danger" | "info";
-/** "brand" is the former name of the primary tone. */
-const toneName = (tone: Tone) => (tone === "brand" ? "primary" : tone);
+const tones: readonly string[] = ["neutral", "primary", "success", "warning", "danger", "info"];
+/** "brand" is the former name of the primary tone; anything unknown (an empty string, say) is neutral. */
+const toneName = (tone: Tone | string | undefined): Tone => (tone === "brand" ? "primary" : tones.includes(tone ?? "") ? (tone as Tone) : "neutral");
 
 /* ---------- Button ---------- */
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -161,6 +162,8 @@ export function Card({
   divider,
   footer,
   as,
+  headingId,
+  label,
 }: {
   title?: ReactNode;
   subtitle?: ReactNode;
@@ -179,8 +182,12 @@ export function Card({
   divider?: boolean;
   footer?: ReactNode;
   as?: "section" | "article" | "div" | "li";
+  /** Explicit id of the title heading (when something else points at it). */
+  headingId?: string;
+  /** Accessible name of a card without a visible title. */
+  label?: string;
 }) {
-  const titleId = title && id ? id + "-title" : undefined;
+  const titleId = headingId ?? (title && id ? id + "-title" : undefined);
   const classes = `card ${flat ? "flat" : ""} ${href || onClick ? "interactive" : ""} ${className}`.replace(/\s+/g, " ").trim();
   const body = (
     <>
@@ -205,7 +212,7 @@ export function Card({
     );
   const Tag = as ?? "section";
   return (
-    <Tag id={id} className={classes} aria-labelledby={labelledBy ?? titleId}>
+    <Tag id={id} className={classes} aria-labelledby={labelledBy ?? titleId} aria-label={label}>
       {body}
     </Tag>
   );
@@ -223,7 +230,7 @@ export function IconTile({ icon, tone = "primary", size = 36 }: { icon: IconName
     </span>
   );
 }
-export function Badge({ tone = "neutral", dot, children }: { tone?: Tone; dot?: boolean; children: ReactNode }) {
+export function Badge({ tone = "neutral", dot, children }: { tone?: Tone | string; dot?: boolean; children: ReactNode }) {
   return (
     <span className="badge" data-tone={toneName(tone)}>
       {dot && <span className="badge-dot" aria-hidden="true" />}
@@ -307,17 +314,21 @@ export function Tabs({
   onChange,
   label,
   panelId,
+  idPrefix,
 }: {
   items: TabItem[];
   value: string;
   onChange: (id: string) => void;
   /** Accessible name of the tab list. */
   label: string;
-  /** Id of the panel the tabs control, or a function of the tab id. */
+  /** Id of the panel the tabs control, or a function of the tab id (only the selected tab points at it: the other panels are not in the page). */
   panelId?: string | ((id: string) => string);
+  /** Prefix of the tab ids (default: a generated one), for panels that point back at their tab. */
+  idPrefix?: string;
 }) {
   const roving = useRoving();
-  const base = useId();
+  const generated = useId();
+  const base = idPrefix ?? generated;
   return (
     <div className="tabs" role="tablist" aria-label={label} ref={roving.ref} onKeyDown={roving.onKeyDown}>
       {items.map((it) => (
@@ -328,7 +339,7 @@ export function Tabs({
           id={`${base}-${it.id}`}
           data-roving=""
           aria-selected={value === it.id}
-          aria-controls={typeof panelId === "function" ? panelId(it.id) : panelId}
+          aria-controls={value === it.id ? (typeof panelId === "function" ? panelId(it.id) : panelId) : undefined}
           tabIndex={value === it.id ? 0 : -1}
           disabled={it.disabled}
           onClick={() => onChange(it.id)}

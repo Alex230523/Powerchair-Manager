@@ -12,6 +12,7 @@ import { homeCopy } from "./home-copy";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
+import { Badge, Card, EmptyState, KpiCard } from "./ui";
 type State =
   | { kind: "loading" }
   | { kind: "visitor"; failed: boolean }
@@ -154,9 +155,9 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
         <h2 id="dash-todo">
           {t.todo}
           {data.todos.length > 0 && (
-            <span className="count-pill">
+            <Badge tone="primary">
               {data.todos.reduce((n, item) => n + item.count, 0)}
-            </span>
+            </Badge>
           )}
         </h2>
         {data.todos.length ? (
@@ -181,10 +182,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
             ))}
           </ul>
         ) : (
-          <p className="all-clear">
-            <Icon name="check" />
-            {t.allClear}
-          </p>
+          <EmptyState icon="check" tone="success" title={t.allClear} />
         )}
       </section>
       {data.context && (
@@ -192,7 +190,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {data.metrics.length > 0 && (
             <section aria-labelledby="dash-figures">
               <h2 id="dash-figures">{t.figures}</h2>
-              <ul className="dash-figures">
+              <ul className="dash-figures stat-row-grid" data-cols="2">
                 {data.metrics.map((m) => (
                   <li key={m.key}>
                     <MetricCard locale={locale} metric={m} />
@@ -201,8 +199,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
               </ul>
             </section>
           )}
-          <section className="panel" aria-labelledby="dash-agenda">
-            <h2 id="dash-agenda">{t.agenda}</h2>
+          <Card title={t.agenda} labelledBy="dash-agenda" headingId="dash-agenda">
             {timeline.length ? (
               <ul className="agenda">
                 {timeline.map((row) =>
@@ -219,12 +216,24 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
             <p>
               <Link href={href("/calendar")}>{t.openCalendar}</Link>
             </p>
-          </section>
+          </Card>
         </div>
       )}
     </main>
   );
 }
+const metricIcons: Record<Metric["key"], IconName> = {
+  activeMembers: "club",
+  activePlayers: "players",
+  activeTeams: "team",
+  upcomingEvents: "calendar",
+  pendingResponses: "attendance",
+  waitingList: "inbox",
+  acceptedRecently: "check",
+  duesNext30: "dues",
+  treasury: "funding",
+  myNextDue: "dues",
+};
 function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
   const t = homeCopy[locale].metrics[metric.key];
   const value =
@@ -238,20 +247,7 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
         timeZone: "UTC",
       }).format(new Date(metric.date + "T12:00:00Z"))
     : t.hint;
-  const body = (
-    <>
-      <span className="metric-label">{t.label}</span>
-      <span className="metric-value">{value}</span>
-      {hint && <span className="metric-hint">{hint}</span>}
-    </>
-  );
-  return metric.href ? (
-    <Link className="metric" href={`/${locale}${metric.href}`}>
-      {body}
-    </Link>
-  ) : (
-    <div className="metric">{body}</div>
-  );
+  return <KpiCard label={t.label} value={value} description={hint || undefined} icon={metricIcons[metric.key]} href={metric.href ? `/${locale}${metric.href}` : undefined} />;
 }
 function AgendaRow({
   locale,
@@ -282,14 +278,14 @@ function AgendaRow({
           <strong>
             {event.title}
             {event.status === "cancelled" && (
-              <span className="status-tag" data-tone="danger">
+              <Badge tone="danger">
                 {t.cancelled}
-              </span>
+              </Badge>
             )}
             {event.responseNeeded && event.status !== "cancelled" && (
-              <span className="status-tag" data-tone="warning">
+              <Badge tone="warning">
                 {t.responseNeeded}
-              </span>
+              </Badge>
             )}
           </strong>
           <span>

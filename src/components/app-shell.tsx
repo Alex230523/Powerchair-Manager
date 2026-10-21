@@ -10,6 +10,7 @@ import { shellCopy } from "./shell-copy";
 import { CommandPalette } from "./command-palette";
 import { ScopeProvider, useScope } from "./use-scope";
 import type { SeasonOption, TeamOption } from "@/domains/scope/service";
+import { Badge } from "./ui";
 export { shellCopy };
 type Copy = (typeof shellCopy)[Locale];
 export type Workspace = {
@@ -475,7 +476,7 @@ export function AppShell({
               {state?.selected?.organization_name ??
                 (state ? t.noContext : "Powerchair Football Manager")}
             </strong>
-            {role && <span className="role-chip">{labels[role][locale]}</span>}
+            {role && <Badge tone="primary">{labels[role][locale]}</Badge>}
           </div>
           <div className="topbar-tools">
             {!state && (
