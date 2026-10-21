@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { clubView } from "@/domains/club/service";
 import { errors } from "./access-copy";
 import { initials } from "./app-shell";
+import { Card } from "./ui";
 
 type View = Awaited<ReturnType<typeof clubView>>;
 const copy = {
@@ -188,8 +189,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <div className="grid">
-        <section className="panel" aria-labelledby="club-identity-title">
-          <h2 id="club-identity-title">{t.identity}</h2>
+        <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
           <p className="muted">{t.intro}</p>
           <div className="logo-row">
             {o.logo_version ? (
@@ -327,10 +327,9 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
           ) : (
             <p className="muted">{t.readOnly}</p>
           )}
-        </section>
+        </Card>
         {o.kind === "club" && (
-          <section className="panel" aria-labelledby="club-teams-title">
-            <h2 id="club-teams-title">{t.teams}</h2>
+          <Card title={t.teams} labelledBy="club-teams-title" headingId="club-teams-title">
             <p className="muted">{t.teamsIntro}</p>
             <p>
               <a href="#teams">{t.teams} ↓</a>
@@ -361,7 +360,7 @@ export function ClubIdentity({ locale }: { locale: Locale }) {
             ) : (
               <p className="muted">{t.noTeam}</p>
             )}
-          </section>
+          </Card>
         )}
       </div>
     </div>

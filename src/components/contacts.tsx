@@ -26,7 +26,7 @@ export function Contacts({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access contacts">
-        <h1>{c.title}</h1>
+        <PageHeader title={c.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );

@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { attestationsView } from "@/domains/dues/attestation";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
+import { EmptyState, PageHeader } from "./ui";
 
 const copy = {
   fr: {
@@ -121,7 +122,7 @@ export function Attestations({
   if (!data)
     return (
       <main id="main" className="access attestations">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -177,7 +178,7 @@ export function Attestations({
               ))}
           </ul>
         ) : (
-          <p className="empty-directory">{t.none}</p>
+          <EmptyState title={t.none} />
         )}
       </div>
       {s &&

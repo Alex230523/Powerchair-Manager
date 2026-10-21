@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import { unsubscribeCopy } from "./communication-copy";
 import { useData } from "./use-api";
+import { PageHeader } from "./ui";
 
 /** Public page reached from the link at the bottom of a newsletter. */
 export function Unsubscribe({ locale, id }: { locale: Locale; id: string }) {
@@ -36,7 +37,7 @@ export function Unsubscribe({ locale, id }: { locale: Locale; id: string }) {
   }
   return (
     <main id="main" className="access public-pot">
-      <h1>{t.title}</h1>
+      <PageHeader title={t.title} />
       {!data ? (
         error ? (
           <p role="alert">{error}</p>

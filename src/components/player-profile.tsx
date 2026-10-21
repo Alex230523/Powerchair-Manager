@@ -18,6 +18,7 @@ import { errors } from "./access-copy";
 import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
+import { Badge, Tabs } from "./ui";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
@@ -195,30 +196,15 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <div className="tabs" role="tablist" aria-label={p.full_name}>
-        {(["personal", "sport"] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            id={`tab-${key}`}
-            aria-selected={tab === key}
-            aria-controls={`panel-${key}`}
-            tabIndex={tab === key ? 0 : -1}
-            onClick={() => setTab(key)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                const next = tab === "personal" ? "sport" : "personal";
-                setTab(next);
-                document.getElementById(`tab-${next}`)?.focus();
-              }
-            }}
-          >
-            <Icon name={key === "personal" ? "user" : "chart"} />
-            {key === "personal" ? t.personalTab : t.sportTab}
-          </button>
-        ))}
-      </div>
+      <Tabs label={p.full_name} items={(["personal", "sport"] as const).map((key) => ({
+          id: key,
+          label: (
+            <>
+              <Icon name={key === "personal" ? "user" : "chart"} />
+              {key === "personal" ? t.personalTab : t.sportTab}
+            </>
+          ),
+        }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
 
       <section
         id="panel-personal"
@@ -436,12 +422,9 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                   {a.position ? ` · ${a.position}` : ""} · {day(a.starts_on)}
                   {a.ends_on ? ` → ${day(a.ends_on)}` : ""}
                 </span>
-                <span
-                  className="status-tag"
-                  data-tone={a.current ? "success" : ""}
-                >
+                <Badge tone={a.current ? "success" : ""}>
                   {a.current ? t.current : t.ended}
-                </span>
+                </Badge>
               </li>
             ))}
             {p.joined_on && (
@@ -479,9 +462,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                         · {day(String(r.starts_at))} · {kinds[r.kind] ?? r.kind}
                       </span>
                     </span>
-                    <span
-                      className="status-tag"
-                      data-tone={
+                    <Badge tone={
                         r.status === "cancelled"
                           ? "danger"
                           : r.closed
@@ -491,14 +472,13 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                             : r.response === "none"
                               ? "warning"
                               : ""
-                      }
-                    >
+                      }>
                       {r.status === "cancelled"
                         ? t.cancelled
                         : r.closed
                           ? t.actuals[r.actual as keyof typeof t.actuals]
                           : t.responses[r.response as keyof typeof t.responses]}
-                    </span>
+                    </Badge>
                   </li>
                 ))}
               </ul>
@@ -514,19 +494,16 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               {view.documents.map((d) => (
                 <li key={d.id}>
                   <span>{d.name}</span>
-                  <span
-                    className="status-tag"
-                    data-tone={
+                  <Badge tone={
                       ["valid"].includes(d.status)
                         ? "success"
                         : ["expired", "refused", "missing"].includes(d.status)
                           ? "danger"
                           : "warning"
-                    }
-                  >
+                    }>
                     {statuses[d.status] ?? d.status}
                     {d.expires_on ? ` · ${day(d.expires_on)}` : ""}
-                  </span>
+                  </Badge>
                 </li>
               ))}
             </ul>
@@ -659,9 +636,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                 }
                 {view.sport.classification_valid_until &&
                   ` · ${t.validUntil.toLocaleLowerCase()} ${day(view.sport.classification_valid_until)}`}{" "}
-                <span
-                  className="status-tag"
-                  data-tone={
+                <Badge tone={
                     view.sport.classification_status === "validated"
                       ? "success"
                       : view.sport.classification_status === "refused"
@@ -669,14 +644,13 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                         : view.sport.classification_status === "requested"
                           ? "warning"
                           : ""
-                  }
-                >
+                  }>
                   {
                     licensesCopy[locale].classStatus[
                       view.sport.classification_status ?? "unverified"
                     ]
                   }
-                </span>
+                </Badge>
               </dd>
               <dt>{licensesCopy[locale].license}</dt>
               <dd>
@@ -707,9 +681,9 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                   <li key={c.id}>
                     <strong>{c.name}</strong>
                     {link?.is_primary && (
-                      <span className="status-tag" data-tone="success">
+                      <Badge tone="success">
                         {t.primary}
-                      </span>
+                      </Badge>
                     )}
                     <span className="muted">
                       {[c.brand, c.model].filter(Boolean).join(" · ") || "—"}
@@ -718,9 +692,9 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
                       {c.others > 0 && ` · ${t.shared} ${c.others}`}
                     </span>
                     {overMatchSpeed(c.max_speed_kmh) && (
-                      <span className="status-tag" data-tone="warning">
+                      <Badge tone="warning">
                         &gt; 10 km/h
-                      </span>
+                      </Badge>
                     )}
                   </li>
                 );
@@ -889,17 +863,15 @@ export function Stat({
   hint: string;
 }) {
   return (
-    <div className="stat">
-      <span className="metric-label">{label}</span>
-      <span className="metric-value">
-        {value === null ? "—" : `${value} %`}
-      </span>
+    <div className="stat stat-card">
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value === null ? "…" : `${value} %`}</span>
       {value !== null && (
         <meter min={0} max={100} value={value} aria-label={label}>
           {value} %
         </meter>
       )}
-      <span className="metric-hint">{hint}</span>
+      <span className="stat-hint">{hint}</span>
     </div>
   );
 }

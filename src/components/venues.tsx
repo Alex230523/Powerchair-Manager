@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { venuesView } from "@/domains/venues/service";
 import { errors } from "./access-copy";
 import { useData, usePost, useShowMore, ShowMore } from "./use-api";
+import { EmptyState, PageHeader, Card } from "./ui";
 
 const copy = {
   fr: {
@@ -178,7 +179,7 @@ export function Venues({ locale }: { locale: Locale }) {
   if (!data)
     return (
       <main id="main" className="access venues">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
       </main>
     );
@@ -274,18 +275,12 @@ export function Venues({ locale }: { locale: Locale }) {
   const answer = (v: boolean | null) => (v === true ? t.yes : v === false ? t.no : t.unknown);
   return (
     <main id="main" className="access venues">
-      <div className="directory-heading">
-        <div>
-          <h1>{t.title}</h1>
-          <p className="muted">{t.intro}</p>
-        </div>
-        {data.can.edit && editing === null && (
+      <PageHeader title={t.title} subtitle={t.intro} actions={data.can.edit && editing === null && (
           <button type="button" className="button" onClick={() => setEditing("new")}>{t.add}</button>
-        )}
-      </div>
+        )} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      {editing === "new" && <section className="panel" aria-label={t.add}>{form()}</section>}
+      {editing === "new" && <Card label={t.add}>{form()}</Card>}
       <div className="filters venue-filters">
         <label htmlFor="venue-q">
           {t.search}
@@ -353,12 +348,11 @@ export function Venues({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <p className="empty-directory">{t.none}</p>
+        <EmptyState title={t.none} />
       )}
       <ShowMore locale={locale} {...more} />
       {data.places.some((p) => !p.shared) && (
-        <section className="panel" aria-labelledby="venues-share">
-          <h2 id="venues-share">{t.share}</h2>
+        <Card title={t.share} labelledBy="venues-share" headingId="venues-share">
           <p className="muted">{t.shareIntro}</p>
           <ul className="profile-list">
             {data.places
@@ -381,7 +375,7 @@ export function Venues({ locale }: { locale: Locale }) {
                 </li>
               ))}
           </ul>
-        </section>
+        </Card>
       )}
     </main>
   );

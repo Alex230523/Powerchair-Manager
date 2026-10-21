@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 /** Wave 13, foundations: the tokens of the new design system, written once for both themes. */
 const css = readFileSync("src/app/globals.css", "utf8");
-const root = css.slice(css.indexOf(":root {"), css.indexOf("/* ---------- Base ---------- */"));
+const root = css.slice(css.indexOf(":root"), css.indexOf("/* ---------- Base ---------- */"));
 
 describe("design tokens", () => {
   it.each([

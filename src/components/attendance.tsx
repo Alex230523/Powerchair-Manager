@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam, ApplyScope } from "./use-scope";
-import { Button, Panel } from "./ui";
+import { Button, Panel, PageHeader } from "./ui";
 import { attendanceCopy } from "./attendance-copy";
 import { AttendanceGrid, gridCopy } from "./attendance-grid";
 import { actuals, responses } from "@/domains/attendance/schema";
@@ -195,8 +195,7 @@ export function Attendance({ locale }: { locale: Locale }) {
   return (
     <>
       <main id="main" className="access attendance">
-        <h1>{t.title}</h1>
-        <p>{t.intro}</p>
+        <PageHeader title={t.title} subtitle={t.intro} />
         {error && (
           <p role="alert">
             {error} <Link href={`/${locale}/access`}>{t.access}</Link>

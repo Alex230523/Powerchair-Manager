@@ -52,6 +52,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 20/10/2026 | [Vague 11 : finance du club, subsides et partenaires, carnet de contacts, réglages regroupés, photo de profil](evolutions/2026-10-20-q-vague-11-finance-reglages-contacts.md) |
 | 21/10/2026 | [Vague 12 : saison et équipe choisies une fois, page Mes équipes, couleurs d'équipe, finances par équipe](evolutions/2026-10-21-r-vague-12-equipes-contexte.md) |
 | 21/10/2026 | [Vague 13, prompt 2.1 : fondations du design, polices, jetons, mode sombre factorisé](evolutions/2026-10-21-s-vague-13-design-fondations.md) |
+| 21/10/2026 | [Vague 13, prompt 2.2 : composants partagés et migration des pages](evolutions/2026-10-21-t-vague-13-composants-migration.md) |
 
 ## Convention
 

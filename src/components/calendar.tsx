@@ -20,7 +20,7 @@ import {
   calendarErrors,
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel } from "./ui";
+import { Button, Panel, PageHeader } from "./ui";
 type Place = {
   id: string;
   name: string;
@@ -390,7 +390,7 @@ export function Calendar({
   return (
     <>
       <main id="main" className="access calendar">
-        <h1>{t.title}</h1>
+        <PageHeader title={t.title} />
 
         <div role="status">{loading ? t.loading : message}</div>
         {error && (

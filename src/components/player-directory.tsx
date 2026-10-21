@@ -7,7 +7,7 @@ import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
 import { errors } from "./access-copy";
-import { Button } from "./ui";
+import { Button, EmptyState, PageHeader } from "./ui";
 import { Modal } from "./modal";
 import { PlayerImport } from "./player-import";
 import { ExportDialog } from "./export-dialog";
@@ -336,12 +336,7 @@ export function PlayerDirectory({
   }
   return (
     <main id="main" className="access player-directory">
-      <div className="directory-heading">
-        <div>
-          <h1>{title}</h1>
-          <p>{data?.context.name ?? t.intro}</p>
-        </div>
-        <div className="directory-actions">
+      <PageHeader title={title} subtitle={data?.context.name ?? t.intro} actions={<><div className="directory-actions">
           <Link
             className="button secondary"
             href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
@@ -393,8 +388,7 @@ export function PlayerDirectory({
               {role === "player" ? t.add : t.addCoach}
             </Button>
           )}
-        </div>
-      </div>
+        </div></>} />
       {!person && !creating && feedback}
       {!data && (
         <p>
@@ -602,7 +596,7 @@ export function PlayerDirectory({
               </tbody>
             </table>
             <ShowMore locale={locale} {...moreRoster} />
-            {!roster.length && <p className="empty-directory">{p.empty}</p>}
+            {!roster.length && <EmptyState title={p.empty} />}
           </div>
           {manager && !former && (
             <details className="panel">

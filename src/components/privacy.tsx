@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { privacyView } from "@/domains/privacy/service";
 import { privacyCopy } from "./privacy-copy";
 import { errors } from "./access-copy";
+import { Badge, PageHeader, Card } from "./ui";
 
 type View = Awaited<ReturnType<typeof privacyView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -94,16 +95,14 @@ export function Privacy({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access privacy">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
       {!view && !denied && !error && <p role="status">{t.loading}</p>}
       {view && (
         <>
-          <section className="panel" aria-labelledby="privacy-duplicates">
-            <h2 id="privacy-duplicates">{t.duplicates}</h2>
+          <Card title={t.duplicates} labelledBy="privacy-duplicates" headingId="privacy-duplicates">
             <p className="muted">{t.duplicatesIntro}</p>
             {view.duplicates.length ? (
               <ul className="records duplicate-list">
@@ -124,9 +123,9 @@ export function Privacy({ locale }: { locale: Locale }) {
                           <strong>{a.full_name}</strong>
                           <span className="muted"> {describe(a)}</span>
                         </span>
-                        <span className="status-tag">
+                        <Badge>
                           {reason === "name" ? t.sameName : t.sameEmail}
-                        </span>
+                        </Badge>
                         <span>
                           <strong>{b.full_name}</strong>
                           <span className="muted"> {describe(b)}</span>
@@ -168,11 +167,10 @@ export function Privacy({ locale }: { locale: Locale }) {
             ) : (
               <p className="muted">{t.noDuplicate}</p>
             )}
-          </section>
+          </Card>
 
           <div className="grid">
-            <section className="panel" aria-labelledby="privacy-access">
-              <h2 id="privacy-access">{t.access}</h2>
+            <Card title={t.access} labelledBy="privacy-access" headingId="privacy-access">
               <p className="muted">{t.accessIntro}</p>
               <label htmlFor="privacy-person">
                 {t.person}
@@ -230,10 +228,9 @@ export function Privacy({ locale }: { locale: Locale }) {
                   </button>
                 </form>
               )}
-            </section>
+            </Card>
 
-            <section className="panel" aria-labelledby="privacy-retention">
-              <h2 id="privacy-retention">{t.retention}</h2>
+            <Card title={t.retention} labelledBy="privacy-retention" headingId="privacy-retention">
               <p className="muted">{t.retentionIntro}</p>
               <form
                 className="finance-form"
@@ -319,12 +316,11 @@ export function Privacy({ locale }: { locale: Locale }) {
                   {t.purge}
                 </button>
               )}
-            </section>
+            </Card>
           </div>
 
           {view.history.length > 0 && (
-            <section className="panel" aria-labelledby="privacy-history">
-              <h2 id="privacy-history">{t.history}</h2>
+            <Card title={t.history} labelledBy="privacy-history" headingId="privacy-history">
               <ul className="records">
                 {view.history.map((h, i) => (
                   <li key={i}>
@@ -337,7 +333,7 @@ export function Privacy({ locale }: { locale: Locale }) {
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           )}
         </>
       )}
