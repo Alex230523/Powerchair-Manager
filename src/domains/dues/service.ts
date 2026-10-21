@@ -8,6 +8,7 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
+import { offerUndo } from "../undo/service";
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { ownProfiles, today, type Actor } from "../calendar/access";
@@ -362,7 +363,9 @@ export async function duesExecute(
           { paid_cents: paid + cmd.amountCents, transaction: row.id, method: cmd.method },
           `${(cmd.amountCents / 100).toFixed(2)} € · ${cmd.method}`,
         );
-        return { id: row.id as string };
+        // Wave 15, C10: the payment (and its ledger line) can be undone for two minutes.
+        const undo = await offerUndo(s.c, o, p.userId, "payment", row.id, { receivable: d.id, plan: d.plan_id });
+        return { id: row.id as string, undo };
       }
       if (cmd.action === "plan") {
         if (

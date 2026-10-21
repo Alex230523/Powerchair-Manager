@@ -17,6 +17,8 @@ import { Panel, Button } from "./ui";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
+import { undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 type View = Awaited<ReturnType<typeof peopleView>>;
 type Profile = View["profiles"][number];
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -540,11 +542,12 @@ export function People({
                           <form
                             onSubmit={(e) =>
                               submit(e, async (f) => {
-                                await send({
+                                const r = await send({
                                   action: "endAssignment",
                                   id: a.id,
                                   endsOn: f.get("endDate"),
                                 });
+                                undoToast(locale, toastCopy[locale].assignmentEnded, r.undo, data?.context.id, load);
                               })
                             }
                           >
@@ -714,13 +717,15 @@ export function People({
                         <Button
                           disabled={busy}
                           onClick={() =>
-                            void task(() =>
-                              confirm("season" + season.id, {
+                            void task(async () => {
+                              // Reversible: no confirmation, a message with "Annuler" instead (wave 15, C10).
+                              const r = await send({
                                 action: "seasonArchive",
                                 id: season.id,
                                 archived: !season.archived,
-                              }),
-                            )
+                              });
+                              undoToast(locale, season.archived ? toastCopy[locale].seasonRestored : toastCopy[locale].seasonArchived, r.undo, data?.context.id, load);
+                            })
                           }
                         >
                           {season.archived ? t.restore : t.archive}
@@ -833,13 +838,15 @@ export function People({
                         <Button
                           disabled={busy}
                           onClick={() =>
-                            void task(() =>
-                              confirm("team" + team.id, {
+                            void task(async () => {
+                              // Reversible: no confirmation, a message with "Annuler" instead (wave 15, C10).
+                              const r = await send({
                                 action: "teamArchive",
                                 id: team.id,
                                 archived: !team.archived,
-                              }),
-                            )
+                              });
+                              undoToast(locale, team.archived ? toastCopy[locale].teamRestored : toastCopy[locale].teamArchived, r.undo, data?.context.id, load);
+                            })
                           }
                         >
                           {team.archived ? t.restore : t.archive}
