@@ -72,7 +72,7 @@ it("counts the players late with their dues for the sidebar, from the same total
   const before = await dashboardView(db, presidentA);
   expect(before.todos.find((x) => x.key === "duesLate")).toBeUndefined();
   const { id: planId } = await duesExecute(db, presidentA, { action: "plan", seasonId: seasonA, category: "Joueur", amountCents: 25000, maxInstallments: 4, firstDue: "2026-01-31" }, clubA);
-  await duesExecute(db, presidentA, { action: "issue", planId, profileId: emma, installments: 4, firstDue: "2020-01-31" }, clubA);
+  await duesExecute(db, presidentA, { action: "issue", planId, profileId: emma, discountCents: 0, reason: "", installments: 4, firstDue: "2020-01-31" }, clubA);
   const after = await dashboardView(db, presidentA);
   expect(after.todos.find((x) => x.key === "duesLate")).toMatchObject({ count: 1, href: "/dues?state=late", tone: "danger" });
   // The other club sees nothing of it.
