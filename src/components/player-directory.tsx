@@ -697,8 +697,8 @@ export function PlayerDirectory({
           {feedback}
           <form
             onChange={(e) => {
-              const field = e.target as HTMLInputElement;
-              if (field.name === "birthDate") setNewBirth(field.value);
+              const field = e.target;
+              if (field instanceof HTMLInputElement && field.name === "birthDate") setNewBirth(field.value);
             }}
             onSubmit={(e) =>
               submit(e, (f) => {
