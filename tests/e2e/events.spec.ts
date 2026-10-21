@@ -68,7 +68,7 @@ test("events: button in the header, a training for Équipe A with answers, a tri
     // 3. The event sheet: answers, the trip; then deleted (nobody answered yet).
     await page.goto(`/fr/calendar?event=${event}`);
     const sheet = page.getByRole("dialog");
-    await expect(sheet.getByText(/Réponses/)).toContainText("Sans réponse 1");
+    await expect(sheet.locator(".event-answers")).toContainText("Sans réponse 1");
     await expect(sheet.getByText(/Bus du mardi/)).toBeVisible();
     await axe(page, "event sheet");
     await sheet.getByRole("button", { name: "Supprimer" }).click();
