@@ -475,9 +475,19 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
     end.setUTCDate(end.getUTCDate() + 6);
     week = { from, to: end.toISOString().slice(0, 10), events };
   }
+  // Getting started for players and parents (wave 15, C9): the calendar in their phone.
+  const start =
+    club && (a.role === "player" || a.role === "guardian")
+      ? {
+          calendarSubscribed: !!(
+            await c.query("SELECT 1 FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 AND revoked_at IS NULL AND expires_at>now() LIMIT 1", [org, p.userId, a.id])
+          ).rowCount,
+        }
+      : undefined;
   return {
     generatedAt: new Date().toISOString(),
     user: { name: user.name },
+    ...(start ? { start } : {}),
     context: {
       organization: context.organization_name,
       kind: context.kind,

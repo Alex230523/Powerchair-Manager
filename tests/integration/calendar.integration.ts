@@ -11,6 +11,7 @@ import {
 } from "../../src/domains/calendar/service";
 import { localAt, shiftLocal } from "../../src/domains/calendar/time";
 import { processOne } from "../../src/domains/notifications/worker";
+import { dashboardView } from "../../src/domains/dashboard/service";
 const schema = "calendar_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({
@@ -776,4 +777,43 @@ it("keeps messages private to participants, checks recipients and revocations, a
   await db.query("UPDATE club_person SET birth_date='2015-01-01' WHERE id=$1", [
     playerProfile,
   ]);
+});
+
+it("C9: follows one team or only my events, renews a link and keeps another club out", async () => {
+  await create({ title: "Séance A", visibility: "organization", placeId: null });
+  await create({ title: "Séance B", teamId: teamB, visibility: "organization", placeId: null });
+  await create({ title: "Assemblée", teamId: null, visibility: "organization", placeId: null });
+  const team = await run(admin, { action: "feed", name: "Team B", teamId: teamB });
+  const teamIcs = await calendarFeed(db, team.url!.split("/").pop()!);
+  expect(teamIcs).toContain("SUMMARY:Séance B");
+  expect(teamIcs).not.toContain("SUMMARY:Séance A");
+  const mine = await run(player, { action: "feed", name: "Mes événements", teamId: null, mine: true });
+  const mineIcs = await calendarFeed(db, mine.url!.split("/").pop()!);
+  expect(mineIcs).toContain("SUMMARY:Séance A");
+  expect(mineIcs).not.toContain("SUMMARY:Séance B");
+  expect(mineIcs).not.toContain("SUMMARY:Assemblée");
+  // The whole club for the same person shows all three.
+  const all = await calendarFeed(db, (await feed()).token);
+  for (const t of ["Séance A", "Séance B", "Assemblée"]) expect(all).toContain("SUMMARY:" + t);
+  // Renewing: a new secret, the same choice, the old link dead.
+  await expect(run(outsider, { action: "renewFeed", id: mine.id }, orgB)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  const renewed = await run(player, { action: "renewFeed", id: mine.id });
+  await expect(calendarFeed(db, mine.url!.split("/").pop()!)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  const again = await calendarFeed(db, renewed.url!.split("/").pop()!);
+  expect(again).toContain("SUMMARY:Séance A");
+  expect(again).not.toContain("SUMMARY:Assemblée");
+  const view = await calendarView(db, player, range);
+  expect(view.feeds.filter((f: { revoked_at: string | null }) => !f.revoked_at).map((f: { name: string; only_mine: boolean }) => [f.name, f.only_mine]).sort()).toEqual([
+    ["Mes événements", true],
+    ["Mon planning", false],
+  ]);
+});
+
+it("C9: offers players and parents to subscribe until they have a link", async () => {
+  expect((await dashboardView(db, player)).start).toEqual({ calendarSubscribed: false });
+  expect((await dashboardView(db, admin)).start).toBeUndefined();
+  const f = await feed();
+  expect((await dashboardView(db, player)).start).toEqual({ calendarSubscribed: true });
+  await run(player, { action: "revokeFeed", id: f.id });
+  expect((await dashboardView(db, player)).start).toEqual({ calendarSubscribed: false });
 });

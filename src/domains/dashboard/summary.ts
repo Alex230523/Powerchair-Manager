@@ -147,6 +147,8 @@ export type Dashboard = {
   finance?: FinanceCard;
   /** The week asked for (?week=YYYY-MM-DD, a Monday), with its events. */
   week?: { from: string; to: string; events: WeekEvent[] };
+  /** Getting started of players and parents (wave 15, C9). */
+  start?: { calendarSubscribed: boolean };
 };
 export function formatCents(cents: number, locale: string) {
   return new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {
