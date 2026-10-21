@@ -31,6 +31,8 @@ describe("build and demo accounts", () => {
     vercel = JSON.parse(readFileSync("vercel.json", "utf8"));
   it("builds previews only and skips production", () => {
     expect(build).toContain('env !== "preview"');
+    // The build must not receive the address computed for the seed, or next.config.ts would not inline it.
+    expect(build).toContain('run("npx", ["next", "build"], process.env);');
     expect(vercel.buildCommand).toBe("node scripts/vercel-build.mjs");
     expect(vercel.ignoreCommand).toContain('"$VERCEL_ENV" = "production"');
   });

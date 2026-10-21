@@ -32,8 +32,8 @@ const childEnv = {
   DATABASE_URL: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL,
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || (host ? "https://" + host : ""),
 };
-function run(command, args) {
-  const result = spawnSync(command, args, { stdio: "inherit", env: childEnv });
+function run(command, args, env = childEnv) {
+  const result = spawnSync(command, args, { stdio: "inherit", env });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
@@ -50,4 +50,6 @@ try {
   await lock.end();
 }
 
-run("npx", ["next", "build"]);
+// The build gets the project's own variables: next.config.ts inlines the
+// branch address itself when BETTER_AUTH_URL is not set (src/lib/preview.ts).
+run("npx", ["next", "build"], process.env);
