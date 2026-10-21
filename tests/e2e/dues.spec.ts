@@ -162,6 +162,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await warn.getByRole("button", { name: "Confirm the change", exact: true }).click();
     await expect(warn).toHaveCount(0);
     await expect(page.locator("section.card", { has: page.locator("#settings-dues-title") })).toContainText("€260.00");
+    // Back to the top: fields scrolled under the sticky top bar read as obscured targets.
+    await page.evaluate(() => window.scrollTo(0, 0));
     expect(
       (
         await new AxeBuilder({ page })

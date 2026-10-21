@@ -1,9 +1,9 @@
-import { moduleOfPath } from "@/domains/access/rights";
-import type { Role } from "@/domains/access/policy";
-import type { Locale } from "@/lib/locale";
+import { moduleOfPath } from "../domains/access/rights";
+import type { Role } from "../domains/access/policy";
+import type { Locale } from "../lib/locale";
 import type { IconName } from "./icons";
 import type { shellCopy } from "./shell-copy";
-import type { SeasonOption, TeamOption } from "@/domains/scope/service";
+import type { SeasonOption, TeamOption } from "../domains/scope/service";
 type Copy = (typeof shellCopy)[Locale];
 export type Workspace = {
   user: { name: string };

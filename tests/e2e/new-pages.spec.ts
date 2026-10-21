@@ -234,8 +234,8 @@ test("new club, federation and referee pages load and pass axe", async ({
     for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
     await page.goto("/fr/calendar");
-    await expect(page.getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Notifications", exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
