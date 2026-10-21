@@ -8,7 +8,7 @@ import { labels } from "@/domains/access/policy";
 import { notificationCopy, notificationErrors } from "./notifications-copy";
 import { errors } from "./access-copy";
 import { peopleErrors } from "./people-copy";
-import { Panel, Button } from "./ui";
+import { Panel, Button, PageHeader, Card } from "./ui";
 type View = Awaited<ReturnType<typeof notificationView>>;
 const variables: Record<string, string[]> = {
   invitation: ["organization", "role", "url"],
@@ -546,13 +546,12 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
 
 function Wrapper({ embedded, title, children }: { embedded: boolean; title: string; children: ReactNode }) {
   return embedded ? (
-    <section className="panel settings-notifications" aria-labelledby="settings-notifications">
-      <h2 id="settings-notifications">{title}</h2>
+    <Card title={title} labelledBy="settings-notifications" headingId="settings-notifications" className="settings-notifications">
       {children}
-    </section>
+    </Card>
   ) : (
     <main id="main" className="access notifications">
-      <h1>{title}</h1>
+      <PageHeader title={title} />
       {children}
     </main>
   );

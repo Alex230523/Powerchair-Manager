@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { remindersView } from "@/domains/reminders/service";
 import { errors } from "./access-copy";
+import { Badge, PageHeader, Card } from "./ui";
 
 type View = Awaited<ReturnType<typeof remindersView>>;
 type Kind = "dues" | "documents";
@@ -280,8 +281,7 @@ export function Reminders({
 
   return (
     <main id="main" className="access reminders">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
@@ -311,10 +311,7 @@ export function Reminders({
               ))}
           </div>
           <div className="grid reminders-grid">
-            <section className="panel" aria-labelledby="reminders-list">
-              <h2 id="reminders-list">
-                {kind === "dues" ? t.dues : t.documents}
-              </h2>
+            <Card title={kind === "dues" ? t.dues : t.documents} labelledBy="reminders-list" headingId="reminders-list">
               <p className="muted">
                 {kind === "dues" ? t.duesHint : t.docsHint}
               </p>
@@ -393,12 +390,9 @@ export function Reminders({
                                 <td>
                                   {r.category} · {money(r.net_cents)}
                                   {r.overdueCents > 0 && (
-                                    <span
-                                      className="status-tag"
-                                      data-tone="danger"
-                                    >
+                                    <Badge tone="danger">
                                       {money(r.overdueCents)} {t.overdue}
-                                    </span>
+                                    </Badge>
                                   )}
                                   {r.next && (
                                     <span className="muted">
@@ -446,17 +440,14 @@ export function Reminders({
                                     {r.documents.map((d) => (
                                       <li key={d.name}>
                                         {d.name}{" "}
-                                        <span
-                                          className="status-tag"
-                                          data-tone={
+                                        <Badge tone={
                                             d.status === "refused" ||
                                             d.status === "expired"
                                               ? "danger"
                                               : "warning"
-                                          }
-                                        >
+                                          }>
                                           {t.statuses[d.status] ?? d.status}
-                                        </span>
+                                        </Badge>
                                       </li>
                                     ))}
                                   </ul>
@@ -492,9 +483,8 @@ export function Reminders({
               ) : (
                 <p className="muted">{t.empty}</p>
               )}
-            </section>
-            <section className="panel" aria-labelledby="reminders-template">
-              <h2 id="reminders-template">{t.template}</h2>
+            </Card>
+            <Card title={t.template} labelledBy="reminders-template" headingId="reminders-template">
               <p className="muted">{t.templateHint}</p>
               <label htmlFor="template-lang">
                 {t.language}
@@ -550,7 +540,7 @@ export function Reminders({
                   )}
                 </form>
               )}
-            </section>
+            </Card>
           </div>
         </>
       )}

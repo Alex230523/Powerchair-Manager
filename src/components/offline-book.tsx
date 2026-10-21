@@ -7,6 +7,7 @@ import {
   removeBook,
   type BookMeta,
 } from "@/lib/offline-book";
+import { EmptyState, PageHeader, Card } from "./ui";
 
 const copy = {
   fr: {
@@ -198,7 +199,7 @@ export function OfflineBook({ locale }: { locale: Locale }) {
       byId = new Map(p.people.map((x) => [x.id, x.name]));
     return (
       <main id="main" className="access offline-book">
-        <h1>{p.trip.title}</h1>
+        <PageHeader title={p.trip.title} />
         <p className="muted">
           {date(p.trip.starts_on)} → {date(p.trip.ends_on)} · {p.trip.destination}
           {p.trip.address && ` · ${p.trip.address}`}
@@ -239,8 +240,7 @@ export function OfflineBook({ locale }: { locale: Locale }) {
             </div>
           )}
         </dl>
-        <section className="panel" aria-labelledby="book-people">
-          <h2 id="book-people">{t.people}</h2>
+        <Card title={t.people} labelledBy="book-people" headingId="book-people">
           <ul className="book-people">
             {p.people.map((x) => (
               <li key={x.id}>
@@ -273,10 +273,9 @@ export function OfflineBook({ locale }: { locale: Locale }) {
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
         {p.vehicles.length > 0 && (
-          <section className="panel" aria-labelledby="book-vehicles">
-            <h2 id="book-vehicles">{t.vehicles}</h2>
+          <Card title={t.vehicles} labelledBy="book-vehicles" headingId="book-vehicles">
             <ul className="book-people">
               {p.vehicles.map((v, i) => (
                 <li key={i}>
@@ -292,11 +291,10 @@ export function OfflineBook({ locale }: { locale: Locale }) {
                 </li>
               ))}
             </ul>
-          </section>
+          </Card>
         )}
         {p.schedule.length > 0 && (
-          <section className="panel" aria-labelledby="book-schedule">
-            <h2 id="book-schedule">{t.schedule}</h2>
+          <Card title={t.schedule} labelledBy="book-schedule" headingId="book-schedule">
             <ul className="book-schedule">
               {p.schedule.map((s) => (
                 <li key={s.id}>
@@ -305,15 +303,14 @@ export function OfflineBook({ locale }: { locale: Locale }) {
                 </li>
               ))}
             </ul>
-          </section>
+          </Card>
         )}
       </main>
     );
   }
   return (
     <main id="main" className="access offline-book">
-      <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <PageHeader title={t.title} subtitle={t.intro} />
       {message && <p role="alert">{message}</p>}
       {books === null ? null : books.length ? (
         <ul className="profile-list">
@@ -344,7 +341,7 @@ export function OfflineBook({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <p className="empty-directory">{t.none}</p>
+        <EmptyState title={t.none} />
       )}
     </main>
   );
