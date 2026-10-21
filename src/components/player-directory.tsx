@@ -11,7 +11,9 @@ import { Button, EmptyState, PageHeader } from "./ui";
 import { Modal } from "./modal";
 import { PlayerImport } from "./player-import";
 import { ExportDialog } from "./export-dialog";
-import { ShowMore, useShowMore } from "./use-api";
+import { DataGrid, downloadCsv, postCommand } from "./data-grid";
+import { eachRow } from "./table-state";
+import { bulkCopy } from "./bulk-copy";
 const copy = {
   fr: {
     players: "Joueurs",
@@ -260,7 +262,17 @@ export function PlayerDirectory({
         (!minimum ||
           (r.birth_date && ageOn(r.birth_date, today) >= Number(minimum))),
     ) ?? [];
-  const { visible: shownRoster, more: moreRoster } = useShowMore(roster);
+  const teamsOf = (r: Profile) => [...new Set(current(r).map((a) => a.team_id))];
+  const positionOf = (r: Profile) =>
+    r.playing_position ||
+    current(r)
+      .map((a) => a.position)
+      .filter(Boolean)
+      .join(", ");
+  const ageOf = (r: Profile) => (r.birth_date ? ageOn(r.birth_date, today) : null);
+  // Teams one may still join: not archived, season not over.
+  const openTeams = data?.teams.filter((x) => !x.archived && !x.season_archived && x.ends_on >= today) ?? [];
+  const b = bulkCopy[locale];
   const person = data?.profiles.find((r) => r.id === selected),
     manager = !!data?.capabilities.peopleManage,
     teamsManage = !!data?.capabilities.teamsManage;
@@ -486,121 +498,140 @@ export function PlayerDirectory({
               />
             )}
           </div>
-          <div
-            className="directory-table table-scroll"
-            role="region"
-            aria-label={title}
-            tabIndex={0}
-          >
-            <table>
-              <caption className="sr-only">{title}</caption>
-              <thead>
-                <tr>
-                  <th>{p.name}</th>
-                  <th>{p.team}</th>
-                  {role === "player" && (
-                    <>
-                      <th>{t.position}</th>
-                      <th>{t.number}</th>
-                    </>
-                  )}
-                  <th>{p.age}</th>
-                  <th>{p.actions}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shownRoster.map((r) => (
-                  <tr key={r.id}>
-                    <th scope="row">
-                      <button
-                        className="person-link"
-                        onClick={() => {
-                          setSelected(r.id);
-                          setFailure("");
-                          setMessage("");
-                        }}
-                      >
-                        <span className="avatar" aria-hidden="true">
-                          {r.full_name
-                            .split(/\s+/)
-                            .slice(0, 2)
-                            .map((s) => s[0])
-                            .join("")}
+          <DataGrid
+            locale={locale}
+            label={title}
+            caption={title}
+            className="directory-table"
+            storageKey={route}
+            rows={roster}
+            rowId={(r) => r.id}
+            rowName={(r) => r.full_name}
+            onDone={load}
+            reasons={b.reasons}
+            columns={[
+              {
+                key: "name",
+                header: p.name,
+                rowHeader: true,
+                hideable: false,
+                sort: (r) => r.full_name,
+                cell: (r) => (
+                  <button
+                    className="person-link"
+                    onClick={() => {
+                      setSelected(r.id);
+                      setFailure("");
+                      setMessage("");
+                    }}
+                  >
+                    <span className="avatar" aria-hidden="true">
+                      {r.full_name
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((s) => s[0])
+                        .join("")}
+                    </span>
+                    {r.full_name}
+                  </button>
+                ),
+              },
+              {
+                key: "team",
+                header: p.team,
+                className: "tag-cell",
+                sort: (r) => teamsOf(r).map(teamName).join(", "),
+                cell: (r) =>
+                  teamsOf(r).length
+                    ? teamsOf(r).map((id) => (
+                        <span key={id} className="team-chip" data-color={data?.teams.find((x) => x.id === id)?.color ?? "none"}>
+                          <span className="team-dot" aria-hidden="true" />
+                          {teamName(id)}
                         </span>
-                        {r.full_name}
+                      ))
+                    : t.unassigned,
+              },
+              ...(role === "player"
+                ? [
+                    { key: "position", header: t.position, sort: positionOf, cell: (r: Profile) => positionOf(r) || "—" },
+                    { key: "number", header: t.number, sort: (r: Profile) => r.jersey_number, cell: (r: Profile) => r.jersey_number ?? "—" },
+                  ]
+                : []),
+              { key: "age", header: p.age, sort: ageOf, cell: (r) => ageOf(r) ?? "—" },
+              {
+                key: "actions",
+                header: p.actions,
+                hideable: false,
+                cell: (r) => (
+                  <>
+                    <div className="row-actions">
+                      <button className="text-button" aria-label={`${t.open} : ${r.full_name}`} onClick={() => setSelected(r.id)}>
+                        {t.open} →
                       </button>
-                    </th>
-                    <td className="tag-cell">
-                      {[...new Set(current(r).map((a) => a.team_id))].length
-                        ? [...new Set(current(r).map((a) => a.team_id))].map((id) => (
-                            <span key={id} className="team-chip" data-color={data?.teams.find((x) => x.id === id)?.color ?? "none"}>
-                              <span className="team-dot" aria-hidden="true" />
-                              {teamName(id)}
-                            </span>
-                          ))
-                        : t.unassigned}
-                    </td>
-                    {role === "player" && (
-                      <>
-                        <td>
-                          {r.playing_position ||
-                            current(r)
-                              .map((a) => a.position)
-                              .filter(Boolean)
-                              .join(", ") ||
-                            "—"}
-                        </td>
-                        <td>{r.jersey_number ?? "—"}</td>
-                      </>
-                    )}
-                    <td>{r.birth_date ? ageOn(r.birth_date, today) : "—"}</td>
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          className="text-button"
-                          aria-label={`${t.open} : ${r.full_name}`}
-                          onClick={() => setSelected(r.id)}
-                        >
-                          {t.open} →
+                      <Link className="text-button" href={`/${locale}/${role === "player" ? "players" : "coaches"}/${r.id}`} aria-label={`${t.full} : ${r.full_name}`}>
+                        {t.full}
+                      </Link>
+                      {manager && r.status === "active" && (
+                        <button className="button secondary" disabled={busy} onClick={() => void archive(r)}>
+                          {confirming === r.id ? (former ? t.restoreConfirm : t.confirm) : former ? t.restore : role === "player" ? t.archive : t.archiveCoach}
                         </button>
-                        {
-                          <Link
-                            className="text-button"
-                            href={`/${locale}/${role === "player" ? "players" : "coaches"}/${r.id}`}
-                            aria-label={`${t.full} : ${r.full_name}`}
-                          >
-                            {t.full}
-                          </Link>
-                        }
-                        {manager && r.status === "active" && (
-                          <button
-                            className="button secondary"
-                            disabled={busy}
-                            onClick={() => void archive(r)}
-                          >
-                            {confirming === r.id
-                              ? former
-                                ? t.restoreConfirm
-                                : t.confirm
-                              : former
-                                ? t.restore
-                                : role === "player"
-                                  ? t.archive
-                                  : t.archiveCoach}
-                          </button>
-                        )}
-                      </div>
-                      {confirming === r.id && (
-                        <p>{former ? t.restoreHint : t.archiveHint}</p>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <ShowMore locale={locale} {...moreRoster} />
-            {!roster.length && <EmptyState title={p.empty} />}
-          </div>
+                    </div>
+                    {confirming === r.id && <p>{former ? t.restoreHint : t.archiveHint}</p>}
+                  </>
+                ),
+              },
+            ]}
+            actions={[
+              {
+                id: "assign",
+                label: b.assign,
+                icon: "team",
+                hidden: !teamsManage || former,
+                choose: { label: b.team, options: openTeams.map((x) => ({ value: x.id, label: x.name })) },
+                run: (rows, teamId) => {
+                  const team = openTeams.find((x) => x.id === teamId);
+                  const startsOn = team && team.starts_on > today ? team.starts_on : today;
+                  return eachRow(rows, (r) => r.id, async (r) => {
+                    await postCommand("/api/people", { organizationId: data.context.id, action: "assign", teamId, profileId: r.id, role, position: "", startsOn, endsOn: null });
+                  });
+                },
+              },
+              {
+                id: "email",
+                label: b.email,
+                icon: "message",
+                hidden: !manager,
+                run: async (rows) => {
+                  const results = rows.map((r) => (r.email ? { id: r.id, ok: true as const } : { id: r.id, ok: false as const, code: "NO_EMAIL" }));
+                  const to = rows.map((r) => r.email).filter(Boolean);
+                  if (to.length) window.location.href = `mailto:?bcc=${to.map((e) => encodeURIComponent(e!)).join(",")}`;
+                  return results;
+                },
+              },
+              {
+                id: "export",
+                label: b.export,
+                icon: "document",
+                hidden: !data.capabilities.canExport,
+                run: async (rows) => {
+                  downloadCsv(`${route}-${today}`, [p.name, p.team, ...(role === "player" ? [t.position, t.number] : []), p.age], rows.map((r) => [r.full_name, teamsOf(r).map(teamName).join(", "), ...(role === "player" ? [positionOf(r), r.jersey_number ?? ""] : []), ageOf(r) ?? ""]));
+                },
+              },
+              {
+                id: "archive",
+                label: former ? b.restore : b.archive,
+                icon: "user",
+                hidden: !manager,
+                confirm: former ? b.restoreConfirm : b.archiveConfirm,
+                run: (rows) =>
+                  eachRow(rows, (r) => r.id, async (r) => {
+                    await postCommand("/api/people", { organizationId: data.context.id, action: "directoryArchive", id: r.id, role, archived: !former });
+                  }),
+              },
+            ]}
+          />
+          {!roster.length && <EmptyState title={p.empty} />}
           {manager && !former && (
             <details className="panel">
               <summary>{t.existing}</summary>

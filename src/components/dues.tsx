@@ -9,6 +9,9 @@ import { Icon } from "./icons";
 import { CollectionBar } from "./collection-bar";
 import { collectionCopy } from "./collection-copy";
 import { duesTotals } from "@/domains/dues/schema";
+import { DataGrid, postCommand } from "./data-grid";
+import { eachRow } from "./table-state";
+import { bulkCopy } from "./bulk-copy";
 const copy = {
   fr: {
     collected: "Encaissé",
@@ -90,6 +93,7 @@ const copy = {
     archiveAction: "Barème archivé",
     scheduleAction: "Échéancier modifié",
     cancelAction: "Créance annulée",
+    exemptAction: "Exonération",
   },
   nl: {
     collected: "Ontvangen",
@@ -171,6 +175,7 @@ const copy = {
     archiveAction: "Tarief gearchiveerd",
     scheduleAction: "Termijnen gewijzigd",
     cancelAction: "Vordering geannuleerd",
+    exemptAction: "Vrijstelling",
   },
   en: {
     collected: "Collected",
@@ -252,6 +257,7 @@ const copy = {
     archiveAction: "Rate archived",
     scheduleAction: "Instalments changed",
     cancelAction: "Receivable cancelled",
+    exemptAction: "Exemption",
   },
 };
 /** Sibling discount and attestation link (wave 8). */
@@ -293,6 +299,7 @@ type Plan = {
 };
 type Debt = {
   id: string;
+  profile_id: string;
   full_name: string;
   season_id: string;
   season_name: string;
@@ -443,6 +450,7 @@ export function Dues({ locale }: { locale: Locale }) {
   const detail = view?.debts.find((d) => d.id === detailId);
   const paying = view?.debts.find((d) => d.id === payId);
   const nextOpen = (d: Debt) => d.settled.find((i) => i.left_cents > 0);
+  const b = bulkCopy[locale];
   return (
     <main id="main" className="access dues">
       <PageHeader
@@ -538,89 +546,146 @@ export function Dues({ locale }: { locale: Locale }) {
             {!rows.length ? (
               <EmptyState title={t.empty} icon="dues" />
             ) : (
-              <div className="table-scroll">
-                <table className="dues-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{t.person}</th>
-                      {teamColumn && <th scope="col">{t.team}</th>}
-                      <th scope="col">{t.plan}</th>
-                      <th scope="col" className="num">{t.net}</th>
-                      <th scope="col" className="num">{t.collected}</th>
-                      <th scope="col" className="num">{t.remaining}</th>
-                      <th scope="col">{t.nextDue}</th>
-                      <th scope="col">{t.state}</th>
-                      <th scope="col"><span className="sr-only">{t.details}</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((d) => {
+              <DataGrid
+                locale={locale}
+                label={t.debts}
+                className="dues-table"
+                storageKey="dues"
+                rows={rows}
+                rowId={(d) => d.id}
+                rowName={(d) => d.full_name}
+                rowState={(d) => d.state}
+                onDone={load}
+                reasons={b.reasons}
+                columns={[
+                  { key: "person", header: t.person, rowHeader: true, hideable: false, sort: (d) => d.full_name, cell: (d) => d.full_name },
+                  ...(teamColumn
+                    ? [
+                        {
+                          key: "team",
+                          header: t.team,
+                          sort: (d: Debt) => (d.team_ids ?? []).map((id) => teams.find((v) => v.id === id)?.name ?? "").join(", "),
+                          cell: (d: Debt) =>
+                            (d.team_ids ?? []).map((id) => {
+                              const x = teams.find((v) => v.id === id);
+                              return x ? (
+                                <span key={id} className="team-chip" data-color={x.color ?? "none"}>
+                                  <span className="team-dot" aria-hidden="true" />
+                                  {x.name}
+                                </span>
+                              ) : null;
+                            }),
+                        },
+                      ]
+                    : []),
+                  {
+                    key: "plan",
+                    header: t.plan,
+                    sort: (d) => d.category,
+                    cell: (d) => (
+                      <>
+                        {d.category} <span className="muted small">· {d.season_name}</span>
+                      </>
+                    ),
+                  },
+                  { key: "net", header: t.net, className: "num", sort: (d) => d.net_cents, cell: (d) => money(d.net_cents) },
+                  { key: "collected", header: t.collected, className: "num", sort: (d) => Math.min(d.paid_cents, d.net_cents), cell: (d) => money(Math.min(d.paid_cents, d.net_cents)) },
+                  {
+                    key: "remaining",
+                    header: t.remaining,
+                    className: "num",
+                    sort: (d) => Math.max(0, d.net_cents - d.paid_cents),
+                    cell: (d) => <strong>{money(Math.max(0, d.net_cents - d.paid_cents))}</strong>,
+                  },
+                  {
+                    key: "next",
+                    header: t.nextDue,
+                    sort: (d) => (d.status === "open" ? nextOpen(d)?.due_on : null),
+                    cell: (d) => {
+                      const next = nextOpen(d);
+                      return d.status === "open" && next ? (
+                        next.due_on < today ? (
+                          <span className="danger-ink">
+                            <Icon name="alert" size={14} /> {day(next.due_on)} · {money(next.left_cents)}
+                            <span className="sr-only"> · {t.overdue}</span>
+                          </span>
+                        ) : (
+                          <>
+                            {day(next.due_on)} · {money(next.left_cents)}
+                          </>
+                        )
+                      ) : (
+                        <span className="muted">…</span>
+                      );
+                    },
+                  },
+                  {
+                    key: "state",
+                    header: t.state,
+                    sort: (d) => ["late", "due_soon", "on_track", "paid", "exempt", "cancelled"].indexOf(d.state),
+                    cell: (d) => (
+                      <Badge tone={tone[d.state]} dot>
+                        {t.states[d.state]}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: t.details,
+                    hideable: false,
+                    className: "dues-actions",
+                    cell: (d) => {
                       const next = nextOpen(d);
                       return (
-                        <tr key={d.id} data-state={d.state}>
-                          <th scope="row">{d.full_name}</th>
-                          {teamColumn && (
-                            <td>
-                              {(d.team_ids ?? []).map((id) => {
-                                const x = teams.find((v) => v.id === id);
-                                return x ? (
-                                  <span key={id} className="team-chip" data-color={x.color ?? "none"}>
-                                    <span className="team-dot" aria-hidden="true" />
-                                    {x.name}
-                                  </span>
-                                ) : null;
-                              })}
-                            </td>
+                        <div className="row-actions">
+                          {view.manage && d.status === "open" && next && (
+                            <button
+                              type="button"
+                              className="icon-button round tick"
+                              disabled={busy}
+                              title={`${t.payNext.replace("{name}", d.full_name)} · ${money(next.left_cents)}`}
+                              aria-label={`${t.payNext.replace("{name}", d.full_name)}, ${money(next.left_cents)}`}
+                              onClick={() => setPayId(d.id)}
+                            >
+                              <Icon name="check" size={16} />
+                            </button>
                           )}
-                          <td>{d.category} <span className="muted small">· {d.season_name}</span></td>
-                          <td className="num">{money(d.net_cents)}</td>
-                          <td className="num">{money(Math.min(d.paid_cents, d.net_cents))}</td>
-                          <td className="num"><strong>{money(Math.max(0, d.net_cents - d.paid_cents))}</strong></td>
-                          <td>
-                            {d.status === "open" && next ? (
-                              <>
-                                {next.due_on < today ? (
-                                  <span className="danger-ink">
-                                    <Icon name="alert" size={14} /> {day(next.due_on)} · {money(next.left_cents)}
-                                    <span className="sr-only"> · {t.overdue}</span>
-                                  </span>
-                                ) : (
-                                  <>
-                                    {day(next.due_on)} · {money(next.left_cents)}
-                                  </>
-                                )}
-                              </>
-                            ) : (
-                              <span className="muted">…</span>
-                            )}
-                          </td>
-                          <td><Badge tone={tone[d.state]} dot>{t.states[d.state]}</Badge></td>
-                          <td>
-                            <div className="row-actions">
-                              {view.manage && d.status === "open" && next && (
-                                <button
-                                  type="button"
-                                  className="icon-button round tick"
-                                  disabled={busy}
-                                  title={`${t.payNext.replace("{name}", d.full_name)} · ${money(next.left_cents)}`}
-                                  aria-label={`${t.payNext.replace("{name}", d.full_name)}, ${money(next.left_cents)}`}
-                                  onClick={() => setPayId(d.id)}
-                                >
-                                  <Icon name="check" size={16} />
-                                </button>
-                              )}
-                              <button type="button" className="text-button" onClick={() => setDetailId(d.id)}>
-                                {t.details}
-                                <span className="sr-only"> : {d.full_name}</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                          <button type="button" className="text-button" onClick={() => setDetailId(d.id)}>
+                            {t.details}
+                            <span className="sr-only"> : {d.full_name}</span>
+                          </button>
+                        </div>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    },
+                  },
+                ]}
+                actions={[
+                  {
+                    id: "remind",
+                    label: b.remind,
+                    icon: "bell",
+                    hidden: !view.manage,
+                    confirm: b.remindConfirm,
+                    run: (chosen) =>
+                      eachRow(chosen, (d) => d.id, async (d) => {
+                        const r = await postCommand("/api/reminders", { organizationId: view.organizationId, action: "send", kind: "dues", profileIds: [d.profile_id] });
+                        if (!r.people) throw new Error("NOT_CONCERNED");
+                        if (!r.messages) throw new Error("NO_EMAIL");
+                      }),
+                  },
+                  {
+                    id: "exempt",
+                    label: b.exempt,
+                    icon: "badgeCheck",
+                    hidden: !view.manage,
+                    confirm: b.exemptConfirm,
+                    run: (chosen) =>
+                      eachRow(chosen, (d) => d.id, async (d) => {
+                        await postCommand("/api/dues", { organizationId: view.organizationId, action: "exempt", id: d.id, version: d.version, reason: b.exemptReason });
+                      }),
+                  },
+                ]}
+              />
             )}
           </Card>
         </>
@@ -819,7 +884,7 @@ export function Dues({ locale }: { locale: Locale }) {
           <ul className="plain-list muted small">
             {detail.history.map((h, i) => (
               <li key={i}>
-                {new Date(h.created_at).toLocaleString(locale)} · {({ issue: t.issueAction, cancel: t.cancelAction, schedule: t.scheduleAction, payment: t.pay } as Record<string, string>)[h.action] ?? h.action} {h.reason}
+                {new Date(h.created_at).toLocaleString(locale)} · {({ issue: t.issueAction, cancel: t.cancelAction, exempt: t.exemptAction, schedule: t.scheduleAction, payment: t.pay } as Record<string, string>)[h.action] ?? h.action} {h.reason}
               </li>
             ))}
           </ul>

@@ -65,6 +65,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 15, C12 : comptes annuels générés depuis la plateforme](evolutions/2026-10-21-zd-vague-15-comptes-annuels.md) |
 | 21/10/2026 | [Vague 15, C11 : rapport d’activité en PowerPoint pour Canva](evolutions/2026-10-21-ze-vague-15-rapport-activite.md) |
 | 21/10/2026 | [Vague 15, C7 : résumé hebdomadaire par email](evolutions/2026-10-21-zf-vague-15-resume-hebdomadaire.md) |
+| 21/10/2026 | [Vague 15, C8 : tableaux triables, sélection multiple et actions groupées](evolutions/2026-10-21-zg-vague-15-tableaux.md) |
 
 ## Convention
 

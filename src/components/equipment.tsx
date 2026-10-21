@@ -463,7 +463,7 @@ export function Equipment({ locale }: { locale: Locale }) {
               </div>
             </section>
           )}
-          <Stock locale={locale} view={view} busy={busy} send={send} />
+          <Stock locale={locale} view={view} busy={busy} send={send} reload={load} />
         </>
       )}
     </main>

@@ -19,6 +19,8 @@ import {
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Button, Panel, Badge, PageHeader } from "./ui";
+import { DataGrid, postCommand } from "./data-grid";
+import { bulkCopy } from "./bulk-copy";
 import { SignaturePad, signatureCopy } from "./signature-pad";
 type View = Awaited<ReturnType<typeof documentView>>;
 function Field({
@@ -119,6 +121,7 @@ export function Documents({ locale }: { locale: Locale }) {
     const values = new FormData(e.currentTarget);
     void task(() => fn(values));
   }
+  const b = bulkCopy[locale];
   const doc = data?.documents.find((d) => d.id === selected),
     rule = data?.rules.find((r) => r.id === ruleId),
     tpl = data?.templates.find((r) => r.id === templateId);
@@ -235,33 +238,69 @@ export function Documents({ locale }: { locale: Locale }) {
                   {categoryOptions}
                 </select>
               </Field>
-              <ul className="records">
-                {visible.map((d) => (
-                  <li key={d.id}>
-                    <Button onClick={() => setSelected(d.id)}>
-                      {d.name} · {sl[d.status as (typeof statuses)[number]]}
-                    </Button>
-                    <p>
-                      {d.owner_name ?? t.org} · {d.season_name} ·{" "}
-                      {d.organization_name}
-                    </p>
-                    {d.expires_on && (
-                      <p>
-                        {t.expires} : {d.expires_on}
-                      </p>
-                    )}
-                    {d.task && (
-                      <p className="notice">
-                        {d.task.kind === "expired"
-                          ? t.expired
-                          : d.task.kind === "review"
-                            ? t.reviewTask
-                            : t.missing}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <DataGrid
+                locale={locale}
+                label={t.library}
+                storageKey="documents"
+                rows={visible}
+                rowId={(d) => d.id}
+                rowName={(d) => `${d.name} · ${d.owner_name ?? t.org}`}
+                onDone={load}
+                reasons={b.reasons}
+                columns={[
+                  {
+                    key: "name",
+                    header: b.document,
+                    rowHeader: true,
+                    hideable: false,
+                    sort: (d) => d.name,
+                    cell: (d) => (
+                      <Button onClick={() => setSelected(d.id)}>
+                        {d.name} · {sl[d.status as (typeof statuses)[number]]}
+                      </Button>
+                    ),
+                  },
+                  { key: "owner", header: b.person, sort: (d) => d.owner_name ?? "", cell: (d) => d.owner_name ?? t.org },
+                  { key: "season", header: t.season, sort: (d) => d.season_name, cell: (d) => d.season_name },
+                  { key: "expires", header: b.expiresOn, sort: (d) => d.expires_on, cell: (d) => d.expires_on ?? "" },
+                  {
+                    key: "task",
+                    header: t.status,
+                    sort: (d) => sl[d.status as (typeof statuses)[number]],
+                    cell: (d) =>
+                      d.task ? (
+                        <Badge tone={d.task.kind === "expired" ? "danger" : "warning"}>{d.task.kind === "expired" ? t.expired : d.task.kind === "review" ? t.reviewTask : t.missing}</Badge>
+                      ) : (
+                        sl[d.status as (typeof statuses)[number]]
+                      ),
+                  },
+                ]}
+                actions={[
+                  {
+                    id: "relaunch",
+                    label: b.relaunch,
+                    icon: "bell",
+                    hidden: !data.manage,
+                    confirm: b.relaunchConfirm,
+                    run: async (chosen) => {
+                      // One reminder per person, whatever the number of their documents chosen.
+                      const outcome = new Map<string, string | null>();
+                      for (const profile of new Set(chosen.map((d) => d.profile_id).filter((x): x is string => !!x))) {
+                        try {
+                          const r = await postCommand("/api/reminders", { organizationId: data.context.organization_id, action: "send", kind: "documents", profileIds: [profile] });
+                          outcome.set(profile, !r.people ? "NOT_CONCERNED" : !r.messages ? "NO_EMAIL" : null);
+                        } catch (e) {
+                          outcome.set(profile, e instanceof Error ? e.message : "UNAVAILABLE");
+                        }
+                      }
+                      return chosen.map((d) => {
+                        const code = d.profile_id ? outcome.get(d.profile_id) : "NO_PERSON";
+                        return code ? { id: d.id, ok: false as const, code } : { id: d.id, ok: true as const };
+                      });
+                    },
+                  },
+                ]}
+              />
               {!visible.length && <p>{t.empty}</p>}
             </Panel>
             {doc && (

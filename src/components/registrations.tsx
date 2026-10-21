@@ -22,6 +22,9 @@ import {
 import { tigerstormTemplate } from "@/domains/registrations/templates";
 import { ageOn } from "@/domains/people/schema";
 import { Modal } from "./modal";
+import { DataGrid } from "./data-grid";
+import { eachRow } from "./table-state";
+import { bulkCopy } from "./bulk-copy";
 const statusTone: Record<string, Tone> = {
   draft: "neutral",
   submitted: "info",
@@ -979,6 +982,17 @@ export function Registrations({
     if (!r.ok) throw new Error(value.error);
     return value as { id: string };
   }
+  const b = bulkCopy[locale];
+  const applications = (data?.applications ?? []).filter(
+    (a) =>
+      mode !== "admin" ||
+      filter === "all" ||
+      (filter === "pending"
+        ? ["submitted", "incomplete", "review"].includes(a.status)
+        : filter === "recent"
+          ? a.status === "accepted" && !!a.decided_at && new Date(a.decided_at).getTime() > recentSince
+          : a.status === filter),
+  );
   return (
     <>
       <main id="main" className="access registrations">
@@ -1233,40 +1247,76 @@ export function Registrations({
                 </div>
               </Toolbar>
             )}
-            <ul className="records compact-records">
-              {data.applications
-                .filter(
-                  (a) =>
-                    mode !== "admin" ||
-                    filter === "all" ||
-                    (filter === "pending"
-                      ? ["submitted", "incomplete", "review"].includes(a.status)
-                      : filter === "recent"
-                        ? a.status === "accepted" &&
-                          !!a.decided_at &&
-                          new Date(a.decided_at).getTime() > recentSince
-                        : a.status === filter),
-                )
-                .map((a) => (
-                  <li key={a.id}>
-                    <button
-                      type="button"
-                      className="record-row"
-                      aria-pressed={selected === a.id}
-                      aria-label={`${a.subject_name} · ${sl[a.status]}`}
-                      onClick={() => setSelected(a.id)}
-                    >
-                      <strong>{a.subject_name}</strong>
-                      <span className="muted">
-                        {a.organization_name} · {a.form_snapshot.title}
-                      </span>
+            {mode === "admin" ? (
+              <DataGrid
+                locale={locale}
+                label={t.review}
+                storageKey="registrations"
+                rows={applications}
+                rowId={(a) => a.id}
+                rowName={(a) => a.subject_name}
+                onDone={() => load()}
+                reasons={b.reasons}
+                columns={[
+                  {
+                    key: "person",
+                    header: b.person,
+                    rowHeader: true,
+                    hideable: false,
+                    sort: (a) => a.subject_name,
+                    cell: (a) => (
+                      <button type="button" className="record-row" aria-pressed={selected === a.id} aria-label={`${a.subject_name} · ${sl[a.status]}`} onClick={() => setSelected(a.id)}>
+                        <strong>{a.subject_name}</strong>
+                      </button>
+                    ),
+                  },
+                  { key: "form", header: b.form, sort: (a) => a.form_snapshot.title, cell: (a) => a.form_snapshot.title },
+                  { key: "submitted", header: b.submitted, sort: (a) => a.submitted_at ?? "", cell: (a) => (a.submitted_at ? new Date(a.submitted_at).toLocaleDateString(locale === "en" ? "en-GB" : `${locale}-BE`) : "") },
+                  {
+                    key: "status",
+                    header: b.state,
+                    sort: (a) => sl[a.status],
+                    cell: (a) => (
                       <Badge tone={statusTone[a.status] ?? "neutral"} dot>
                         {sl[a.status]}
                       </Badge>
-                    </button>
-                  </li>
-                ))}
-            </ul>
+                    ),
+                  },
+                ]}
+                actions={(["accepted", "refused"] as const).map((status) => ({
+                  id: status,
+                  label: status === "accepted" ? b.accept : b.refuse,
+                  icon: status === "accepted" ? ("check" as const) : ("close" as const),
+                  confirm: status === "accepted" ? b.acceptConfirm : b.refuseConfirm,
+                  run: (rows: Application[]) =>
+                    eachRow(rows, (a) => a.id, async (a) => {
+                      await send({ action: "decision", id: a.id, expectedVersion: a.version, status, message: "", confirmDuplicate: false });
+                    }),
+                }))}
+              />
+            ) : (
+              <ul className="records compact-records">
+                {applications.map((a) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        className="record-row"
+                        aria-pressed={selected === a.id}
+                        aria-label={`${a.subject_name} · ${sl[a.status]}`}
+                        onClick={() => setSelected(a.id)}
+                      >
+                        <strong>{a.subject_name}</strong>
+                        <span className="muted">
+                          {a.organization_name} · {a.form_snapshot.title}
+                        </span>
+                        <Badge tone={statusTone[a.status] ?? "neutral"} dot>
+                          {sl[a.status]}
+                        </Badge>
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            )}
             {!data.applications.length && <EmptyState title={t.empty} />}
           </Card>
         )}
