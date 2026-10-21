@@ -268,15 +268,14 @@ it("persists a place and event with local times and planned participants", async
     cost_cents: 2500,
   });
 });
-it("requires MFA for planning but does not require email verification", async () => {
+it("plans without a second factor (removed) nor email verification", async () => {
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
     admin.userId,
   ]);
-  await expect(create()).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+  expect(await create()).toBeTruthy();
   await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [
     admin.userId,
   ]);
-  expect(await create()).toBeTruthy();
 });
 it("allows a coach only on their active team and no private participants outside it", async () => {
   await create({ responsibleId: coach.userId }, coach);
@@ -550,6 +549,11 @@ it("does not grant document access through an event or remove an unseen protecte
       [org, profile, season],
     )
   ).rows[0].id;
+  // A president has the habilitation from the start (21/10/2026); once removed, the event gives no way around it.
+  await db.query(
+    "UPDATE role_assignment SET grants=ARRAY[]::text[] WHERE id=$1",
+    [admin.mandateId],
+  );
   await expect(create({ documents: [doc] })).rejects.toMatchObject({
     code: "NOT_FOUND",
   });
@@ -561,9 +565,10 @@ it("does not grant document access through an event or remove an unseen protecte
   expect(
     (await calendarView(db, admin, range)).events[0].documents,
   ).toHaveLength(1);
+  // Player A sees their own document; no second factor is asked any more (removed 21/10/2026).
   expect(
     (await calendarView(db, player, range)).events[0].documents,
-  ).toHaveLength(0);
+  ).toHaveLength(1);
   await db.query(
     "UPDATE role_assignment SET grants=ARRAY[]::text[] WHERE id=$1",
     [admin.mandateId],
@@ -632,7 +637,7 @@ it("shares only public venue details and keeps free locations out of the directo
       name: "Denied arena",
       address: "Street",
     }),
-  ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
   const id = await create({ placeId: null, sharedVenueId: v.id });
   expect(
     (await calendarView(db, admin, range)).events.find((e) => e.id === id)

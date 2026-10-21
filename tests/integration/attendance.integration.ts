@@ -516,9 +516,8 @@ it("cancels queued family emails after revocation at worker delivery time", asyn
   ).toBe(true);
   expect(delivered).toBeGreaterThan(0);
 });
-it("suspends MFA requirements without granting extra roles or cross-club access, then restores enforcement", async () => {
+it("works without a second factor (removed) and still grants no extra role nor cross-club access", async () => {
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false');
-  vi.stubEnv("PFM_MFA_SUSPENDED", "true");
   await invite();
   await started();
   await mark();
@@ -526,8 +525,6 @@ it("suspends MFA requirements without granting extra roles or cross-club access,
     run(player, { action: "close", id: (await reg()).id, expectedVersion: 1 }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   expect((await view(outsider)).events).toHaveLength(0);
-  vi.stubEnv("PFM_MFA_SUSPENDED", "false");
-  await expect(mark()).rejects.toMatchObject({ code: "FORBIDDEN" });
 });
 it("rejects revoked mandates and changed organization contexts", async () => {
   await invite();

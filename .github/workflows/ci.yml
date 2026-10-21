@@ -44,7 +44,6 @@ jobs:
             echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
             echo "PFM_LOCAL_MAIL=true"
             echo "MAIL_TRANSPORT=local"
-            echo "PFM_MFA_SUSPENDED=false"
           } > .env.local
       - name: Lint (errors also shown as annotations on the pull request)
         run: |

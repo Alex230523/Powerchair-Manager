@@ -46,7 +46,7 @@ npm run demo:seed                # facultatif : club et comptes de démo
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Ouvrir http://127.0.0.1:3000/fr. Le détail (création d'un vrai club, workers, emails locaux, MFA) est dans le [guide local](docs/GUIDE-LOCAL.md).
+Ouvrir http://127.0.0.1:3000/fr. Le détail (création d'un vrai club, workers, emails locaux) est dans le [guide local](docs/GUIDE-LOCAL.md).
 
 ---
 
@@ -55,7 +55,7 @@ Ouvrir http://127.0.0.1:3000/fr. Le détail (création d'un vrai club, workers, 
 | Couche           | Choix                                                                                             |
 | ---------------- | ------------------------------------------------------------------------------------------------- |
 | Application      | [Next.js 16](https://nextjs.org) (App Router), React 19, TypeScript strict                        |
-| Authentification | [Better Auth](https://www.better-auth.com) : email + mot de passe, double authentification (TOTP) |
+| Authentification | [Better Auth](https://www.better-auth.com) : email + mot de passe                             |
 | Base de données  | PostgreSQL 18, migrations SQL versionnées, requêtes `pg` sans ORM                                 |
 | Validation       | Zod sur chaque entrée d'API                                                                       |
 | Style            | Une feuille CSS unique à variables (`src/app/globals.css`), thème clair et sombre                 |

@@ -75,9 +75,10 @@ it("refuses after the delay, to someone else, and in another club", async () => 
 
 it("checks the rights again: a mandate that lost them cannot undo", async () => {
   const r = await peopleExecute(db, president, { action: "teamArchive", id: lions, archived: true }, clubA);
-  await db.query("UPDATE \"user\" SET \"twoFactorEnabled\"=false WHERE id=$1", [president.userId]);
-  await expect(undo(president, r.undo)).rejects.toMatchObject({ code: "FORBIDDEN" });
-  await db.query("UPDATE \"user\" SET \"twoFactorEnabled\"=true WHERE id=$1", [president.userId]);
+  await db.query("UPDATE role_assignment SET revoked_at=now() WHERE user_id=$1", [president.userId]);
+  await expect(undo(president, r.undo)).rejects.toBeTruthy();
+  await db.query("UPDATE role_assignment SET revoked_at=NULL WHERE user_id=$1", [president.userId]);
+  await execute(db, president, { action: "context", mandateId: (await db.query("SELECT id FROM role_assignment WHERE user_id=$1", [president.userId])).rows[0].id });
   await undo(president, r.undo);
   expect(await archived(lions)).toBe(false);
 });

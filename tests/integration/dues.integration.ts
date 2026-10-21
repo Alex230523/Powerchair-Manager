@@ -224,12 +224,10 @@ it("does not issue new debts against archived seasons or plans", async () => {
   await run(admin, { action: "archivePlan", id: planId });
   await expect(issue()).rejects.toThrow("NOT_FOUND");
 });
-it("honours strict MFA and the explicitly suspended pilot policy", async () => {
+it("issues dues without a second factor (removed)", async () => {
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
     admin.userId,
   ]);
-  await expect(issue()).rejects.toThrow("MFA_REQUIRED");
-  vi.stubEnv("PFM_MFA_SUSPENDED", "true");
   await expect(issue()).resolves.toHaveProperty("id");
 });
 it("saved profiles cannot grant another user’s access and English preferences persist", async () => {

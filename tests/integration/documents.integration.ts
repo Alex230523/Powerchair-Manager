@@ -208,11 +208,14 @@ it("lets an unverified player upload and download only their own requested file"
   expect(content).not.toContain("%PDF");
   expect((await documentView(db, player)).documents).toHaveLength(1);
 });
-it("retains MFA for administrators without requiring email verification", async () => {
+it("lets administrators work without a second factor (removed) nor email verification", async () => {
   await db.query('UPDATE "user" SET "twoFactorEnabled"=false WHERE id=$1', [
     admin.userId,
   ]);
-  await expect(request()).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+  expect(await request()).toBeTruthy();
+  await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [
+    admin.userId,
+  ]);
 });
 it("rejects another club and incorrect active context on every write and download", async () => {
   const id = await request();
@@ -382,10 +385,7 @@ it("requires explicit staff sensitive authorization and MFA for fitness document
   );
   expect((await documentView(db, admin)).documents).toHaveLength(0);
   await expect(upload(id, admin)).rejects.toMatchObject({ code: "NOT_FOUND" });
-  await expect(upload(id, player)).rejects.toMatchObject({ code: "NOT_FOUND" });
-  await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [
-    player.userId,
-  ]);
+  // The player's own document, without a second factor (removed).
   await upload(id, player);
 });
 it("expires a document once and opens a persistent renewal task", async () => {

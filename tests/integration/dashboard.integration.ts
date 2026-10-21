@@ -132,7 +132,10 @@ afterAll(async () => {
   await root.query(`DROP SCHEMA ${schema} CASCADE`);
   await root.end();
 });
-it("gives the president actionable counts without sensitive documents", async () => {
+it("gives the president actionable counts, sensitive documents only with the habilitation", async () => {
+  // From the start a president holds the habilitation (21/10/2026): the sensitive document is counted.
+  expect(keys(await dashboardView(db, presidentA)).documentsReview).toBe(2);
+  await db.query("UPDATE role_assignment SET grants=ARRAY[]::text[] WHERE user_id=$1", [presidentA.userId]);
   const d = await dashboardView(db, presidentA);
   expect(d.context).toMatchObject({ organization: "Club A", kind: "club" });
   expect(keys(d)).toEqual({

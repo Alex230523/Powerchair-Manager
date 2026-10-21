@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import { Pool } from "pg";
-import { randomUUID, createHmac } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { createAuth } from "../../src/lib/auth";
 import {
@@ -47,23 +47,7 @@ function cookies(response: Response) {
     .filter((s) => !s.endsWith("="))
     .join("; ");
 }
-function totp(secret: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const char of secret.toUpperCase().replaceAll("=", ""))
-    bits += alphabet.indexOf(char).toString(2).padStart(5, "0");
-  const bytes = [];
-  for (let i = 0; i + 8 <= bits.length; i += 8)
-    bytes.push(parseInt(bits.slice(i, i + 8), 2));
-  const time = Buffer.alloc(8);
-  time.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const hash = createHmac("sha1", Buffer.from(bytes)).update(time).digest();
-  const offset = hash[hash.length - 1] & 15;
-  return ((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000)
-    .toString()
-    .padStart(6, "0");
-}
-async function actor(name: string, mfa = false): Promise<Actor> {
+async function actor(name: string): Promise<Actor> {
   await db.query('DELETE FROM "rateLimit"');
   const email = name.toLowerCase() + "." + schema + "@example.test";
   const response = await request("/sign-up/email", { name, email, password });
@@ -72,21 +56,7 @@ async function actor(name: string, mfa = false): Promise<Actor> {
   await db.query('UPDATE "user" SET "emailVerified"=true WHERE id=$1', [
     data.user.id,
   ]);
-  let cookie = cookies(response);
-  if (mfa) {
-    const enable = await request("/two-factor/enable", { password }, cookie);
-    const setup = await enable.json();
-    expect(enable.status, JSON.stringify(setup)).toBe(200);
-    if (cookies(enable)) cookie = cookies(enable);
-    const secret = new URL(setup.totpURI).searchParams.get("secret")!;
-    const verify = await request(
-      "/two-factor/verify-totp",
-      { code: totp(secret) },
-      cookie,
-    );
-    expect(verify.status, await verify.clone().text()).toBe(200);
-    if (cookies(verify)) cookie = cookies(verify);
-  }
+  const cookie = cookies(response);
   const session = await request("/get-session", undefined, cookie);
   const value = await session.json();
   expect(value?.session?.id).toBeTruthy();
@@ -122,9 +92,9 @@ beforeAll(async () => {
     .sort())
     await db.query(await readFile("db/migrations/" + file, "utf8"));
   auth = createAuth(db);
-  president = await actor("President", true);
+  president = await actor("President");
   coach = await actor("Coach");
-  federal = await actor("Federal", true);
+  federal = await actor("Federal");
   outsider = await actor("Other");
   clubA = await organization("Club A");
   clubB = await organization("Club B");
@@ -192,21 +162,24 @@ describe("persistent identity, mandates and isolation", () => {
     }
     expect((await workspace(db, president)).selected?.id).toBe(adminA);
   });
-  it("requires MFA for delegated operations even with a valid session", async () => {
+  it("lets a delegated operation run without a second factor (removed 21/10/2026)", async () => {
     await db.query(
       "UPDATE role_assignment SET grants=ARRAY['invitations.create'] WHERE id=$1",
       [coachA],
     );
     await select(coach, coachA);
-    await expect(
-      execute(db, coach, {
-        action: "invite",
-        email: outsider.email,
-        role: "player",
-        grants: [],
-        validUntil: null,
-      }),
-    ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+    const invited = await execute(db, coach, {
+      action: "invite",
+      email: "delegated." + schema + "@example.test",
+      role: "player",
+      grants: [],
+      validUntil: null,
+    });
+    expect(invited).toBeTruthy();
+    await db.query(
+      "UPDATE role_assignment SET grants=ARRAY[]::text[] WHERE id=$1",
+      [coachA],
+    );
   });
   it("accepts invitation only once, only for its verified recipient", async () => {
     const result = await execute(db, president, {
@@ -326,15 +299,15 @@ describe("persistent identity, mandates and isolation", () => {
       mandate(outsider, clubA, "federation_president"),
     ).rejects.toMatchObject({ code: "P0001" });
   });
-  it("requires actual second factor on a subsequent password login", async () => {
+  it("signs in with email and password only, no second factor (removed 21/10/2026)", async () => {
     const response = await request("/sign-in/email", {
       email: president.email,
       password,
     });
     const data = await response.json();
-    expect(data.twoFactorRedirect).toBe(true);
+    expect(data.twoFactorRedirect).not.toBe(true);
     const result = await request("/get-session", undefined, cookies(response));
-    expect(await result.json()).toBeNull();
+    expect((await result.json())?.session?.id).toBeTruthy();
   });
   it("serializes concurrent administrator revocations without losing both admins", async () => {
     const org = await organization("Concurrent administrators");

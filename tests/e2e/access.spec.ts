@@ -3,7 +3,6 @@ import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { readFile, readdir } from "node:fs/promises";
 import { createAuth } from "../../src/lib/auth";
-import { totp } from "../support/totp";
 for (const locale of ["fr", "nl"])
   test(`access form accessibility ${locale}`, async ({ page }) => {
     await page.goto(`/${locale}/access`);
@@ -117,24 +116,11 @@ test("real account without email verification, MFA, contexts, invitation, revoca
         .selectOption({ label: "Club test A · Président de club" }),
     ]);
 
-    await page
-      .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
-      .fill(password);
-    await page
-      .getByRole("button", { name: "Configurer la double authentification" })
-      .click();
-    const secret = await page
-      .getByLabel("Clé à ajouter à votre application d’authentification")
-      .inputValue();
-    await page
-      .getByLabel("Code de l’application d’authentification", { exact: true })
-      .fill(totp(secret));
-    await page
-      .getByRole("button", { name: "Vérifier le code", exact: true })
-      .click();
+    // No second factor any more (removed 21/10/2026): the president manages members straight away.
     await expect(
       page.getByRole("heading", { name: "Membres et profils d’accès" }),
     ).toBeVisible();
+    await expect(page.getByText("double authentification")).toHaveCount(0);
     expect(
       (
         await new AxeBuilder({ page })
@@ -257,17 +243,9 @@ test("real account without email verification, MFA, contexts, invitation, revoca
       .click();
     const signed = await signing;
     expect(signed.status(), await signed.text()).toBe(200);
-    await expect(
-      page.getByLabel("Code de l’application d’authentification", {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await page
-      .getByLabel("Code de l’application d’authentification", { exact: true })
-      .fill(totp(secret));
-    await page
-      .getByRole("button", { name: "Vérifier le code", exact: true })
-      .click();
+    // Signed in: straight to the home page, no code asked.
+    await expect(page).toHaveURL(/\/fr$/);
+    await page.goto("/fr/access");
     await expect(
       page.getByRole("button", { name: "Se déconnecter" }),
     ).toBeVisible();

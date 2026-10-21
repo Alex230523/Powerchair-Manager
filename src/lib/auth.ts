@@ -1,6 +1,4 @@
-import { mfaRequired } from "./security-policy";
 import { betterAuth } from "better-auth";
-import { twoFactor } from "better-auth/plugins";
 import { Pool } from "pg";
 import { publishAuth } from "../domains/notifications/queue";
 export function createAuth(pool: Pool, mailPool: Pool = pool) {
@@ -9,7 +7,6 @@ export function createAuth(pool: Pool, mailPool: Pool = pool) {
     throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters");
   const baseURL = process.env.BETTER_AUTH_URL;
   if (!baseURL) throw new Error("BETTER_AUTH_URL required");
-  const factor = twoFactor({ issuer: "Powerchair Football Manager" });
   return betterAuth({
     appName: "Powerchair Football Manager",
     baseURL,
@@ -35,7 +32,6 @@ export function createAuth(pool: Pool, mailPool: Pool = pool) {
       },
     },
     rateLimit: { enabled: true, storage: "database", window: 60, max: 30 },
-    plugins: [{ ...factor, hooks: mfaRequired() ? factor.hooks : undefined }],
     databaseHooks: {
       user: {
         create: {

@@ -16,7 +16,7 @@ Tous les réglages ci-dessous concernent l’environnement **Preview** uniquemen
 
 `BETTER_AUTH_URL` n’est pas à fixer : un aperçu prend l’adresse de sa branche (`src/lib/preview.ts`), et l’adresse propre à chaque déploiement renvoie vers elle.
 
-La double authentification reste exigée comme en vrai. Pour la suspendre sur les aperçus, c’est un choix à faire explicitement en ajoutant `PFM_MFA_SUSPENDED=true` en Preview.
+Connexion par email et mot de passe uniquement : la double authentification a été retirée de l’application.
 
 ## Ce qui se passe à chaque déploiement
 

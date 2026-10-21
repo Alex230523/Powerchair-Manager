@@ -142,7 +142,11 @@ it("does not send before the chosen time nor on another day", async () => {
   expect(await digestTick(db, noon())).toBe(0);
   const settings = (await notificationView(db, president)).digest!;
   expect(settings).toMatchObject({ enabled: true, day: null, minute: 1200, sections: ["events"], canClub: true });
-  expect(settings.next?.date).toBe(clock.date);
+  // The next moment shown is today at 20:00, or next week once 20:00 has passed (the view reads the real clock).
+  const real = brusselsClock(new Date()),
+    week = new Date(clock.date + "T12:00:00Z");
+  week.setUTCDate(week.getUTCDate() + 7);
+  expect(settings.next?.date).toBe(real.date === clock.date && real.minute >= 1200 ? week.toISOString().slice(0, 10) : clock.date);
 });
 
 it("lets the president set the club's moment, not the coach", async () => {

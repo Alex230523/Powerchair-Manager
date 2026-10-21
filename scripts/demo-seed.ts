@@ -107,8 +107,6 @@ if (process.env.VERCEL_ENV === "production")
   throw new Error("Refusing to create demo accounts in production.");
 if (process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
-// The seed acts through the services as the president; MFA is not set up for demo accounts.
-process.env.PFM_MFA_SUSPENDED = "true";
 
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth(db);
