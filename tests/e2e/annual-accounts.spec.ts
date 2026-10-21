@@ -67,7 +67,7 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
     const line = page.locator(".accounts-lines li").first();
     await line.getByLabel("Libellé", { exact: true }).fill("Facture de la salle de décembre");
     await line.getByLabel("Montant (€)", { exact: true }).fill("250");
-    await page.getByLabel("Droits et engagements importants", { exact: true }).fill("Fauteuil prêté par la ligue.");
+    await page.getByRole("textbox", { name: "Droits et engagements importants" }).fill("Fauteuil prêté par la ligue.");
     await page.getByRole("button", { name: "Enregistrer le projet" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Enregistré." })).toBeVisible();
     await expect(page.getByRole("region", { name: /^État du patrimoine/ }).getByRole("row", { name: /^Total des dettes/ })).toContainText("250,00");
