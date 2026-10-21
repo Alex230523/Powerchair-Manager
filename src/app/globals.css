@@ -4757,6 +4757,65 @@ input.narrow {
 .data-table {
   position: relative;
 }
+/* Getting started of a new club (wave 15, C3). */
+.setup-card h2 {
+  font-family: var(--font-display);
+}
+.setup-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.setup-bar {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.setup-bar > span {
+  display: block;
+  width: var(--value, 0%);
+  height: 100%;
+  background: var(--primary);
+}
+.setup-steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.setup-steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+.setup-steps li:first-child {
+  border-top: 0;
+}
+.setup-text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.setup-check {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+.setup-steps li[data-done] strong {
+  color: var(--muted);
+  font-weight: 500;
+}
 /* Bottom bar on phones (wave 15, C5): home, three shortcuts of the role, "Plus" opens the drawer. */
 .bottom-nav {
   display: none;

@@ -18,6 +18,7 @@ import { Stock } from "./equipment-stock";
 import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
 import { Badge, EmptyState, PageHeader, Card, KpiCard } from "./ui";
+import { setupCopy } from "./setup-copy";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Chair = View["chairs"][number];
@@ -344,7 +345,16 @@ export function Equipment({ locale }: { locale: Locale }) {
               })}
             </ul>
           ) : (
-            <EmptyState title={view.manage ? t.empty : t.emptyOwn} />
+            <EmptyState
+              title={view.manage ? t.empty : t.emptyOwn}
+              action={
+                view.manage && (
+                  <button className="button" type="button" onClick={() => setEditing("new")}>
+                    {setupCopy[locale].empty.equipment}
+                  </button>
+                )
+              }
+            />
           )}
           {view.manage && current && (
             <section

@@ -20,6 +20,7 @@ import { governanceCopy } from "./governance-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
 import { Notifications } from "./notifications";
+import { SetupSettings } from "./setup-card";
 import { DuesSettingsPanel } from "./dues-settings";
 import { Badge, Button, Card, PageHeader, EmptyState } from "./ui";
 import { Icon } from "./icons";
@@ -355,6 +356,7 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
           {shown && category === "account" && <AccountPanels locale={locale} />}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
+          {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
           {shown && category === "members" && !manage && !(gov && (gov.can.profiles || gov.profiles.length > 0)) && <EmptyState title={t.noMember} />}

@@ -28,6 +28,7 @@ import {
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
+import { setupCopy } from "./setup-copy";
 type Place = {
   id: string;
   name: string;
@@ -631,6 +632,12 @@ export function Calendar({
                 </ul>
               )}
               {view === "list" && <EventList locale={locale} events={kindsShown} colorBy={colorBy} onSelect={openEvent} emptyText={t.empty} />}
+              {/* Getting started (wave 15, C3): an empty calendar offers its first training. */}
+              {data.manage && !kindsShown.length && (
+                <p>
+                  <Button onClick={() => newEvent()}>{setupCopy[locale].empty.calendar}</Button>
+                </p>
+              )}
               {view !== "list" && !kindsShown.length && <p className="muted">{t.empty}</p>}
               {view !== "list" && colorBy === "team" && data.teams.some((x) => x.color) && (
                 <ul className="calendar-legend" aria-label={t.team}>

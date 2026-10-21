@@ -14,6 +14,7 @@ import { ExportDialog } from "./export-dialog";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
+import { setupCopy } from "./setup-copy";
 const copy = {
   fr: {
     players: "Joueurs",
@@ -165,6 +166,7 @@ export function PlayerDirectory({
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState(""),
     [creating, setCreating] = useState(create),
+    [importKey, setImportKey] = useState(0),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
     [position, setPosition] = useState(""),
@@ -384,9 +386,10 @@ export function PlayerDirectory({
           </Link>
           {manager && !former && data && (
             <PlayerImport
+              key={importKey}
               locale={locale}
               role={role}
-              initiallyOpen={importing}
+              initiallyOpen={importing || importKey > 0}
               organizationId={data.context.id}
               teams={data.teams.filter(
                 (x) => !x.archived && !x.season_archived,
@@ -635,7 +638,20 @@ export function PlayerDirectory({
               },
             ]}
           />
-          {!roster.length && <EmptyState title={p.empty} />}
+          {!roster.length && (
+            <EmptyState
+              title={p.empty}
+              action={
+                manager &&
+                !former &&
+                role === "player" && (
+                  <button className="button" type="button" onClick={() => setImportKey((k) => k + 1)}>
+                    {setupCopy[locale].empty.players}
+                  </button>
+                )
+              }
+            />
+          )}
           {manager && !former && (
             <details className="panel">
               <summary>{t.existing}</summary>
