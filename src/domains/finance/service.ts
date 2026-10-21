@@ -404,11 +404,17 @@ export async function financeReport(db: Pool, p: Principal, label: string, raw: 
       else row.expenses += e.amount_cents;
       byTeam.set(key, row);
     }
-    const club = (
-      await c.query("SELECT name FROM organization WHERE id=$1", [org])
-    ).rows[0].name as string;
+    const identity = (
+      await c.query(
+        "SELECT o.name,o.company_number,o.address,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        [org],
+      )
+    ).rows[0];
+    const club = identity.name as string;
     return {
       club,
+      /** For the printed header (wave 15, 2.8): logo, company number and address of the club. */
+      organization: { id: org, company_number: (identity.company_number ?? "") as string, address: (identity.address ?? "") as string, logo_version: identity.logo_version as string | null },
       season,
       teamId,
       team: teamId ? ((await c.query("SELECT name FROM team WHERE id=$1", [teamId])).rows[0]?.name as string | undefined) ?? null : null,

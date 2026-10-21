@@ -119,6 +119,15 @@ export function duesTotals(
   }
   return { due, collected, late, playersLate, rate: due > 0 ? Math.round((collected / due) * 100) : null };
 }
+/** The figures of the collection bar (wave 15, 2.8), the same on the home and on the dues page. */
+export function collectionFigures(t: { due: number; collected: number; late: number }) {
+  return {
+    rate: t.due > 0 ? Math.round((t.collected / t.due) * 100) : null,
+    collected: t.collected,
+    remaining: Math.max(0, t.due - t.collected),
+    late: t.late,
+  };
+}
 export type Command = z.infer<typeof commandSchema>;
 export function schedule(cents: number, count: number, first: string) {
   if (

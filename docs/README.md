@@ -61,6 +61,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 15, C2 : subsides, dossier complet, check-list, organismes et année suivante](evolutions/2026-10-21-z-vague-15-subsides-dossier.md) |
 | 21/10/2026 | [Vague 15, prompt 2.6 : statistiques et graphiques](evolutions/2026-10-21-za-vague-15-statistiques-graphiques.md) |
 | 21/10/2026 | [Vague 15, prompt 2.7 et C9 : calendrier en grille horaire, couleurs par type, abonnement mis en avant](evolutions/2026-10-21-zb-vague-15-calendrier-abonnement.md) |
+| 21/10/2026 | [Vague 15, prompt 2.8 : finances et cotisations](evolutions/2026-10-21-zc-vague-15-finances-cotisations.md) |
 
 ## Convention
 

@@ -5,6 +5,9 @@ import type { Locale } from "@/lib/locale";
 import { ApplyScope, useScope, useScopedTeam, useSeeded } from "./use-scope";
 import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
+import { Icon } from "./icons";
+import { CollectionBar } from "./collection-bar";
+import { collectionCopy } from "./collection-copy";
 import { duesTotals } from "@/domains/dues/schema";
 const copy = {
   fr: {
@@ -14,6 +17,7 @@ const copy = {
     state: "Statut",
     states: { paid: "Payée", late: "En retard", due_soon: "Échéance proche", on_track: "En ordre", cancelled: "Annulée", exempt: "Exonérée" } as Record<string, string>,
     pay: "Encaisser",
+    payNext: "Encaisser la prochaine échéance de {name}",
     payTitle: "Encaisser un paiement",
     payHint: "Le montant est écrit dans la trésorerie (recette « cotisations ») et rattaché à cette cotisation.",
     method: "Moyen de paiement",
@@ -94,6 +98,7 @@ const copy = {
     state: "Status",
     states: { paid: "Betaald", late: "Te laat", due_soon: "Vervalt binnenkort", on_track: "In orde", cancelled: "Geannuleerd", exempt: "Vrijgesteld" },
     pay: "Innen",
+    payNext: "De volgende termijn van {name} innen",
     payTitle: "Een betaling innen",
     payHint: "Het bedrag wordt in de boekhouding geschreven (inkomst « lidgeld ») en aan dit lidgeld gekoppeld.",
     method: "Betaalwijze",
@@ -174,6 +179,7 @@ const copy = {
     state: "Status",
     states: { paid: "Paid", late: "Late", due_soon: "Due soon", on_track: "On track", cancelled: "Cancelled", exempt: "Exempt" },
     pay: "Collect",
+    payNext: "Collect the next instalment of {name}",
     payTitle: "Record a payment",
     payHint: "The amount is written in the ledger (income, dues) and linked to this receivable.",
     method: "Payment method",
@@ -480,6 +486,11 @@ export function Dues({ locale }: { locale: Locale }) {
               <li><StatCard label={t.playersLate} value={String(totals.playersLate)} icon="players" tone={totals.playersLate ? "warning" : "neutral"} /></li>
             </ul>
           )}
+          {(view.manage || view.readOnly) && (
+            <Card title={collectionCopy[locale].title} id="dues-collection" className="dues-collection">
+              <CollectionBar locale={locale} totals={totals} />
+            </Card>
+          )}
           <Card title={t.debts} id="dues-table" className="flush"
             actions={
               <Toolbar label={t.filters}>
@@ -568,8 +579,16 @@ export function Dues({ locale }: { locale: Locale }) {
                           <td>
                             {d.status === "open" && next ? (
                               <>
-                                {day(next.due_on)} · {money(next.left_cents)}
-                                {next.due_on < today && <Badge tone="danger">{t.overdue}</Badge>}
+                                {next.due_on < today ? (
+                                  <span className="danger-ink">
+                                    <Icon name="alert" size={14} /> {day(next.due_on)} · {money(next.left_cents)}
+                                    <span className="sr-only"> · {t.overdue}</span>
+                                  </span>
+                                ) : (
+                                  <>
+                                    {day(next.due_on)} · {money(next.left_cents)}
+                                  </>
+                                )}
                               </>
                             ) : (
                               <span className="muted">…</span>
@@ -581,13 +600,13 @@ export function Dues({ locale }: { locale: Locale }) {
                               {view.manage && d.status === "open" && next && (
                                 <button
                                   type="button"
-                                  className="button tick"
+                                  className="icon-button round tick"
                                   disabled={busy}
-                                  title={`${t.pay} · ${money(next.left_cents)}`}
-                                  aria-label={`${t.pay} : ${d.full_name}, ${money(next.left_cents)}`}
+                                  title={`${t.payNext.replace("{name}", d.full_name)} · ${money(next.left_cents)}`}
+                                  aria-label={`${t.payNext.replace("{name}", d.full_name)}, ${money(next.left_cents)}`}
                                   onClick={() => setPayId(d.id)}
                                 >
-                                  ✓
+                                  <Icon name="check" size={16} />
                                 </button>
                               )}
                               <button type="button" className="text-button" onClick={() => setDetailId(d.id)}>

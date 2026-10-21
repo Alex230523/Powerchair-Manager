@@ -67,6 +67,16 @@ export type Entry = {
  * Ledger figures. Cancelled entries never count. The period covers
  * [from, to] inclusive (YYYY-MM-DD), usually the current season.
  */
+/**
+ * Colour of a budget line (wave 15, 2.8). Spending: under 90 % success, 90 to
+ * 100 % warning, beyond danger. Income is never an alarm: success once the
+ * plan is reached, neutral before.
+ */
+export function budgetTone(direction: "in" | "out", ratio: number | null): "success" | "warning" | "danger" | "neutral" {
+  if (ratio === null) return "neutral";
+  if (direction === "in") return ratio >= 100 ? "success" : "neutral";
+  return ratio < 90 ? "success" : ratio <= 100 ? "warning" : "danger";
+}
 export function ledgerSummary(entries: Entry[], from: string, to: string) {
   let balance = 0,
     income = 0,

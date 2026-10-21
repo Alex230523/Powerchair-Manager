@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { fundingView } from "@/domains/funding/service";
-import { grantStatuses, partnerKinds, partnerStatuses } from "@/domains/funding/schema";
+import { addDays, partnerKinds, partnerStatuses } from "@/domains/funding/schema";
+import { Icon } from "./icons";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { fundingCopy } from "./funding-copy";
@@ -256,10 +257,9 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
                           </td>
                           <td>
                             {x.nearest ? (
-                              <>
-                                {sp.nearestKinds[x.nearest.kind]} · {day(x.nearest.date)}
-                                {x.nearest.date < data.today && <Badge tone="danger">!</Badge>}
-                              </>
+                              <span className={x.nearest.date < data.today ? "danger-ink" : x.nearest.date <= addDays(data.today, 14) ? "warning-ink" : undefined}>
+                                {x.nearest.date <= addDays(data.today, 14) && <Icon name={x.nearest.date < data.today ? "alert" : "clock"} size={14} />} {sp.nearestKinds[x.nearest.kind]} · {day(x.nearest.date)}
+                              </span>
                             ) : (
                               <span className="muted">…</span>
                             )}

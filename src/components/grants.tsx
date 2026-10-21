@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
 import type { fundingView } from "@/domains/funding/service";
-import { deadlineTone, grantStatuses } from "@/domains/funding/schema";
+import { addDays, deadlineTone, grantStatuses } from "@/domains/funding/schema";
 import { grantsCopy } from "./grants-copy";
 import { fundingCopy } from "./funding-copy";
 import { sponsorsCopy } from "./sponsors-copy";
@@ -203,9 +203,9 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                       </td>
                       <td>
                         {x.next ? (
-                          <>
-                            {g.nextKinds[x.next.kind]} · {day(x.next.date)}
-                          </>
+                          <span className={x.next.date <= addDays(data.today, 14) ? "warning-ink" : undefined}>
+                            {x.next.date <= addDays(data.today, 14) && <Icon name="clock" size={14} />} {g.nextKinds[x.next.kind]} · {day(x.next.date)}
+                          </span>
                         ) : (
                           <span className="muted">…</span>
                         )}

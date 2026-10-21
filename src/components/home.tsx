@@ -1,5 +1,6 @@
 "use client";
 import { plannerCopy } from "./calendar-planner-copy";
+import { CollectionBar } from "./collection-bar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { labels, type Role } from "@/domains/access/policy";
@@ -340,16 +341,7 @@ function FinanceCardView({ locale, finance }: { locale: Locale; finance: NonNull
               </Link>
             )}
           </div>
-          {d.rate === null ? (
-            <p className="muted">{t.noDues}</p>
-          ) : (
-            <>
-              <progress className="finance-progress" max={100} value={d.rate} aria-label={t.duesCollected}>
-                {d.rate} %
-              </progress>
-              <p className="finance-dues-text">{t.duesOf.replace("{rate}", String(d.rate)).replace("{collected}", money(d.collected)).replace("{due}", money(d.due))}</p>
-            </>
-          )}
+          {d.rate === null ? <p className="muted">{t.noDues}</p> : <CollectionBar locale={locale} totals={d} />}
         </div>
       )}
       <p className="card-link-row">

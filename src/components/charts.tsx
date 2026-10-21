@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, typ
 import type { Locale } from "@/lib/locale";
 import { chartsCopy } from "./charts-copy";
 import { Segmented } from "./ui";
+import { cssVars } from "./css-vars";
 import { niceStep } from "./chart-math";
 export { niceStep, trendSentence } from "./chart-math";
 
@@ -83,10 +84,10 @@ export function ChartFrame({
                   <input
                     type="checkbox"
                     checked={!hidden.includes(s.id)}
-                    style={{ accentColor: s.color }}
+                    style={cssVars({ series: s.color })}
                     onChange={(e) => setHidden((h) => (e.target.checked ? h.filter((x) => x !== s.id) : [...h, s.id]))}
                   />
-                  <span className="chart-swatch" data-dashed={s.dashed || undefined} style={{ borderColor: s.color }} aria-hidden="true" />
+                  <span className="chart-swatch" data-dashed={s.dashed || undefined} style={cssVars({ series: s.color })} aria-hidden="true" />
                   {s.label}
                 </label>
               ))}
@@ -104,11 +105,11 @@ type TipRow = { id: string; label: string; color: string; value: string; dashed?
 function Tooltip({ x, width, title, rows }: { x: number; width: number; title: string; rows: TipRow[] }) {
   const right = x > width / 2;
   return (
-    <div className="chart-tooltip" style={{ left: right ? undefined : x + 12, right: right ? width - x + 12 : undefined }} aria-hidden="true">
+    <div className="chart-tooltip" data-side={right ? "left" : "right"} style={cssVars({ x: `${right ? width - x : x}px` })} aria-hidden="true">
       <p className="chart-tooltip-title">{title}</p>
       {rows.map((r) => (
         <p key={r.id} className="chart-tooltip-row">
-          <span className="chart-swatch" data-dashed={r.dashed || undefined} style={{ borderColor: r.color }} />
+          <span className="chart-swatch" data-dashed={r.dashed || undefined} style={cssVars({ series: r.color })} />
           <span>{r.label}</span>
           <strong>{r.value}</strong>
         </p>
@@ -140,7 +141,6 @@ function usePointer(count: number, indexAt: (x: number) => number) {
   return { active, setActive, onPointerMove, onKeyDown };
 }
 
-const axisText = { fontSize: 12, fontFamily: "var(--font-ui)", fill: "var(--muted)" } as const;
 
 /** Lines over categories (months): 2 px, no fill, points on hover; Y from 0 to max. */
 export function LineChart({
@@ -192,14 +192,14 @@ export function LineChart({
         {[0, 0.25, 0.5, 0.75, 1].map((f) => (
           <g key={f}>
             <line x1={m.l} x2={m.l + pw} y1={y(f * max)} y2={y(f * max)} stroke="var(--grid-line)" strokeWidth={1} />
-            <text x={m.l - 8} y={y(f * max)} dy="0.32em" textAnchor="end" style={axisText}>
+            <text x={m.l - 8} y={y(f * max)} dy="0.32em" textAnchor="end" className="chart-axis">
               {format(f * max)}
             </text>
           </g>
         ))}
         {categories.map((label, i) =>
           i % step === 0 || i === n - 1 ? (
-            <text key={i} x={x(i)} y={height - 8} textAnchor={n > 1 && i === 0 ? "start" : n > 1 && i === n - 1 ? "end" : "middle"} style={axisText}>
+            <text key={i} x={x(i)} y={height - 8} textAnchor={n > 1 && i === 0 ? "start" : n > 1 && i === n - 1 ? "end" : "middle"} className="chart-axis">
               {label}
             </text>
           ) : null,
@@ -267,7 +267,7 @@ export function StackedBarChart({
         {ticks.map((v) => (
           <g key={v}>
             <line x1={m.l} x2={m.l + pw} y1={y(v)} y2={y(v)} stroke="var(--grid-line)" strokeWidth={1} />
-            <text x={m.l - 8} y={y(v)} dy="0.32em" textAnchor="end" style={axisText}>
+            <text x={m.l - 8} y={y(v)} dy="0.32em" textAnchor="end" className="chart-axis">
               {format(v)}
             </text>
           </g>
@@ -285,11 +285,11 @@ export function StackedBarChart({
                 return <rect key={s.id} x={cx(i) - bar / 2} y={y(base)} width={bar} height={Math.max(y(from) - y(base), 0)} fill={s.color} stroke="var(--surface)" strokeWidth={1} />;
               })}
               {totals[i] > 0 && (
-                <text x={cx(i)} y={y(totals[i]) - 6} textAnchor="middle" style={{ fontSize: 12, fontFamily: "var(--font-ui)", fontWeight: 600, fill: "var(--heading)" }}>
+                <text x={cx(i)} y={y(totals[i]) - 6} textAnchor="middle" className="chart-total">
                   {format(totals[i])}
                 </text>
               )}
-              <text x={cx(i)} y={height - 8} textAnchor="middle" style={axisText}>
+              <text x={cx(i)} y={height - 8} textAnchor="middle" className="chart-axis">
                 {label}
               </text>
             </g>

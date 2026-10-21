@@ -3,12 +3,13 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { financeView } from "@/domains/finance/service";
-import { categories, methods } from "@/domains/finance/schema";
+import { budgetTone, categories, methods } from "@/domains/finance/schema";
+import { cssVars } from "./css-vars";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
-import { PageHeader, Badge, EmptyState, Card, KpiCard } from "./ui";
+import { PageHeader, Badge, EmptyState, Card, KpiCard, Toolbar } from "./ui";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
 import { Modal } from "./modal";
@@ -458,11 +459,11 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                     <span className="bar-pair" aria-hidden="true">
                       <span
                         className="bar in"
-                        style={{ width: `${(v.in / biggest) * 100}%` }}
+                        style={cssVars({ value: Math.round((v.in / biggest) * 1000) / 10 })}
                       />
                       <span
                         className="bar out"
-                        style={{ width: `${(v.out / biggest) * 100}%` }}
+                        style={cssVars({ value: Math.round((v.out / biggest) * 1000) / 10 })}
                       />
                     </span>
                     <span className="bar-values">
@@ -534,11 +535,9 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                       <th scope="col">{t.category}</th>
                       <th scope="col">{t.direction}</th>
                       <th scope="col" className="num">
-                        {x.planned}
+                        {x.actual} / {x.planned}
                       </th>
-                      <th scope="col" className="num">
-                        {x.actual}
-                      </th>
+                      <th scope="col">{x.progress}</th>
                       <th scope="col" className="num">
                         {x.gap}
                       </th>
@@ -550,15 +549,20 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                         <td>{t.categories[r.category] ?? r.category}</td>
                         <td>{r.direction === "in" ? t.in : t.out}</td>
                         <td className="num">
-                          {r.planned ? money(r.planned) : ""}
+                          {r.planned ? x.ofBudget.replace("{actual}", money(r.actual)).replace("{planned}", money(r.planned)) : money(r.actual)}
                         </td>
-                        <td className="num">
-                          {money(r.actual)}
-                          {r.ratio !== null && (
-                            <span className="muted">
-                              {" "}
-                              · {r.ratio} % {x.used}
+                        <td>
+                          {r.ratio !== null ? (
+                            <span className="budget-progress" data-tone={budgetTone(r.direction, r.ratio)}>
+                              <span className="budget-meter" aria-hidden="true">
+                                <span style={cssVars({ value: Math.min(r.ratio, 100) })} />
+                              </span>
+                              <span className="budget-pct">
+                                {r.ratio} % {x.used}
+                              </span>
                             </span>
+                          ) : (
+                            <span className="muted">…</span>
                           )}
                         </td>
                         <td
@@ -582,10 +586,7 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
 
           <section aria-labelledby="finance-history">
             <h2 id="finance-history">{t.history}</h2>
-            <form
-              className="directory-filters"
-              onSubmit={(e) => e.preventDefault()}
-            >
+            <Toolbar label={x.ledgerFilters}>
               <label>
                 {t.search}
                 <input
@@ -619,7 +620,7 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                   ))}
                 </select>
               </label>
-            </form>
+            </Toolbar>
             {entries.length ? (
               <div
                 className="table-scroll"
@@ -676,14 +677,11 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                             </Badge>
                           )}
                         </td>
-                        <td>{t.categories[e.category] ?? e.category}</td>
+                        <td>
+                          <Badge tone="neutral">{t.categories[e.category] ?? e.category}</Badge>
+                        </td>
                         <td>{t.methods[e.method] ?? e.method}</td>
-                        <td
-                          className={
-                            "num " +
-                            (e.direction === "in" ? "amount-in" : "amount-out")
-                          }
-                        >
+                        <td className={"num " + (e.direction === "in" ? "amount-in" : "amount-spent")}>
                           {e.direction === "in" ? "+" : "−"}
                           {money(e.amount_cents)}
                         </td>

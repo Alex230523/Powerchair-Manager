@@ -148,7 +148,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     ).toEqual(["€62.50", "€62.50", "€62.50", "€62.50"]);
     await detail.getByRole("button", { name: "Fermer / Sluiten / Close" }).click();
     // The tick records a payment of the next instalment in the ledger.
-    await row.getByRole("button", { name: /^Collect : Browser player/ }).click();
+    await row.getByRole("button", { name: /^Collect the next instalment of Browser player/ }).click();
     const pay = page.getByRole("dialog", { name: /Record a payment/ });
     await pay.getByRole("button", { name: "Collect", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Saved.");
