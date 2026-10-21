@@ -1,4 +1,5 @@
 export const englishErrors: Record<string, string> = {
+  ACCOUNT_EXISTS: "An account already exists with this address. Sign in to accept the invitation.",
   INVITATION_REQUIRED: "An invitation is required to create an account. Ask the person in charge of your club or federation.",
   TEAM_FULL: "This team is full: put the application on the waiting list, or tick « Accept even if the team is full ».",
   LAST_ADMIN:
@@ -146,6 +147,8 @@ export const english = {
     inviteCreate: "Create invitations",
     auditRead: "View activity log",
     pending: "Pending",
+    disputed: "Reported: not the right role",
+    resend: "Send the invitation again",
     used: "Accepted",
     revoked: "Revoked",
     expired: "Expired",

@@ -7494,3 +7494,116 @@ ul.task-list {
     margin-bottom: var(--space-4);
   }
 }
+
+/* ---------- Guided account creation (wave 16, I2) ---------- */
+.welcome-card {
+  max-width: 520px;
+}
+.welcome-progress {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.welcome-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+.welcome-steps li {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--muted);
+}
+.welcome-steps li[aria-current="step"] {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.welcome-steps li[data-done] {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+.welcome-card h1:focus {
+  outline: none;
+}
+.welcome-card h1:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+.welcome-intro {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.welcome-intro p {
+  margin: 0;
+}
+.welcome-hello {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.welcome-facts {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.access-card .welcome-actions .button {
+  justify-self: auto;
+}
+.welcome-choice {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.welcome-choice legend {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+.welcome-choice label,
+.welcome-privacy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+}
+.welcome-choice input,
+.welcome-privacy input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.invite-fields {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.invite-fields p {
+  margin: 0;
+}
+.invite-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  font-weight: 600;
+}
+.invite-toggle input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}

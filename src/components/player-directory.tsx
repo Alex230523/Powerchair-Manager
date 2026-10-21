@@ -15,6 +15,7 @@ import { DataGrid, downloadCsv, postCommand } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { setupCopy } from "./setup-copy";
+import { InviteFields, isMinor } from "./invite-fields";
 const copy = {
   fr: {
     players: "Joueurs",
@@ -166,6 +167,8 @@ export function PlayerDirectory({
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState(""),
     [creating, setCreating] = useState(create),
+    [inviting, setInviting] = useState(true),
+    [newBirth, setNewBirth] = useState(""),
     [importKey, setImportKey] = useState(0),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
@@ -389,6 +392,7 @@ export function PlayerDirectory({
               key={importKey}
               locale={locale}
               role={role}
+              canInvite={!!data.capabilities.invite}
               initiallyOpen={importing || importKey > 0}
               organizationId={data.context.id}
               teams={data.teams.filter(
@@ -419,7 +423,7 @@ export function PlayerDirectory({
       )}
       {data && (
         <>
-          {role === "coach" && manager && (
+          {role === "coach" && manager && !data.capabilities.invite && (
             <p className="notice">
               {locale === "fr"
                 ? "Une fiche de coach ne crée pas de compte ni de droits de connexion. Les invitations et accès se gèrent dans Mon espace."
@@ -692,12 +696,19 @@ export function PlayerDirectory({
         >
           {feedback}
           <form
+            onChange={(e) => {
+              const field = e.target as HTMLInputElement;
+              if (field.name === "birthDate") setNewBirth(field.value);
+            }}
             onSubmit={(e) =>
               submit(e, (f) => {
+                const invite = !!data?.capabilities.invite && inviting;
                 void send({
                   action: "createPerson",
                   ...personal(f),
                   directoryRoles: [role],
+                  invite,
+                  ...(invite && f.get("guardianEmail") ? { guardianName: f.get("guardianName"), guardianEmail: f.get("guardianEmail") } : {}),
                 }).then((r) => {
                   if (r?.id) {
                     setCreating(false);
@@ -709,6 +720,7 @@ export function PlayerDirectory({
           >
             <h3>{t.personal}</h3>
             {personalFields()}
+            {data?.capabilities.invite && <InviteFields locale={locale} on={inviting} setOn={setInviting} minor={role === "player" && isMinor(newBirth)} />}
             <Button disabled={busy}>{p.create}</Button>
           </form>
         </Modal>

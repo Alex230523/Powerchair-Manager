@@ -232,6 +232,11 @@ export const peopleErrors: Record<
   string,
   { fr: string; nl: string; en: string }
 > = {
+  GUARDIAN_REQUIRED: {
+    fr: "Pour inviter un joueur mineur, indiquez le nom et l'email du parent.",
+    nl: "Om een minderjarige speler uit te nodigen, vul de naam en het e-mailadres van de ouder in.",
+    en: "To invite a minor player, enter the parent's name and email.",
+  },
   DUPLICATE: {
     fr: "Cette personne, ce lien ou cette affectation existe déjà. Vérifiez le répertoire, y compris les archives.",
     nl: "Deze persoon, relatie of toewijzing bestaat al. Controleer ook de archieven.",
