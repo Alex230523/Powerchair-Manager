@@ -11,7 +11,7 @@ import { CommandPalette } from "./command-palette";
 import { ToastHost } from "./toast";
 import { ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
-import { menuGroups, type NavItem, type Workspace } from "./menu";
+import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
 import { settingsEntries, visibleCategories } from "./settings-nav";
@@ -145,7 +145,8 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
     [todos, setTodos] = useState<Todo[]>([]),
     [brief, setBrief] = useState<Brief | null>(null),
     [drawer, setDrawer] = useState(false),
-    [bell, setBell] = useState(false);
+    [bell, setBell] = useState(false),
+    [typing, setTyping] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     aside = useRef<HTMLElement>(null),
@@ -226,6 +227,19 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       menuButton.current?.focus();
     };
   }, [drawer]);
+  // The bottom bar steps aside while the phone keyboard is open in a form (wave 15, C5).
+  useEffect(() => {
+    const field = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.matches('textarea, select, [contenteditable="true"]') || (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(el.type)));
+    const focusIn = (e: FocusEvent) => setTyping(field(e.target));
+    const focusOut = () => setTyping(false);
+    document.addEventListener("focusin", focusIn);
+    document.addEventListener("focusout", focusOut);
+    return () => {
+      document.removeEventListener("focusin", focusIn);
+      document.removeEventListener("focusout", focusOut);
+    };
+  }, []);
   // The notification panel: Escape or a click elsewhere closes it; focus goes back to the bell.
   useEffect(() => {
     if (!bell) return;
@@ -319,6 +333,7 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
+  const bottom = bottomNav(state);
   // Settings are found by Ctrl+K too (wave 15): each category and each setting it holds.
   const h = settingsHubCopy[locale];
   const shownSettings = state?.selected
@@ -546,6 +561,33 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
           {children}
           <ToastHost locale={locale} />
         </div>
+        {bottom.length > 0 && (
+          <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
+            {bottom.map((i) => {
+              const todo = counterRoutes[i.route] ? counts.get(counterRoutes[i.route]) : undefined;
+              return (
+                <Link key={i.route} href={`/${locale}${i.route}`} aria-current={current(i.route)}>
+                  <span className="bottom-icon">
+                    <Icon name={i.icon} size={22} />
+                    {todo && todo.count > 0 && (
+                      <span className="bottom-badge" aria-hidden="true">
+                        <Badge tone={todo.tone === "danger" ? "danger" : "warning"}>{todo.count}</Badge>
+                      </span>
+                    )}
+                  </span>
+                  <span className="bottom-label">{t[i.label]}</span>
+                  {todo && todo.count > 0 && <span className="sr-only"> · {t.pendingCount.replace("{n}", String(todo.count))}</span>}
+                </Link>
+              );
+            })}
+            <button type="button" aria-expanded={drawer} onClick={() => setDrawer(true)}>
+              <span className="bottom-icon">
+                <Icon name="menu" size={22} />
+              </span>
+              <span className="bottom-label">{t.groupMore}</span>
+            </button>
+          </nav>
+        )}
       </div>
     </ScopeProvider>
   );
