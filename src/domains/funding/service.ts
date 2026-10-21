@@ -7,6 +7,7 @@ import { ownProfiles } from "../calendar/access";
 import { brusselsToday } from "../people/service";
 import { receiptMaxBytes, receiptType } from "../finance/schema";
 import { publish } from "../notifications/queue";
+import { accountsDeadlines } from "../accounts/service";
 import {
   conditionTasks,
   examplePackages,
@@ -896,8 +897,8 @@ export async function fundingTasksView(db: Pool, p: Principal) {
 export type MoneyDeadline = {
   id: string;
   date: string;
-  kind: "condition" | "payment" | "renewal" | "grant" | "grantReport" | "grantEnd" | "grantRecheck" | "task";
-  source: "partner" | "grant";
+  kind: "condition" | "payment" | "renewal" | "grant" | "grantReport" | "grantEnd" | "grantRecheck" | "task" | "accountsAssembly" | "accountsFiling";
+  source: "partner" | "grant" | "accounts";
   title: string;
   href: string;
 };
@@ -946,6 +947,10 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
       if (g.status !== "refused" && g.recheck_on && g.recheck_on >= from && g.recheck_on <= to)
         out.push({ id: "grantRecheck:" + g.id, date: g.recheck_on, kind: "grantRecheck", source: "grant", title, href: `/funding/grants?grant=${g.id}` });
     }
+    // Annual accounts (wave 15, C12): the general assembly, then the filing.
+    for (const d of await accountsDeadlines(c, org))
+      if (d.date >= from && d.date <= to)
+        out.push({ id: `${d.kind}:${d.year.from}`, date: d.date, kind: d.kind, source: "accounts", title: d.year.label, href: `/funding/annual-accounts?year=${d.year.from}` });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }

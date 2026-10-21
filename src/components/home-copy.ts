@@ -48,7 +48,7 @@ type HomeCopy = {
   playersLate: string;
   seeFinances: string;
   seeDues: string;
-  deadlines: Record<"documents" | "dues" | "fundraising" | "trip" | "grant" | "partner", string>;
+  deadlines: Record<"documents" | "dues" | "fundraising" | "trip" | "grant" | "partner" | "accounts", string>;
   responseNeeded: string;
   cancelled: string;
   loading: string;
@@ -132,6 +132,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Départ en déplacement",
       grant: "Subside : dossier ou justificatif",
       partner: "Partenaire : relance ou renouvellement",
+      accounts: "Comptes annuels : assemblée ou dépôt",
     },
     responseNeeded: "Réponse attendue",
     cancelled: "Annulé",
@@ -296,6 +297,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Vertrek verplaatsing",
       grant: "Subsidie: dossier of verantwoording",
       partner: "Partner: opvolging of verlenging",
+      accounts: "Jaarrekening: algemene vergadering of neerlegging",
     },
     responseNeeded: "Antwoord verwacht",
     cancelled: "Geannuleerd",
@@ -460,6 +462,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Trip departure",
       grant: "Grant: application or report",
       partner: "Partner: follow-up or renewal",
+      accounts: "Annual accounts: assembly or filing",
     },
     responseNeeded: "Answer needed",
     cancelled: "Cancelled",

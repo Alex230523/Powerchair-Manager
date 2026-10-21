@@ -6140,3 +6140,120 @@ ul.task-list {
 .dues-collection .card-body {
   padding-top: var(--space-2);
 }
+.board-deadline[data-source="accounts"] {
+  border-color: var(--border-strong);
+  background: var(--surface-soft);
+  color: var(--heading);
+}
+.agenda-deadline .agenda-date[data-kind="accounts"] { background: var(--surface-soft); color: var(--heading); }
+
+/* ---------- Wave 15 (C12): annual accounts ---------- */
+.accounts-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.accounts-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  margin-bottom: var(--card-gap);
+}
+.accounts-bar label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+.annual-accounts .card {
+  margin-bottom: var(--card-gap);
+}
+.accounts-section th {
+  padding-top: var(--space-4);
+  font-weight: 600;
+  color: var(--heading);
+  text-align: left;
+}
+.accounts-total th,
+.accounts-total td {
+  font-weight: 600;
+  border-top: 1px solid var(--border-strong);
+}
+.accounts-result th,
+.accounts-result td {
+  font-weight: 700;
+  color: var(--heading);
+  border-top: 2px solid var(--border-strong);
+}
+.accounts-lines {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.accounts-lines li {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 2fr) 120px minmax(0, 2fr) auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+.accounts-lines label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+@media (max-width: 760px) {
+  .accounts-lines li {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--grid-line);
+  }
+}
+.accounts-suggestions {
+  margin-top: var(--space-3);
+}
+.accounts-checks {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.accounts-step,
+.accounts-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+.accounts-step label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+.fiscal-choice {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.accounts-signatures .signature-boxes > div {
+  min-height: 80px;
+}
+@media print {
+  .annual-accounts .card {
+    box-shadow: none;
+    border-color: var(--print-line);
+    break-inside: avoid;
+  }
+  .accounts-banner {
+    border: 1px solid var(--print-line);
+    background: var(--print-paper);
+    color: var(--print-ink);
+  }
+  .accounts-signatures {
+    display: block !important;
+  }
+}

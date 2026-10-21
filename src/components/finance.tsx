@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { financeView } from "@/domains/finance/service";
 import { budgetTone, categories, methods } from "@/domains/finance/schema";
 import { cssVars } from "./css-vars";
+import { accountsCopy } from "./accounts-copy";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
@@ -255,6 +256,9 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
               </Link>
               <Link className="button secondary" href={`/${locale}/funding/report?season=${view.season.label}`}>
                 {x.report}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/funding/annual-accounts`}>
+                {accountsCopy[locale].title}
               </Link>
               <button className="button secondary" type="button" onClick={exportCsv} disabled={!entries.length}>
                 {t.export}

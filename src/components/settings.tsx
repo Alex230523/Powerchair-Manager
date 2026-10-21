@@ -1,4 +1,5 @@
 "use client";
+import { FiscalYearPanel } from "./fiscal-year";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
@@ -559,6 +560,7 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}
+          {shown && category === "money" && gov && !gov.disabled.includes("finance") && <FiscalYearPanel locale={locale} />}
           {shown && category === "journals" && gov?.can.rightsJournal && <Journal locale={locale} kind="rights" />}
           {shown && category === "journals" && gov?.can.healthJournal && <Journal locale={locale} kind="health" />}
           {shown && category === "journals" && (own.has("audit.read") || own.has("mandates.manage")) && (

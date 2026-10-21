@@ -94,7 +94,7 @@ export type AgendaItem = {
 /** An administrative date shown with the events: documents, dues, fundraising, trips. */
 export type Deadline = {
   id: string;
-  kind: "documents" | "dues" | "fundraising" | "trip" | "grant" | "partner";
+  kind: "documents" | "dues" | "fundraising" | "trip" | "grant" | "partner" | "accounts";
   /** YYYY-MM-DD */
   date: string;
   title: string;
