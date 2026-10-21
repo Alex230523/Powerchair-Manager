@@ -89,7 +89,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await profileForm
       .getByRole("button", { name: "Enregistrer", exact: true })
       .click();
-    await expect(page.locator(".profile-menu option:checked")).toHaveText(
+    await expect(page.getByLabel("Profil actif", { exact: true }).locator("option:checked")).toHaveText(
       "Club — Président",
     );
     // Language and photo live in Settings > My account since wave 15.
