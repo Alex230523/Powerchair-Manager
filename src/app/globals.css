@@ -4647,6 +4647,9 @@ a.sidebar-foot:hover, a.sidebar-foot:focus-visible { background: var(--sidebar-h
   display: grid;
   gap: var(--space-8);
 }
+.design-samples > section {
+  min-width: 0;
+}
 .design-samples h3 {
   margin: 0 0 var(--space-3);
   color: var(--muted);
