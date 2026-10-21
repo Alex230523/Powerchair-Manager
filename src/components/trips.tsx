@@ -75,6 +75,7 @@ export function TripForm({
   onSubmit: (fields: Record<string, unknown>) => void;
 }) {
   const t = tripsCopy[locale];
+  const [kind, setKind] = useState(trip?.kind ?? "tournament");
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -98,6 +99,9 @@ export function TripForm({
       contact: s("contact"),
       notes: s("notes"),
       ...(list.teams?.length ? { teamId: s("teamId") || null } : {}),
+      ...(kind === "tournament"
+        ? { finalRank: s("finalRank") ? Number(s("finalRank")) : null, teamsCount: s("teamsCount") ? Number(s("teamsCount")) : null, resultNote: s("resultNote") }
+        : {}),
     });
   }
   const f = t.fields;
@@ -111,7 +115,7 @@ export function TripForm({
         </label>
         <label htmlFor={`${id}-kind`}>
           {f.kind}
-          <select id={`${id}-kind`} name="kind" defaultValue={trip?.kind ?? "tournament"}>
+          <select id={`${id}-kind`} name="kind" value={kind} onChange={(e) => setKind(e.target.value)}>
             {Object.entries(t.kinds).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
@@ -125,6 +129,24 @@ export function TripForm({
           {f.endsOn}
           <input id={`${id}-ends`} name="endsOn" type="date" required defaultValue={trip?.ends_on} />
         </label>
+        {kind === "tournament" && (
+          <fieldset className="trip-result">
+            <legend>{f.result}</legend>
+            <p className="muted small">{f.resultHint}</p>
+            <label htmlFor={`${id}-rank`}>
+              {f.finalRank}
+              <input id={`${id}-rank`} name="finalRank" type="number" min={1} max={500} defaultValue={trip?.final_rank ?? ""} />
+            </label>
+            <label htmlFor={`${id}-teams`}>
+              {f.teamsCount}
+              <input id={`${id}-teams`} name="teamsCount" type="number" min={1} max={500} defaultValue={trip?.teams_count ?? ""} />
+            </label>
+            <label htmlFor={`${id}-note`}>
+              {f.resultNote}
+              <input id={`${id}-note`} name="resultNote" maxLength={160} defaultValue={trip?.result_note ?? ""} />
+            </label>
+          </fieldset>
+        )}
         <label htmlFor={`${id}-venue`}>
           {f.venue}
           <select id={`${id}-venue`} name="sharedVenueId" defaultValue={trip?.shared_venue_id ?? ""}>

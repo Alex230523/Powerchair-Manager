@@ -68,6 +68,8 @@ type Item = {
   visibility: (typeof visibilities)[number];
   equipment: string;
   instructions: string;
+  /** A big event of the season (wave 15, C11). */
+  highlight?: boolean;
   status: string;
   version: number;
   is_exception: boolean;
@@ -861,6 +863,7 @@ export function Calendar({
                           visibility: d.get("visibility"),
                           equipment: d.get("equipment"),
                           instructions: d.get("instructions"),
+                          highlight: d.has("highlight"),
                           participants: d.getAll("participants"),
                           documents: [
                             ...new Set([
@@ -1101,6 +1104,10 @@ export function Calendar({
                         defaultValue={base?.instructions}
                       />
                     </Field>
+                    <label className="check">
+                      <input type="checkbox" name="highlight" defaultChecked={!!base?.highlight} />
+                      {plannerCopy[locale].highlight}
+                    </label>
                     <Field
                       id="event-exercise"
                       label={

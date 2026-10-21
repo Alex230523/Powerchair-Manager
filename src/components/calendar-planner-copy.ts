@@ -72,6 +72,7 @@ const fr = {
   startCalendarText: "Un lien à ajouter une fois dans le calendrier du téléphone : les changements suivent tout seuls.",
   startCalendarDone: "Votre agenda est abonné au calendrier du club.",
   start: "Commencer",
+  highlight: "Fait marquant de la saison (repris dans le rapport d’activité)",
 };
 type Copy = typeof fr;
 
@@ -144,6 +145,7 @@ const nl: Copy = {
   startCalendarText: "Eén link om eenmaal in de agenda van je telefoon toe te voegen: wijzigingen volgen vanzelf.",
   startCalendarDone: "Je agenda is geabonneerd op de clubkalender.",
   start: "Beginnen",
+  highlight: "Hoogtepunt van het seizoen (opgenomen in het activiteitenverslag)",
 };
 
 const en: Copy = {
@@ -215,6 +217,7 @@ const en: Copy = {
   startCalendarText: "One link to add once to your phone's calendar: changes follow by themselves.",
   startCalendarDone: "Your calendar is subscribed to the club's calendar.",
   start: "Start",
+  highlight: "Highlight of the season (shown in the activity report)",
 };
 
 export const plannerCopy: Record<Locale, Copy> = { fr, nl, en };

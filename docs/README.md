@@ -63,6 +63,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 15, prompt 2.7 et C9 : calendrier en grille horaire, couleurs par type, abonnement mis en avant](evolutions/2026-10-21-zb-vague-15-calendrier-abonnement.md) |
 | 21/10/2026 | [Vague 15, prompt 2.8 : finances et cotisations](evolutions/2026-10-21-zc-vague-15-finances-cotisations.md) |
 | 21/10/2026 | [Vague 15, C12 : comptes annuels générés depuis la plateforme](evolutions/2026-10-21-zd-vague-15-comptes-annuels.md) |
+| 21/10/2026 | [Vague 15, C11 : rapport d’activité en PowerPoint pour Canva](evolutions/2026-10-21-ze-vague-15-rapport-activite.md) |
 
 ## Convention
 
