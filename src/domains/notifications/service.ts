@@ -99,6 +99,16 @@ async function visible(scope: Scope) {
   for (const row of rows) if (await allowed(scope.c, row)) result.push(row);
   return result;
 }
+/** The bell of the top bar (wave 14): unread count and the 8 latest notifications the person may see. */
+export async function notificationBrief(db: Pool, p: Principal) {
+  return transaction(db, p, false, async (s) => {
+    const inbox = await visible(s);
+    return {
+      unread: inbox.filter((n) => !n.read_at).length,
+      latest: inbox.slice(0, 8).map((n) => ({ id: n.id, kind: n.kind, title: n.title, body: n.body, href: n.href, read_at: n.read_at, created_at: n.created_at })),
+    };
+  });
+}
 export async function notificationView(db: Pool, p: Principal) {
   return transaction(db, p, false, async (s) => {
     const inbox = await visible(s),

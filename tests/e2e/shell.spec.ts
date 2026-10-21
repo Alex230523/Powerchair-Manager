@@ -1,0 +1,134 @@
+import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { Pool } from "pg";
+
+/**
+ * Wave 14: the white sidebar and its account menu, the quiet top bar with the
+ * search field, the season capsule and the bell, and the mobile drawer.
+ */
+async function axe(page: Page, label: string) {
+  const violations = (await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations.map(
+    (v) => `${label} ${v.id}: ${v.nodes[0]?.target.join(" ")}`,
+  );
+  expect(violations, label).toEqual([]);
+}
+
+test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) => {
+  test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use test:e2e:db");
+  test.setTimeout(240000);
+  const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
+  const email = `shell-${Date.now()}@example.test`;
+  try {
+    await page.goto("/fr/access");
+    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+    await page.getByLabel("Nom complet", { exact: true }).fill("Shell test president");
+    await page.getByLabel("Adresse email", { exact: true }).fill(email);
+    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    const signOut = page.getByRole("button", { name: "Se déconnecter" });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      try {
+        await expect(signOut).toBeVisible({ timeout: 8000 });
+        break;
+      } catch (e) {
+        if (attempt) throw e;
+        await page.waitForTimeout(11000);
+      }
+    }
+    const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
+    await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [user]);
+    const club = (await db.query("INSERT INTO organization(name,kind) VALUES('Shell club','club') RETURNING id")).rows[0].id;
+    await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)", [club, user]);
+    const mandate = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,'club_president') RETURNING id", [club, user])).rows[0].id;
+    await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240)", [club]);
+    await page.goto("/fr");
+    await page.locator(".profile-menu > summary").click();
+    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+
+    // Desktop: brand, club name, regrouped menu, search field and the shortcut.
+    await page.goto("/fr");
+    await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+    const sidebar = page.getByRole("complementary", { name: "Menu principal" });
+    await expect(sidebar.locator(".brand-name")).toHaveText("Powerchair Manager");
+    await expect(sidebar.locator(".brand-org")).toHaveText("Shell club");
+    for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"]) await expect(sidebar.locator("nav summary").filter({ hasText: name })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "Mon espace", exact: true, includeHidden: true })).toHaveCount(0);
+    await expect(page.locator("header select")).toHaveCount(1);
+    await expect(page.getByRole("banner").getByLabel("Saison", { exact: true })).toBeVisible();
+    const search = page.getByRole("banner").getByRole("button", { name: /Rechercher un joueur/ });
+    await expect(search).toBeVisible();
+    await expect(search.locator("kbd")).toHaveText(/Ctrl K|⌘K/);
+    await page.keyboard.press("Control+k");
+    const box = page.getByRole("combobox", { name: /Rechercher un joueur/ });
+    await expect(box).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(box).toBeHidden();
+    await search.click();
+    await expect(box).toBeFocused();
+    await page.keyboard.press("Escape");
+    await axe(page, "desktop home");
+
+    // The bell: a test notification shows up as one unread, in a panel that Escape closes.
+    const bellButton = page.getByRole("banner").getByRole("button", { name: /^Notifications/ });
+    await expect(bellButton).toHaveAccessibleName(/Aucune notification non lue/);
+    await page.goto("/fr/notifications");
+    await page.getByRole("button", { name: "Tester mes notifications", exact: true }).click();
+    await expect(page.getByRole("heading", { name: /^Message test/, level: 3 })).toBeVisible();
+    await page.goto("/fr");
+    await expect(bellButton).toHaveAccessibleName(/1 notification non lue/);
+    await expect(bellButton.locator(".bell-count")).toHaveText("1");
+    await bellButton.click();
+    const panel = page.getByRole("dialog", { name: "Notifications" });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText(/^Message test/)).toBeVisible();
+    await expect(panel.getByRole("link", { name: /Tout voir/ })).toHaveAttribute("href", "/fr/notifications");
+    await axe(page, "bell panel");
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(bellButton).toBeFocused();
+
+    // The account menu: profile switch, Mon espace, language, theme.
+    await page.locator(".profile-menu > summary").click();
+    const menu = page.locator(".profile-menu-body");
+    await expect(menu.getByText("Changer de profil")).toBeVisible();
+    await expect(menu.getByLabel("Profil actif", { exact: true })).toBeVisible();
+    await expect(menu.getByRole("link", { name: "Mon espace", exact: true })).toHaveAttribute("href", "/fr/access");
+    await expect(menu.getByRole("link", { name: "NL", exact: true })).toHaveAttribute("href", "/nl");
+    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Sombre" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await axe(page, "account menu, dark");
+    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Clair" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(menu.getByRole("button", { name: "Se déconnecter", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // Mobile: the sidebar is a drawer; Escape, the backdrop and a navigation close it; focus comes back to the button.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/fr");
+    await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+    const open = page.getByRole("button", { name: "Ouvrir le menu", exact: true });
+    await expect(open).toBeVisible();
+    await expect(sidebar).toBeHidden();
+    await open.click();
+    await expect(sidebar).toBeVisible();
+    const close = sidebar.getByRole("button", { name: "Fermer le menu", exact: true });
+    await expect(close).toBeFocused();
+    await axe(page, "drawer open");
+    await page.keyboard.press("Escape");
+    await expect(sidebar).toBeHidden();
+    await expect(open).toBeFocused();
+    await open.click();
+    await page.locator(".drawer-backdrop").click({ position: { x: 380, y: 400 } });
+    await expect(sidebar).toBeHidden();
+    await open.click();
+    await sidebar.locator("nav summary").filter({ hasText: "Équipes" }).click();
+    await sidebar.getByRole("link", { name: "Joueurs", exact: true }).click();
+    await expect(page).toHaveURL(/\/fr\/players$/);
+    await expect(sidebar).toBeHidden();
+    await expect(page.getByRole("banner").getByLabel("Saison", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+    await axe(page, "mobile players");
+  } finally {
+    await db.end();
+  }
+});
