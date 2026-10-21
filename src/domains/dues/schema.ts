@@ -100,10 +100,12 @@ export function duesState(
  * many players are late. Cancelled receivables count for nothing.
  */
 export function duesTotals(
-  debts: { status: string; net_cents: number; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[] }[],
+  debts: { status: string; net_cents: number; paid_cents: number; installments: { ordinal: number; due_on: string; amount_cents: number }[]; team_ids?: readonly string[] }[],
   today: string,
+  /** The team in view (wave 15): only the receivables that belong to it (see receivableTeamsSql). */
+  teamId: string | null = null,
 ) {
-  const open = debts.filter((d) => d.status === "open");
+  const open = debts.filter((d) => d.status === "open" && (!teamId || (d.team_ids ?? []).includes(teamId)));
   let due = 0,
     collected = 0,
     late = 0,

@@ -56,6 +56,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 14, prompts 2.3 et 2.4 : barre latérale claire, menu réorganisé, barre du haut](evolutions/2026-10-21-u-vague-14-barre-laterale-barre-du-haut.md) |
 | 21/10/2026 | [Vague 14, prompt 2.5 : accueil du président](evolutions/2026-10-21-v-vague-14-accueil-president.md) |
 | 21/10/2026 | [Vague 15, C13 : réglages rangés en sous-pages](evolutions/2026-10-21-w-vague-15-reglages-sous-pages.md) |
+| 21/10/2026 | [Vague 15, prompt 1.C : cotisations, déplacements et cagnottes par équipe](evolutions/2026-10-21-x-vague-15-equipe-cotisations-deplacements-cagnottes.md) |
 
 ## Convention
 

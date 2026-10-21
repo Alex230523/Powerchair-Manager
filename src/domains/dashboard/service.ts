@@ -283,7 +283,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );
     // Players late with their dues (wave 14): the same totals as the dues page, for the season in view.
-    const totals = duesTotals(await duesSeasonRows(c, org, scope.seasonId, members), today());
+    const totals = duesTotals(await duesSeasonRows(c, org, scope.seasonId), today(), teamId);
     counts.duesLate = totals.playersLate;
   } else if (club && on("dues") && own.length) {
     const next = (
@@ -431,7 +431,7 @@ async function compute(c: PoolClient, p: Principal, raw: DashboardQuery): Promis
       treasury: ledger ? ledger.treasury : null,
       income: ledger ? ledger.income : 0,
       expenses: ledger ? ledger.expenses : 0,
-      dues: on("dues") ? duesTotals(await duesSeasonRows(c, org, scope.seasonId, members), today()) : null,
+      dues: on("dues") ? duesTotals(await duesSeasonRows(c, org, scope.seasonId), today(), teamId) : null,
     };
     scopes.push("money");
   }
