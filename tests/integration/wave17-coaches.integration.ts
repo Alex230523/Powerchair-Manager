@@ -87,7 +87,8 @@ it("keeps tasks by type, gives a coach their own, and stays inside the club", as
       ["Prévoir les chargeurs", "2026-12-10"],
     ]),
   );
-  expect(new Set(all.tasks.map((t) => t.kind))).toEqual(new Set(["transport", "training", "documents"]));
+  // A1: the application's own tasks (the annual accounts) come on top.
+  expect(new Set(all.tasks.filter((t) => !t.source_kind).map((t) => t.kind))).toEqual(new Set(["transport", "training", "documents"]));
   // The coach sees only the tasks given to them, and ticks them.
   const mine = await tasksView(db, coachA);
   expect(mine.can.manage).toBe(false);
@@ -101,7 +102,7 @@ it("keeps tasks by type, gives a coach their own, and stays inside the club", as
   await expect(tasksExecute(db, coachA, { action: "create", kind: "transport", title: "Pour Noé", detail: "", dueOn: null, responsibleId: otherProfile } as never, clubA)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await tasksExecute(db, coachA, { action: "create", kind: "training", title: "Préparer mes fiches", detail: "", dueOn: null, responsibleId: coachProfile } as never, clubA);
   // Club B sees none of club A's tasks and cannot touch them.
-  expect((await tasksView(db, presidentB)).tasks).toEqual([]);
+  expect((await tasksView(db, presidentB)).tasks.filter((t) => !t.source_kind)).toEqual([]);
   await expect(tasksExecute(db, presidentB, { action: "delete", id: room.id } as never, clubB)).rejects.toMatchObject({ code: "NOT_FOUND" });
 });
 

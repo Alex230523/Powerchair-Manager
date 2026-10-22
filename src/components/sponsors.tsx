@@ -324,7 +324,7 @@ export function TaskList({
       {tasks.length ? (
         <ul>
           {tasks.map((x) => {
-            const late = x.status === "todo" && x.due_on && x.due_on < today;
+            const late = x.status !== "done" && x.due_on && x.due_on < today;
             return (
               <li key={x.id} data-status={x.status}>
                 <label className="check task-check">

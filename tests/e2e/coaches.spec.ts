@@ -70,15 +70,15 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await page.locator(".first-steps").getByRole("button", { name: "Passer" }).click();
     await expect(page.locator(".first-steps")).toHaveCount(0);
 
-    // 2. Tasks: « Mes tâches », one group per type, each sorted by date.
+    // 2. Tasks (A1): « Mes tâches », one section per category, each sorted by date.
     await page.goto("/fr/tasks");
-    await expect(page.getByRole("heading", { name: "Transport (1)" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Entraînement (1)" })).toBeVisible();
+    await expect(page.locator("summary").filter({ hasText: "Événements" })).toContainText("1 ouverte(s)");
+    await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toContainText("1 ouverte(s)");
     await expect(page.getByText("Pour personne")).toHaveCount(0);
-    await page.getByLabel("Type", { exact: true }).selectOption("transport");
-    await expect(page.getByRole("heading", { name: /^Entraînement/ })).toHaveCount(0);
+    await page.getByLabel("Catégorie", { exact: true }).selectOption("events");
+    await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
     await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).check();
-    await expect(page.getByText("Aucune tâche ici.").or(page.getByText("Rien à faire pour vous en ce moment."))).toBeVisible();
+    await expect(page.getByText("Aucune tâche ne vous est attribuée.")).toBeVisible();
     await axe(page, "tasks");
 
     // 3. The coach's profile: « À faire » tab and the driving licence.

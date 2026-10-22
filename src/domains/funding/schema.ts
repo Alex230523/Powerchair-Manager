@@ -60,7 +60,7 @@ const packageCondition = z.object({
 });
 /** A proof is a web link (or a file, uploaded on its own route). */
 const proofUrl = z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(500)]);
-export type TaskStatus = "todo" | "done";
+export type TaskStatus = "todo" | "doing" | "done";
 
 export const fundingCommand = z.discriminatedUnion("action", [
   z.object({

@@ -161,6 +161,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Dossiers à compléter",
         text: "Le club attend des compléments",
       },
+      myTasks: {
+        title: "Mes tâches",
+        text: "À faire dans les 14 jours, ou en retard",
+      },
       registrationsReview: {
         title: "Inscriptions à examiner",
         text: "Dossiers soumis ou en cours d’examen",
@@ -336,6 +340,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Dossiers aan te vullen",
         text: "De club wacht op aanvullingen",
       },
+      myTasks: {
+        title: "Mijn taken",
+        text: "Te doen binnen 14 dagen, of te laat",
+      },
       registrationsReview: {
         title: "Inschrijvingen te beoordelen",
         text: "Ingediende of lopende dossiers",
@@ -510,6 +518,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       myApplications: {
         title: "Applications to complete",
         text: "The club is waiting for more information",
+      },
+      myTasks: {
+        title: "My tasks",
+        text: "Due within 14 days, or late",
       },
       registrationsReview: {
         title: "Registrations to review",

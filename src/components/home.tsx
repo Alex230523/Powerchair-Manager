@@ -123,6 +123,7 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   myAttendance: "attendance",
   myDocuments: "document",
   myApplications: "userPlus",
+  myTasks: "clipboardList",
   registrationsReview: "userPlus",
   duesLate: "dues",
   sponsorTasks: "handshake",

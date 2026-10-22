@@ -26,6 +26,8 @@ import {
   documentUpload,
 } from "../src/domains/documents/service";
 import { duesExecute } from "../src/domains/dues/service";
+import { tasksExecute } from "../src/domains/tasks/service";
+import { taskCommand, yearTemplate, type YearKey } from "../src/domains/tasks/schema";
 import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
 import { peopleExecute } from "../src/domains/people/service";
@@ -109,6 +111,14 @@ if (process.env.VERCEL_ENV === "production")
 if (process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
 
+const yearTitles: Record<YearKey, string> = {
+  assembly: "Assemblée générale et approbation des comptes",
+  filing: "Dépôt des comptes annuels",
+  ubo: "Confirmation annuelle du registre UBO",
+  tax: "Déclaration à l'impôt des personnes morales",
+  insurance: "Renouvellement des assurances",
+  affiliation: "Renouvellement de l'affiliation fédérale",
+};
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth(db);
 const sessions: string[] = [];
@@ -674,6 +684,26 @@ try {
       },
       org,
     );
+
+  // A1: the central to-do. The yearly duties of the ASBL, a few tasks of the club, one for the coach.
+  const thisYear = Number(day(0).slice(0, 4));
+  await tasksExecute(
+    db,
+    president,
+    taskCommand.parse({
+      action: "applyYear",
+      year: thisYear,
+      items: yearTemplate("01-01", thisYear).map((i) => ({ key: i.key, title: yearTitles[i.key], dueOn: i.dueOn, responsibleId: i.key === "affiliation" ? people.president : null })),
+    }),
+    org,
+  );
+  for (const task of [
+    { category: "sport", title: "Inscrire l'équipe au tournoi de printemps", dueOn: day(12), responsibleId: people.coach, priority: "high", checklist: ["Choisir les joueurs", "Payer l'inscription"] },
+    { category: "events", title: "Réserver la salle pour la fête du club", dueOn: day(25), responsibleId: people.president, checklist: [] },
+    { category: "fundraising", title: "Préparer la vente de gaufres", dueOn: day(5), responsibleId: null, recurrence: "yearly", checklist: ["Commander la pâte", "Trouver deux bénévoles"] },
+    { category: "admin", title: "Mettre à jour le registre des membres", dueOn: day(-2), responsibleId: people.president, checklist: [] },
+  ])
+    await tasksExecute(db, president, taskCommand.parse({ action: "create", ...task }), org);
 
   // 7. Equipment: club chairs (one shared), a player's own chair, a loan chair in repair.
   const chair = async (input: {

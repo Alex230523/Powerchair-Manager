@@ -6,7 +6,7 @@ import type { PaletteCopy } from "./command-palette-copy";
  * Pure: which action a person sees depends on the same rights as the page it
  * opens; each one reuses the links of the "Créer" menu of the home page.
  */
-export const actionIds = ["createEvent", "addPlayer", "importPlayers", "recordExpense", "mailTeam", "collectDues", "attendanceToday", "changeSeason", "changeTeam"] as const;
+export const actionIds = ["createEvent", "addPlayer", "importPlayers", "recordExpense", "mailTeam", "collectDues", "attendanceToday", "addTask", "changeSeason", "changeTeam"] as const;
 export type ActionId = (typeof actionIds)[number];
 export type PaletteAction = { id: ActionId; icon: IconName; route?: string; scope?: "season" | "team" };
 
@@ -31,6 +31,8 @@ export function paletteActions(c: PaletteContext): PaletteAction[] {
     { id: "mailTeam", icon: "megaphone", route: "/communication?create=1", allowed: on("messages") && has("notifications.manage", "calendar.manage") },
     { id: "collectDues", icon: "dues", route: "/dues", allowed: on("dues") && has("dues.manage") },
     { id: "attendanceToday", icon: "attendance", route: "/attendance", allowed: has("attendance.manage", "calendar.manage") },
+    // A1: a task in a few keys.
+    { id: "addTask", icon: "clipboardList", route: "/tasks?new=1", allowed: c.role === "club_president" || has("calendar.manage", "teams.manage", "mandates.manage", "dues.manage") },
     { id: "changeSeason", icon: "calendar", scope: "season", allowed: c.seasons > 1 },
     { id: "changeTeam", icon: "team", scope: "team", allowed: c.teams > 1 },
   ];

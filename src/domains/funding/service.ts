@@ -264,7 +264,7 @@ export function partnerNearest(
 ) {
   if (p.status === "ended") return null;
   const dates: { kind: "condition" | "payment" | "renewal" | "action"; date: string }[] = [
-    ...tasks.filter((t) => t.status === "todo" && t.due_on).map((t) => ({ kind: "condition" as const, date: t.due_on as string })),
+    ...tasks.filter((t) => t.status !== "done" && t.due_on).map((t) => ({ kind: "condition" as const, date: t.due_on as string })),
     ...(p.payment_due_on && !p.paid_on ? [{ kind: "payment" as const, date: p.payment_due_on }] : []),
     ...(p.renewal_on ? [{ kind: "renewal" as const, date: p.renewal_on }] : []),
     ...(p.next_action_on ? [{ kind: "action" as const, date: p.next_action_on }] : []),
@@ -312,7 +312,7 @@ export async function fundingView(db: Pool, p: Principal) {
         payment: paymentState(r, today),
         tasks_done: mine.filter((t) => t.status === "done").length,
         tasks_total: mine.length,
-        tasks_late: mine.filter((t) => t.status === "todo" && t.due_on && t.due_on < today).length,
+        tasks_late: mine.filter((t) => t.status !== "done" && t.due_on && t.due_on < today).length,
         nearest: partnerNearest(r, mine),
       };
     }) as PartnerRow[];
@@ -514,7 +514,7 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           else if (before && cmd.signedOn !== undefined && cmd.signedOn !== before.signed_on_text)
             // A new signing date moves the open conditions with it.
             await s.c.query(
-              "UPDATE funding_task t SET due_on=CASE WHEN $2::date IS NULL THEN NULL ELSE $2::date+c.offset_days END,updated_at=now() FROM partner_package_condition c WHERE t.partner_id=$1 AND t.condition_id=c.id AND t.status='todo' AND c.offset_days IS NOT NULL",
+              "UPDATE funding_task t SET due_on=CASE WHEN $2::date IS NULL THEN NULL ELSE $2::date+c.offset_days END,updated_at=now() FROM partner_package_condition c WHERE t.partner_id=$1 AND t.condition_id=c.id AND t.status<>'done' AND c.offset_days IS NOT NULL",
               [partnerId, cmd.signedOn],
             );
           // The payment, when marked as received, goes to the ledger once.
@@ -793,7 +793,7 @@ async function switchPackage(s: Scope, partnerId: string, from: string | null, t
       await s.c.query("SELECT count(*) FILTER (WHERE status='done')::int AS done,count(*)::int AS total FROM funding_task WHERE partner_id=$1 AND origin='condition'", [partnerId])
     ).rows[0];
     await s.c.query(
-      "DELETE FROM funding_task WHERE partner_id=$1 AND origin='condition' AND status='todo' AND (condition_id IS NULL OR condition_id IN (SELECT id FROM partner_package_condition WHERE package_id=$2))",
+      "DELETE FROM funding_task WHERE partner_id=$1 AND origin='condition' AND status<>'done' AND (condition_id IS NULL OR condition_id IN (SELECT id FROM partner_package_condition WHERE package_id=$2))",
       [partnerId, from],
     );
     // The former package goes to the history: name, season, amount, conditions delivered.
@@ -910,7 +910,7 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
   const out: MoneyDeadline[] = [];
   const tasks = (
     await c.query(
-      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM funding_task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.status='todo' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
+      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM funding_task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
       [org, from, to, all, own],
     )
   ).rows;
@@ -966,7 +966,7 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
 export async function moneyDeadlines(db: Pool, p: Principal, from: string, to: string) {
   return scope(db, p, false, async (s) => {
     // The layer is offered with the money right, or to the person in charge of an open task.
-    const mine = !s.moneyRead && !!(await s.c.query("SELECT 1 FROM funding_task WHERE organization_id=$1 AND kind IN ('sponsor','grant') AND status='todo' AND responsible_id=ANY($2::uuid[]) LIMIT 1", [s.org, [...s.own]])).rowCount;
+    const mine = !s.moneyRead && !!(await s.c.query("SELECT 1 FROM funding_task WHERE organization_id=$1 AND kind IN ('sponsor','grant') AND status<>'done' AND responsible_id=ANY($2::uuid[]) LIMIT 1", [s.org, [...s.own]])).rowCount;
     return {
       can: { all: s.moneyRead, layer: s.moneyRead || mine },
       items: await moneyDeadlinesIn(s.c, s.org, from, to, s.moneyRead, [...s.own]),
@@ -977,7 +977,7 @@ export async function moneyDeadlines(db: Pool, p: Principal, from: string, to: s
 export async function openTasksCount(c: PoolClient, org: string, kind: "partner" | "grant", days: number, all: boolean, own: string[]) {
   return (
     await c.query(
-      `SELECT count(*)::int AS n FROM funding_task WHERE organization_id=$1 AND status='todo' AND ${kind === "partner" ? "partner_id" : "grant_id"} IS NOT NULL AND due_on<=CURRENT_DATE+$2::int AND ($3 OR responsible_id=ANY($4::uuid[]))`,
+      `SELECT count(*)::int AS n FROM funding_task WHERE organization_id=$1 AND status<>'done' AND ${kind === "partner" ? "partner_id" : "grant_id"} IS NOT NULL AND due_on<=CURRENT_DATE+$2::int AND ($3 OR responsible_id=ANY($4::uuid[]))`,
       [org, days, all, own],
     )
   ).rows[0].n as number;
@@ -1023,7 +1023,7 @@ export async function partnerReportProof(db: Pool, token: string, proofId: strin
 }
 
 /**
- * Daily: the person in charge of a task hears about it 7 days before it is due;
+ * Daily: the person in charge of a task hears about it 7 days and 1 day before it is due (A1);
  * the money managers of the club hear about a partner renewal on its day.
  * Idempotent: one message per task (or renewal) and per day.
  */
@@ -1034,13 +1034,19 @@ export async function fundingTaskTick(db: Pool) {
   const week = in7.toISOString().slice(0, 10);
   const base = process.env.BETTER_AUTH_URL ?? "";
   let sent = 0;
+  // A1: J-7 and J-1, to the profile or the account (federation) in charge.
+  const eve = new Date(today + "T12:00:00Z");
+  eve.setUTCDate(eve.getUTCDate() + 1);
+  const tomorrow = eve.toISOString().slice(0, 10);
   const tasks = (
     await db.query(
       `SELECT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
-         FROM funding_task t JOIN organization o ON o.id=t.organization_id JOIN club_person cp ON cp.id=t.responsible_id JOIN person pe ON pe.id=cp.person_id JOIN "user" u ON u.id=pe.user_id
+         FROM funding_task t JOIN organization o ON o.id=t.organization_id
+         LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
+         JOIN "user" u ON u.id=COALESCE(t.responsible_user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
          LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
-        WHERE t.status='todo' AND t.due_on=$1 AND (t.kind NOT IN ('sponsor','grant') OR NOT ('finance'=ANY(o.disabled_modules)))`,
-      [week],
+        WHERE t.status<>'done' AND t.due_on IN ($1::date,$2::date) AND u.active AND (t.category NOT IN ('sponsors','grants','fundraising') OR NOT ('finance'=ANY(o.disabled_modules)))`,
+      [week, tomorrow],
     )
   ).rows;
   const renewals = (
@@ -1067,7 +1073,7 @@ export async function fundingTaskTick(db: Pool) {
   ).rows;
   for (const x of [
     // Wave 17 (O1): every task of the club, not only sponsors and grants (no file name for those).
-    ...tasks.map((t) => ({ ...t, key: `funding_task:${t.id}:${week}`, what: t.file ? `${t.file} · ${t.title}` : t.title, when: t.due_on })),
+    ...tasks.map((t) => ({ ...t, key: `funding_task:${t.id}:${t.due_on === tomorrow ? "j1" : "j7"}:${t.due_on}`, what: t.file ? `${t.file} · ${t.title}` : t.title, when: t.due_on, task: t.id as string })),
     ...renewals.map((r) => ({ ...r, key: `funding_renewal:${r.id}:${today}:${r.user_id}`, what: r.partner, when: today })),
     ...grants.map((g) => ({ ...g, key: `grant_deadline:${g.id}:${in14}:${g.user_id}` })),
   ]) {
@@ -1084,7 +1090,7 @@ export async function fundingTaskTick(db: Pool) {
         resourceId: x.id,
         eventKey: x.key,
         locale: x.locale,
-        variables: { name: x.name, organization: x.club, url: `${base}/${x.locale}/tasks`, title: x.what, due: x.when },
+        variables: { name: x.name, organization: x.club, url: `${base}/${x.locale}/tasks${"task" in x ? `?task=${x.task}` : ""}`, title: x.what, due: x.when },
       });
       await c.query("COMMIT");
       sent++;

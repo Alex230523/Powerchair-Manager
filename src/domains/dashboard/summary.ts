@@ -8,6 +8,7 @@ export const todoKeys = [
   "myAttendance",
   "myDocuments",
   "myApplications",
+  "myTasks",
   "registrationsReview",
   "duesLate",
   "sponsorTasks",
@@ -29,6 +30,7 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   myAttendance: { href: "/attendance", tone: "warning" },
   myDocuments: { href: "/documents", tone: "warning" },
   myApplications: { href: "/registrations/mine", tone: "warning" },
+  myTasks: { href: "/tasks", tone: "warning" },
   registrationsReview: { href: "/registrations", tone: "warning" },
   duesLate: { href: "/dues?state=late", tone: "danger" },
   sponsorTasks: { href: "/tasks", tone: "warning" },
@@ -76,7 +78,7 @@ export const presidentSquares: BoardKey[] = ["documents", "registersToClose", "r
 /** What takes the place of a square whose module is off or out of reach. */
 const replacements: BoardKey[] = ["equipmentService", "registrationFollowups", "documentsReview", "teamsOverCapacity", "coursesExpiring", "courseRequests"];
 /** Coaches, players and parents: their own squares first. */
-const memberSquares: BoardKey[] = ["myAttendance", "myDocuments", "myApplications", "registersToClose", "documents", "registrationsReview", "duesLate", "moneyTasks"];
+const memberSquares: BoardKey[] = ["myAttendance", "myDocuments", "myApplications", "myTasks", "registersToClose", "documents", "registrationsReview", "duesLate", "moneyTasks"];
 /** Counted inside a merged square, never shown on their own. */
 const merged = new Set<BoardKey>(["documentsExpired", "documentsMissing", "documentsExpiring", "sponsorTasks", "grantTasks"]);
 const defined = (n: number | undefined): n is number => Number.isInteger(n);

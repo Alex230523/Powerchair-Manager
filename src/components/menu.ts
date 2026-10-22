@@ -195,8 +195,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
-                  // Wave 17 (O1): one's tasks (all of them for those who plan).
-                  ...item("/tasks", "tasks", "clipboardList", role === "coach" || has("calendar.manage", "teams.manage", "dues.read", "dues.manage")),
+                  // A1: everyone has a to-do (only one's own tasks unless one plans).
+                  ...item("/tasks", "tasks", "clipboardList"),
                 ],
               },
               {
@@ -235,6 +235,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     { route: "/calendar", label: "calendar", icon: "calendar" },
                     { route: "/venues", label: "venues", icon: "pin" },
                     { route: "/documents", label: "documents", icon: "document" },
+                    // A1: the federation's own to-do.
+                    { route: "/tasks", label: "tasks", icon: "clipboardList" },
                   ],
                 },
               ]

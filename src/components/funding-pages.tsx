@@ -104,7 +104,7 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
     const d = x.renewal_on ?? x.ends_on;
     return !!d && d <= soon;
   }).length;
-  const lateConditions = data.tasks.filter((x) => x.partner_id && x.status === "todo" && x.due_on && x.due_on < data.today).length;
+  const lateConditions = data.tasks.filter((x) => x.partner_id && x.status !== "done" && x.due_on && x.due_on < data.today).length;
   const current = editing && editing !== "new" ? editing : undefined;
   const chosen = packageId ?? current?.package_id ?? "";
   const pkg = data.packages.find((k) => k.id === chosen);

@@ -1,13 +1,23 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/locale";
 import { Tasks } from "@/components/tasks";
-import { taskKinds, type TaskKind } from "@/domains/tasks/schema";
+import { categories, categoryOf, taskKinds, type Category, type TaskKind } from "@/domains/tasks/schema";
 export const metadata = { title: "Tâches · Powerchair Football Manager" };
-/** Wave 17 (O1): every task of the club by type; « ?kind=partner » of wave 15 still opens the sponsors. */
-export default async function Page({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ kind?: string }> }) {
+/**
+ * A1: the central to-do. « ?category= » opens one category; « ?kind= » of
+ * wave 17 (and « partner » of wave 15) still lands on its category;
+ * « ?task= » opens a task; « ?new=1 » the new task window (Ctrl+K).
+ */
+export default async function Page({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ kind?: string; category?: string; task?: string; new?: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const { kind } = await searchParams;
-  const wanted = kind === "partner" ? "sponsor" : kind;
-  return <Tasks locale={locale} initialKind={(taskKinds as readonly string[]).includes(wanted ?? "") ? (wanted as TaskKind) : "all"} />;
+  const q = await searchParams;
+  const kind = q.kind === "partner" ? "sponsor" : q.kind;
+  const initial: Category | "all" = (categories as readonly string[]).includes(q.category ?? "")
+    ? (q.category as Category)
+    : (taskKinds as readonly string[]).includes(kind ?? "")
+      ? categoryOf(kind as TaskKind)
+      : "all";
+  const task = /^[0-9a-f-]{36}$/i.test(q.task ?? "") ? q.task : undefined;
+  return <Tasks locale={locale} initialCategory={initial} openTask={task} create={q.new === "1"} />;
 }

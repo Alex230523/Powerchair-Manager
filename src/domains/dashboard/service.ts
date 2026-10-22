@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { myTasksCount } from "../tasks/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -124,6 +125,8 @@ export async function computeFor(
   // Modules the club switched off add nothing to the dashboard.
   const on = (m: string) => !club || !context.disabled_modules?.includes(m);
   const own = [...(await ownProfiles(c, a))];
+  // A1: one's own open tasks due within 14 days, the late ones included.
+  if (mfa) counts.myTasks = await myTasksCount(c, org, user.id, own);
   // The team chosen in the top bar (wave 12): validated here, never trusted from the URL.
   const scope = club
     ? await resolveScope(c, { organization_id: org, role: a.role, user_id: user.id, team_id: a.team_id }, raw)

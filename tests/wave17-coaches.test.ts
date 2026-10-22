@@ -14,17 +14,18 @@ const id = "00000000-0000-4000-8000-000000000001";
 
 /** Wave 17 (O1): tasks by type, the coach's licence and courses, the first-connection tour. */
 describe("wave 17, O1: tasks", () => {
-  it("never mixes types and sorts each group by due date, undated last", () => {
+  // A1: the groups are now the categories of the central to-do, every one shown (empty ones too).
+  it("never mixes categories and sorts each group by due date, undated last", () => {
     const groups = groupTasks([
-      { kind: "training", due_on: null, title: "Salle" },
-      { kind: "transport", due_on: "2026-11-10", title: "Camionnette" },
-      { kind: "training", due_on: "2026-11-02", title: "Fiches" },
-      { kind: "transport", due_on: "2026-11-01", title: "Conducteur" },
-      { kind: "other", due_on: "2026-10-30", title: "Divers" },
-    ]);
-    expect(groups.map((g) => g.kind)).toEqual(["transport", "training", "other"]);
-    expect(groups[0].tasks.map((t) => t.title)).toEqual(["Conducteur", "Camionnette"]);
-    expect(groups[1].tasks.map((t) => t.title)).toEqual(["Fiches", "Salle"]);
+      { category: "sport", due_on: null, title: "Salle" },
+      { category: "events", due_on: "2026-11-10", title: "Camionnette" },
+      { category: "sport", due_on: "2026-11-02", title: "Fiches" },
+      { category: "events", due_on: "2026-11-01", title: "Conducteur" },
+      { category: "other", due_on: "2026-10-30", title: "Divers" },
+    ]).filter((g) => g.tasks.length);
+    expect(groups.map((g) => g.category)).toEqual(["sport", "events", "other"]);
+    expect(groups[1].tasks.map((t) => t.title)).toEqual(["Conducteur", "Camionnette"]);
+    expect(groups[0].tasks.map((t) => t.title)).toEqual(["Fiches", "Salle"]);
     expect(taskKinds).toEqual(["transport", "training", "documents", "sponsor", "grant", "obligation", "equipment", "other"]);
   });
   it("dates a template's tasks so many days before the date", () => {

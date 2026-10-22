@@ -109,7 +109,8 @@ test("sponsor packages, conditions, partner sheet, calendar layer, home and agre
     await page.locator(".todo-card").filter({ hasText: "Sponsors et subsides" }).click();
     await expect(page).toHaveURL("/fr/tasks");
     // Two conditions are still open: one due today, one without a date.
-    await expect(page.locator(".task-page li")).toHaveCount(2);
+    // A1: the sponsors' category of the central to-do.
+    await expect(page.locator("#tasks-sponsors .task-page li")).toHaveCount(2);
     await axe(page, "tasks page");
 
     // 6. The agreement.

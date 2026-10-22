@@ -6,9 +6,11 @@ import { fundingTaskTick } from "../src/domains/funding/service";
 import { affiliationTick } from "../src/domains/affiliations/service";
 import { licenceReminderTick } from "../src/domains/licences/service";
 import { equipmentLoanTick } from "../src/domains/equipment/loans";
+import { taskSourcesTick } from "../src/domains/tasks/sources";
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 console.log("Attendance worker ready");
 let stopping = false;
+let sourcesAt = 0;
 process.on("SIGTERM", () => {
   stopping = true;
 });
@@ -26,6 +28,12 @@ try {
       // Automatic dues reminders (wave 11), when a club switched them on.
       const reminders = await duesReminderTick(db);
       if (reminders) console.log("Dues reminders sent:", reminders);
+      // A1: the tasks the application creates by itself, once an hour (before their reminders).
+      if (Date.now() - sourcesAt > 3600000 || process.argv.includes("--once")) {
+        sourcesAt = Date.now();
+        const sources = await taskSourcesTick(db);
+        if (sources) console.log("Automatic tasks created or closed:", sources);
+      }
       // Sponsor conditions and grant tasks due in 7 days, partner renewals of the day (wave 15).
       const tasks = await fundingTaskTick(db);
       if (tasks) console.log("Funding task reminders sent:", tasks);
