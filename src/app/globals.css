@@ -9478,3 +9478,40 @@ ul.task-page li {
 .transfer-provinces select {
   margin-left: var(--space-2);
 }
+
+/* A3: the issue wizard. */
+.wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  counter-reset: step;
+}
+.wizard-steps li {
+  counter-increment: step;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+.wizard-steps li::before {
+  content: counter(step) ". ";
+}
+.wizard-steps li[aria-current="step"] {
+  background: var(--accent-soft);
+  color: var(--primary);
+  font-weight: 650;
+}
+.issue-wizard fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.issue-wizard td input:not([type="checkbox"]) {
+  min-width: 10rem;
+}

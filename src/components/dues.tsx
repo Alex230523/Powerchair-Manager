@@ -14,6 +14,8 @@ import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
+import { IssueWizard } from "./dues-issue";
+import { duesIssueCopy } from "./dues-issue-copy";
 const copy = {
   fr: {
     collected: "Encaissé",
@@ -351,8 +353,6 @@ export function Dues({ locale }: { locale: Locale }) {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [planId, setPlanId] = useState(""),
-    [applicationId, setApplicationId] = useState(""),
     [confirmation, setConfirmation] = useState(""),
     [q, setQ] = useState(""),
     [detailId, setDetailId] = useState(""),
@@ -437,8 +437,6 @@ export function Dues({ locale }: { locale: Locale }) {
     e.preventDefault();
     return command(fn(new FormData(e.currentTarget)));
   }
-  const plan = view?.plans.find((p) => p.id === planId),
-    admission = view?.followups.find((a) => a.id === applicationId);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
   const day = (d: string) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
@@ -484,8 +482,9 @@ export function Dues({ locale }: { locale: Locale }) {
                 <Link className="button secondary" href={`/${locale}/settings/money#settings-dues-title`}>
                   {settingsLabel[locale]}
                 </Link>
-                <button type="button" className="button" onClick={() => setIssuing(true)} disabled={!view.plans.some((p) => !p.archived)}>
-                  {t.issue}
+                {/* A3: always there for dues.manage; without a rate the wizard starts by creating one. */}
+                <button type="button" className="button" onClick={() => setIssuing(true)}>
+                  {duesIssueCopy[locale].open}
                 </button>
               </>
             )}
@@ -579,7 +578,17 @@ export function Dues({ locale }: { locale: Locale }) {
             }
           >
             {!rows.length ? (
-              <EmptyState title={t.empty} icon="dues" />
+              <EmptyState
+                title={seasonRows.length || q || stateFilter ? t.empty : duesIssueCopy[locale].emptySeason}
+                icon="dues"
+                action={
+                  view.manage && !seasonRows.length ? (
+                    <button type="button" className="button" onClick={() => setIssuing(true)}>
+                      {duesIssueCopy[locale].open}
+                    </button>
+                  ) : undefined
+                }
+              />
             ) : (
               <DataGrid
                 locale={locale}
@@ -726,73 +735,19 @@ export function Dues({ locale }: { locale: Locale }) {
         </>
       )}
       {view && issuing && (
-        <Modal title={t.issue} close={() => setIssuing(false)}>
-          <form
-            onSubmit={(e) =>
-              submit(e, (d) => ({
-                action: "issue",
-                planId,
-                profileId: d.get("person"),
-                discountCents: Math.round(Number(d.get("discount")) * 100),
-                reason: d.get("reason"),
-                installments: Number(d.get("count")),
-                firstDue: d.get("due"),
-                ...(applicationId ? { applicationId } : {}),
-              })).then((ok) => ok && setIssuing(false))
-            }
-          >
-            <label>
-              {t.followups}
-              <select value={applicationId} onChange={(e) => { setApplicationId(e.target.value); setPlanId(""); }}>
-                <option value="">{t.manual}</option>
-                {view.followups.map((a) => (
-                  <option key={a.id} value={a.id}>{a.subject_name} · {view.seasons.find((s) => s.id === a.season_id)?.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t.plan}
-              <select value={planId} required onChange={(e) => setPlanId(e.target.value)}>
-                <option value="" disabled>{t.plan}</option>
-                {view.plans.filter((p) => !p.archived && (!admission || p.season_id === admission.season_id)).map((p) => (
-                  <option key={p.id} value={p.id}>{p.category} · {view.seasons.find((s) => s.id === p.season_id)?.name} · {money(p.amount_cents)}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t.person}
-              <select name="person" key={applicationId} defaultValue={admission?.profile_id} required>
-                {view.profiles.filter((p) => !admission || p.id === admission.profile_id).map((p) => (
-                  <option key={p.id} value={p.id}>{p.full_name}</option>
-                ))}
-              </select>
-            </label>
-            <div className="form-pair">
-              <label>
-                {t.discount}
-                <input name="discount" type="number" min="0" max={(plan?.amount_cents ?? 0) / 100} step="0.01" defaultValue="0" required />
-              </label>
-              <label>
-                {t.reason}
-                <input name="reason" maxLength={500} />
-              </label>
-            </div>
-            <div className="form-pair">
-              <label>
-                {t.count}
-                <input name="count" key={planId + applicationId + "count"} type="number" min="1" max={plan?.max_installments ?? 1} defaultValue={Math.min(admission?.installments ?? 1, plan?.max_installments ?? 1)} required />
-              </label>
-              <label>
-                {t.due}
-                <input name="due" key={planId} type="date" defaultValue={plan?.first_due} required />
-              </label>
-            </div>
-            <div className="actions">
-              <Button disabled={busy || !planId || !view.profiles.length}>{t.issueShort}</Button>
-              <button type="button" className="button secondary" onClick={() => setIssuing(false)}>{t.close}</button>
-            </div>
-          </form>
-        </Modal>
+        <IssueWizard
+          locale={locale}
+          organizationId={view.organizationId}
+          plans={view.plans}
+          seasons={view.seasons}
+          teams={view.teams}
+          profiles={view.profiles}
+          close={() => setIssuing(false)}
+          done={(m) => {
+            setIssuing(false);
+            void load().then(() => setMessage(m));
+          }}
+        />
       )}
       {paying && (
         <Modal title={`${t.payTitle} · ${paying.full_name}`} close={closePay}>

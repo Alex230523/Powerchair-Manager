@@ -1,4 +1,12 @@
 import { z } from "zod";
+/** A3: who a wizard issue is for. */
+export const issueTarget = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("person"), profileId: z.uuid() }),
+  z.object({ kind: z.literal("team"), teamId: z.uuid() }),
+  z.object({ kind: z.literal("season") }),
+  z.object({ kind: z.literal("admitted") }),
+]);
+export type IssueTarget = z.infer<typeof issueTarget>;
 export const commandSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("plan"),
@@ -63,6 +71,19 @@ export const commandSchema = z.discriminatedUnion("action", [
     version: z.number().int().positive(),
     reason: z.string().trim().min(5).max(500),
   }),
+  /* A3: the issue wizard (preview, then many at once) and the automatic issue on acceptance. */
+  z.object({ action: z.literal("preview"), planId: z.uuid(), target: issueTarget }),
+  z.object({
+    action: z.literal("issueMany"),
+    planId: z.uuid(),
+    target: issueTarget,
+    installments: z.number().int().min(1).max(12),
+    firstDue: z.iso.date(),
+    exemptions: z.array(z.object({ profileId: z.uuid(), reason: z.string().trim().min(5).max(500) })).max(2000).default([]),
+    excluded: z.array(z.uuid()).max(2000).default([]),
+    notify: z.boolean().default(false),
+  }),
+  z.object({ action: z.literal("autoIssue"), planId: z.uuid().nullable() }),
   /** Money received for a receivable: written in the ledger (income, dues). */
   z.object({
     action: z.literal("pay"),
@@ -210,4 +231,23 @@ export function siblingDiscount(
 ) {
   const percent = rank <= 1 ? 0 : rank === 2 ? second : next;
   return Math.round((amountCents * percent) / 100);
+}
+
+/**
+ * A3: the line of the wizard's preview. A person who already owes an open
+ * fee of the same category this season is covered and left out (the index
+ * dues_one_active_category would refuse it anyway); an exemption sets the
+ * whole amount as a discount, with its reason.
+ */
+export function previewLine(
+  gross: number,
+  covered: boolean,
+  rank: number,
+  rule: { second: number; next: number },
+  exemption: string | null,
+) {
+  if (covered) return { included: false, discount: 0, net: 0, reason: "" };
+  if (exemption) return { included: true, discount: gross, net: 0, reason: exemption };
+  const discount = siblingDiscount(gross, rank, rule.second, rule.next);
+  return { included: true, discount, net: gross - discount, reason: discount ? `Réduction fratrie (${rank}e enfant)` : "" };
 }

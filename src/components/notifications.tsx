@@ -43,6 +43,7 @@ const variables: Record<string, string[]> = {
   registration_link: ["name", "organization", "url"],
   license_update: ["name", "person", "status", "organization", "url"],
   funding_task: ["name", "title", "due", "organization", "url"],
+  dues_issued: ["name", "person", "amount", "due", "details", "organization", "url"],
 };
 /** `embedded`: rendered inside Réglages (wave 11) as a section instead of a page. */
 export function Notifications({ locale, embedded = false }: { locale: Locale; embedded?: boolean }) {

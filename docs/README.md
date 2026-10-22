@@ -102,6 +102,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [Vague 17, J4 : journées de classification](evolutions/2026-10-22-m-vague-17-j4-classification.md) |
 | 22/10/2026 | [Vague 17, Q1 : matériel, modèles, prêts, stockage](evolutions/2026-10-22-n-vague-17-q1-materiel.md) |
 | 22/10/2026 | [Vague 17, J3 : bourse aux transferts](evolutions/2026-10-22-o-vague-17-j3-bourse.md) |
+| 22/10/2026 | [A3 : émettre des cotisations](evolutions/2026-10-22-p-a3-emettre-cotisations.md) |
 
 ## Convention
 

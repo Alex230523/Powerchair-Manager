@@ -590,6 +590,7 @@ export const english = {
     registration_link: "Registration link by email",
     license_update: "Licences",
     funding_task: "Sponsor and grant tasks",
+    dues_issued: "Membership fee issued",
     calendar_update: "Calendar",
     intro: "Notifications belong to the active organisation.",
     access: "My space",

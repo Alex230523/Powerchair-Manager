@@ -115,16 +115,18 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(
       page.getByRole("heading", { name: "Dues", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Issue dues", exact: true }).click();
-    const issue = page.getByRole("dialog", { name: "Issue dues" });
-    await issue
-      .getByRole("combobox", { name: "Rate", exact: true })
-      .selectOption({ label: "Player membership · 2026-27 · €250.00" });
-    await issue.getByLabel("Number of instalments", { exact: true }).fill("4");
-    await issue
-      .getByRole("button", { name: "Issue", exact: true })
-      .click();
-    await expect(page.getByRole("status")).toHaveText("Saved.");
+    // A3: the issue wizard (rate, who, confirm).
+    await page.getByRole("button", { name: "Issue membership fees", exact: true }).first().click();
+    const issue = page.getByRole("dialog", { name: "Issue membership fees" });
+    await issue.getByRole("radio", { name: "Player membership · 2026-27 · €250.00" }).check();
+    await issue.getByRole("button", { name: "Next", exact: true }).click();
+    await issue.getByRole("radio", { name: "One person" }).check();
+    await issue.getByLabel("Person", { exact: true }).selectOption({ label: "Browser player" });
+    await issue.getByLabel("Number of payments", { exact: true }).fill("4");
+    await issue.getByRole("button", { name: "Show the preview", exact: true }).click();
+    await issue.getByRole("button", { name: "Next", exact: true }).click();
+    await issue.getByRole("button", { name: "Issue", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("1 fee(s) issued.");
     // One line per player in the table, with the amount due and the next instalment.
     const row = page
       .locator("main .dues-table tbody tr")

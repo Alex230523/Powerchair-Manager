@@ -16,6 +16,7 @@ export const editableKinds = [
   "registration_link",
   "license_update",
   "funding_task",
+  "dues_issued",
 ] as const;
 /** Club-written mails: the text comes from the club, not from a template. */
 export const clubWrittenKinds = ["club_newsletter", "event_mail"] as const;
@@ -88,6 +89,20 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     en: {
       subject: "Membership fee reminder · {person}",
       body: "Hello {name},\nUnless we are mistaken, the membership fee for {person} is not settled yet.\nAmount: {amount}\nDue: {due}\n{details}\nIf you have already paid, please ignore this message.\nKind regards,\n{organization}\n{url}",
+    },
+  },
+  dues_issued: {
+    fr: {
+      subject: "Cotisation {organization} · {person}",
+      body: "Bonjour {name},\nLa cotisation de {person} est émise.\nMontant : {amount}\nÉchéancier :\n{details}\nPremière échéance : {due}\nLes détails et le moyen de paiement sont dans votre espace.\n{url}\nSportivement,\n{organization}",
+    },
+    nl: {
+      subject: "Lidgeld {organization} · {person}",
+      body: "Hallo {name},\nHet lidgeld van {person} is aangemaakt.\nBedrag: {amount}\nBetalingsplan:\n{details}\nEerste vervaldag: {due}\nDe details en de betaalwijze staan in uw ruimte.\n{url}\nSportieve groeten,\n{organization}",
+    },
+    en: {
+      subject: "Membership fee {organization} · {person}",
+      body: "Hello {name},\nThe membership fee for {person} has been issued.\nAmount: {amount}\nSchedule:\n{details}\nFirst due date: {due}\nThe details and how to pay are in your space.\n{url}\nKind regards,\n{organization}",
     },
   },
   document_reminder: {
@@ -334,6 +349,7 @@ const allowed: Record<Kind, string[]> = {
   event_mail: ["title", "message", "organization", "url"],
   weekly_digest: ["title", "message", "url"],
   attendance_update: ["name", "organization", "url"],
+  dues_issued: ["name", "organization", "url", "person", "amount", "due", "details"],
   dues_reminder: [
     "name",
     "organization",

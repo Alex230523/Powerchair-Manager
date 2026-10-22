@@ -1,3 +1,4 @@
+import { issueOnAcceptance } from "../dues/issue";
 import { ensureStorage } from "../storage/service";
 import { Pool, type PoolClient } from "pg";
 import { z } from "zod";
@@ -951,6 +952,8 @@ export async function registrationExecute(
             [a.id],
           )
         ).rows.map((r) => r.kind);
+        // A3: the fee of the rate chosen in Réglages › Argent, issued at once.
+        undo!.dues = await issueOnAcceptance(c, org, p.userId, { id: a.id, profile_id: profileId!, season_id: a.season_id, answers: a.answers, form_snapshot: a.form_snapshot });
         const invited = await inviteApplicant(c, org, p.userId, permissions(context!.role, context!.grants).includes("invitations.create"), {
           applicant: a.applicant_user_id,
           self: a.subject_kind === "self",

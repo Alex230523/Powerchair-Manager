@@ -657,6 +657,8 @@ try {
     },
     org,
   );
+  // A3: the rate is issued by itself when a registration is accepted.
+  await duesExecute(db, president, { action: "autoIssue", planId: plan.id as string }, org);
   for (const profileId of [people.camille, people.lucas])
     await duesExecute(
       db,

@@ -22,6 +22,8 @@ export type DecisionUndo = {
   sport: { created: boolean; before: { control: string; jersey_size: string; sport_notes: string } | null; history: string[] } | null;
   support: { created: boolean; before: { emergency_contact: string; confidential_ciphertext: string | null } | null } | null;
   followups: string[];
+  /** A3: the fee issued by itself on acceptance; cancelled on undo while unpaid. */
+  dues?: string | null;
   invitations: string[];
   /** The parent's file created for the invitation. */
   parent: string | null;
@@ -50,6 +52,11 @@ export async function revertDecision(c: PoolClient, org: string, userId: string,
   if (p.notifications.length) await c.query("DELETE FROM app_notification WHERE id=ANY($1::uuid[]) AND organization_id=$2", [p.notifications, org]);
   if (p.invitations.length) await c.query("DELETE FROM invitation WHERE id=ANY($1::uuid[]) AND organization_id=$2 AND accepted_at IS NULL", [p.invitations, org]);
   if (p.parent) await attempt(c, "DELETE FROM club_person WHERE id=$1 AND organization_id=$2", [p.parent, org]);
+  if (p.dues)
+    await c.query(
+      "UPDATE dues_receivable SET status='cancelled',cancelled_at=now(),version=version+1 WHERE id=$1 AND organization_id=$2 AND status='open' AND NOT EXISTS (SELECT 1 FROM finance_transaction t WHERE t.receivable_id=$1 AND t.cancelled_at IS NULL)",
+      [p.dues, org],
+    );
   if (p.followups.length) await c.query("DELETE FROM registration_followup WHERE application_id=$1 AND kind=ANY($2::text[])", [application, p.followups]);
   if (p.membership)
     await attempt(c, "DELETE FROM team_membership WHERE id=$1 AND organization_id=$2", [p.membership, org], [
