@@ -256,7 +256,8 @@ test("new club, federation and referee pages load and pass axe", async ({
     await grant.getByLabel("Contact").selectOption({ label: "Marc Dupont · Commune" });
     await grant.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(page.locator("main table")).toContainText("Commune de Schaerbeek");
-    await expect(page.locator("main table")).toContainText("Déposer le dossier");
+    // A2: the deadline has its own column.
+    await expect(page.locator("main table")).toContainText(/1 déc/);
     await check(page, "/fr/funding/grants");
 
     await switchProfile(page, roles.federation_president);
