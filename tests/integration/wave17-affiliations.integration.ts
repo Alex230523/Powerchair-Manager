@@ -83,11 +83,11 @@ afterAll(async () => {
 });
 
 it("a federal fee for chosen clubs, per licensed player; one for all clubs, per club", async () => {
-  await federationAffiliationsExecute(db, fedPresident, fee("Sportéa", "player", { allClubs: false, clubIds: [clubA] }), fed);
-  await federationAffiliationsExecute(db, fedPresident, fee("Affiliation BPCF", "club", { allClubs: true, clubIds: [] }), fed);
+  await federationAffiliationsExecute(db, fedPresident, fee("Sportéa", "player", { allClubs: false, clubIds: [clubA] }) as never, fed);
+  await federationAffiliationsExecute(db, fedPresident, fee("Affiliation BPCF", "club", { allClubs: true, clubIds: [] }) as never, fed);
   // A club of another federation cannot be chosen; nor can a club define for another.
-  await expect(federationAffiliationsExecute(db, fedPresident, fee("X", "club", { allClubs: false, clubIds: [randomUUID()] }), fed)).rejects.toMatchObject({ code: "NOT_FOUND" });
-  await expect(federationAffiliationsExecute(db, presidentA, fee("X", "club", { allClubs: true, clubIds: [] }), clubA)).rejects.toMatchObject({ code: "FEDERATION_ONLY" });
+  await expect(federationAffiliationsExecute(db, fedPresident, fee("X", "club", { allClubs: false, clubIds: [randomUUID()] }) as never, fed)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await expect(federationAffiliationsExecute(db, presidentA, fee("X", "club", { allClubs: true, clubIds: [] }) as never, clubA)).rejects.toMatchObject({ code: "FEDERATION_ONLY" });
   const a = await clubAffiliationsView(db, presidentA);
   const names = a.dues.map((d) => `${d.name}:${d.amount_cents}:${d.players ?? "-"}:${d.state}`).sort();
   expect(names).toEqual(["Affiliation BPCF:2500:-:open", "Sportéa:7500:3:open"]);
@@ -125,7 +125,7 @@ it("marks « en ordre » with the expense, ticks the status line, and the undo p
   await expect(clubAffiliationsExecute(db, presidentA, { action: "markPaid", id: due.id, paidOn: today, createExpense: false, method: "transfer" }, clubA)).rejects.toMatchObject({
     code: "ALREADY_PAID",
   });
-  await undoExecute(db, presidentA, { id: r.undo }, clubA);
+  await undoExecute(db, presidentA, { id: r.undo! }, clubA);
   expect((await db.query("SELECT paid_on,transaction_id FROM affiliation_due WHERE id=$1", [due.id])).rows[0]).toEqual({ paid_on: null, transaction_id: null });
   expect((await db.query("SELECT cancelled_at IS NOT NULL AS cancelled FROM finance_transaction WHERE id=$1", [r.transaction])).rows[0].cancelled).toBe(true);
 });
