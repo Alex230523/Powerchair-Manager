@@ -48,7 +48,7 @@ export function slugOf(s: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
-/** « tigerstorm-cotisations-2026-27.xlsx » */
+/** « mon-club-cotisations-2026-27.xlsx » */
 export function exportFileName(club: string, subject: string, period: string, format: "xlsx" | "csv") {
   return [slugOf(club), slugOf(subject), slugOf(period)].filter(Boolean).join("-") + "." + format;
 }

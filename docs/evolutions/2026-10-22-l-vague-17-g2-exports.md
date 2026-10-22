@@ -17,7 +17,7 @@ Le fichier est écrit côté serveur (`/api/exports`, `src/domains/exports`) ave
 - comptes en nombres entiers ;
 - textes toujours en texte, jamais lus comme une formule.
 
-Le nom du fichier est clair, par exemple `tigerstorm-cotisations-2026-27.xlsx`.
+Le nom du fichier est clair, par exemple `mon-club-cotisations-2026-27.xlsx`.
 
 ## Où
 - Statistiques :
