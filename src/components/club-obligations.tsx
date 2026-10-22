@@ -171,7 +171,7 @@ export function ClubObligations({ locale }: { locale: Locale }) {
                       <td>{date(r.due_on)}</td>
                       <td>
                         {date(r.done_on)}
-                        {r.automatic && r.done_on && <span className="muted obligation-detail">{t.automatic}</span>}
+                        {r.automatic && r.done_on && <span className="muted obligation-detail">{r.auto_source === "affiliation" ? t.automaticAffiliation : t.automatic}</span>}
                       </td>
                       <td>{r.responsible ?? ""}</td>
                       <td>

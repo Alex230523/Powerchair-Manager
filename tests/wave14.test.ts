@@ -29,7 +29,7 @@ describe("president menu (wave 14)", () => {
     expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/licenses", "/statistics"]);
     expect(routes.activities).toEqual(["/calendar", "/matches", "/trips", "/venues", "/tournaments"]);
     expect(routes.communication).toEqual(["/communication", "/documents"]);
-    expect(routes.money).toEqual(["/funding", "/dues", "/fundraising"]);
+    expect(routes.money).toEqual(["/funding", "/dues", "/fundraising", "/funding/affiliations"]);
     expect(routes.clubGroup).toEqual(["/club/manage", "/equipment", "/contacts"]);
     // Wave 17 (G3): Relances moved to Settings, the offline book is gone.
     expect(routes.more).toEqual(["/privacy", "/settings"]);

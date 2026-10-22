@@ -99,6 +99,7 @@ export const financeCopy: Record<Locale, Copy> = {
       travel: "Déplacements",
       competition: "Compétitions",
       insurance: "Assurances",
+      affiliation: "Affiliations",
       other: "Autre",
     },
     methods: {
@@ -162,6 +163,7 @@ export const financeCopy: Record<Locale, Copy> = {
       travel: "Verplaatsingen",
       competition: "Competities",
       insurance: "Verzekeringen",
+      affiliation: "Aansluitingen",
       other: "Andere",
     },
     methods: {
@@ -225,6 +227,7 @@ export const financeCopy: Record<Locale, Copy> = {
       travel: "Travel",
       competition: "Competitions",
       insurance: "Insurance",
+      affiliation: "Affiliations",
       other: "Other",
     },
     methods: {

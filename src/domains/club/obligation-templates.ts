@@ -5,7 +5,7 @@
  * verified here).
  */
 export type LegalForm = "asbl" | "de_facto" | "other";
-export type AutoSource = "none" | "accounts_approved" | "accounts_filed";
+export type AutoSource = "none" | "accounts_approved" | "accounts_filed" | "affiliation";
 type Lang = "fr" | "nl" | "en";
 export type Template = { key: string; auto: AutoSource; title: Record<Lang, string> };
 

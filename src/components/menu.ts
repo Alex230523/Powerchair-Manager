@@ -126,6 +126,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
                 ...item("/fundraising", "pots", "piggyBank", has("dues.read", "dues.manage")),
+                ...item("/funding/affiliations", "affiliations", "badgeCheck", has("dues.read", "dues.manage")),
               ],
             },
             {
@@ -199,6 +200,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
                   ...item("/funding/grants", "grants", "document", has("dues.read", "dues.manage")),
                   ...item("/funding/partners", "partners", "team", has("dues.read", "dues.manage")),
+                  ...item("/funding/affiliations", "affiliations", "badgeCheck", has("dues.read", "dues.manage")),
                   ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
                 ],
               },
@@ -219,6 +221,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           { route: "/tournaments", label: "tournaments", icon: "trophy" },
                           { route: "/federation/referees", label: "designations", icon: "whistle" },
                           { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
+                          { route: "/federation/affiliations", label: "affiliations", icon: "landmark" },
                           { route: "/federation/courses", label: "courses", icon: "team" },
                         ]) satisfies NavItem[]),
                     ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),

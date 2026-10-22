@@ -8724,3 +8724,89 @@ details.event-section > summary {
 .departure-form .check {
   min-height: 2.75rem;
 }
+
+/* ---------- Wave 17 (N2): affiliations ---------- */
+.affiliation-owner {
+  display: block;
+  font-weight: 400;
+  font-size: var(--text-xs);
+}
+.affiliation-table td,
+.affiliation-table th {
+  vertical-align: middle;
+}
+.affiliation-action {
+  text-align: right;
+}
+.settle-button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+  color: var(--on-primary);
+  cursor: pointer;
+}
+.settle-button:hover {
+  background: var(--success-ink);
+}
+.settle-button:disabled {
+  background: var(--surface-soft);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.affiliation-fees {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.affiliation-fees li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.affiliation-fees li > div {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.affiliation-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.affiliation-examples p {
+  margin: 0;
+}
+.affiliation-form fieldset {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.affiliation-form .date-pair,
+.affiliation-form .date-pair > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.club-choice {
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  overflow: auto;
+}
