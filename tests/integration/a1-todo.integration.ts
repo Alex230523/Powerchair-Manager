@@ -6,7 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { tasksExecute, tasksView } from "../../src/domains/tasks/service";
 import { taskSourcesTick } from "../../src/domains/tasks/sources";
 import { taskCommand } from "../../src/domains/tasks/schema";
-import { fundingTaskTick } from "../../src/domains/funding/service";
+import { fundingTaskTick, fundingView } from "../../src/domains/funding/service";
 import { brusselsToday } from "../../src/domains/people/service";
 
 /**
@@ -70,6 +70,8 @@ it("creates a task from a grant's deadline, once, and closes it when the file is
   await taskSourcesTick(db);
   await tasksView(db, presidentA);
   expect((await db.query("SELECT count(*)::int AS n FROM funding_task WHERE grant_id=$1", [grant])).rows[0].n).toBe(1);
+  // The grant's own sheet (Finances) keeps only its check-list.
+  expect((await fundingView(db, presidentA)).tasks.some((t) => t.grant_id === grant)).toBe(false);
   // An automatic task cannot be deleted by hand.
   await expect(run(presidentA, clubA, { action: "delete", id: auto[0].id })).rejects.toMatchObject({ code: "FORBIDDEN" });
   // Filed: the task closes by itself.

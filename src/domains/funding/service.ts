@@ -256,7 +256,7 @@ export type TaskRow = {
   proofs: { id: string; filename: string }[];
 };
 const selectTasks =
-  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM funding_task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant')";
+  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM funding_task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
 /** The nearest open date of a partner: a condition to deliver, the payment, the renewal or a planned step. */
 export function partnerNearest(
   p: { status: string; paid_on: string | null; payment_due_on: string | null; renewal_on: string | null; next_action_on: string | null },
