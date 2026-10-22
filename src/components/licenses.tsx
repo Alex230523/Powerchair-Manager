@@ -11,6 +11,8 @@ import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, PageHeader, Card, EmptyState } from "./ui";
+import { ClassificationBadge } from "./classification-badge";
+import { ClassificationDays } from "./classification-days";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 export function ClubLicenses({ locale }: { locale: Locale }) {
@@ -159,7 +161,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
                             )}
                         </td>
                         <td>
-                          {t.classes[x.classification] ?? x.classification}
+                          <ClassificationBadge locale={locale} value={x.classification} />
                           {x.classification_valid_until && (
                             <span className="muted">
                               {" "}
@@ -243,6 +245,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
               </button>
             </p>
           )}
+          {data.federation && <ClassificationDays locale={locale} />}
         </>
       )}
     </main>
@@ -453,9 +456,9 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                     <span className="muted">
                       {" "}
                       · {x.birth_year ?? ""} · {x.club} ·{" "}
-                      {t.classes[x.classification] ?? x.classification}
-                      {x.valid_until ? ` · ${t.until} ${x.valid_until}` : ""}
-                    </span>{" "}
+                    </span>
+                    <ClassificationBadge locale={locale} value={x.classification} />
+                    {x.valid_until && <span className="muted"> · {t.until} {x.valid_until}</span>}{" "}
                     <Badge tone={
                         x.status === "validated"
                           ? "success"
@@ -542,6 +545,8 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
               <EmptyState title={t.none} />
             )}
           </Card>
+
+          <ClassificationDays locale={locale} />
 
           <Card title={t.transfers} labelledBy="fed-transfers" headingId="fed-transfers">
             {data.transfers.length ? (

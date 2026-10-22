@@ -1,34 +1,19 @@
 "use client";
 import Link from "next/link";
-import { useId, useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { matchesView, MatchLine as Line } from "@/domains/competitions/service";
 import { matchLineCopy } from "./match-line-copy";
 import { matchesCopy } from "./matches-copy";
 import { Badge, Button, Card, EmptyState } from "./ui";
 import { Modal } from "./modal";
+import { Tip } from "./tip";
 
 type View = Awaited<ReturnType<typeof matchesView>>;
 type Match = View["matches"][number];
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const tones = { ok: "success", warn: "warning", low: "danger" } as const;
-
-/** A small grey tip shown on hover or keyboard focus, closed with Escape (WCAG 1.4.13). */
-export function Tip({ label, tone, children }: { label: ReactNode; tone: string; children: ReactNode }) {
-  const id = useId();
-  const [hidden, setHidden] = useState(false);
-  return (
-    <span className="tip" data-hidden={hidden || undefined} onMouseLeave={() => setHidden(false)} onBlur={() => setHidden(false)}>
-      <button type="button" className="tip-trigger" aria-describedby={id} onKeyDown={(e) => e.key === "Escape" && setHidden(true)}>
-        <Badge tone={tone}>{label}</Badge>
-      </button>
-      <span role="tooltip" id={id} className="tip-body">
-        {children}
-      </span>
-    </span>
-  );
-}
 
 /** Wave 17 (C5): answers, referee and transport of an upcoming match. */
 export function MatchLine({ locale, m, canEdit, busy, send }: { locale: Locale; m: Match; canEdit: boolean; busy: boolean; send: (b: Record<string, unknown>, done?: string) => Promise<boolean> }) {

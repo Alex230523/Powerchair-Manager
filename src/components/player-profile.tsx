@@ -19,6 +19,7 @@ import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
 import { teamsCopy } from "./teams-copy";
+import { ClassificationBadge } from "./classification-badge";
 import { Badge, Tabs, EmptyState } from "./ui";
 import { undoToast } from "./toast";
 import { sheetCopy } from "./player-sheet-copy";
@@ -204,12 +205,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
             ))}
             {p.playing_position && <li>{p.playing_position}</li>}
             {p.jersey_number !== null && <li>#{p.jersey_number}</li>}
-            <li data-tone="accent">
-              {
-                t.classifications[
-                  view.sport.classification as keyof typeof t.classifications
-                ]
-              }
+            <li className="profile-tag-badge">
+              <ClassificationBadge locale={locale} value={view.sport.classification} />
             </li>
             {former && <li data-tone="muted">{t.formerPlayer}</li>}
             {p.departure_status === "deceased" && <li data-tone="muted">{sc.inMemoriam}</li>}
@@ -694,11 +691,7 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
               <dd>{p.jersey_number ?? "—"}</dd>
               <dt>{t.classification}</dt>
               <dd>
-                {
-                  t.classifications[
-                    view.sport.classification as keyof typeof t.classifications
-                  ]
-                }
+                <ClassificationBadge locale={locale} value={view.sport.classification} />
                 {view.sport.classification_valid_until &&
                   ` · ${t.validUntil.toLocaleLowerCase()} ${day(view.sport.classification_valid_until)}`}{" "}
                 <Badge tone={

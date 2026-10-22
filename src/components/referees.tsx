@@ -1,4 +1,5 @@
 "use client";
+import { ClassificationDays } from "./classification-days";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type {
@@ -267,6 +268,7 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
           </Card>
         </div>
       )}
+      {data && <ClassificationDays locale={locale} />}
     </main>
   );
 }

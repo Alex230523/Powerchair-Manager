@@ -1600,6 +1600,10 @@ caption {
   border: 1px dashed var(--border-strong);
   color: var(--muted);
 }
+.profile-tags li.profile-tag-badge {
+  padding: 0;
+  background: transparent;
+}
 .tabs {
   display: flex;
   gap: 4px;
@@ -9319,4 +9323,53 @@ ul.task-page li {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* Wave 17 (J4): classification days. */
+.classification-days fieldset.check-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-1) var(--space-4);
+  border: 0;
+  margin: var(--space-3) 0;
+  padding: 0;
+}
+.classification-days legend {
+  font-weight: 650;
+  margin-bottom: var(--space-2);
+}
+.classification-new,
+.classification-texts {
+  margin: var(--space-3) 0;
+}
+.classification-new > summary,
+.classification-texts > summary {
+  cursor: pointer;
+  font-weight: 650;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+.classification-day {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+}
+.classification-day h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+}
+.classification-day .ledger select,
+.classification-day .ledger input {
+  min-width: 8rem;
+}
+.team-players > td {
+  background: var(--surface-soft);
+}
+.team-players table {
+  width: 100%;
 }

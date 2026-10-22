@@ -40,8 +40,8 @@ const fr = {
   classes: {
     PF1: "PF1",
     PF2: "PF2",
-    pending: "Évaluation en cours",
-    not_classified: "Non classé",
+    pending: "En attente",
+    not_classified: "Non définie",
   } as Record<string, string>,
   until: "jusqu'au",
   noPlayer: "Aucun joueur actif.",
@@ -129,8 +129,8 @@ const nl: Copy = {
   classes: {
     PF1: "PF1",
     PF2: "PF2",
-    pending: "Evaluatie lopend",
-    not_classified: "Niet geclassificeerd",
+    pending: "In afwachting",
+    not_classified: "Niet bepaald",
   },
   until: "tot",
   noPlayer: "Geen actieve spelers.",
@@ -217,8 +217,8 @@ const en: Copy = {
   classes: {
     PF1: "PF1",
     PF2: "PF2",
-    pending: "Assessment ongoing",
-    not_classified: "Not classified",
+    pending: "Pending",
+    not_classified: "Not defined",
   },
   until: "until",
   noPlayer: "No active player.",

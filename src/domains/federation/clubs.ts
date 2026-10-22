@@ -4,6 +4,8 @@ import { account, active, audit, AccessError, type Principal } from "../access/s
 import { inviteProfile, resendInvitation } from "../access/invite";
 import { seasonOf } from "../finance/schema";
 import { brusselsToday } from "../people/service";
+import { ageBand } from "../statistics/club-math";
+import { shownClass } from "../classification/schema";
 
 /**
  * Wave 16 (I3): the federation's own space. Its president creates the
@@ -121,7 +123,33 @@ export async function federationTeamsView(db: Pool, p: Principal) {
         [s.fed, season],
       )
     ).rows as { id: string; club_id: string; club: string; name: string; category: string; level: string; players: number; licensed: number; coaches: string }[];
-    return { organization_id: s.fed, season, teams };
+    // Wave 17 (J4): the players of each team, sporting information only
+    // (name, classification, licence, age category); never contacts, health or dues.
+    const players = (
+      await s.c.query(
+        `SELECT DISTINCT ON (m.team_id,cp.id) m.team_id,cp.id,cp.full_name,cp.birth_date::text AS birth_date,se.starts_on::text AS season_start,
+                COALESCE(sp.classification,'not_classified') AS classification,COALESCE(sp.classification_status,'unverified') AS classification_status,
+                l.status AS license_status,l.number AS license_number
+           FROM team_membership m JOIN team t ON t.id=m.team_id JOIN season se ON se.id=t.season_id JOIN organization o ON o.id=t.organization_id
+           JOIN club_person cp ON cp.id=m.profile_id AND cp.organization_id=m.organization_id
+           LEFT JOIN player_sport_profile sp ON sp.profile_id=cp.id
+           LEFT JOIN license l ON l.profile_id=cp.id AND l.federation_id=$1 AND l.season=$2 AND l.status<>'refused'
+          WHERE o.federation_id=$1 AND o.kind='club' AND m.role='player' AND ${live} AND m.team_id=ANY($3::uuid[])
+          ORDER BY m.team_id,cp.id`,
+        [s.fed, season, teams.map((t) => t.id)],
+      )
+    ).rows.map((r) => ({
+      team_id: r.team_id as string,
+      id: r.id as string,
+      full_name: r.full_name as string,
+      age: ageBand(r.birth_date, r.season_start),
+      classification: shownClass(r.classification),
+      classification_status: r.classification_status as "unverified" | "requested" | "validated" | "refused",
+      license_status: (r.license_status ?? null) as "requested" | "active" | "suspended" | null,
+      license_number: (r.license_number ?? null) as string | null,
+    }));
+    players.sort((a, b) => a.full_name.localeCompare(b.full_name, "fr"));
+    return { organization_id: s.fed, season, teams, players };
   });
 }
 
