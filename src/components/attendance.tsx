@@ -292,7 +292,7 @@ function SeasonView({ locale }: { locale: Locale }) {
                 period={`${from} ${to}`}
                 rows={[...new Map(data.events.flatMap((v) => v.invitations.filter((i) => !i.withdrawn_at).map((i) => [i.profile_id, i.full_name] as const))).entries()].sort((x, y) => x[1].localeCompare(y[1]))}
                 columns={[
-                  { id: "name", label: callCopy[locale].cols.name, value: ([, name]) => name },
+                  { id: "name", label: callCopy[locale].cols.name, value: ([, name]: readonly [string, string]) => name },
                   ...data.events
                     .filter((v) => v.status !== "cancelled" && v.register)
                     .map((v) => ({
