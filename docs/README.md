@@ -84,6 +84,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 16, A : accueil du président](evolutions/2026-10-21-zw-vague-16-a-accueil-president.md) |
 | 21/10/2026 | [Vague 16, E1 : créer et gérer un événement](evolutions/2026-10-21-zx-vague-16-e1-evenements.md) |
 | 21/10/2026 | [Vague 16, E2 : bibliothèque de fiches exercices](evolutions/2026-10-21-zy-vague-16-e2-fiches-exercices.md) |
+| 21/10/2026 | [Vague 16, E3 : tournois du club sur la page Tournois](evolutions/2026-10-21-zz-vague-16-e3-tournois-club.md) |
 
 ## Convention
 

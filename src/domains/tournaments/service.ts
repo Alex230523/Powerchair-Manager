@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { account, active, audit, AccessError, validImage, type Principal } from "../access/service";
+import { permissions } from "../access/policy";
 import {
   podium,
   readRules,
@@ -182,7 +183,9 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
       )
     ).rows;
     const canCreate = isPresident(s.a);
+    const club = await clubTrips(s, year);
     return {
+      ...club,
       organization_id: s.a.organization_id,
       kind: s.a.kind,
       year,
@@ -193,6 +196,73 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
       clubOptions: canCreate ? await clubOptions(s) : [],
     };
   });
+}
+
+/**
+ * Wave 16 (E3): the club's own tournaments, from its trips of type
+ * tournament: coming ones with their transport, past ones with the final
+ * place and the matches played on those days. For the club's staff, when
+ * the trips module is on; no new table.
+ */
+async function clubTrips(s: Scope, year: number) {
+  const rights = permissions(s.a.role, s.a.grants);
+  const staff = s.a.kind === "club" && (s.a.role === "club_president" || s.a.role === "coach" || rights.includes("calendar.manage") || rights.includes("teams.manage"));
+  const off = ((await s.c.query("SELECT disabled_modules FROM organization WHERE id=$1", [s.a.organization_id])).rows[0]?.disabled_modules ?? []) as string[];
+  if (!staff || off.includes("trips")) return { clubTrips: null };
+  const rows = (
+    await s.c.query(
+      `SELECT tr.id,tr.title,tr.status,tr.starts_on::text AS starts_on,tr.ends_on::text AS ends_on,COALESCE(sv.name,pl.name,NULLIF(tr.destination,'')) AS place,
+              tr.final_rank,tr.teams_count,tr.result_note,tr.calendar_event_id AS event_id,tm.name AS team,
+              (SELECT count(*)::int FROM trip_vehicle v WHERE v.trip_id=tr.id) AS vehicles,
+              (SELECT COALESCE(sum(v.wheelchair_places),0)::int FROM trip_vehicle v WHERE v.trip_id=tr.id) AS wheelchair_places,
+              COALESCE((SELECT json_agg(json_build_object('id',m.id,'opponent',m.opponent,'our',m.our_score,'their',m.their_score) ORDER BY m.starts_at)
+                 FROM match m WHERE m.organization_id=tr.organization_id AND m.kind='tournament' AND m.status='played'
+                  AND (m.starts_at AT TIME ZONE 'Europe/Brussels')::date BETWEEN tr.starts_on AND tr.ends_on AND (e.team_id IS NULL OR m.team_id=e.team_id)),'[]') AS matches
+         FROM trip tr LEFT JOIN calendar_event e ON e.id=tr.calendar_event_id AND e.organization_id=tr.organization_id LEFT JOIN team tm ON tm.id=e.team_id
+         LEFT JOIN shared_venue sv ON sv.id=tr.shared_venue_id LEFT JOIN calendar_place pl ON pl.id=tr.place_id
+        WHERE tr.organization_id=$1 AND tr.kind='tournament' AND tr.status<>'cancelled' AND extract(year FROM tr.starts_on)=$2
+        ORDER BY tr.starts_on,tr.title`,
+      [s.a.organization_id, year],
+    )
+  ).rows as {
+    id: string;
+    title: string;
+    status: string;
+    starts_on: string;
+    ends_on: string;
+    place: string | null;
+    final_rank: number | null;
+    teams_count: number | null;
+    result_note: string;
+    event_id: string | null;
+    team: string | null;
+    vehicles: number;
+    wheelchair_places: number;
+    matches: { id: string; opponent: string; our: number; their: number }[];
+  }[];
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+  const plan = s.a.role === "club_president" || rights.includes("calendar.manage") || s.a.role === "coach";
+  const teams = plan
+    ? ((
+        await s.c.query(
+          `SELECT t.id,t.name FROM team t JOIN season se ON se.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT se.archived AND CURRENT_DATE BETWEEN se.starts_on AND se.ends_on
+              AND ($2 OR EXISTS(SELECT 1 FROM team_membership m JOIN club_person c ON c.id=m.profile_id JOIN person p ON p.id=c.person_id WHERE m.team_id=t.id AND p.user_id=$3 AND m.role='coach' AND NOT m.cancelled AND m.closed_at IS NULL))
+            ORDER BY t.name`,
+          [s.a.organization_id, s.a.role === "club_president" || rights.includes("calendar.manage"), s.p.userId],
+        )
+      ).rows as { id: string; name: string }[])
+    : [];
+  const type = ((await s.c.query("SELECT id FROM event_type WHERE organization_id=$1 AND legacy_kind='tournament' AND NOT archived ORDER BY position LIMIT 1", [s.a.organization_id])).rows[0]?.id ?? null) as
+    | string
+    | null;
+  return {
+    clubTrips: {
+      upcoming: rows.filter((r) => r.ends_on >= today),
+      past: rows.filter((r) => r.ends_on < today).reverse(),
+      // « Préparer un tournoi »: the teams this person plans for, the club's tournament type, who is in charge.
+      prepare: plan && teams.length ? { teams, typeId: type, userId: s.p.userId } : null,
+    },
+  };
 }
 
 /** Clubs that may be invited: the federation's clubs first, then the others; names only. */

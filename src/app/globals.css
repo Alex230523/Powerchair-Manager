@@ -7979,3 +7979,22 @@ details.event-section > summary {
     max-height: 120mm;
   }
 }
+
+/* ---------- The club's tournaments (wave 16, E3) ---------- */
+.club-tournaments-section {
+  margin-top: var(--space-6);
+}
+.club-tournaments {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--card-gap);
+}
+.club-tournament .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+}

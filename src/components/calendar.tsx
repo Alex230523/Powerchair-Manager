@@ -859,7 +859,7 @@ export function Calendar({
                         {sheetEvent.trip.departure_at && ` · ${ev.tripDeparture} ${when(sheetEvent.trip.departure_at)}`}
                         {sheetEvent.trip.meeting_point && ` · ${sheetEvent.trip.meeting_point}`}
                         {sheetEvent.trip.vehicles > 0 && ` · ${ev.tripVehicles(sheetEvent.trip.vehicles)}`}{" "}
-                        <Link href={`/${locale}/trips`}>{ev.tripOpen}</Link>
+                        <Link href={`/${locale}/trips/${sheetEvent.trip.id}`}>{ev.tripOpen}</Link>
                       </p>
                     )}
                   </section>

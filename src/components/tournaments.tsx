@@ -10,6 +10,7 @@ import { Icon } from "./icons";
 import { showToast } from "./toast";
 import { useData, usePost } from "./use-api";
 import { fill, tournamentsCopy, type TournamentsCopy } from "./tournaments-copy";
+import { ClubTournaments } from "./club-tournaments";
 
 type View = Awaited<ReturnType<typeof tournamentsView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -161,6 +162,7 @@ export function Tournaments({ locale, initialYear }: { locale: Locale; initialYe
         ) : (
           <EmptyState icon="trophy" title={t.none} text={t.noneText} action={data.canCreate ? <Button icon="plus" onClick={() => setCreating(true)}>{t.add}</Button> : undefined} />
         ))}
+      {data?.clubTrips && <ClubTournaments locale={locale} trips={data.clubTrips} organizationId={data.organization_id} reload={reload} />}
       {creating && data && (
         <TournamentForm
           locale={locale}
