@@ -195,9 +195,9 @@ export function Calendar({
           venues: "Annuaire des salles",
           coaches: "Présences des coachs",
           players: "Présences des joueurs",
-          attendance: "Gérer les convocations et présences",
+          attendance: "Gérer les invitations et présences",
           empty:
-            "Aucune convocation visible. Les présences ne sont pas déduites des participants.",
+            "Aucune invitation visible. Les présences ne sont pas déduites des participants.",
           location:
             "Choisissez un seul lieu : club, répertoire commun ou saisie libre.",
           more: "Page suivante",
@@ -241,9 +241,9 @@ export function Calendar({
             venues: "Zalengids",
             coaches: "Aanwezigheid coaches",
             players: "Aanwezigheid spelers",
-            attendance: "Oproepen en aanwezigheid beheren",
+            attendance: "Uitnodigingen en aanwezigheid beheren",
             empty:
-              "Geen zichtbare oproepen. Aanwezigheid wordt niet afgeleid van deelnemers.",
+              "Geen zichtbare uitnodigingen. Aanwezigheid wordt niet afgeleid van deelnemers.",
             location:
               "Kies één locatie: club, gedeeld register of vrije tekst.",
             more: "Volgende pagina",

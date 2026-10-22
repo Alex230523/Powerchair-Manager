@@ -120,7 +120,7 @@ test("calendar: week grid, views, colours, event sheet and subscription", async 
     // 4. The sheet, from the grid and from ?event=ID.
     await a.click();
     const sheet = page.getByRole("dialog", { name: "Entraînement Lions" });
-    await expect(sheet.getByRole("heading", { name: "Convocations et réponses" })).toBeVisible();
+    await expect(sheet.getByRole("heading", { name: "Invitations et réponses" })).toBeVisible();
     await axe(page, "event sheet", "dialog[open]");
     await sheet.getByRole("button", { name: "Fermer / Sluiten / Close" }).click();
     await page.goto(`/fr/calendar?event=${training}`);

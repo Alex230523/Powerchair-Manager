@@ -146,10 +146,10 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     formerPlayer: "Ancien joueur",
     attendance: "Présences",
     attendanceRate: "Taux de présence",
-    answerRate: "Réponses aux convocations",
+    answerRate: "Réponses aux invitations",
     closedSessions: "séances pointées",
     recent: "Derniers événements",
-    noAttendance: "Aucune convocation pour l’instant.",
+    noAttendance: "Aucune invitation pour l’instant.",
     responses: {
       none: "Pas de réponse",
       present: "Présent",
@@ -202,7 +202,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     allEvents: "Tous événements",
     matchStatsSoon:
       "Buts, temps de jeu et résultats arriveront avec le module compétitions. Les chiffres ci-dessus viennent des présences pointées.",
-    invitations: "convocations",
+    invitations: "invitations",
     presences: "présences",
     errors: {
       STALE_VERSION:
@@ -268,10 +268,10 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     formerPlayer: "Oud-speler",
     attendance: "Aanwezigheid",
     attendanceRate: "Aanwezigheidsgraad",
-    answerRate: "Antwoorden op oproepingen",
+    answerRate: "Antwoorden op uitnodigingen",
     closedSessions: "geregistreerde sessies",
     recent: "Laatste activiteiten",
-    noAttendance: "Nog geen oproeping.",
+    noAttendance: "Nog geen uitnodiging.",
     responses: {
       none: "Geen antwoord",
       present: "Aanwezig",
@@ -323,7 +323,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     allEvents: "Alle activiteiten",
     matchStatsSoon:
       "Doelpunten, speeltijd en uitslagen volgen met de competitiemodule. De cijfers hierboven komen uit de geregistreerde aanwezigheden.",
-    invitations: "oproepingen",
+    invitations: "uitnodigingen",
     presences: "aanwezigheden",
     errors: {
       STALE_VERSION:
@@ -389,10 +389,10 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     formerPlayer: "Former player",
     attendance: "Attendance",
     attendanceRate: "Attendance rate",
-    answerRate: "Call-up answers",
+    answerRate: "Invitation answers",
     closedSessions: "recorded sessions",
     recent: "Latest events",
-    noAttendance: "No call-up yet.",
+    noAttendance: "No invitation yet.",
     responses: {
       none: "No answer",
       present: "Present",
@@ -445,7 +445,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     allEvents: "All events",
     matchStatsSoon:
       "Goals, playing time and results will come with the competitions module. The figures above come from recorded attendance.",
-    invitations: "call-ups",
+    invitations: "invitations",
     presences: "attended",
     errors: {
       STALE_VERSION:

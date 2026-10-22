@@ -90,7 +90,7 @@ beforeAll(async () => {
     "INSERT INTO registration_application(organization_id,form_id,applicant_user_id,season_id,subject_name,birth_date,locale,form_snapshot,status,submitted_at) VALUES($1,$2,$3,$4,'Noah Candidate','2012-05-01','fr','{}','submitted',now())",
     [clubA, form, presidentB.userId, seasonA],
   );
-  // One upcoming organisation-wide training with a call-up for the player.
+  // One upcoming organisation-wide training with an invitation for the player.
   const series = (
     await db.query(
       "INSERT INTO calendar_series(organization_id,interval_days,occurrences,created_by) VALUES($1,0,1,$2) RETURNING id",

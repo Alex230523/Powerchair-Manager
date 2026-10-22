@@ -285,13 +285,13 @@ export const auditLabels: Record<
   },
 
   "attendance.invite": {
-    fr: "Convocations modifiées",
-    nl: "Oproepen gewijzigd",
+    fr: "Invitations modifiées",
+    nl: "Uitnodigingen gewijzigd",
     en: "Invitations updated",
   },
   "attendance.respond": {
-    fr: "Réponse à une convocation",
-    nl: "Antwoord op oproep",
+    fr: "Réponse à une invitation",
+    nl: "Antwoord op uitnodiging",
     en: "Availability updated",
   },
   "attendance.mark": {
@@ -305,13 +305,13 @@ export const auditLabels: Record<
     en: "Register closed",
   },
   "attendance.remind": {
-    fr: "Relance de convocation",
-    nl: "Oproepherinnering",
+    fr: "Relance d'invitation",
+    nl: "Herinnering voor een uitnodiging",
     en: "Reminder sent",
   },
   "attendance.automatic_reminder": {
-    fr: "Relance automatique de convocation",
-    nl: "Automatische oproepherinnering",
+    fr: "Relance automatique d'invitation",
+    nl: "Automatische herinnering voor een uitnodiging",
     en: "Automatic reminder",
   },
   "attendance.threshold_check": {

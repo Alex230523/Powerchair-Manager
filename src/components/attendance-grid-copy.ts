@@ -3,9 +3,9 @@ export const gridCopy = {
   fr: {
     title: "Tableau des présences",
     intro:
-      "Une ligne par personne, une colonne par séance. Avant la séance : la réponse à la convocation. Dès le début : le pointage, que le coach change d'un clic.",
+      "Une ligne par personne, une colonne par séance. Avant la séance : la réponse à l'invitation. Dès le début : le pointage, que le coach change d'un clic.",
     person: "Personne",
-    none: "Pas convoqué",
+    none: "Pas invité",
     mark: "Pointer",
     legend: "Légende",
     responses: { none: "Pas de réponse", present: "A répondu présent", absent: "A répondu absent", uncertain: "Incertain" } as Record<string, string>,
@@ -19,9 +19,9 @@ export const gridCopy = {
   nl: {
     title: "Aanwezigheidstabel",
     intro:
-      "Een rij per persoon, een kolom per sessie. Vóór de sessie: het antwoord op de oproep. Vanaf het begin: de registratie, die de coach met één klik wijzigt.",
+      "Een rij per persoon, een kolom per sessie. Vóór de sessie: het antwoord op de uitnodiging. Vanaf het begin: de registratie, die de coach met één klik wijzigt.",
     person: "Persoon",
-    none: "Niet opgeroepen",
+    none: "Niet uitgenodigd",
     mark: "Registreren",
     legend: "Legende",
     responses: { none: "Geen antwoord", present: "Antwoordde aanwezig", absent: "Antwoordde afwezig", uncertain: "Onzeker" },
@@ -35,7 +35,7 @@ export const gridCopy = {
   en: {
     title: "Attendance table",
     intro:
-      "One row per person, one column per session. Before the session: the answer to the call-up. From its start: the mark, which the coach changes with one click.",
+      "One row per person, one column per session. Before the session: the answer to the invitation. From its start: the mark, which the coach changes with one click.",
     person: "Person",
     none: "Not invited",
     mark: "Mark",
