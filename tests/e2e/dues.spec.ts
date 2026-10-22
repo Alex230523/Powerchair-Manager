@@ -106,8 +106,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
     await expect(rate).toHaveCount(0);
     // Changing a rate once dues exist asks the president to confirm (checked below).
-    // The president's menu groups money matters under "Money" (wave 14).
-    await openMenuGroup(page, "Money");
+    // The president's menu groups money matters under "Finances" (wave 14, renamed in wave 17).
+    await openMenuGroup(page, "Finances");
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })

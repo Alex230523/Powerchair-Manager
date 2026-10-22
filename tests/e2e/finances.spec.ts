@@ -80,7 +80,7 @@ test("finance tabs, add and delete an operation with undo, bank statements", asy
     await page.locator(".ledger tbody tr").filter({ hasText: "Achat 2025" }).getByRole("button", { name: "Supprimer l'opération : Achat 2025" }).click();
     await page.getByRole("dialog").getByLabel("Motif").fill("Erreur");
     await page.getByRole("dialog").getByRole("button", { name: "Supprimer", exact: true }).click();
-    await expect(page.getByRole("alert")).toContainText("approuvé par l'assemblée générale");
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText("approuvé par l'assemblée générale");
     await page.getByRole("dialog").getByRole("button", { name: "Annuler" }).click();
 
     // 5. A bank statement in CSV: the balance is read, the gap shown.
