@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
-import { durationText } from "../src/components/duration-copy";
+import { brusselsEndOfDay, durationText } from "../src/components/duration-copy";
 import { settingsEntries } from "../src/components/settings-nav";
 
 /** Wave 17 (G3): Relances in Settings, no offline book, rights until further notice. */
@@ -15,6 +15,11 @@ describe("menu and settings", () => {
     expect(settingsEntries.find((e) => e.id === "reminders")).toEqual({ id: "reminders", category: "notifications", anchor: "settings-reminders" });
     // Old offline books still on a device are wiped at sign-out.
     expect(readFileSync("src/lib/offline-queue.ts", "utf8")).toContain('indexedDB.deleteDatabase("pcm-offline-books")');
+  });
+  it("ends the rights at midnight in Brussels, winter and summer, and shows that same day", () => {
+    expect(brusselsEndOfDay("2027-01-20")).toBe("2027-01-20T22:59:59.000Z");
+    expect(brusselsEndOfDay("2027-07-20")).toBe("2027-07-20T21:59:59.000Z");
+    expect(durationText("fr", brusselsEndOfDay("2027-01-20"))).toBe("Jusqu'au 20/01/2027");
   });
   it("says « jusqu'à nouvel ordre » for rights without an end, never nothing", () => {
     expect(durationText("fr", null)).toBe("Jusqu'à nouvel ordre");

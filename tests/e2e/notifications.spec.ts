@@ -73,13 +73,15 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
         exact: true,
       })
       .click();
-    await page
+    // Since wave 17 (G3) the reminders share the page: the email models are their own region.
+    const models = page.getByRole("region", { name: "Modèles d’emails" });
+    await models
       .getByLabel("Objet", { exact: true })
       .fill("Message test · {organization}");
-    await page
+    await models
       .getByLabel("Texte du message", { exact: true })
       .fill("Bonjour {name}, votre test est prêt.\n{url}");
-    await page
+    await models
       .getByRole("button", { name: "Prévisualiser", exact: true })
       .click();
     await expect(
@@ -88,7 +90,7 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
         exact: true,
       }),
     ).toBeVisible();
-    const editor = page
+    const editor = models
       .locator("form")
       .filter({ has: page.getByLabel("Objet", { exact: true }) });
     await editor

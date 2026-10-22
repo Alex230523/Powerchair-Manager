@@ -1,7 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import type { Locale } from "@/lib/locale";
-import { durationCopy } from "./duration-copy";
+import { brusselsEndOfDay, durationCopy } from "./duration-copy";
 
 /**
  * How long rights last (wave 17, G3): « Jusqu'à nouvel ordre » by default, a
@@ -33,8 +33,9 @@ export function DurationField({ locale, name, initial }: { locale: Locale; name:
   );
 }
 
-/** The chosen end, as an ISO date-time at the end of the day, or null for « jusqu'à nouvel ordre ». */
+/** The chosen end, as an ISO date-time at the end of that day in Brussels, or null for « jusqu'à nouvel ordre ». */
 export function readDuration(form: FormData, name: string) {
   const day = String(form.get(name) ?? "");
-  return form.get(`${name}-mode`) === "until" && day ? new Date(day + "T23:59:59Z").toISOString() : null;
+  return form.get(`${name}-mode`) === "until" && day ? brusselsEndOfDay(day) : null;
 }
+

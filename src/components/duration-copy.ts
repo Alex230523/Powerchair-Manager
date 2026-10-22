@@ -14,3 +14,15 @@ export function durationText(locale: Locale, validUntil: string | Date | null | 
   const date = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Brussels" }).format(new Date(validUntil));
   return t.untilDate.replace("{date}", date);
 }
+
+/** 23:59:59 in Brussels on that day (summer or winter time), as an ISO string. */
+export function brusselsEndOfDay(day: string) {
+  const utc = new Date(day + "T23:59:59Z");
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Brussels", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(utc)
+      .map((p) => [p.type, p.value]),
+  );
+  const shown = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return new Date(utc.getTime() - (shown - utc.getTime())).toISOString();
+}
