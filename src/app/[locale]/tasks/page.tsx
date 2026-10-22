@@ -6,9 +6,10 @@ export const metadata = { title: "Tâches · Powerchair Football Manager" };
 /**
  * A1: the central to-do. « ?category= » opens one category; « ?kind= » of
  * wave 17 (and « partner » of wave 15) still lands on its category;
- * « ?task= » opens a task; « ?new=1 » the new task window (Ctrl+K).
+ * « ?task= » opens a task; « ?new=1 » the new task window (Ctrl+K);
+ * « ?grant= » and « ?partner= » keep the tasks of one grant or sponsor (A2).
  */
-export default async function Page({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ kind?: string; category?: string; task?: string; new?: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ kind?: string; category?: string; task?: string; new?: string; grant?: string; partner?: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const q = await searchParams;
@@ -18,6 +19,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     : (taskKinds as readonly string[]).includes(kind ?? "")
       ? categoryOf(kind as TaskKind)
       : "all";
-  const task = /^[0-9a-f-]{36}$/i.test(q.task ?? "") ? q.task : undefined;
-  return <Tasks locale={locale} initialCategory={initial} openTask={task} create={q.new === "1"} />;
+  const id = (v?: string) => (/^[0-9a-f-]{36}$/i.test(v ?? "") ? v : undefined);
+  // A2: « ?grant= » and « ?partner= »: the tasks of one grant or one sponsor.
+  const linked = id(q.grant) || id(q.partner) ? { grant: id(q.grant), partner: id(q.partner) } : undefined;
+  return <Tasks locale={locale} initialCategory={initial} openTask={id(q.task)} create={q.new === "1"} linked={linked} />;
 }

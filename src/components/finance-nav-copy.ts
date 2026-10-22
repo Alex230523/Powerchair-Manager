@@ -1,7 +1,7 @@
 /** Wave 17 (N1): the tabs of the « Finances » page and their names. */
 export const financeSections = ["overview", "operations", "budget", "income", "affiliations", "statements", "accounts"] as const;
 export type FinanceSection = (typeof financeSections)[number];
-export const incomeSections = ["dues", "partners", "grants", "fundraising"] as const;
+export const incomeSections = ["dues", "support", "fundraising"] as const;
 export type IncomeSection = (typeof incomeSections)[number];
 
 export const financeNavCopy = {
@@ -17,7 +17,7 @@ export const financeNavCopy = {
       statements: "Relevés de compte",
       accounts: "Comptes annuels et rapports",
     },
-    incomes: { dues: "Cotisations", partners: "Sponsors", grants: "Subsides", fundraising: "Levée de fonds" },
+    incomes: { dues: "Cotisations", support: "Subsides & sponsors", fundraising: "Levée de fonds" },
   },
   nl: {
     label: "Onderdelen van de financiën",
@@ -31,7 +31,7 @@ export const financeNavCopy = {
       statements: "Rekeningafschriften",
       accounts: "Jaarrekening en verslagen",
     },
-    incomes: { dues: "Lidgelden", partners: "Sponsors", grants: "Subsidies", fundraising: "Fondsenwerving" },
+    incomes: { dues: "Lidgelden", support: "Subsidies & sponsors", fundraising: "Fondsenwerving" },
   },
   en: {
     label: "Finance sections",
@@ -45,6 +45,6 @@ export const financeNavCopy = {
       statements: "Bank statements",
       accounts: "Annual accounts and reports",
     },
-    incomes: { dues: "Dues", partners: "Sponsors", grants: "Grants", fundraising: "Fundraising" },
+    incomes: { dues: "Dues", support: "Grants & sponsors", fundraising: "Fundraising" },
   },
 } as const;

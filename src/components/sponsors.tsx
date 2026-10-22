@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { fundingView, PackageRow, TaskRow } from "@/domains/funding/service";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
+import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { sponsorsCopy } from "./sponsors-copy";
 import { fundingCopy } from "./funding-copy";
 import { Badge, Button, Card, EmptyState, PageHeader } from "./ui";
@@ -526,10 +527,27 @@ export function PartnerSheet({
             <dt>{s.renewalOn}</dt>
             <dd>{dayLabel(locale, partner.renewal_on) || s.toDefine}</dd>
           </div>
+          <div>
+            <dt>{grantsSponsorsCopy[locale].responsible}</dt>
+            <dd>{partner.responsible_name ?? grantsSponsorsCopy[locale].nobody}</dd>
+          </div>
+          <div>
+            <dt>{grantsSponsorsCopy[locale].lastContact}</dt>
+            <dd>{dayLabel(locale, partner.last_contact_on) || s.toDefine}</dd>
+          </div>
         </dl>
         {data.can.manage && (
           <div className="row-actions">
             <Button variant="secondary" size="sm" onClick={edit}>{t.edit}</Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy || partner.last_contact_on === data.today}
+              aria-label={grantsSponsorsCopy[locale].contactedOf.replace("{name}", partner.name)}
+              onClick={() => void post({ organizationId: data.organization_id, action: "partnerContacted", id: partner.id }, t.saved)}
+            >
+              {grantsSponsorsCopy[locale].contacted}
+            </Button>
             <Link className="button secondary sm" href={`/${locale}/funding/partners/${partner.id}/agreement`}>{s.agreement}</Link>
             <Button
               variant="secondary"

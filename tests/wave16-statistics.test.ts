@@ -156,7 +156,7 @@ describe("storage", () => {
   });
   it("links a file to the page it comes from", () => {
     expect(originHref("exercise", "e1")).toBe("/exercises/e1");
-    expect(originHref("partner", "p1")).toBe("/funding/partners?partner=p1");
+    expect(originHref("partner", "p1")).toBe("/funding/grants-sponsors?vue=sponsoring&partner=p1");
     expect(originHref("logo", "x")).toBe("/settings/club");
   });
 });

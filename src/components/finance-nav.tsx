@@ -12,12 +12,12 @@ const href: Record<FinanceSection, string> = {
   overview: "/funding",
   operations: "/funding/operations",
   budget: "/funding/budget",
-  income: "/funding/partners",
+  income: "/funding/grants-sponsors",
   affiliations: "/funding/affiliations",
   statements: "/funding/statements",
   accounts: "/funding/annual-accounts",
 };
-const incomeHref: Record<IncomeSection, string> = { dues: "/dues", partners: "/funding/partners", grants: "/funding/grants", fundraising: "/fundraising" };
+const incomeHref: Record<IncomeSection, string> = { dues: "/dues", support: "/funding/grants-sponsors", fundraising: "/fundraising" };
 
 export function FinanceNav({ locale, current, income }: { locale: Locale; current: FinanceSection; income?: IncomeSection }) {
   const t = financeNavCopy[locale];

@@ -131,7 +131,7 @@ export function Contacts({ locale }: { locale: Locale }) {
                           {x.files.map((f, i) => (
                             <span key={f.kind + f.id}>
                               {i > 0 && ", "}
-                              <Link href={f.kind === "partner" ? `/${locale}/funding/partners?partner=${f.id}` : f.kind === "grant" ? `/${locale}/funding/grants?grant=${f.id}` : `/${locale}/funding/grants?funder=${f.id}`}>{f.name}</Link>
+                              <Link href={f.kind === "partner" ? `/${locale}/funding/grants-sponsors?vue=sponsoring&partner=${f.id}` : f.kind === "grant" ? `/${locale}/funding/grants-sponsors?vue=subsides&grant=${f.id}` : `/${locale}/funding/grants-sponsors?vue=subsides&funder=${f.id}`}>{f.name}</Link>
                             </span>
                           ))}
                         </span>

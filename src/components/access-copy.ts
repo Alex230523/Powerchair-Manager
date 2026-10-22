@@ -153,6 +153,11 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "Deze verrichting werd elders aangemaakt (lidgeld, sponsor, aansluiting): verwijder ze via haar oorsprong.",
     en: "This operation was created elsewhere (dues, sponsor, affiliation): delete it from where it came from.",
   },
+  GRANT_NOT_GRANTED: {
+    fr: "Une tranche s'enregistre une fois le subside accordé.",
+    nl: "Een schijf wordt geregistreerd zodra de subsidie toegekend is.",
+    en: "An instalment is recorded once the grant is awarded.",
+  },
   ALREADY_PAID: {
     fr: "Cette affiliation est déjà en ordre.",
     nl: "Deze aansluiting is al in orde.",

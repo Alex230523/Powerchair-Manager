@@ -63,6 +63,8 @@ type Copy = {
   emptyMine: string;
   saved: string;
   unavailable: string;
+  linked: string;
+  showAll: string;
 };
 
 export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
@@ -134,6 +136,9 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Supprimer la tâche : {title}",
     sources: {
       grantDeadline: "Déposer le dossier de subside : {about}",
+      grantOpening: "L'appel est ouvert, préparer le dossier : {about}",
+      partnerRenewal: "Renouveler le sponsoring : {about}",
+      partnerContact: "Reprendre contact avec le sponsor : {about}",
       grantReport: "Envoyer le rapport justificatif : {about}",
       chairService: "Réviser le fauteuil {about}",
       documentExpiry: "Renouveler le document : {about}",
@@ -159,6 +164,8 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     emptyMine: "Aucune tâche ne vous est attribuée.",
     saved: "Enregistré.",
     unavailable: "Action impossible pour le moment.",
+    linked: "Tâches liées à : {about}",
+    showAll: "Voir toutes les tâches",
   },
   nl: {
     title: "Taken",
@@ -228,6 +235,9 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "De taak verwijderen: {title}",
     sources: {
       grantDeadline: "Het subsidiedossier indienen: {about}",
+      grantOpening: "De oproep is open, het dossier voorbereiden: {about}",
+      partnerRenewal: "De sponsoring vernieuwen: {about}",
+      partnerContact: "Opnieuw contact opnemen met de sponsor: {about}",
       grantReport: "Het verantwoordingsverslag sturen: {about}",
       chairService: "De rolstoel {about} laten nakijken",
       documentExpiry: "Het document vernieuwen: {about}",
@@ -253,6 +263,8 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     emptyMine: "Er is u geen taak toegewezen.",
     saved: "Opgeslagen.",
     unavailable: "Actie momenteel niet mogelijk.",
+    linked: "Taken gekoppeld aan: {about}",
+    showAll: "Alle taken bekijken",
   },
   en: {
     title: "Tasks",
@@ -322,6 +334,9 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Delete the task: {title}",
     sources: {
       grantDeadline: "File the grant application: {about}",
+      grantOpening: "The call is open, prepare the application: {about}",
+      partnerRenewal: "Renew the sponsorship: {about}",
+      partnerContact: "Get back in touch with the sponsor: {about}",
       grantReport: "Send the grant report: {about}",
       chairService: "Service the chair {about}",
       documentExpiry: "Renew the document: {about}",
@@ -347,6 +362,8 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     emptyMine: "No task is given to you.",
     saved: "Saved.",
     unavailable: "Action not possible right now.",
+    linked: "Tasks linked to: {about}",
+    showAll: "See all the tasks",
   },
 };
 export const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));

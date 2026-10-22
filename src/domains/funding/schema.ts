@@ -87,8 +87,14 @@ export const fundingCommand = z.discriminatedUnion("action", [
     explanation: text(4000).optional(),
     endsOn: day,
     recheckOn: day,
+    /** A2: the date the call opens and the start of the period covered. */
+    opensOn: day,
+    startsOn: day,
   }),
   z.object({ action: z.literal("deleteGrant"), id: z.uuid() }),
+  /** A2: money received for a grant, one line per instalment. */
+  z.object({ action: z.literal("grantPayment"), grantId: z.uuid(), receivedOn: z.iso.date(), amountCents: cents.refine((n) => n > 0), note: text(200) }),
+  z.object({ action: z.literal("deleteGrantPayment"), id: z.uuid() }),
   z.object({
     action: z.literal("funder"),
     id: z.uuid(),
@@ -135,7 +141,12 @@ export const fundingCommand = z.discriminatedUnion("action", [
     newContact: newContact.optional(),
     /** Write the payment in the ledger (sponsor income) when it is marked as received. */
     recordPayment: z.boolean().optional(),
+    /** A2: the person of the club in charge, and the last contact. Absent keeps the value. */
+    responsibleId: z.uuid().nullable().optional(),
+    lastContactOn: day,
   }),
+  /** A2: « Contact pris aujourd'hui ». */
+  z.object({ action: z.literal("partnerContacted"), id: z.uuid() }),
   z.object({ action: z.literal("deletePartner"), id: z.uuid() }),
   z.object({
     action: z.literal("package"),

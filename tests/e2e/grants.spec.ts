@@ -83,7 +83,8 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     await expect(form).toHaveCount(0);
     const row = page.locator(".grants-table tbody tr").filter({ hasText: "ADEPS · Équipement sportif" });
     await expect(row).toContainText("Dans moins de 14 jours");
-    await expect(row).toContainText("Pas de check-list");
+    // A2: the « Tâches (n) » button of the row.
+    await expect(row.getByRole("link", { name: "Tâches de ADEPS · Équipement sportif (0)" })).toBeVisible();
     await axe(page, "grants list");
 
     // 2. The sheet: the standard check-list.

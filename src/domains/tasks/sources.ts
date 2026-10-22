@@ -11,12 +11,12 @@ import type { Category } from "./schema";
  * language from source_kind and source_params; the stored title is the
  * French fallback.
  */
-export const sourceKinds = ["grantDeadline", "grantReport", "chairService", "documentExpiry", "potDeadline", "accountsAssembly", "accountsFiling"] as const;
+export const sourceKinds = ["grantDeadline", "grantOpening", "grantReport", "partnerRenewal", "partnerContact", "chairService", "documentExpiry", "potDeadline", "accountsAssembly", "accountsFiling"] as const;
 export type SourceKind = (typeof sourceKinds)[number];
 type Desired = {
   key: string;
   category: Category;
-  kind: "grant" | "equipment" | "documents" | "other";
+  kind: "grant" | "sponsor" | "equipment" | "documents" | "other";
   source: SourceKind;
   about: string;
   title: string;
@@ -25,9 +25,14 @@ type Desired = {
   chair?: string;
   document?: string;
   pot?: string;
+  partner?: string;
+  responsible?: string | null;
 };
 const fallback: Record<SourceKind, string> = {
   grantDeadline: "Déposer le dossier de subside",
+  grantOpening: "L'appel est ouvert : préparer le dossier de subside",
+  partnerRenewal: "Renouveler le sponsoring",
+  partnerContact: "Reprendre contact avec le sponsor",
   grantReport: "Envoyer le rapport justificatif du subside",
   chairService: "Réviser le fauteuil",
   documentExpiry: "Renouveler un document qui expire",
@@ -46,15 +51,31 @@ async function desired(c: PoolClient, org: string, today: string): Promise<Desir
   const add = (d: Omit<Desired, "title">) => out.push({ ...d, title: `${fallback[d.source]} · ${d.about}`.slice(0, 200) });
   const grants = (
     await c.query(
-      `SELECT id,CASE WHEN program<>'' THEN funder||' · '||program ELSE funder END AS about,status,deadline_on::text AS deadline,report_due_on::text AS report
+      `SELECT id,CASE WHEN program<>'' THEN funder||' · '||program ELSE funder END AS about,status,deadline_on::text AS deadline,report_due_on::text AS report,opens_on::text AS opens
          FROM grant_application g WHERE organization_id=$1 AND status IN ('idea','granted','paid')
           AND NOT EXISTS (SELECT 1 FROM funding_task f WHERE f.grant_id=g.id AND f.organization_id=g.organization_id AND f.source_key IS NULL)`,
       [org],
     )
-  ).rows as { id: string; about: string; status: string; deadline: string | null; report: string | null }[];
+  ).rows as { id: string; about: string; status: string; deadline: string | null; report: string | null; opens: string | null }[];
   for (const g of grants) {
-    if (g.status === "idea" && g.deadline) add({ key: `grant_deadline:${g.id}:${g.deadline}`, category: "grants", kind: "grant", source: "grantDeadline", about: g.about, due: g.deadline, grant: g.id });
+    // A2: before the call opens, nothing to do yet; once open, one task until the file is filed.
+    const open = !g.opens || g.opens <= today;
+    if (g.status === "idea" && open && g.deadline) add({ key: `grant_deadline:${g.id}:${g.deadline}`, category: "grants", kind: "grant", source: "grantDeadline", about: g.about, due: g.deadline, grant: g.id });
+    else if (g.status === "idea" && g.opens && open) add({ key: `grant_opening:${g.id}:${g.opens}`, category: "grants", kind: "grant", source: "grantOpening", about: g.about, due: null, grant: g.id });
     if (g.status !== "idea" && g.report) add({ key: `grant_report:${g.id}:${g.report}`, category: "grants", kind: "grant", source: "grantReport", about: g.about, due: g.report, grant: g.id });
+  }
+  // A2: an active sponsor ending within 60 days, or not contacted for 90 days.
+  for (const r of (
+    await c.query(
+      `SELECT id,name,ends_on::text AS ends,responsible_id,COALESCE(last_contact_on,signed_on,starts_on,created_at::date)::text AS seen
+         FROM partner WHERE organization_id=$1 AND status='active'`,
+      [org],
+    )
+  ).rows as { id: string; name: string; ends: string | null; responsible_id: string | null; seen: string }[]) {
+    if (r.ends && r.ends <= addDays(today, 60))
+      add({ key: `partner_renewal:${r.id}:${r.ends}`, category: "sponsors", kind: "sponsor", source: "partnerRenewal", about: r.name, due: r.ends, partner: r.id, responsible: r.responsible_id });
+    if (r.seen < addDays(today, -90))
+      add({ key: `partner_contact:${r.id}:${r.seen}`, category: "sponsors", kind: "sponsor", source: "partnerContact", about: r.name, due: null, partner: r.id, responsible: r.responsible_id });
   }
   for (const r of (
     await c.query("SELECT id,name,next_service_on::text AS next FROM equipment_chair WHERE organization_id=$1 AND status<>'retired' AND next_service_on<=$2::date", [org, addDays(today, 30)])
@@ -92,15 +113,15 @@ export async function syncSources(c: PoolClient, org: string, today = brusselsTo
       created +=
         (
           await c.query(
-            `INSERT INTO funding_task(organization_id,kind,category,title,due_on,grant_id,chair_id,document_id,pot_id,origin,source_key,source_kind,source_params,created_by)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'template',$10,$11,$12,$13)
+            `INSERT INTO funding_task(organization_id,kind,category,title,due_on,grant_id,chair_id,document_id,pot_id,origin,source_key,source_kind,source_params,created_by,partner_id,responsible_id)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'template',$10,$11,$12,$13,$14,$15)
              ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING`,
-            [org, d.kind, d.category, d.title, d.due, d.grant ?? null, d.chair ?? null, d.document ?? null, d.pot ?? null, d.key, d.source, JSON.stringify({ about: d.about }), creator],
+            [org, d.kind, d.category, d.title, d.due, d.grant ?? null, d.chair ?? null, d.document ?? null, d.pot ?? null, d.key, d.source, JSON.stringify({ about: d.about }), creator, d.partner ?? null, d.responsible ?? null],
           )
         ).rowCount ?? 0;
   // A grant given its own check-list (wave 15) keeps only those steps: no double.
   await c.query(
-    `DELETE FROM funding_task t WHERE t.organization_id=$1 AND t.source_kind IN ('grantDeadline','grantReport') AND t.status<>'done'
+    `DELETE FROM funding_task t WHERE t.organization_id=$1 AND t.source_kind IN ('grantDeadline','grantOpening','grantReport') AND t.status<>'done'
         AND EXISTS (SELECT 1 FROM funding_task f WHERE f.grant_id=t.grant_id AND f.organization_id=t.organization_id AND f.source_key IS NULL)`,
     [org],
   );

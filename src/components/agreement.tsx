@@ -39,7 +39,7 @@ export function Agreement({ locale, id }: { locale: Locale; id: string }) {
     return (
       <main id="main" className="access agreement">
         <PageHeader title={s.agreementTitle} />
-        <EmptyState icon="document" title={t.unavailable} action={<Link href={`/${locale}/funding/partners`}>{s.back}</Link>} />
+        <EmptyState icon="document" title={t.unavailable} action={<Link href={`/${locale}/funding/grants-sponsors?vue=sponsoring`}>{s.back}</Link>} />
       </main>
     );
   const o = club.organization;
@@ -52,7 +52,7 @@ export function Agreement({ locale, id }: { locale: Locale; id: string }) {
   return (
     <main id="main" className="access agreement">
       <div className="no-print row-actions">
-        <Link className="button secondary" href={`/${locale}/funding/partners?partner=${partner.id}`}>{s.back}</Link>
+        <Link className="button secondary" href={`/${locale}/funding/grants-sponsors?vue=sponsoring&partner=${partner.id}`}>{s.back}</Link>
         <button type="button" className="button" onClick={() => window.print()}>{s.print}</button>
       </div>
       {!o.iban && <p className="notice no-print">{s.agreementNoIban}</p>}

@@ -9600,3 +9600,43 @@ ul.task-page li {
   border-radius: var(--radius-md);
   padding: var(--space-3);
 }
+
+/* A2: « Subsides & sponsors », its two views and the instalments of a grant. */
+.support-tabs {
+  margin-block: var(--space-2) var(--space-3);
+}
+.support-tabs a {
+  min-height: 44px;
+}
+.payment-lines {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.payment-lines li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+}
+.payment-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+.payment-form label {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 8rem;
+}
+.payment-form .button {
+  min-height: 44px;
+}
+.task-linked {
+  margin-bottom: var(--space-3);
+}

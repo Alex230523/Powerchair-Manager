@@ -130,6 +130,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 // Wave 17 (N1): one « Finances » page with tabs, and « Cotisations » kept apart (often opened).
                 ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
+                // A2: grants and sponsors in one page, two views.
+                ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
               ],
             },
             {
@@ -206,6 +208,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 items: [
                   ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                   ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
+                  // A2: grants and sponsors in one page, two views.
+                  ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
                 ],
               },
             ]

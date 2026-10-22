@@ -900,7 +900,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
             <>
               <p>{n.linked[deleting.origin]}</p>
               <div className="actions">
-                <Link className="button" href={`/${locale}${deleting.origin === "dues" ? "/dues" : deleting.origin === "sponsor" ? "/funding/partners" : "/funding/affiliations"}`}>
+                <Link className="button" href={`/${locale}${deleting.origin === "dues" ? "/dues" : deleting.origin === "sponsor" ? "/funding/grants-sponsors?vue=sponsoring" : "/funding/affiliations"}`}>
                   {n.open}
                 </Link>
                 <button type="button" className="button secondary" onClick={() => setDeleting(null)}>

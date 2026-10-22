@@ -27,6 +27,8 @@ import {
 } from "../src/domains/documents/service";
 import { duesExecute } from "../src/domains/dues/service";
 import { tasksExecute } from "../src/domains/tasks/service";
+import { fundingExecute } from "../src/domains/funding/service";
+import { fundingCommand } from "../src/domains/funding/schema";
 import { taskCommand, yearTemplate, type YearKey } from "../src/domains/tasks/schema";
 import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
@@ -704,6 +706,42 @@ try {
     { category: "admin", title: "Mettre à jour le registre des membres", dueOn: day(-2), responsibleId: people.president, checklist: [] },
   ])
     await tasksExecute(db, president, taskCommand.parse({ action: "create", ...task }), org);
+
+  // A2: « Subsides & sponsors »: a grant paid in two instalments, a call that opens soon, a sponsor to call back.
+  const fund = (cmd: Record<string, unknown>) => fundingExecute(db, president, fundingCommand.parse(cmd), org) as Promise<{ id: string }>;
+  const region = await fund({
+    action: "grant",
+    funder: "Région (démo)",
+    program: "Sport adapté",
+    purpose: "Deux fauteuils de sport",
+    requestedCents: 800000,
+    grantedCents: 600000,
+    status: "granted",
+    notes: "",
+    opensOn: day(-120),
+    deadlineOn: day(-60),
+    startsOn: day(-30),
+    endsOn: day(335),
+    reportDueOn: day(300),
+  });
+  await fund({ action: "grantPayment", grantId: region.id, receivedOn: day(-20), amountCents: 360000, note: "Première tranche" });
+  await fund({ action: "grant", funder: "Commune (démo)", program: "Clubs inclusifs", purpose: "Transport vers les tournois", requestedCents: 150000, status: "idea", notes: "", opensOn: day(10), deadlineOn: day(45) });
+  await fund({
+    action: "partner",
+    name: "Garage démo",
+    kind: "sponsor",
+    status: "active",
+    amountCents: 150000,
+    inKind: "",
+    counterpart: "Logo sur les maillots",
+    startsOn: day(-200),
+    endsOn: day(40),
+    nextAction: "Proposer le renouvellement",
+    notes: "",
+    signedOn: day(-200),
+    responsibleId: people.president,
+    lastContactOn: day(-95),
+  });
 
   // 7. Equipment: club chairs (one shared), a player's own chair, a loan chair in repair.
   const chair = async (input: {

@@ -44,9 +44,9 @@ export function originHref(origin: string, ref: string) {
     case "training":
       return `/coaches/${ref}`;
     case "partner":
-      return `/funding/partners?partner=${ref}`;
+      return `/funding/grants-sponsors?vue=sponsoring&partner=${ref}`;
     case "grant":
-      return `/funding/grants?grant=${ref}`;
+      return `/funding/grants-sponsors?vue=subsides&grant=${ref}`;
     case "logo":
       return `/settings/club`;
     case "trophy":

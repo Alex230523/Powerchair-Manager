@@ -677,7 +677,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
                                     // Wave 15: a sponsor brought to a pot can be followed as a partner (sheet prefilled).
                                     <Link
                                       className="text-button"
-                                      href={`/${locale}/funding/partners?new=1&name=${encodeURIComponent((m.donor || m.label).slice(0, 160))}&note=${encodeURIComponent(
+                                      href={`/${locale}/funding/grants-sponsors?vue=sponsoring&new=1&name=${encodeURIComponent((m.donor || m.label).slice(0, 160))}&note=${encodeURIComponent(
                                         sponsorsCopy[locale].fromPot.replace("{name}", m.collector ?? "").replace("{pot}", pot.name),
                                       )}`}
                                     >

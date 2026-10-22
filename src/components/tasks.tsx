@@ -59,8 +59,8 @@ const dayLabel = (locale: Locale, d: string) =>
 const isMoney = (c: Category) => moneyCategories.includes(c);
 function href(locale: Locale, t: TaskRow) {
   const at = (p: string) => `/${locale}${p}`;
-  if (t.partner_id) return at(`/funding/partners?partner=${t.partner_id}`);
-  if (t.grant_id) return at(`/funding/grants?grant=${t.grant_id}`);
+  if (t.partner_id) return at(`/funding/grants-sponsors?vue=sponsoring&partner=${t.partner_id}`);
+  if (t.grant_id) return at(`/funding/grants-sponsors?vue=subsides&grant=${t.grant_id}`);
   if (t.event_id) return at(`/calendar?event=${t.event_id}`);
   if (t.match_id) return at(`/matches`);
   if (t.trip_id) return at(`/trips/${t.trip_id}`);
@@ -85,6 +85,7 @@ export function Tasks({
   responsibleId,
   openTask,
   create = false,
+  linked,
 }: {
   locale: Locale;
   initialCategory?: Category | "all";
@@ -95,6 +96,8 @@ export function Tasks({
   openTask?: string;
   /** « ?new=1 » (Ctrl+K): the new task window opens at once. */
   create?: boolean;
+  /** A2: « ?grant= » or « ?partner= »: the tasks of one grant or one sponsor. */
+  linked?: { grant?: string; partner?: string };
 }) {
   const t = todoCopy[locale];
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
@@ -123,17 +126,20 @@ export function Tasks({
   const own = new Set(data.own);
   const mineTask = (x: TaskRow) => (!!x.responsible_id && own.has(x.responsible_id)) || x.responsible_user_id === data.userId;
   // « Mes tâches » by default for whoever does not plan for others.
-  const view: Filter = embedded ? "all" : (filter ?? (data.can.manage || data.can.money ? "all" : "mine"));
+  const view: Filter = embedded || linked ? (filter ?? "all") : (filter ?? (data.can.manage || data.can.money ? "all" : "mine"));
+  const linkedAbout = linked ? data.tasks.find((x) => (linked.grant && x.grant_id === linked.grant) || (linked.partner && x.partner_id === linked.partner))?.about : undefined;
   const rows = data.tasks.filter(
     (x) =>
       (responsibleId ? x.responsible_id === responsibleId : true) &&
+      (!linked?.grant || x.grant_id === linked.grant) &&
+      (!linked?.partner || x.partner_id === linked.partner) &&
       (embedded && !responsibleId ? mineTask(x) : true) &&
       (showDone || x.status !== "done") &&
       (category === "all" || x.category === category) &&
       (!who || x.responsible_id === who || x.responsible_user_id === who) &&
       (view === "mine" ? mineTask(x) : view === "late" ? isLate(x, data.today) : view === "week" ? thisWeek(x, data.today) : true),
   );
-  const groups = groupTasks(rows, data.federation).filter((g) => (category === "all" || g.category === category) && (!embedded || g.tasks.length > 0));
+  const groups = groupTasks(rows, data.federation).filter((g) => (category === "all" || g.category === category) && (!(embedded || linked) || g.tasks.length > 0));
   const send = (body: Record<string, unknown>) => post({ ...body, organizationId: data.organization_id }, t.saved);
   const canAdd = (c: Category) => !embedded && (isMoney(c) ? data.can.moneyManage || data.can.manage : data.can.manage);
   const canWork = (x: TaskRow) => mineTask(x) || (isMoney(x.category) ? data.can.moneyManage : data.can.manage);
@@ -164,6 +170,12 @@ export function Tasks({
       <p role="status" className="sr-only">
         {message}
       </p>
+      {linked && (
+        <p className="notice task-linked">
+          {fill(t.linked, { about: linkedAbout ?? "…" })}{" "}
+          <Link href={`/${locale}/tasks`}>{t.showAll}</Link>
+        </p>
+      )}
       {!embedded && (
         <Toolbar label={t.filters}>
           <Segmented label={t.filters} items={(["all", "mine", "late", "week"] as const).map((id) => ({ id, label: t.views[id] }))} value={view} onChange={(v) => setFilter(v as Filter)} />
