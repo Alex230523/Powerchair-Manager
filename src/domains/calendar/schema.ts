@@ -57,6 +57,12 @@ export const eventFields = z.object({
   invite: inviteSchema,
   /** Wave 16 (E1): the trip linked to the event (null unlinks). */
   tripId: id.nullable().optional(),
+  /** Wave 16 (E2): the programme of a training, in order. */
+  exercises: z
+    .array(z.object({ exerciseId: id, minutes: z.number().int().min(1).max(180), notes: text(1000) }))
+    .max(30)
+    .refine((v) => new Set(v.map((x) => x.exerciseId)).size === v.length)
+    .optional(),
 });
 export const commandSchema = z.discriminatedUnion("action", [
   z.object({
