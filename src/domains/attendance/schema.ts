@@ -9,13 +9,17 @@ export const absenceReasons = [
   "family",
   "other",
 ] as const;
+/** Wave 17 (J2): « excused » is an absence announced beforehand, counted apart. */
 export const actuals = [
   "unchecked",
   "present",
   "absent",
+  "excused",
   "late",
   "early",
 ] as const;
+/** Marks that count as attended. */
+export const attendedMarks = ["present", "late", "early"] as const;
 const id = z.uuid(),
   version = z.number().int().positive();
 export const commandSchema = z.discriminatedUnion("action", [
@@ -46,6 +50,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     actual: z.enum(actuals),
     reason: z.string().trim().max(1000),
   }),
+  /** Wave 17 (J2): « Tout présent », everyone not yet marked of an open register. */
+  z.object({ action: z.literal("markAll"), id, expectedVersion: version }),
   z.object({ action: z.literal("close"), id, expectedVersion: version }),
   z.object({ action: z.literal("remind"), id, expectedVersion: version }),
 ]);

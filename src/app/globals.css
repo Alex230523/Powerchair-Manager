@@ -8985,3 +8985,214 @@ ul.task-page li {
   outline-offset: 3px;
   border-radius: var(--radius-sm);
 }
+
+/* Wave 17 (J2): the roll call, one session at a time, and a card per player. */
+.attendance-panel {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.call-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.call-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+.call-head p {
+  margin: var(--space-1) 0 0;
+}
+.call-sessions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+}
+.call-sessions-label {
+  font-weight: 600;
+  margin-inline-end: var(--space-1);
+}
+.call-pill {
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.call-pill[aria-pressed="true"] {
+  border: 2px solid var(--primary);
+  color: var(--heading);
+  font-weight: 600;
+}
+.call-list {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.call-row {
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.call-who {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+.call-choice {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.call-choice button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.5rem;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-inline-start: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.call-choice button:first-child {
+  border-inline-start: 0;
+}
+.call-choice button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.call-choice button[aria-checked="true"] {
+  color: var(--on-primary);
+  font-weight: 600;
+}
+.call-choice button[data-choice="present"][aria-checked="true"] {
+  background: var(--success);
+}
+.call-choice button[data-choice="absent"][aria-checked="true"] {
+  background: var(--danger);
+}
+.call-choice button[data-choice="excused"][aria-checked="true"],
+.call-choice button[data-choice="unchecked"][aria-checked="true"] {
+  background: var(--text);
+  color: var(--surface);
+}
+.call-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.call-foot p {
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .call-row {
+    grid-template-columns: auto 1fr auto;
+  }
+  .call-answer {
+    grid-column: 2 / 4;
+  }
+  .call-choice {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+  .call-choice button {
+    flex: 1;
+    justify-content: center;
+  }
+  /* Icons alone on a phone; the word stays the button's name. */
+  .call-choice-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .call-row .more-menu {
+    grid-row: 1;
+    grid-column: 3;
+  }
+}
+.call-stats-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 1024px) {
+  .stat-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .stat-cards {
+    grid-template-columns: 1fr;
+  }
+}
+.stat-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.stat-card p {
+  margin: 0;
+}
+.stat-card-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.stat-card-rate {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--heading);
+}
+.stat-card-bar {
+  display: block;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--grid-line);
+  overflow: hidden;
+}
+.stat-card-bar > span {
+  display: block;
+  height: 100%;
+  width: calc(var(--value, 0) * 1%);
+  background: var(--primary);
+}

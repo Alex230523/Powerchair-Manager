@@ -150,14 +150,17 @@ test("invitation response, offline refusal, independent pointage, closure and tr
     });
     expect(created.status()).toBe(200);
     const event = (await created.json()).id;
+    // Wave 17 (J2): « Appel » opens first for whoever takes the roll; the grid is in « Saison ».
     for (const locale of ["fr", "nl"]) {
       await page.goto("/" + locale + "/attendance");
+      await page.getByRole("tab", { name: locale === "fr" ? "Saison" : "Seizoen" }).click();
       await expect(
         page.getByRole("button", { name: /Training presence/ }),
       ).toBeVisible();
       await accessible(page);
     }
     await page.goto("/fr/attendance");
+    await page.getByRole("tab", { name: "Saison" }).click();
     await page.getByRole("button", { name: /Training presence/ }).click();
     await page
       .getByLabel("Effectif confirmé minimum", { exact: true })
@@ -274,9 +277,11 @@ test("invitation response, offline refusal, independent pointage, closure and tr
         )
       ).rows[0],
     ).toMatchObject({ response: "present", comment: "Transport confirmé" });
-    await expect(
-      page.getByText("Assiduité : 100 %", { exact: false }).first(),
-    ).toBeVisible();
+    // Wave 17 (J2): the figures per player live in « Statistiques ».
+    await page.getByRole("tab", { name: "Statistiques" }).click();
+    const card = page.locator(".stat-card").filter({ hasText: "Attendance Player" });
+    await expect(card).toContainText("Entraînements : 1 / 1");
+    await expect(card.locator(".stat-card-rate")).toContainText("100 %");
     await accessible(page);
     await page.screenshot({
       path: "test-results/attendance.png",

@@ -1,14 +1,15 @@
 "use client";
 import { AbsencesPanel, absenceCopy } from "./absences";
+import { AttendanceCall, AttendanceStats, queueOffline, useSeasonAttendance } from "./attendance-call";
+import { callCopy } from "./attendance-call-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam, ApplyScope } from "./use-scope";
-import { Button, Panel, PageHeader } from "./ui";
+import { Button, Panel, PageHeader, Tabs } from "./ui";
 import { attendanceCopy } from "./attendance-copy";
 import { AttendanceGrid, gridCopy } from "./attendance-grid";
 import { actuals, responses } from "@/domains/attendance/schema";
-import { kindLabels } from "./calendar-copy";
 import { localAt, shiftLocal, toInstant } from "@/domains/calendar/time";
 import type { attendanceView } from "@/domains/attendance/service";
 import {
@@ -39,7 +40,8 @@ const offlineCopy = {
     snapshot: "Offline: data from {date}. Marks will be sent when the network is back.",
   },
 };
-export function Attendance({ locale }: { locale: Locale }) {
+/** « Saison »: the period, the grid (one column per session) and the session opened below it. */
+function SeasonView({ locale }: { locale: Locale }) {
   const t = attendanceCopy[locale],
     today = localAt(new Date(), "Europe/Brussels");
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
@@ -194,8 +196,6 @@ export function Attendance({ locale }: { locale: Locale }) {
     );
   return (
     <>
-      <main id="main" className="access attendance">
-        <PageHeader title={t.title} subtitle={t.intro} />
         {error && (
           <p role="alert">
             {error} <Link href={`/${locale}/access`}>{t.access}</Link>
@@ -629,70 +629,74 @@ export function Attendance({ locale }: { locale: Locale }) {
           </Panel>
           </div>
         )}
-        <Panel title={t.stats}>
-          <p>{t.statHint}</p>
-          {data?.limited && (
-            <p role="status">
-              {locale === "en"
-                ? "500-event limit reached: shorten the period for complete statistics."
-                : locale === "fr"
-                  ? "Limite de 500 événements atteinte : réduisez la période pour des statistiques complètes."
-                  : "Limiet van 500 evenementen bereikt: verklein de periode voor volledige statistieken."}
-            </p>
-          )}
-          <h3>
-            {locale === "en"
-              ? "By team — within your access scope"
-              : locale === "fr"
-                ? "Par équipe — votre périmètre autorisé"
-                : "Per team — uw toegestane bereik"}
-          </h3>
-          <ul className="plain-list">
-            {data?.teamStats.map((s, index) => (
-              <li key={index}>
-                {s.team} ·{" "}
-                {data.seasons.find((v) => v.id === s.seasonId)?.name ?? "—"} ·{" "}
-                {kindLabels[locale][s.kind as keyof typeof kindLabels.fr] ??
-                  s.kind}
-                <p>
-                  {t.answered} : {s.answered}/{s.invited} · {t.attended} :{" "}
-                  {s.attended}/{s.closed} · {t.rate} :{" "}
-                  {s.closed
-                    ? Math.round((s.attended / s.closed) * 100) + " %"
-                    : "—"}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <h3>
-            {locale === "en"
-              ? "By person"
-              : locale === "fr"
-                ? "Par personne"
-                : "Per persoon"}
-          </h3>
-
-          <ul className="plain-list">
-            {data?.stats.map((s) => (
-              <li key={[s.profileId, s.seasonId, s.teamId, s.kind].join(":")}>
-                <strong>{s.name}</strong> · {s.team} ·{" "}
-                {data.seasons.find((v) => v.id === s.seasonId)?.name ?? "—"} ·{" "}
-                {kindLabels[locale][s.kind as keyof typeof kindLabels.fr] ??
-                  s.kind}
-                <p>
-                  {t.answered} : {s.answered}/{s.invited} (
-                  {s.invited ? Math.round((s.answered / s.invited) * 100) : 0}{" "}
-                  %) · {t.attended} : {s.attended}/{s.closed} · {t.rate} :{" "}
-                  {s.closed
-                    ? Math.round((s.attended / s.closed) * 100) + " %"
-                    : "—"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-        <AbsencesPanel locale={locale} />
-      </main>
     </>
+  );
+}
+
+/**
+ * Wave 17 (J2): the attendance page in three tabs. « Appel » (default for
+ * those who take the roll) shows one session at a time; « Saison » keeps the
+ * grid with a column per session; « Statistiques » has a card per player.
+ * Closing, traced corrections, coaches' rights and offline marks are kept.
+ */
+export function Attendance({ locale }: { locale: Locale }) {
+  const t = attendanceCopy[locale],
+    c = callCopy[locale];
+  const [revision, setRevision] = useState(0),
+    [tab, setTab] = useState<"call" | "season" | "stats" | null>(null),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const season = useSeasonAttendance(revision);
+  const data = season.data;
+  const caller = !!data && (data.events.some((e) => e.manage) || ["club_president", "coach"].includes(data.context.role));
+  const current = tab ?? (caller ? "call" : "season");
+  const explain = (code: string) => t.errors[code as keyof typeof t.errors] ?? t.error;
+  async function send(body: Record<string, unknown>) {
+    if (!data) return null;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/attendance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, organizationId: data.context.organization_id }) });
+      const out = await r.json();
+      if (!r.ok) throw new Error(out.error);
+      setRevision((v) => v + 1);
+      return out as { undo?: string; count?: number };
+    } catch (e) {
+      if (e instanceof TypeError && body.action === "mark") offline(body);
+      else setError(e instanceof TypeError ? t.offline : explain(e instanceof Error ? e.message : ""));
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+  /** Without network, a mark waits on the device and shows at once. */
+  function offline(body: Record<string, unknown>) {
+    if (!data) return;
+    queueOffline(data, body);
+    season.setData({
+      ...data,
+      events: data.events.map((ev) => ({ ...ev, invitations: ev.invitations.map((i) => (i.id === body.id ? { ...i, actual: String(body.actual) } : i)) })),
+    } as typeof data);
+    setError(offlineCopy[locale].queued);
+  }
+  const items = [...(caller ? [{ id: "call", label: c.call }] : []), { id: "season", label: c.season }, { id: "stats", label: c.stats }];
+  return (
+    <main id="main" className="access attendance">
+      <PageHeader title={t.title} subtitle={t.intro} />
+      <Tabs label={c.tabs} items={items} value={current} onChange={(v) => setTab(v as "call" | "season" | "stats")} idPrefix="attendance-tab" panelId={(v) => `attendance-panel-${v}`} />
+      <div role="tabpanel" id={`attendance-panel-${current}`} aria-labelledby={`attendance-tab-${current}`} className="attendance-panel">
+        {current !== "season" && error && <p role="alert">{error}</p>}
+        {current === "season" ? (
+          <SeasonView locale={locale} />
+        ) : !data ? (
+          <p role="status">{season.error ? explain(season.error) : c.loading}</p>
+        ) : current === "call" ? (
+          <AttendanceCall locale={locale} data={data} team={season.team} send={send} reload={() => setRevision((v) => v + 1)} busy={busy || season.loading} onOffline={offline} />
+        ) : (
+          <AttendanceStats locale={locale} data={data} team={season.team} seasonName={season.season?.name ?? null} />
+        )}
+      </div>
+      <AbsencesPanel locale={locale} />
+    </main>
   );
 }

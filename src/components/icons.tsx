@@ -1,6 +1,8 @@
 import {
   Accessibility,
   Archive,
+  Ban,
+  CheckCheck,
   ArrowDown,
   ArrowUp,
   Copy,
@@ -71,6 +73,9 @@ import {
  * earlier hand-drawn set are kept so existing calls keep working.
  */
 const icons = {
+  /** Wave 17 (J2): « Tout présent » and « Non pointé ». */
+  checkAll: CheckCheck,
+  ban: Ban,
   home: House,
   user: User,
   userRound: UserRound,

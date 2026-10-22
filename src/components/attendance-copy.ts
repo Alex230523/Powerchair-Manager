@@ -64,6 +64,7 @@ export const attendanceCopy = {
       unchecked: "Non pointé",
       present: "Présent",
       absent: "Absent",
+      excused: "Excusé",
       late: "Retard",
       early: "Départ anticipé",
     },
@@ -75,6 +76,8 @@ export const attendanceCopy = {
       remind: "Relance envoyée",
       automatic_reminder: "Relance automatique",
       threshold_check: "Contrôle de l’effectif",
+      mark_all: "Tout le monde pointé présent",
+      undo: "Pointage annulé",
     },
     errors: {
       STALE_VERSION:
@@ -168,6 +171,7 @@ export const attendanceCopy = {
       unchecked: "Niet geregistreerd",
       present: "Aanwezig",
       absent: "Afwezig",
+      excused: "Verontschuldigd",
       late: "Te laat",
       early: "Vroeg vertrek",
     },
@@ -179,6 +183,8 @@ export const attendanceCopy = {
       remind: "Herinnering verstuurd",
       automatic_reminder: "Automatische herinnering",
       threshold_check: "Bezetting gecontroleerd",
+      mark_all: "Iedereen als aanwezig geregistreerd",
+      undo: "Registratie ongedaan gemaakt",
     },
     errors: {
       STALE_VERSION:

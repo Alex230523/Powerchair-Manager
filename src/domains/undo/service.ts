@@ -12,7 +12,7 @@ import { isAdmin, permissions, type Permission } from "../access/policy";
  * server, with the rights of the action checked again, once, and leaves a
  * line in the audit log. Definitive deletions and sent emails offer none.
  */
-export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision", "affiliationPaid", "operationDelete"] as const;
+export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision", "affiliationPaid", "operationDelete", "attendanceMark"] as const;
 export type UndoKind = (typeof undoKinds)[number];
 /** Server window; the message on screen lasts 8 seconds (longer while hovered). */
 export const undoSeconds = 120;
@@ -33,6 +33,8 @@ type Payloads = {
   affiliationPaid: { transaction: string | null };
   /** Wave 17 (N1): a deleted operation, and whether it was already cancelled before. */
   operationDelete: { wasCancelled: boolean };
+  /** Wave 17 (J2): the marks of a roll call as they were before the click (or « Tout présent »). */
+  attendanceMark: { marks: { id: string; actual: string }[] };
 };
 
 export async function offerUndo<K extends UndoKind>(c: PoolClient, org: string, userId: string, kind: K, target: string, payload: Payloads[K]) {
@@ -70,6 +72,9 @@ function allowed(kind: UndoKind, role: Parameters<typeof permissions>[0], grants
     case "affiliationPaid":
     case "operationDelete":
       return has("dues.manage");
+    case "attendanceMark":
+      // Whoever takes the roll call: the coach included.
+      return mfa && (isAdmin(role) || role === "coach" || rights.includes("attendance.manage"));
   }
 }
 
@@ -114,6 +119,24 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
     if (!(await c.query(sql, values)).rowCount) throw new AccessError("NOT_FOUND", 404);
   };
   switch (kind) {
+    case "attendanceMark": {
+      const p = payload as Payloads["attendanceMark"];
+      for (const m of p.marks) {
+        const row = (
+          await c.query(
+            "UPDATE attendance_invitation SET actual=$4,marked_at=now(),marked_by=$3,version=version+1 WHERE id=$1 AND organization_id=$2 AND register_id=$5 AND withdrawn_at IS NULL RETURNING id",
+            [m.id, org, userId, m.actual, target],
+          )
+        ).rows[0];
+        if (!row) throw new AccessError("NOT_FOUND", 404);
+      }
+      await c.query("INSERT INTO attendance_history(register_id,actor_id,action,before_data,after_data,reason) VALUES($1,$2,'undo',NULL,$3,'')", [
+        target,
+        userId,
+        JSON.stringify({ marks: p.marks }),
+      ]);
+      return;
+    }
     case "registrationDecision":
       await revertDecision(c, org, userId, target, payload as Payloads["registrationDecision"]);
       return;
