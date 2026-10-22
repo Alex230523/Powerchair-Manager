@@ -3,14 +3,13 @@ import { processOne, recoverExpired } from "../notifications/worker";
 import { createTransport } from "../notifications/transport";
 import { digestTick } from "../digest/service";
 import { sweepDocuments } from "../documents/service";
-import { attendanceTick } from "../attendance/service";
 import { eventMailTick } from "../communication/service";
-import { duesReminderTick } from "../reminders/service";
 import { fundingTaskTick } from "../funding/service";
 import { affiliationTick } from "../affiliations/service";
-import { licenceReminderTick } from "../licences/service";
 import { equipmentLoanTick } from "../equipment/loans";
 import { taskSourcesTick } from "../tasks/sources";
+import { runAutomations } from "../automations/engine";
+import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { watchdog } from "./watchdog";
 
@@ -48,25 +47,27 @@ export const jobs = {
       return { expired: await sweepDocuments(db) };
     },
   },
-  /** Attendance actions and the event mails prepared for a given time. */
+  /** Attendance (the « convocation sans réponse » automation, B7) and the event mails prepared for a given time. */
   attendance: {
     every: 5,
     async run(db) {
-      return { attendance: await attendanceTick(db), eventMails: await eventMailTick(db) };
+      const auto = await runAutomations(db, undefined, ["callNoAnswer"]);
+      return { attendance: auto.sent, attendanceErrors: auto.errors, eventMails: await eventMailTick(db) };
     },
   },
-  /** The daily reminders: dues, tasks (A1), sponsors and grants, affiliations, licences, chair loans. */
+  /** The daily reminders: tasks (A1), the automations' catalogue (B7), affiliations, chair loans. */
   reminders: {
     every: 60,
     async run(db) {
       // The automatic tasks first, so their reminders leave the same run.
       const tasks = await taskSourcesTick(db);
+      const auto = await runAutomations(db, undefined, ruleKeys.filter((r) => r !== "callNoAnswer"));
       return {
         tasks,
-        dues: await duesReminderTick(db),
-        funding: await fundingTaskTick(db),
+        taskReminders: await fundingTaskTick(db, { tasks: true }),
+        automations: auto.sent,
+        automationErrors: auto.errors,
         affiliations: await affiliationTick(db),
-        licences: await licenceReminderTick(db),
         loans: await equipmentLoanTick(db),
       };
     },

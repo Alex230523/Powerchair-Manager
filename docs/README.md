@@ -108,6 +108,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [A2 : Subsides & sponsors](evolutions/2026-10-22-r-a2-subsides-sponsors.md) |
 | 22/10/2026 | [A4 : CRM simple relié à tout](evolutions/2026-10-22-s-a4-crm.md) |
 | 22/10/2026 | [B2 : mise en production à coût zéro (prête, non activée)](evolutions/2026-10-22-t-b2-production.md) |
+| 22/10/2026 | [B7 : automatisation des emails et des rappels](evolutions/2026-10-22-u-b7-automatisations.md) |
 
 ## Convention
 

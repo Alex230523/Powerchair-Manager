@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { audit, AccessError, type Principal } from "../access/service";
 import { publish } from "../notifications/queue";
 import { ensureStorage } from "../storage/service";
@@ -141,18 +141,32 @@ const reminderTitle = {
   en: "Your driving licence expires soon: renew it, then update the date in your profile.",
 };
 /** Daily: each person whose licence expires within 30 days hears it once. */
-export async function licenceReminderTick(db: Pool) {
-  const today = brusselsToday();
-  const base = process.env.BETTER_AUTH_URL ?? "";
-  const rows = (
+/** B7: the licences to remind today (also the simulation); `orgs`: only these clubs. */
+export async function licencePlan(db: Pool | PoolClient, today: string, orgs?: string[]) {
+  return (
     await db.query(
-      `SELECT d.profile_id,d.organization_id,d.valid_until::text AS valid_until,d.reminded_on::text AS reminded_on,o.name AS club,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
+      `SELECT d.profile_id,d.organization_id,d.valid_until::text AS valid_until,d.reminded_on::text AS reminded_on,o.name AS club,cp.full_name,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
          FROM driver_licence d JOIN organization o ON o.id=d.organization_id JOIN club_person cp ON cp.id=d.profile_id AND cp.organization_id=d.organization_id AND cp.status='active'
          JOIN person pe ON pe.id=cp.person_id JOIN "user" u ON u.id=pe.user_id
-        WHERE d.reminded_on IS NULL AND d.valid_until BETWEEN $1::date AND $1::date+30`,
-      [today],
+        WHERE d.reminded_on IS NULL AND d.valid_until BETWEEN $1::date AND $1::date+30 AND ($2::uuid[] IS NULL OR d.organization_id=ANY($2::uuid[]))`,
+      [today, orgs ?? null],
     )
-  ).rows.filter((r) => reminderDue(r.valid_until, today, r.reminded_on));
+  ).rows.filter((r) => reminderDue(r.valid_until, today, r.reminded_on)) as {
+    profile_id: string;
+    organization_id: string;
+    valid_until: string;
+    club: string;
+    full_name: string;
+    user_id: string;
+    email: string;
+    name: string;
+    locale: string;
+  }[];
+}
+export async function licenceReminderTick(db: Pool, orgs?: string[]) {
+  const today = brusselsToday();
+  const base = process.env.BETTER_AUTH_URL ?? "";
+  const rows = await licencePlan(db, today, orgs);
   let sent = 0;
   for (const r of rows) {
     const c = await db.connect();
