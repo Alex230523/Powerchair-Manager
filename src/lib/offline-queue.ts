@@ -1,5 +1,3 @@
-import { clearBooks } from "./offline-book";
-
 /**
  * Attendance taken without network: marks wait on the device and are sent when
  * the connection comes back. Only identifiers and the recorded presence are
@@ -74,5 +72,10 @@ export function clearOfflineData() {
   } catch {
     /* Nothing to clear. */
   }
-  clearBooks();
+  // The former offline trip books (removed in wave 17): whatever a device still holds goes too.
+  try {
+    indexedDB.deleteDatabase("pcm-offline-books");
+  } catch {
+    /* No storage: nothing to clear. */
+  }
 }

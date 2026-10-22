@@ -560,6 +560,8 @@ export async function execute(
           p.userId,
           "mandate." + command.action,
           command.id,
+          // The new end, for the rights journal (« jusqu'à nouvel ordre » when null).
+          command.action === "renew" ? { validUntil: command.validUntil ?? null } : undefined,
         );
       }
     }

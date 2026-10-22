@@ -1,4 +1,5 @@
 "use client";
+import { durationText } from "./duration-copy";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import {
@@ -399,6 +400,9 @@ type JournalRow = {
   subject: string | null;
   action?: string;
   kind?: string;
+  /** Rights journal: the row is about a role, and that role's end (null: « jusqu'à nouvel ordre »). */
+  mandate?: boolean;
+  valid_until?: string | null;
   details?: {
     before?: string[];
     after?: string[];
@@ -536,7 +540,10 @@ export function Journal({
                   <tr key={r.id}>
                     <td>{when(r.created_at)}</td>
                     <td>{r.actor}</td>
-                    <td>{change(r)}</td>
+                    <td>
+                      {change(r)}
+                      {kind === "rights" && r.mandate && <span className="muted"> · {durationText(locale, r.valid_until)}</span>}
+                    </td>
                     <td>{r.subject ?? ""}</td>
                   </tr>
                 ))}

@@ -478,7 +478,7 @@ export function Dues({ locale }: { locale: Locale }) {
             </Link>
             {view?.manage && (
               <>
-                <Link className="button secondary" href={`/${locale}/reminders?kind=dues`}>
+                <Link className="button secondary" href={`/${locale}/settings/notifications?kind=dues#settings-reminders`}>
                   {remindLabel[locale]}
                 </Link>
                 <Link className="button secondary" href={`/${locale}/settings/money#settings-dues-title`}>

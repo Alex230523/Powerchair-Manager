@@ -5,7 +5,6 @@ import { useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { tripsView } from "@/domains/trips/service";
 import { tripDays } from "@/domains/trips/schema";
-import { storeBook } from "@/lib/offline-book";
 import { tripsCopy } from "./trips-copy";
 import {
   TripForm,
@@ -55,7 +54,6 @@ export function TripDetailSections({
       {d.can.full && <Documents locale={locale} d={d} />}
       {d.can.full && d.care && <CareSection locale={locale} d={d} busy={busy} send={send} />}
       {d.budget && <Budget locale={locale} d={d} busy={busy} send={send} />}
-      {d.can.full && (d.can.manage || d.can.staff) && <Offline locale={locale} d={d} />}
     </>
   );
 }
@@ -718,7 +716,7 @@ function Documents({ locale, d }: { locale: Locale; d: Detail }) {
       {d.countdown.urgent && d.documents.length > 0 && (
         <p className="notice">
           {t.urgent.replace("{n}", String(d.countdown.left))}{" "}
-          <Link href={`/${locale}/reminders`}>{t.remindLink}</Link>
+          <Link href={`/${locale}/settings/notifications#settings-reminders`}>{t.remindLink}</Link>
         </p>
       )}
       {d.documents.length ? (
@@ -876,62 +874,3 @@ function Budget({ locale, d, busy, send }: Props) {
   );
 }
 
-function Offline({ locale, d }: { locale: Locale; d: Detail }) {
-  const t = tripsCopy[locale];
-  const [state, setState] = useState<"" | "busy" | "done">(""),
-    [error, setError] = useState("");
-  async function prepare(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const code = String(f.get("code") ?? ""),
-      again = String(f.get("again") ?? "");
-    setError("");
-    if (code !== again) return setError(t.codeMismatch);
-    setState("busy");
-    try {
-      const r = await fetch(`/api/trips/offline?id=${d.trip.id}`, { cache: "no-store" });
-      const pack = await r.json();
-      if (!r.ok) throw new Error(pack.error);
-      await storeBook(pack, code);
-      // Loading the book page once keeps it (and its scripts) available offline.
-      await new Promise<void>((resolve) => {
-        const frame = document.createElement("iframe");
-        frame.hidden = true;
-        frame.src = `/${locale}/offline-book`;
-        const done = () => {
-          frame.remove();
-          resolve();
-        };
-        frame.onload = done;
-        window.setTimeout(done, 8000);
-        document.body.appendChild(frame);
-      });
-      setState("done");
-    } catch {
-      setState("");
-      setError(t.unavailable);
-    }
-  }
-  return (
-    <Card title={t.offline} labelledBy="trip-offline" headingId="trip-offline">
-      <p className="muted">{t.offlineIntro}</p>
-      <form className="inline-form" onSubmit={prepare}>
-        <label htmlFor="book-code">
-          {t.code}
-          <input id="book-code" name="code" type="password" inputMode="numeric" autoComplete="new-password" required minLength={6} maxLength={64} pattern="[0-9]{6,}" />
-        </label>
-        <label htmlFor="book-again">
-          {t.codeAgain}
-          <input id="book-again" name="again" type="password" inputMode="numeric" autoComplete="new-password" required minLength={6} maxLength={64} pattern="[0-9]{6,}" />
-        </label>
-        <button className="button" disabled={state === "busy"}>{t.prepare}</button>
-      </form>
-      {error && <p role="alert">{error}</p>}
-      {state === "done" && (
-        <p role="status">
-          {t.prepared} <Link href={`/${locale}/offline-book`}>{t.openBook}</Link>
-        </p>
-      )}
-    </Card>
-  );
-}

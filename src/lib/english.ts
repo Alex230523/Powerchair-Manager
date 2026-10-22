@@ -116,7 +116,6 @@ export const english = {
     role: "Role",
     grants: "Additional permissions",
     from: "Access start (optional)",
-    until: "Access end (optional)",
     create: "Create invitation",
     link: "Private invitation link to share with the intended person (valid for 7 days)",
     invites: "Invitations",

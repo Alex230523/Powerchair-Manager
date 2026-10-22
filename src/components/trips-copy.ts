@@ -181,15 +181,6 @@ const fr = {
   addLine: "Ajouter une ligne",
   label: "Libellé",
   amount: "Montant (€)",
-  offline: "Carnet hors ligne",
-  offlineIntro:
-    "Participants, contacts d'urgence, besoins, consignes de soin, véhicules et planning, consultables sans réseau sur cet appareil. Le carnet est chiffré avec un code que vous choisissez : sans lui, rien n'est lisible. Il s'efface après le retour, après 10 codes faux, et à la déconnexion.",
-  code: "Code du carnet (6 chiffres ou plus)",
-  codeAgain: "Confirmer le code",
-  prepare: "Préparer le carnet sur cet appareil",
-  prepared: "Carnet prêt. Ouvrez-le sans réseau depuis le menu : Carnet hors ligne.",
-  codeMismatch: "Les deux codes ne correspondent pas.",
-  openBook: "Ouvrir le carnet",
   fleet: "Véhicules du club",
   fleetIntro:
     "Minibus adapté, voitures, remorque : places, rampe ou lift, permis requis, assurance et contrôle technique.",
@@ -396,15 +387,6 @@ const nl: Copy = {
   addLine: "Lijn toevoegen",
   label: "Omschrijving",
   amount: "Bedrag (€)",
-  offline: "Offline boekje",
-  offlineIntro:
-    "Deelnemers, noodcontacten, noden, zorginstructies, voertuigen en planning, raadpleegbaar zonder netwerk op dit toestel. Het boekje is versleuteld met een code die u kiest: zonder code is niets leesbaar. Het wordt gewist na de terugkeer, na 10 foute codes en bij het afmelden.",
-  code: "Code van het boekje (6 cijfers of meer)",
-  codeAgain: "Code bevestigen",
-  prepare: "Boekje voorbereiden op dit toestel",
-  prepared: "Boekje klaar. Open het zonder netwerk via het menu: Offline boekje.",
-  codeMismatch: "De twee codes komen niet overeen.",
-  openBook: "Boekje openen",
   fleet: "Clubvoertuigen",
   fleetIntro:
     "Aangepaste minibus, auto's, aanhangwagen: plaatsen, oprijplaat of lift, vereist rijbewijs, verzekering en keuring.",
@@ -610,15 +592,6 @@ const en: Copy = {
   addLine: "Add a line",
   label: "Label",
   amount: "Amount (€)",
-  offline: "Offline book",
-  offlineIntro:
-    "Participants, emergency contacts, needs, care instructions, vehicles and schedule, readable without network on this device. The book is encrypted with a code you choose: without it nothing can be read. It is erased after the return, after 10 wrong codes, and at sign-out.",
-  code: "Book code (6 digits or more)",
-  codeAgain: "Confirm the code",
-  prepare: "Prepare the book on this device",
-  prepared: "Book ready. Open it without network from the menu: Offline book.",
-  codeMismatch: "The two codes do not match.",
-  openBook: "Open the book",
   fleet: "Club vehicles",
   fleetIntro:
     "Adapted minibus, cars, trailer: places, ramp or lift, licence needed, insurance and roadworthiness test.",

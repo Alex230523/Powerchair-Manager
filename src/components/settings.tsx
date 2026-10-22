@@ -1,4 +1,7 @@
 "use client";
+import { Reminders } from "./reminders";
+import { DurationField, readDuration } from "./duration-field";
+import { durationText } from "./duration-copy";
 import { TeamPlacesSettings } from "./team-places-settings";
 import { ClubObligations } from "./club-obligations";
 import { HallOfFameSettings } from "./hall-of-fame";
@@ -78,7 +81,7 @@ type PeopleState = {
  * then one sub-page per category. The panels are the ones of the former single
  * page, moved as they were; visibility follows the same rights.
  */
-export function Settings({ locale, category }: { locale: Locale; category?: SettingsCategory }) {
+export function Settings({ locale, category, remindersKind }: { locale: Locale; category?: SettingsCategory; remindersKind?: "dues" | "documents" }) {
   const t = settingsCopy[locale],
     g = governanceCopy[locale],
     h = settingsHubCopy[locale];
@@ -361,6 +364,8 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
           {shown && category === "account" && <AccountPanels locale={locale} />}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
+          {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}
+          {shown && category === "notifications" && ws?.selected?.kind === "club" && <Reminders locale={locale} embedded initial={remindersKind} />}
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && <ClubObligations locale={locale} />}
@@ -430,6 +435,7 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
                                   {" "}· {teams.find((x) => x.id === m.team_id)?.name ?? ""}
                                 </span>
                               )}
+                              <span className="muted small"> · {durationText(locale, m.valid_until)}</span>
                             </th>
                             <td className="rights-summary">
                               {summary ? (
@@ -535,23 +541,25 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
                   own={own}
                   onChange={(next: Grant[]) => setDraft({ ...draft, [m.id]: next })}
                 />
-                <div className="actions">
-                  <button
-                    type="button"
-                    className="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void post(
-                        "/api/workspace",
-                        { action: "grants", id: m.id, grants: [...chosen].filter((x) => own.has(x)) },
-                        t.grantsSaved,
-                      ).then((ok) => ok && setEditingMember(""))
-                    }
-                  >
-                    {t.saveGrants}
-                    <span className="sr-only"> : {m.name}</span>
-                  </button>
-                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    // « Jusqu'à nouvel ordre » unless an end date is chosen (wave 17, G3).
+                    const until = readDuration(new FormData(e.currentTarget), "until");
+                    const same = (until ?? "").slice(0, 10) === (m.valid_until ?? "").slice(0, 10);
+                    void post("/api/workspace", { action: "grants", id: m.id, grants: [...chosen].filter((x) => own.has(x)) }, t.grantsSaved)
+                      .then((ok) => (ok && !same ? post("/api/workspace", { action: "renew", id: m.id, validUntil: until }, t.grantsSaved) : ok))
+                      .then((ok) => ok && setEditingMember(""));
+                  }}
+                >
+                  <DurationField locale={locale} name="until" initial={m.valid_until} />
+                  <div className="actions">
+                    <button className="button" disabled={busy}>
+                      {t.saveGrants}
+                      <span className="sr-only"> : {m.name}</span>
+                    </button>
+                  </div>
+                </form>
               </Modal>
             );
           })()}

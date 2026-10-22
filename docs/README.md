@@ -88,6 +88,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Vague 16, S1 : statistiques du club](evolutions/2026-10-21-zza-vague-16-s1-statistiques-club.md) |
 | 21/10/2026 | [Vague 16, S2 : statistiques de jeu](evolutions/2026-10-21-zzb-vague-16-s2-statistiques-jeu.md) |
 | 22/10/2026 | [Vague 17, C6 : « invité » à la place de « convoqué »](evolutions/2026-10-22-a-vague-17-c6-invite.md) |
+| 22/10/2026 | [Vague 17, G3 : menu et réglages](evolutions/2026-10-22-b-vague-17-g3-menu-reglages.md) |
 
 ## Convention
 

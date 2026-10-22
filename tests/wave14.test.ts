@@ -31,7 +31,8 @@ describe("president menu (wave 14)", () => {
     expect(routes.communication).toEqual(["/communication", "/documents"]);
     expect(routes.money).toEqual(["/funding", "/dues", "/fundraising"]);
     expect(routes.clubGroup).toEqual(["/club/manage", "/equipment", "/contacts"]);
-    expect(routes.more).toEqual(["/reminders", "/privacy", "/offline-book", "/settings"]);
+    // Wave 17 (G3): Relances moved to Settings, the offline book is gone.
+    expect(routes.more).toEqual(["/privacy", "/settings"]);
   });
   it("respects switched-off modules and missing rights", () => {
     const off = menuGroups(base("club_president", all, { disabled_modules: ["trips", "equipment", "fundraising"] }));
