@@ -224,6 +224,13 @@ export const kindLabels = {
   en: english.kindLabels,
 };
 export const calendarErrors: Record<string, [string, string, string]> = {
+  EVENT_IN_USE: [
+    "Des réponses, des présences ou un match existent : annulez l'événement à la place.",
+    "Er zijn antwoorden, aanwezigheden of een wedstrijd: annuleer het evenement in de plaats.",
+    "Answers, attendance or a match exist: cancel the event instead.",
+  ],
+  TYPE_EXISTS: ["Un type porte déjà ce nom.", "Er bestaat al een soort met deze naam.", "A type already has this name."],
+  MODULE_OFF: ["Ce module est désactivé pour votre club.", "Deze module is uitgeschakeld voor uw club.", "This module is switched off for your club."],
   NOTHING_TO_COPY: [
     "Aucun événement programmé dans cette semaine.",
     "Geen gepland evenement in deze week.",

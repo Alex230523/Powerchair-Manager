@@ -85,6 +85,8 @@ test("activity report: preview, sections, PowerPoint file and print", async ({ p
 
     // 5. The event editor offers the "highlight" box.
     await page.goto("/fr/calendar?create=1");
+    // Wave 16 (E1): in the « Avancé » section of the form.
+    await page.locator("#event-editor summary", { hasText: "Avancé" }).click();
     await expect(page.getByRole("checkbox", { name: /^Fait marquant de la saison/ })).toBeVisible();
 
     // 6. 390 px.

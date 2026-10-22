@@ -29,6 +29,11 @@ import {
 import { registrationErrors } from "./registrations-copy";
 import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
 import { setupCopy } from "./setup-copy";
+import { eventCopy } from "./calendar-event-copy";
+import { InvitePicker, initialInvite } from "./event-invite";
+import { ProgramPicker } from "./program-picker";
+import { exercisesCopy } from "./exercises-copy";
+import { undoToast, showToast } from "./toast";
 type Place = {
   id: string;
   name: string;
@@ -83,6 +88,15 @@ type Item = {
   team_color?: string | null;
   participants: { id: string; name: string }[];
   explicitParticipants: string[];
+  /** Wave 16 (E1). */
+  event_type_id?: string | null;
+  type_name?: string | null;
+  type_color?: string | null;
+  inviteGroups?: { kind: string; ref: string | null }[];
+  register?: { id: string; version: number; deadline: string; closed: boolean; reminder_sent_at: string | null } | null;
+  trip?: { id: string; title: string; status: string; departure_at: string | null; meeting_point: string; vehicles: number } | null;
+  /** Wave 16 (E2): the training's programme (notes for staff only). */
+  program?: { id: string; title: string; minutes: number; archived: boolean; notes?: string }[];
   documents: { id: string; name: string; versionId: string | null }[];
   history: {
     id: string;
@@ -106,6 +120,19 @@ type View = {
   canPlan: boolean;
   offModules?: string[];
   events: Item[];
+  eventTypes?: {
+    id: string;
+    name: string;
+    family: string;
+    legacy_kind: string;
+    color: string;
+    ask_response: boolean;
+    default_groups: string[];
+    archived: boolean;
+  }[];
+  recipientGroups?: { id: string; name: string }[];
+  exerciseOptions?: { id: string; title: string; duration_minutes: number; objective: string }[];
+  trips?: { id: string; title: string; starts_on: string; calendar_event_id: string | null }[];
   teams: { id: string; name: string; color?: string | null }[];
   places: Place[];
   profiles: { id: string; full_name: string }[];
@@ -251,7 +278,13 @@ export function Calendar({
     [copyOf, setCopyOf] = useState<Item | null>(null),
     [copyReport, setCopyReport] = useState<string[]>([]),
     // Wave 15: the "Échéances" layer (sponsor conditions, payments, renewals, grant dates).
-    [moneyLayer, setMoneyLayer] = useState(false);
+    [moneyLayer, setMoneyLayer] = useState(false),
+    // Wave 16 (E1): the type chosen in the form, the team (invitations follow it), a deletion to confirm.
+    [typeId, setTypeId] = useState(""),
+    [formTeam, setFormTeam] = useState(""),
+    [removing, setRemoving] = useState(false),
+    [startAt, setStartAt] = useState("");
+  const ev = eventCopy[locale];
   const w9 = calendarCopyWeek[locale] as (typeof calendarCopyWeek)["fr"];
   function setAnchor(value: string) {
     if (value >= "2000-01-01" && value <= "2099-12-31") setAnchorState(value);
@@ -352,6 +385,18 @@ export function Calendar({
   const event = data?.events.find((e) => e.id === selected),
     base = event ?? copyOf ?? undefined,
     venue = data?.places.find((p) => p.id === placeEdit);
+  // Wave 16 (E1): the club's types and the form's type and team.
+  const types = data?.eventTypes ?? [],
+    formType = typeId || base?.event_type_id || types.find((x) => !x.archived)?.id || "",
+    teamValue = formTeam === "-" ? "" : formTeam || base?.team_id || "";
+  const count = (e: Item, response: string) => e.attendance.filter((i) => i.response === response).length;
+  const answered = (e: Item) => e.attendance.some((i) => i.response !== "none" || i.actual !== "unchecked") || !!e.register?.closed;
+  const mapLink = (q: string) => `https://www.openstreetmap.org/search?query=${encodeURIComponent(q)}`;
+  function edit(next: () => void) {
+    setTypeId("");
+    setFormTeam("");
+    next();
+  }
   const scopes = (
     <>
       <option value="one">{t.one}</option>
@@ -361,17 +406,33 @@ export function Calendar({
   );
   const visible = data?.events;
   function openEvent(id: string) {
+    setRemoving(false);
     setSelected(id);
     setEditorOpen(false);
   }
-  function newEvent(day = anchor) {
+  function newEvent(day = anchor, hour = "") {
     setAnchor(day);
+    setStartAt(hour ? `${day}T${hour}` : "");
     setCopyOf(null);
     setSelected("");
+    setTypeId("");
+    setFormTeam("");
     setEditorOpen(true);
     setRequestId(crypto.randomUUID());
     setTimeout(() => document.getElementById("event-title")?.focus(), 0);
   }
+  // « N » opens a new event (wave 16, E1), unless typing somewhere.
+  useEffect(() => {
+    function key(e: globalThis.KeyboardEvent) {
+      if (e.key.toLowerCase() !== "n" || e.ctrlKey || e.metaKey || e.altKey || !data?.canPlan || editorOpen) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      e.preventDefault();
+      newEvent();
+    }
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
   function move(direction: number) {
     setAnchor(movePeriod(anchor, view, direction));
     setSelected("");
@@ -420,6 +481,12 @@ export function Calendar({
                 {data.canPlan && (
                   <Link className="button secondary" href={"/" + locale + "/venues"}>{extra.venues}</Link>
                 )}
+                <Link className="button secondary" href={"/" + locale + "/tournaments"}>{ev.tournaments}</Link>
+                {data.canPlan && (
+                  <Button icon="plus" title={ev.shortcut} aria-keyshortcuts="N" onClick={() => newEvent()}>
+                    {ev.newEvent}
+                  </Button>
+                )}
               </>
             )
           }
@@ -459,7 +526,6 @@ export function Calendar({
                   </span>
                   <Button variant="secondary" onClick={() => setAnchor(localAt(new Date(), "Europe/Brussels").slice(0, 10))}>{p.today}</Button>
                   <Button variant="secondary" icon="calendar" onClick={() => setSubscriptionOpen(true)}>{p.subscribe}</Button>
-                  {data.canPlan && <Button icon="plus" onClick={() => newEvent()}>{p.newEvent}</Button>}
                 </div>
               }
             >
@@ -622,7 +688,7 @@ export function Calendar({
                 />
               )}
               {(view === "week" || view === "days3") && (
-                <WeekGrid locale={locale} from={range.from} days={view === "week" ? 7 : 3} events={kindsShown} colorBy={colorBy} onSelect={openEvent} deadlines={dayChips} />
+                <WeekGrid locale={locale} from={range.from} days={view === "week" ? 7 : 3} events={kindsShown} colorBy={colorBy} onSelect={openEvent} deadlines={dayChips} onCreate={data.canPlan ? (d) => newEvent(d) : undefined} />
               )}
               {view === "list" && dayChips.length > 0 && (
                 <ul className="deadline-list">
@@ -732,12 +798,14 @@ export function Calendar({
                       </p>
                     )}
                     <div className="row-actions">
-                      {sheetEvent.canEdit && <Button size="sm" onClick={() => setEditorOpen(true)}>{t.edit}</Button>}
+                      {sheetEvent.canEdit && <Button size="sm" onClick={() => edit(() => setEditorOpen(true))}>{t.edit}</Button>}
                       {sheetEvent.canEdit && data.canPlan && (
                         <Button
                           size="sm"
                           variant="secondary"
                           onClick={() => {
+                            setTypeId("");
+                            setFormTeam("");
                             setCopyOf(sheetEvent);
                             setSelected("");
                             setRequestId(crypto.randomUUID());
@@ -751,10 +819,103 @@ export function Calendar({
                       {sheetEvent.canEdit && sheetEvent.status === "scheduled" && (
                         <Link className="button secondary sm" href={`/${locale}/communication?event=${sheetEvent.id}`}>{w9.mail}</Link>
                       )}
+                      {sheetEvent.canEdit && sheetEvent.status === "scheduled" && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() =>
+                            edit(() => {
+                              setEditorOpen(true);
+                              setTimeout(() => document.getElementById("event-invitations")?.scrollIntoView({ block: "start" }), 0);
+                            })
+                          }
+                        >
+                          {ev.inviteMore}
+                        </Button>
+                      )}
+                      {sheetEvent.canEdit && (
+                        <Button
+                          size="sm"
+                          variant={removing ? "danger" : "ghost"}
+                          disabled={busy}
+                          onClick={() => {
+                            if (!removing) return setRemoving(true);
+                            setRemoving(false);
+                            void task(async () => {
+                              await send({ action: "delete", id: sheetEvent.id, expectedVersion: sheetEvent.version });
+                              setSelected("");
+                              showToast({ message: ev.removed, icon: "check" });
+                            });
+                          }}
+                        >
+                          {removing ? ev.removeConfirm : ev.remove}
+                        </Button>
+                      )}
                     </div>
+                    {removing && answered(sheetEvent) && <p className="notice">{ev.inUse}</p>}
+                    {sheetEvent.trip && (
+                      <p className="event-trip">
+                        <strong>{ev.trip}</strong> : {sheetEvent.trip.title}
+                        {sheetEvent.trip.departure_at && ` · ${ev.tripDeparture} ${when(sheetEvent.trip.departure_at)}`}
+                        {sheetEvent.trip.meeting_point && ` · ${sheetEvent.trip.meeting_point}`}
+                        {sheetEvent.trip.vehicles > 0 && ` · ${ev.tripVehicles(sheetEvent.trip.vehicles)}`}{" "}
+                        <Link href={`/${locale}/trips`}>{ev.tripOpen}</Link>
+                      </p>
+                    )}
                   </section>
+                  {!!sheetEvent.program?.length && (
+                    <section aria-labelledby="event-sheet-program">
+                      <h3 id="event-sheet-program">{exercisesCopy[locale].program.title}</h3>
+                      <ol className="plain-list program-sheet">
+                        {sheetEvent.program.map((x) => (
+                          <li key={x.id}>
+                            <strong>{x.title}</strong> · {x.minutes} min
+                            {x.notes && <span className="muted small"> · {x.notes}</span>}
+                          </li>
+                        ))}
+                      </ol>
+                      <p>
+                        {exercisesCopy[locale].program.total(sheetEvent.program.reduce((n, x) => n + x.minutes, 0))}
+                        {sheetEvent.canEdit && (
+                          <>
+                            {" · "}
+                            <Link href={`/${locale}/exercises/program/${sheetEvent.id}`}>{exercisesCopy[locale].program.print}</Link>
+                          </>
+                        )}
+                      </p>
+                    </section>
+                  )}
                   <section aria-labelledby="event-sheet-invitations">
                     <h3 id="event-sheet-invitations">{p.invitations}</h3>
+                    {sheetEvent.attendance.length > 0 && (
+                      <p className="event-answers">
+                        <strong>{ev.responses}</strong> : {ev.yes} {count(sheetEvent, "present")} · {ev.no} {count(sheetEvent, "absent")} · {ev.noAnswer} {count(sheetEvent, "none")}
+                        {sheetEvent.register && !sheetEvent.register.closed && count(sheetEvent, "none") > 0 && sheetEvent.status === "scheduled" && (
+                          <>
+                            {" "}
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={busy}
+                              onClick={() =>
+                                void task(async () => {
+                                  const r = await fetch("/api/attendance", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ action: "remind", id: sheetEvent.register!.id, expectedVersion: sheetEvent.register!.version, organizationId: data.context.organization_id }),
+                                  });
+                                  const b = await r.json().catch(() => ({}));
+                                  if (!r.ok) throw new Error(b.error);
+                                  showToast({ message: ev.reminded, icon: "bell" });
+                                })
+                              }
+                            >
+                              {ev.remind}
+                            </Button>
+                          </>
+                        )}
+                      </p>
+                    )}
                     <div className="calendar-presences">
                       {(["coach", "player"] as const).map((role) => {
                         const rows = sheetEvent.attendance.filter((i) => i.role === role);
@@ -801,13 +962,15 @@ export function Calendar({
                         <form
                           onSubmit={(e) =>
                             form(e, async (d) => {
-                              await send({
+                              const r = (await send({
                                 action: "cancel",
                                 id: sheetEvent.id,
                                 expectedVersion: sheetEvent.version,
                                 scope: d.get("scope"),
                                 reason: d.get("reason"),
-                              });
+                              })) as { undo?: string };
+                              // Undo for 8 seconds (wave 15, C10): the events come back.
+                              undoToast(locale, ev.cancelledToast, r.undo, data.context.organization_id, () => load());
                             })
                           }
                         >
@@ -854,12 +1017,15 @@ export function Calendar({
                   )}
                   <form
                     key={(event?.id ?? copyOf?.id ?? requestId) + ":" + (event?.version ?? 0)}
+                    className="event-form"
                     onSubmit={(e) =>
                       form(e, async (d) => {
+                        const type = types.find((x) => x.id === d.get("eventType"));
                         const body = {
                           title: d.get("title"),
-                          kind: d.get("kind"),
-                          customType: d.get("customType"),
+                          kind: type ? type.legacy_kind : (d.get("kind") ?? "training"),
+                          customType: type ? (type.legacy_kind === "custom" ? type.name : "") : (d.get("customType") ?? ""),
+                          ...(type ? { eventTypeId: type.id } : {}),
                           timezone: "Europe/Brussels",
                           localStart: d.get("start"),
                           localEnd: d.get("end"),
@@ -873,33 +1039,35 @@ export function Calendar({
                           equipment: d.get("equipment"),
                           instructions: d.get("instructions"),
                           highlight: d.has("highlight"),
-                          participants: d.getAll("participants"),
+                          // People come from the invitations (groups and people one by one).
+                          participants: [],
+                          invite: JSON.parse(String(d.get("invite") ?? "null")) ?? undefined,
+                          tripId: d.get("trip") === null ? undefined : String(d.get("trip")) || null,
+                          // Wave 16 (E2): the programme, for a training.
+                          exercises: d.get("exercises") === null ? undefined : JSON.parse(String(d.get("exercises"))),
                           documents: [
                             ...new Set([
                               ...d.getAll("documents"),
-                              ...(d.get("kind") === "training" &&
-                              d.get("exercise")
-                                ? [d.get("exercise")]
-                                : []),
+                              ...(type?.family === "training" && d.get("exercise") ? [d.get("exercise")] : []),
                             ]),
                           ],
                         };
                         if (event)
                           await send({
-                              ...body,
-                              action: "update",
-                              id: event.id,
-                              expectedVersion: event.version,
-                              scope: d.get("scope"),
-                            });
+                            ...body,
+                            action: "update",
+                            id: event.id,
+                            expectedVersion: event.version,
+                            scope: d.get("scope"),
+                          });
                         else
                           await send({
-                              ...body,
-                              action: "create",
-                              intervalDays: Number(d.get("repeat")),
-                              occurrences: Number(d.get("count")),
-                              requestId,
-                            });
+                            ...body,
+                            action: "create",
+                            intervalDays: Number(d.get("repeat")),
+                            occurrences: Number(d.get("count")),
+                            requestId,
+                          });
                         // Saved: back to the calendar, the event in its place (its sheet stays closed).
                         setSelected("");
                         setEditorOpen(false);
@@ -910,298 +1078,271 @@ export function Calendar({
                       })
                     }
                   >
-                    <Field id="event-title" label={t.name}>
-                      <input
-                        id="event-title"
-                        name="title"
-                        required
-                        minLength={2}
-                        maxLength={160}
-                        defaultValue={base?.title}
-                      />
-                    </Field>
-                    <Field id="event-kind" label={t.kind}>
-                      <select
-                        id="event-kind"
-                        name="kind"
-                        defaultValue={base?.kind ?? "training"}
-                      >
-                        {kinds.map((v) => (
-                          <option key={v} value={v}>
-                            {kl[v]}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field id="event-custom" label={t.custom}>
-                      <input
-                        id="event-custom"
-                        name="customType"
-                        maxLength={80}
-                        defaultValue={base?.custom_type}
-                      />
-                    </Field>
-                    <Field id="event-start" label={t.start}>
-                      <input
-                        id="event-start"
-                        name="start"
-                        type="datetime-local"
-                        required
-                        defaultValue={
-                          event
-                            ? localAt(event.starts_at, "Europe/Brussels")
-                            : copyOf
-                              ? shiftLocal(localAt(copyOf.starts_at, "Europe/Brussels"), 7)
-                              : anchor + "T18:00"
-                        }
-                      />
-                    </Field>
-                    <Field id="event-end" label={t.end}>
-                      <input
-                        id="event-end"
-                        name="end"
-                        type="datetime-local"
-                        required
-                        defaultValue={
-                          event
-                            ? localAt(event.ends_at, "Europe/Brussels")
-                            : copyOf
-                              ? shiftLocal(localAt(copyOf.ends_at, "Europe/Brussels"), 7)
-                              : anchor + "T20:00"
-                        }
-                      />
-                    </Field>
-                    <Field id="event-team" label={t.team}>
-                      <select
-                        id="event-team"
-                        name="team"
-                        required={!data.manage}
-                        defaultValue={base?.team_id ?? ""}
-                      >
-                        <option value="">{t.none}</option>
-                        {data.teams.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field id="event-place" label={t.place}>
-                      <select
-                        id="event-place"
-                        name="place"
-                        defaultValue={base?.place_id ?? ""}
-                      >
-                        <option value="">{t.none}</option>
-                        {data.places
-                          .filter(
-                            (v) => !v.archived || v.id === event?.place_id,
-                          )
-                          .map((v) => (
+                    <fieldset className="event-section">
+                      <legend>{ev.sections.essential}</legend>
+                      <Field id="event-title" label={t.name}>
+                        <input id="event-title" name="title" required minLength={2} maxLength={160} defaultValue={base?.title} />
+                      </Field>
+                      {types.length ? (
+                        <Field id="event-type" label={ev.type}>
+                          <select id="event-type" name="eventType" value={formType} onChange={(e) => setTypeId(e.target.value)}>
+                            {types
+                              .filter((x) => !x.archived || x.id === base?.event_type_id)
+                              .map((x) => (
+                                <option key={x.id} value={x.id}>
+                                  {x.name}
+                                </option>
+                              ))}
+                          </select>
+                        </Field>
+                      ) : (
+                        <>
+                          <Field id="event-kind" label={t.kind}>
+                            <select id="event-kind" name="kind" defaultValue={base?.kind ?? "training"}>
+                              {kinds.map((v) => (
+                                <option key={v} value={v}>
+                                  {kl[v]}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field id="event-custom" label={t.custom}>
+                            <input id="event-custom" name="customType" maxLength={80} defaultValue={base?.custom_type} />
+                          </Field>
+                        </>
+                      )}
+                      <div className="form-pair">
+                        <Field id="event-start" label={t.start}>
+                          <input
+                            id="event-start"
+                            name="start"
+                            type="datetime-local"
+                            required
+                            defaultValue={
+                              event
+                                ? localAt(event.starts_at, "Europe/Brussels")
+                                : copyOf
+                                  ? shiftLocal(localAt(copyOf.starts_at, "Europe/Brussels"), 7)
+                                  : startAt || anchor + "T18:00"
+                            }
+                          />
+                        </Field>
+                        <Field id="event-end" label={t.end}>
+                          <input
+                            id="event-end"
+                            name="end"
+                            type="datetime-local"
+                            required
+                            defaultValue={
+                              event
+                                ? localAt(event.ends_at, "Europe/Brussels")
+                                : copyOf
+                                  ? shiftLocal(localAt(copyOf.ends_at, "Europe/Brussels"), 7)
+                                  : startAt
+                                    ? shiftLocal(startAt, 0).slice(0, 11) + String(Math.min(23, Number(startAt.slice(11, 13)) + 2)).padStart(2, "0") + startAt.slice(13)
+                                    : anchor + "T20:00"
+                            }
+                          />
+                        </Field>
+                      </div>
+                      {event ? (
+                        <>
+                          <Field id="event-scope" label={t.scope}>
+                            <select id="event-scope" name="scope">
+                              {scopes}
+                            </select>
+                          </Field>
+                          <p className="muted small">{t.scopeHint}</p>
+                        </>
+                      ) : (
+                        <div className="form-pair">
+                          <Field id="event-repeat" label={t.repeat}>
+                            <select id="event-repeat" name="repeat">
+                              <option value="0">{t.once}</option>
+                              <option value="1">{t.daily}</option>
+                              <option value="7">{t.weekly}</option>
+                              <option value="14">{t.fortnight}</option>
+                            </select>
+                          </Field>
+                          <Field id="event-count" label={t.count}>
+                            <input id="event-count" name="count" type="number" min={1} max={52} required defaultValue={1} />
+                          </Field>
+                        </div>
+                      )}
+                      <Field id="event-team" label={t.team}>
+                        <select id="event-team" name="team" required={!data.manage} value={teamValue} onChange={(e) => setFormTeam(e.target.value || "-")}>
+                          <option value="">{t.none}</option>
+                          {data.teams.map((v) => (
                             <option key={v.id} value={v.id}>
                               {v.name}
                             </option>
                           ))}
-                      </select>
-                    </Field>
-                    <p>{extra.location}</p>
-                    <Field id="event-shared" label={extra.shared}>
-                      <select
-                        id="event-shared"
-                        name="sharedVenue"
-                        defaultValue={base?.shared_venue_id ?? ""}
-                      >
-                        <option value="">{t.none}</option>
-                        {data.sharedVenues.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name} · {v.address}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field id="event-free" label={extra.free}>
-                      <input
-                        id="event-free"
-                        name="freeLocation"
-                        maxLength={500}
-                        defaultValue={base?.free_location ?? ""}
-                      />
-                    </Field>
-                    {data.manage && (
-                      <a
-                        href="#shared-venue"
-                        onClick={() => {
-                          const el = document.getElementById(
-                            "shared-venue",
-                          ) as HTMLDetailsElement | null;
-                          if (el) el.open = true;
-                        }}
-                      >
-                        {extra.venue}
-                      </a>
-                    )}
-                    <Field id="event-responsible" label={t.responsible}>
-                      <select
-                        id="event-responsible"
-                        name="responsible"
-                        defaultValue={
-                          event?.responsible_user_id ?? data.context.user_id
-                        }
-                      >
-                        {data.responsibles.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field id="event-visibility" label={t.visibility}>
-                      <select
-                        id="event-visibility"
-                        name="visibility"
-                        defaultValue={
-                          event?.visibility ??
-                          (data.manage ? "organization" : "team")
-                        }
-                      >
-                        {(data.manage ? visibilities : (["team"] as const)).map(
-                          (v) => (
-                            <option key={v} value={v}>
-                              {v === "team"
-                                ? t.team
-                                : v === "organization"
-                                  ? t.organization
-                                  : v === "staff"
-                                    ? t.staff
-                                    : t.selected}
+                        </select>
+                      </Field>
+                    </fieldset>
+                    <fieldset className="event-section">
+                      <legend>{ev.sections.place}</legend>
+                      <Field id="event-place" label={t.place}>
+                        <select id="event-place" name="place" defaultValue={base?.place_id ?? ""}>
+                          <option value="">{t.none}</option>
+                          {data.places
+                            .filter((v) => !v.archived || v.id === event?.place_id)
+                            .map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.name}
+                              </option>
+                            ))}
+                        </select>
+                      </Field>
+                      <p className="muted small">{extra.location}</p>
+                      <Field id="event-shared" label={extra.shared}>
+                        <select id="event-shared" name="sharedVenue" defaultValue={base?.shared_venue_id ?? ""}>
+                          <option value="">{t.none}</option>
+                          {data.sharedVenues.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name} · {v.address}
                             </option>
-                          ),
+                          ))}
+                        </select>
+                      </Field>
+                      <Field id="event-free" label={extra.free}>
+                        <input id="event-free" name="freeLocation" maxLength={500} defaultValue={base?.free_location ?? ""} />
+                      </Field>
+                      {base && (base.place_address || base.free_location) && (
+                        <a href={mapLink(base.place_address || base.free_location)} target="_blank" rel="noopener noreferrer">
+                          {ev.openMap}
+                        </a>
+                      )}
+                      {data.manage && (
+                        <a
+                          href="#shared-venue"
+                          onClick={() => {
+                            const el = document.getElementById("shared-venue") as HTMLDetailsElement | null;
+                            if (el) el.open = true;
+                          }}
+                        >
+                          {extra.venue}
+                        </a>
+                      )}
+                    </fieldset>
+                    <InvitePicker
+                      key={(event?.id ?? copyOf?.id ?? requestId) + ":" + (event ? "" : formType)}
+                      locale={locale}
+                      organizationId={data.context.organization_id}
+                      teamId={teamValue}
+                      manage={data.manage}
+                      teams={data.teams}
+                      groups={data.recipientGroups ?? []}
+                      profiles={data.profiles}
+                      initial={initialInvite(
+                        base?.inviteGroups ?? null,
+                        base?.explicitParticipants ?? [],
+                        base?.team_id ?? null,
+                        event ? null : (types.find((x) => x.id === formType) ?? null),
+                        base?.register ?? null,
+                        (iso) => localAt(iso, "Europe/Brussels"),
+                      )}
+                    />
+                    <fieldset className="event-section">
+                      <legend>{ev.sections.forAll}</legend>
+                      <Field id="event-instructions" label={ev.comment}>
+                        <textarea id="event-instructions" name="instructions" maxLength={5000} defaultValue={base?.instructions} />
+                      </Field>
+                      <Field id="event-equipment" label={t.equipment}>
+                        <textarea id="event-equipment" name="equipment" maxLength={2000} defaultValue={base?.equipment} />
+                      </Field>
+                    </fieldset>
+                    {types.find((x) => x.id === formType)?.family === "training" && (
+                      <ProgramPicker key={(event?.id ?? copyOf?.id ?? requestId) + ":program"} locale={locale} options={data.exerciseOptions ?? []} initial={base?.program ?? []} />
+                    )}
+                    {!data.offModules?.includes("trips") && (
+                      <fieldset className="event-section">
+                        <legend>{ev.sections.transport}</legend>
+                        <Field id="event-trip" label={ev.tripLink}>
+                          <select id="event-trip" name="trip" defaultValue={event?.trip?.id ?? ""}>
+                            <option value="">{ev.tripNone}</option>
+                            {(data.trips ?? [])
+                              .filter((x) => !x.calendar_event_id || x.calendar_event_id === event?.id)
+                              .map((x) => (
+                                <option key={x.id} value={x.id}>
+                                  {x.title} · {x.starts_on}
+                                </option>
+                              ))}
+                          </select>
+                        </Field>
+                        {event ? (
+                          !event.trip && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() =>
+                                void task(async () => {
+                                  await send({ action: "createTrip", eventId: event.id });
+                                  showToast({ message: ev.tripCreated, icon: "bus" });
+                                })
+                              }
+                            >
+                              {ev.tripCreate}
+                            </Button>
+                          )
+                        ) : (
+                          <p className="muted small">{ev.tripAfterSave}</p>
                         )}
-                      </select>
-                    </Field>
-                    <Field id="event-participants" label={t.participants}>
-                      <select
-                        id="event-participants"
-                        name="participants"
-                        multiple
-                        size={Math.min(5, Math.max(2, data.profiles.length))}
-                        defaultValue={base?.explicitParticipants ?? []}
+                      </fieldset>
+                    )}
+                    <details className="event-section">
+                      <summary>{ev.sections.advanced}</summary>
+                      <Field id="event-responsible" label={t.responsible}>
+                        <select id="event-responsible" name="responsible" defaultValue={event?.responsible_user_id ?? data.context.user_id}>
+                          {data.responsibles.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field id="event-visibility" label={t.visibility}>
+                        <select id="event-visibility" name="visibility" defaultValue={event?.visibility ?? (data.manage ? "organization" : "team")}>
+                          {(data.manage ? visibilities : (["team"] as const)).map((v) => (
+                            <option key={v} value={v}>
+                              {v === "team" ? t.team : v === "organization" ? t.organization : v === "staff" ? t.staff : t.selected}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <label className="check">
+                        <input type="checkbox" name="highlight" defaultChecked={!!base?.highlight} />
+                        {plannerCopy[locale].highlight}
+                      </label>
+                      <Field
+                        id="event-exercise"
+                        label={locale === "fr" ? "Fiche d’exercice (entraînement uniquement)" : locale === "en" ? "Exercise sheet (training only)" : "Oefenfiche (alleen training)"}
                       >
-                        {data.profiles.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.full_name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <p>
-                      {t.participantHint} {t.selectHint}
-                    </p>
-                    <Field id="event-equipment" label={t.equipment}>
-                      <textarea
-                        id="event-equipment"
-                        name="equipment"
-                        maxLength={2000}
-                        defaultValue={base?.equipment}
-                      />
-                    </Field>
-                    <Field id="event-instructions" label={t.instructions}>
-                      <textarea
-                        id="event-instructions"
-                        name="instructions"
-                        maxLength={5000}
-                        defaultValue={base?.instructions}
-                      />
-                    </Field>
-                    <label className="check">
-                      <input type="checkbox" name="highlight" defaultChecked={!!base?.highlight} />
-                      {plannerCopy[locale].highlight}
-                    </label>
-                    <Field
-                      id="event-exercise"
-                      label={
-                        locale === "fr"
-                          ? "Fiche d’exercice (entraînement uniquement)"
-                          : locale === "en"
-                            ? "Exercise sheet (training only)"
-                            : "Oefenfiche (alleen training)"
-                      }
-                    >
-                      <select id="event-exercise" name="exercise">
-                        <option value="">{t.none}</option>
-                        {data.documentOptions
-                          .filter((d) => d.category === "training")
-                          .map((d) => (
+                        <select id="event-exercise" name="exercise">
+                          <option value="">{t.none}</option>
+                          {data.documentOptions
+                            .filter((d) => d.category === "training")
+                            .map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                              </option>
+                            ))}
+                        </select>
+                      </Field>
+                      <Field id="event-documents" label={t.documents}>
+                        <select id="event-documents" name="documents" multiple size={3} defaultValue={base?.documents.map((d) => d.id) ?? []}>
+                          {[...new Map([...data.documentOptions, ...(event?.documents ?? [])].map((d) => [d.id, d])).values()].map((d) => (
                             <option key={d.id} value={d.id}>
                               {d.name}
                             </option>
                           ))}
-                      </select>
-                    </Field>
-                    <Field id="event-documents" label={t.documents}>
-                      <select
-                        id="event-documents"
-                        name="documents"
-                        multiple
-                        size={3}
-                        defaultValue={base?.documents.map((d) => d.id) ?? []}
-                      >
-                        {[
-                          ...new Map(
-                            [
-                              ...data.documentOptions,
-                              ...(event?.documents ?? []),
-                            ].map((d) => [d.id, d]),
-                          ).values(),
-                        ].map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <p>{t.documentsHint}</p>
-                    <p>
-                      {extra.exercise}{" "}
-                      <Link href={"/" + locale + "/documents"}>
-                        {extra.docs}
-                      </Link>
-                    </p>
-                    {event ? (
-                      <>
-                        <Field id="event-scope" label={t.scope}>
-                          <select id="event-scope" name="scope">
-                            {scopes}
-                          </select>
-                        </Field>
-                        <p>{t.scopeHint}</p>
-                      </>
-                    ) : (
-                      <>
-                        <Field id="event-repeat" label={t.repeat}>
-                          <select id="event-repeat" name="repeat">
-                            <option value="0">{t.once}</option>
-                            <option value="1">{t.daily}</option>
-                            <option value="7">{t.weekly}</option>
-                            <option value="14">{t.fortnight}</option>
-                          </select>
-                        </Field>
-                        <Field id="event-count" label={t.count}>
-                          <input
-                            id="event-count"
-                            name="count"
-                            type="number"
-                            min={1}
-                            max={52}
-                            required
-                            defaultValue={1}
-                          />
-                        </Field>
-                      </>
-                    )}
-                    <Button disabled={busy || event?.status === "cancelled"}>
-                      {t.saveEvent}
-                    </Button>
+                        </select>
+                      </Field>
+                      <p className="muted small">{t.documentsHint}</p>
+                    </details>
+                    <Button disabled={busy || event?.status === "cancelled"}>{t.saveEvent}</Button>
                   </form>
                 </Panel>
               </div>

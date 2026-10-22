@@ -11,7 +11,7 @@ import { isAdmin, permissions, type Permission } from "../access/policy";
  * server, with the rights of the action checked again, once, and leaves a
  * line in the audit log. Definitive deletions and sent emails offer none.
  */
-export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment"] as const;
+export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel"] as const;
 export type UndoKind = (typeof undoKinds)[number];
 /** Server window; the message on screen lasts 8 seconds (longer while hovered). */
 export const undoSeconds = 120;
@@ -24,6 +24,8 @@ type Payloads = {
   chairRetire: { status: string; links: string[] };
   messageHide: { hidden_at: string | null; hidden_by: string | null; reports: string[] };
   payment: { receivable: string | null; plan: string | null };
+  /** Wave 16 (E1): the events a cancellation touched. */
+  eventCancel: { ids: string[] };
 };
 
 export async function offerUndo<K extends UndoKind>(c: PoolClient, org: string, userId: string, kind: K, target: string, payload: Payloads[K]) {
@@ -53,6 +55,9 @@ function allowed(kind: UndoKind, role: Parameters<typeof permissions>[0], grants
       return mfa && (isAdmin(role) || rights.includes("members.read"));
     case "payment":
       return has("dues.manage");
+    case "eventCancel":
+      // The coach who cancelled a team event may put it back too.
+      return has("calendar.manage") || (mfa && role === "coach");
   }
 }
 
@@ -135,6 +140,22 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
       const p = payload as Payloads["messageHide"];
       await one("UPDATE internal_message SET hidden_at=$3,hidden_by=$4 WHERE id=$1 AND organization_id=$2", [target, org, p.hidden_at, p.hidden_by]);
       if (p.reports.length) await c.query("UPDATE message_report SET resolved_at=NULL,resolved_by=NULL,outcome=NULL WHERE id=ANY($1::uuid[]) AND message_id=$2", [p.reports, target]);
+      return;
+    }
+    case "eventCancel": {
+      const p = payload as Payloads["eventCancel"];
+      const back = await c.query(
+        "UPDATE calendar_event SET status='scheduled',version=version+1,updated_at=now() WHERE id=ANY($1::uuid[]) AND organization_id=$2 AND status='cancelled' RETURNING id",
+        [p.ids, org],
+      );
+      if (!back.rowCount) throw new AccessError("NOT_FOUND", 404);
+      for (const r of back.rows)
+        await c.query("INSERT INTO calendar_history(event_id,actor_id,action,before_data,after_data) VALUES($1,$2,'restored',$3,$4)", [
+          r.id,
+          userId,
+          JSON.stringify({ status: "cancelled" }),
+          JSON.stringify({ status: "scheduled" }),
+        ]);
       return;
     }
     case "payment": {

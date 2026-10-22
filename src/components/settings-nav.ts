@@ -65,6 +65,7 @@ export const settingsEntries = [
   { id: "rightProfiles", category: "members", anchor: "settings-profiles" },
   { id: "presence", category: "activities", anchor: "settings-presence" },
   { id: "teamPlaces", category: "activities", anchor: "settings-team-places" },
+  { id: "eventTypes", category: "activities", anchor: "settings-event-types" },
   { id: "duesRates", category: "money", anchor: "settings-dues-title" },
   { id: "fiscalYear", category: "money", anchor: "settings-fiscal-title" },
   { id: "rightsJournal", category: "journals", anchor: "journal-rights" },
