@@ -4,6 +4,9 @@ import type { Locale } from "@/lib/locale";
 import { periodKinds, type Period } from "@/domains/statistics/period";
 import { statisticsCopy } from "./statistics-copy";
 import { Icon } from "./icons";
+import { useScope } from "./use-scope";
+import { exportCopy } from "./export-copy";
+import { excelFromRows } from "./chart-export";
 
 /**
  * The round « ... » button of a chart card (wave 16, S1) and its small panel:
@@ -19,6 +22,7 @@ export function ChartMenu({
   onTable,
   onCsv,
   onPng,
+  xlsx,
   children,
 }: {
   locale: Locale;
@@ -29,10 +33,13 @@ export function ChartMenu({
   onTable?: () => void;
   onCsv?: () => void;
   onPng?: () => void;
+  /** Wave 17 (G2): the same figures as an Excel file. */
+  xlsx?: { title: string; rows: (string | number | null)[][]; period?: string };
   /** More entries (buttons), under the others: a click on one closes the menu. */
   children?: ReactNode;
 }) {
   const t = statisticsCopy[locale].menu;
+  const scope = useScope();
   const [open, setOpen] = useState(false),
     [kind, setKind] = useState(period?.kind ?? "season"),
     [invalid, setInvalid] = useState(false);
@@ -161,6 +168,18 @@ export function ChartMenu({
               >
                 <Icon name="download" size={16} />
                 {t.csv}
+              </button>
+            )}
+            {xlsx && scope.organizationId && (
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  void excelFromRows(scope.organizationId!, xlsx.title, xlsx.period ?? "", xlsx.rows);
+                }}
+              >
+                <Icon name="download" size={16} />
+                {exportCopy[locale].chartExcel}
               </button>
             )}
             {onPng && (

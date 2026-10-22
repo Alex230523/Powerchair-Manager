@@ -98,6 +98,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [Vague 17, C4 : lieux, catégories et partage validé](evolutions/2026-10-22-i-vague-17-c4-lieux.md) |
 | 22/10/2026 | [Vague 17, C5 : matchs, amicaux entre clubs et ligne complète](evolutions/2026-10-22-j-vague-17-c5-matchs.md) |
 | 22/10/2026 | [Vague 17, G1 : transmission de la présidence](evolutions/2026-10-22-k-vague-17-g1-presidence.md) |
+| 22/10/2026 | [Vague 17, G2 : export Excel partout](evolutions/2026-10-22-l-vague-17-g2-exports.md) |
 
 ## Convention
 

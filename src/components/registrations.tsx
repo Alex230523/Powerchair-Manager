@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
-import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone, EmptyState } from "./ui";
+import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone, EmptyState, ExportButton } from "./ui";
+import { exportCopy } from "./export-copy";
 import {
   fieldVisible,
   mappings,
@@ -1240,6 +1241,32 @@ export function Registrations({
                     <option value="all">{t.all}</option>
                   </select>
                 </div>
+                {/* Wave 17 (G2): the applications shown, with the answers to their forms (confidential ones only for those who may read them). */}
+                <ExportButton
+                  locale={locale}
+                  organizationId={data.context?.organization_id ?? ""}
+                  dataset="registrations"
+                  subject={t.review}
+                  rows={applications}
+                  columns={[
+                    { id: "person", label: b.person, value: (a) => a.subject_name },
+                    { id: "birth", label: t.birth, type: "date", value: (a) => a.birth_date },
+                    { id: "form", label: b.form, value: (a) => a.form_snapshot.title },
+                    { id: "submitted", label: b.submitted, type: "date", value: (a) => a.submitted_at?.slice(0, 10) ?? null },
+                    { id: "status", label: b.state, value: (a) => sl[a.status] },
+                    { id: "applicant", label: exportCopy[locale].applicant, value: (a) => a.applicant_name },
+                    { id: "email", label: exportCopy[locale].email, value: (a) => a.applicant_email },
+                    ...[...new Map(applications.flatMap((a) => a.form_snapshot.fields.filter((f) => !["file", "signature"].includes(f.type)).map((f) => [f.key, f] as const))).values()].slice(0, 30).map((f) => ({
+                      id: "answer:" + f.key,
+                      label: (f.label[locale] ?? f.label.fr).slice(0, 80),
+                      type: (f.type === "date" ? "date" : "text") as "date" | "text",
+                      value: (a: Application) => {
+                        const v = a.answers[f.key];
+                        return Array.isArray(v) ? v.join(", ") : typeof v === "boolean" ? (v ? "✓" : "") : (v ?? null);
+                      },
+                    })),
+                  ]}
+                />
               </Toolbar>
             )}
             {mode === "admin" ? (

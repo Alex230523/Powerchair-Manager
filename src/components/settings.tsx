@@ -34,7 +34,8 @@ import { Notifications } from "./notifications";
 import { SetupSettings } from "./setup-card";
 import { ClubAppearance } from "./club-appearance";
 import { DuesSettingsPanel } from "./dues-settings";
-import { Badge, Button, Card, PageHeader, EmptyState } from "./ui";
+import { Badge, Button, Card, PageHeader, EmptyState, ExportButton } from "./ui";
+import { exportCopy } from "./export-copy";
 import { Icon } from "./icons";
 import { AccountPanels } from "./account-settings";
 import { ClubIdentity } from "./club-identity";
@@ -425,7 +426,30 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
             </Card>
           )}
           {shown && category === "members" && manage && (
-            <Card title={t.accessTitle} subtitle={t.accessIntro} id="settings-access">
+            <Card
+              title={t.accessTitle}
+              subtitle={t.accessIntro}
+              id="settings-access"
+              actions={
+                // Wave 17 (G2): the members and their rights, as listed here.
+                ws.selected && (
+                  <ExportButton
+                    locale={locale}
+                    organizationId={ws.selected.organization_id}
+                    dataset="members"
+                    subject={h.categories.members.title}
+                    rows={members}
+                    columns={[
+                      { id: "name", label: exportCopy[locale].name, value: (m) => m.name },
+                      { id: "role", label: exportCopy[locale].role, value: (m) => t.roles[m.role] ?? m.role },
+                      { id: "team", label: exportCopy[locale].team, value: (m) => teams.find((x) => x.id === m.team_id)?.name ?? "" },
+                      { id: "rights", label: exportCopy[locale].rights, value: (m) => rightsSummary(locale, m.grants) },
+                      { id: "until", label: exportCopy[locale].until, type: "date", value: (m) => m.valid_until?.slice(0, 10) ?? null },
+                    ]}
+                  />
+                )
+              }
+            >
               <p className="muted small">{t.whatTheySee}</p>
               {coaches.length ? (
                 <div className="table-scroll">

@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
 import { ApplyScope, useScope, useScopedTeam, useSeeded } from "./use-scope";
-import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
+import { Button, Badge, Card, EmptyState, ExportButton, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
 import { Icon } from "./icons";
 import { CollectionBar } from "./collection-bar";
@@ -555,6 +555,26 @@ export function Dues({ locale }: { locale: Locale }) {
                     ))}
                   </select>
                 </label>
+                {/* Wave 17 (G2): the dues shown, with their season, team and state filters. */}
+                <ExportButton
+                  locale={locale}
+                  organizationId={view.organizationId}
+                  dataset="dues"
+                  subject={t.title}
+                  period={view.debts.find((d) => d.season_id === filter)?.season_name ?? ""}
+                  rows={rows}
+                  columns={[
+                    { id: "person", label: t.person, value: (d) => d.full_name },
+                    { id: "team", label: t.team, value: (d) => (d.team_ids ?? []).map((id) => teams.find((v) => v.id === id)?.name ?? "").filter(Boolean).join(", ") },
+                    { id: "plan", label: t.plan, value: (d) => d.category },
+                    { id: "season", label: t.season, value: (d) => d.season_name },
+                    { id: "net", label: t.net, type: "money", value: (d) => d.net_cents / 100 },
+                    { id: "collected", label: t.collected, type: "money", value: (d) => Math.min(d.paid_cents, d.net_cents) / 100 },
+                    { id: "remaining", label: t.remaining, type: "money", value: (d) => Math.max(0, d.net_cents - d.paid_cents) / 100 },
+                    { id: "next", label: t.nextDue, type: "date", value: (d) => (d.status === "open" ? (nextOpen(d)?.due_on ?? null) : null) },
+                    { id: "state", label: t.state, value: (d) => t.states[d.state] },
+                  ]}
+                />
               </Toolbar>
             }
           >

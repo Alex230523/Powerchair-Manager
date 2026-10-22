@@ -8,7 +8,7 @@ import { addDays, deadlineTone, grantStatuses } from "@/domains/funding/schema";
 import { grantsCopy } from "./grants-copy";
 import { fundingCopy } from "./funding-copy";
 import { sponsorsCopy } from "./sponsors-copy";
-import { Badge, Button, Card, EmptyState, PageHeader, StatCard, Tabs, Toolbar } from "./ui";
+import { Badge, Button, Card, EmptyState, ExportButton, PageHeader, StatCard, Tabs, Toolbar } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { HistoryList, TaskList, dayLabel, euro } from "./sponsors";
@@ -147,6 +147,24 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
               <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
               {c.mine}
             </label>
+            {/* Wave 17 (G2): the grants shown, with their filters. */}
+            <ExportButton
+              locale={locale}
+              organizationId={data.organization_id}
+              dataset="grants"
+              subject={g.title}
+              period={data.seasons.find((x) => x.id === season)?.name ?? ""}
+              rows={rows}
+              columns={[
+                { id: "grant", label: c.colGrant, value: (x) => label(x) },
+                { id: "purpose", label: c.season, value: (x) => [x.purpose, x.season_name].filter(Boolean).join(" · ") },
+                { id: "deadline", label: c.colDeadline, type: "date", value: (x) => x.deadline_on },
+                { id: "requested", label: g.totalRequested, type: "money", value: (x) => x.requested_cents / 100 },
+                { id: "granted", label: g.totalGranted, type: "money", value: (x) => (x.granted_cents === null ? null : x.granted_cents / 100) },
+                { id: "status", label: t.status, value: (x) => g.statuses[x.status] },
+                { id: "checklist", label: c.colChecklist, value: (x) => (x.tasks_total ? `${x.tasks_done}/${x.tasks_total}` : "") },
+              ]}
+            />
           </Toolbar>
         }
       >

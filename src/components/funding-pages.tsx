@@ -9,7 +9,7 @@ import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { fundingCopy } from "./funding-copy";
 import { shellCopy } from "./shell-copy";
-import { Badge, Card, EmptyState, PageHeader, StatCard, Tabs, Toolbar, type Tone } from "./ui";
+import { Badge, Card, EmptyState, ExportButton, PageHeader, StatCard, Tabs, Toolbar, type Tone } from "./ui";
 import { FinanceNav } from "./finance-nav";
 import { Modal } from "./modal";
 import { sponsorsCopy } from "./sponsors-copy";
@@ -207,6 +207,25 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
                       ))}
                     </select>
                   </div>
+                  {/* Wave 17 (G2): the partners shown. */}
+                  <ExportButton
+                    locale={locale}
+                    organizationId={data.organization_id}
+                    dataset="sponsors"
+                    subject={p.title}
+                    period={season?.name ?? ""}
+                    rows={rows}
+                    columns={[
+                      { id: "name", label: p.name, value: (x) => x.name },
+                      { id: "kind", label: p.kind, value: (x) => p.kinds[x.kind] },
+                      { id: "contact", label: sp.contactPerson, value: (x) => x.contact_name ?? "" },
+                      { id: "package", label: sp.package, value: (x) => x.package_name ?? "" },
+                      { id: "amount", label: p.amount, type: "money", value: (x) => (x.amount_cents ? x.amount_cents / 100 : null) },
+                      { id: "conditions", label: sp.conditions, value: (x) => (x.tasks_total ? `${x.tasks_done}/${x.tasks_total}` : "") },
+                      { id: "nearest", label: sp.nearest, type: "date", value: (x) => x.nearest?.date ?? null },
+                      { id: "status", label: t.status, value: (x) => p.statuses[x.status] },
+                    ]}
+                  />
                 </Toolbar>
               }
             >

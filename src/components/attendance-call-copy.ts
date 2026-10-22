@@ -37,6 +37,8 @@ type Copy = {
   averageLabel: string;
   period: string;
   noStats: string;
+  /** Wave 17 (G2): the columns of the exports. */
+  cols: Record<"name" | "response" | "mark" | "trainingsIn" | "trainingsAll" | "matchesIn" | "matchesAll" | "excused" | "absent" | "rate" | "session", string>;
 };
 
 export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
@@ -78,6 +80,7 @@ export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
     averageLabel: "Présence moyenne",
     period: "Saison {name}, appels clôturés.",
     noStats: "Aucun appel clôturé sur cette saison.",
+    cols: { name: "Nom", response: "Réponse", mark: "Présence", trainingsIn: "Entraînements présents", trainingsAll: "Entraînements clôturés", matchesIn: "Matchs présents", matchesAll: "Matchs clôturés", excused: "Excusés", absent: "Absents", rate: "Présence moyenne (%)", session: "Séance" },
   },
   nl: {
     tabs: "Weergaven van de aanwezigheden",
@@ -117,6 +120,7 @@ export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
     averageLabel: "Gemiddelde aanwezigheid",
     period: "Seizoen {name}, afgesloten registers.",
     noStats: "Nog geen afgesloten register in dit seizoen.",
+    cols: { name: "Naam", response: "Antwoord", mark: "Aanwezigheid", trainingsIn: "Trainingen aanwezig", trainingsAll: "Trainingen afgesloten", matchesIn: "Wedstrijden aanwezig", matchesAll: "Wedstrijden afgesloten", excused: "Verontschuldigd", absent: "Afwezig", rate: "Gemiddelde aanwezigheid (%)", session: "Sessie" },
   },
   en: {
     tabs: "Attendance views",
@@ -156,5 +160,6 @@ export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
     averageLabel: "Average attendance",
     period: "Season {name}, closed registers.",
     noStats: "No closed register this season yet.",
+    cols: { name: "Name", response: "Answer", mark: "Attendance", trainingsIn: "Trainings attended", trainingsAll: "Trainings closed", matchesIn: "Matches attended", matchesAll: "Matches closed", excused: "Excused", absent: "Absent", rate: "Average attendance (%)", session: "Session" },
   },
 };

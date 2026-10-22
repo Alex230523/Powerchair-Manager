@@ -7,7 +7,7 @@ import { queueMark } from "@/lib/offline-queue";
 import { callCopy } from "./attendance-call-copy";
 import { attendanceCopy } from "./attendance-copy";
 import { kindLabels } from "./calendar-copy";
-import { Badge, Button, Card, EmptyState, Segmented } from "./ui";
+import { Badge, Button, Card, EmptyState, ExportButton, Segmented } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { MoreMenu } from "./more-menu";
 import { Modal } from "./modal";
@@ -125,6 +125,21 @@ export function AttendanceCall({
             {e.team_name ? ` · ${e.team_name}` : ""} · {kindLabels[locale][e.kind as keyof typeof kindLabels.fr] ?? e.kind}
           </p>
         </div>
+        <div className="call-actions">
+        <ExportButton
+          locale={locale}
+          organizationId={data.context.organization_id}
+          dataset="attendanceCall"
+          subject={`${t.call} ${e.title}`}
+          period={day(e.starts_at)}
+          rows={people}
+          columns={[
+            { id: "name", label: t.cols.name, value: (i) => i.full_name },
+            { id: "response", label: t.cols.response, value: (i) => t.answered[i.response as keyof typeof t.answered] ?? t.answered.none },
+            { id: "mark", label: t.cols.mark, value: (i) => a.actuals[i.actual as keyof typeof a.actuals] ?? i.actual },
+            { id: "average", label: t.cols.rate, type: "number", value: (i) => summaries.get(i.profile_id)?.rate ?? null },
+          ]}
+        />
         {!closed && (
           <Button
             icon="checkAll"
@@ -137,6 +152,7 @@ export function AttendanceCall({
             {t.allPresent}
           </Button>
         )}
+        </div>
       </div>
       <div className="call-sessions" role="group" aria-label={t.session}>
         <span className="call-sessions-label">{t.session}</span>
@@ -268,7 +284,27 @@ export function AttendanceStats({ locale, data, team, seasonName }: { locale: Lo
     <section className="call-stats" aria-label={t.stats}>
       <div className="call-stats-head">
         <p className="muted">{fill(t.period, { name: seasonName ?? "" })}</p>
-        <Segmented label={t.sortBy} items={[{ id: "rate", label: t.byRate }, { id: "name", label: t.byName }]} value={by} onChange={(v) => setBy(v as "rate" | "name")} />
+        <div className="call-actions">
+          <Segmented label={t.sortBy} items={[{ id: "rate", label: t.byRate }, { id: "name", label: t.byName }]} value={by} onChange={(v) => setBy(v as "rate" | "name")} />
+          <ExportButton
+            locale={locale}
+            organizationId={data.context.organization_id}
+            dataset="attendanceStats"
+            subject={t.stats}
+            period={seasonName ?? ""}
+            rows={list}
+            columns={[
+              { id: "name", label: t.cols.name, value: (p) => p.name },
+              { id: "trainingIn", label: t.cols.trainingsIn, type: "number", value: (p) => p.training.attended },
+              { id: "trainingAll", label: t.cols.trainingsAll, type: "number", value: (p) => p.training.closed },
+              { id: "matchIn", label: t.cols.matchesIn, type: "number", value: (p) => p.match.attended },
+              { id: "matchAll", label: t.cols.matchesAll, type: "number", value: (p) => p.match.closed },
+              { id: "excused", label: t.cols.excused, type: "number", value: (p) => p.excused },
+              { id: "absent", label: t.cols.absent, type: "number", value: (p) => p.absent },
+              { id: "rate", label: t.cols.rate, type: "number", value: (p) => p.rate },
+            ]}
+          />
+        </div>
       </div>
       {list.length ? (
         <ul className="stat-cards">

@@ -16,6 +16,20 @@ export const exportColumns = [
   "position",
 ] as const;
 export type ExportColumn = (typeof exportColumns)[number];
+/** Wave 17 (G2): dates as dates, age and number as numbers in the Excel file. */
+export const columnTypes: Record<ExportColumn, "text" | "number" | "date"> = {
+  name: "text",
+  birth_date: "date",
+  age: "number",
+  email: "text",
+  phone: "text",
+  joined_on: "date",
+  status: "text",
+  teams: "text",
+  roles: "text",
+  jersey: "number",
+  position: "text",
+};
 export const defaultColumns: ExportColumn[] = [
   "name",
   "birth_date",

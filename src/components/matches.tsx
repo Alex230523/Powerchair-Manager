@@ -13,7 +13,7 @@ import { matchLineCopy } from "./match-line-copy";
 import { FriendlyDialog, Invitations, MatchLine, ScoreToConfirm, TournamentMatches } from "./match-line";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
-import { Badge, EmptyState, PageHeader } from "./ui";
+import { Badge, EmptyState, ExportButton, PageHeader } from "./ui";
 
 type View = Awaited<ReturnType<typeof matchesView>>;
 type Match = View["matches"][number];
@@ -218,6 +218,29 @@ export function Matches({ locale }: { locale: Locale }) {
             <option value="all">{t.all}</option>
           </select>
         </label>
+        {/* Wave 17 (G2): the matches shown, with the filters chosen. */}
+        <ExportButton
+          locale={locale}
+          organizationId={view.organization_id}
+          dataset="matches"
+          subject={t.title}
+          period={show === "all" ? "" : show === "played" ? t.played : t.upcoming}
+          rows={list}
+          columns={[
+            { id: "date", label: t.date2, type: "date", value: (m) => m.local_start.slice(0, 10) },
+            { id: "time", label: t.date.split(" ").pop() ?? "", value: (m) => m.local_start.slice(11, 16) },
+            { id: "team", label: t.team, value: (m) => m.team },
+            { id: "opponent", label: t.opponent, value: (m) => m.opponent },
+            { id: "where", label: t.where, value: (m) => (m.home ? t.home : t.away) },
+            { id: "kind", label: t.kind, value: (m) => t.kinds[m.kind] },
+            { id: "competition", label: t.competition.split(" (")[0], value: (m) => m.competition },
+            { id: "venue", label: t.venue, value: (m) => m.venue },
+            { id: "status", label: t.status, value: (m) => t.statuses[m.status] },
+            { id: "ours", label: t.ourScore, type: "number", value: (m) => m.our_score },
+            { id: "theirs", label: t.theirScore, type: "number", value: (m) => m.their_score },
+            { id: "referees", label: t.referees, value: (m) => (m.referees as { name: string }[]).map((r) => r.name).join(", ") },
+          ]}
+        />
       </form>
 
       {list.length ? (

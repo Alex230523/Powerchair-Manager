@@ -105,3 +105,28 @@ export async function exportPng(area: HTMLElement, title: string, subtitle: stri
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (blob) downloadBlob(blob, filename);
 }
+
+type Row = (string | number | null)[];
+const numeric = (v: unknown) => typeof v === "number" || /^-?\d+([.,]\d+)?$/.test(String(v ?? "").trim());
+/**
+ * Wave 17 (G2): a chart's figures (or a whole tab) as an Excel file written
+ * by the server: the first row is the header, columns holding figures become
+ * numbers, and the export is noted in the journal.
+ */
+export async function excelFromRows(organizationId: string, subject: string, period: string, rows: Row[]) {
+  const { downloadExport } = await import("./export-button");
+  const [head = [], ...body] = rows;
+  const width = Math.max(head.length, ...body.map((r) => r.length), 1);
+  const columns = Array.from({ length: width }, (_, i) => ({
+    header: String(head[i] ?? "").trim() || `${i + 1}`,
+    type: (body.some((r) => r[i] !== null && r[i] !== "" && r[i] !== undefined && numeric(r[i])) ? "number" : "text") as "number" | "text",
+  }));
+  await downloadExport(organizationId, {
+    dataset: "statistics",
+    format: "xlsx",
+    subject,
+    period,
+    columns,
+    rows: body.map((r) => columns.map((c, i) => (r[i] === undefined || r[i] === "" ? null : c.type === "number" && numeric(r[i]) ? Number(String(r[i]).replace(",", ".")) : r[i]))),
+  });
+}

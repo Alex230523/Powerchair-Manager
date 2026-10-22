@@ -17,7 +17,7 @@ import { initials } from "./app-shell";
 import { Stock } from "./equipment-stock";
 import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
-import { Badge, EmptyState, PageHeader, Card, KpiCard } from "./ui";
+import { Badge, EmptyState, ExportButton, PageHeader, Card, KpiCard } from "./ui";
 import { setupCopy } from "./setup-copy";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
@@ -225,6 +225,27 @@ export function Equipment({ locale }: { locale: Locale }) {
                 ))}
               </select>
             </label>
+            {/* Wave 17 (G2): the chairs shown, with their filters. */}
+            <ExportButton
+              locale={locale}
+              organizationId={view.context.organization_id}
+              dataset="equipment"
+              subject={t.title}
+              rows={chairs}
+              columns={[
+                { id: "name", label: t.name, value: (c) => c.name },
+                { id: "brand", label: t.brand, value: (c) => c.brand },
+                { id: "model", label: t.model, value: (c) => c.model },
+                { id: "serial", label: t.serial, value: (c) => c.serial_number },
+                { id: "ownership", label: t.ownership, value: (c) => t.ownerships[c.ownership as "club" | "player" | "loan"] ?? c.ownership },
+                { id: "status", label: t.status, value: (c) => t.statuses[c.status as "available" | "in_use" | "maintenance" | "retired"] ?? c.status },
+                { id: "players", label: t.players, value: (c) => c.links.filter((l) => !l.ends_on).map((l) => l.full_name).join(", ") },
+                { id: "storage", label: t.storage, value: (c) => c.storage },
+                { id: "acquired", label: t.acquired, type: "date", value: (c) => c.acquired_on },
+                { id: "lastService", label: t.lastService, type: "date", value: (c) => c.last_service_on },
+                { id: "nextService", label: t.nextService, type: "date", value: (c) => c.next_service_on },
+              ]}
+            />
           </form>
           {editing === "new" && (
             <Card title={t.newChair} labelledBy="new-chair" headingId="new-chair" className="chair-editor">

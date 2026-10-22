@@ -5,7 +5,7 @@ import type { Locale } from "@/lib/locale";
 import { federationExamples, type DueState } from "@/domains/affiliations/schema";
 import { affiliationsCopy, put } from "./affiliations-copy";
 import { errors } from "./access-copy";
-import { Badge, Button, Card, EmptyState, PageHeader } from "./ui";
+import { Badge, Button, Card, EmptyState, ExportButton, PageHeader } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { useData, usePost } from "./use-api";
@@ -282,7 +282,30 @@ export function ClubAffiliations({ locale }: { locale: Locale }) {
       </p>
       {data && (
         <>
-          <Card title={t.current} id="affiliation-dues">
+          <Card
+            title={t.current}
+            id="affiliation-dues"
+            actions={
+              // Wave 17 (G2): the club's affiliations and dues as listed.
+              <ExportButton
+                locale={locale}
+                organizationId={data.organization_id}
+                dataset="affiliations"
+                subject={t.title}
+                rows={data.dues}
+                columns={[
+                  { id: "name", label: t.name, value: (d) => d.name },
+                  { id: "owner", label: t.federation, value: (d) => (d.owner_kind === "federation" ? d.owner_name : t.club) },
+                  { id: "period", label: t.period, value: (d) => d.period },
+                  { id: "amount", label: t.amount, type: "money", value: (d) => d.amount_cents / 100 },
+                  { id: "players", label: t.perPlayer, type: "number", value: (d) => d.players },
+                  { id: "deadline", label: t.deadline, type: "date", value: (d) => d.due_on },
+                  { id: "status", label: t.status, value: (d) => t.states[d.state] },
+                  { id: "paid", label: t.paidOn, type: "date", value: (d) => d.paid_on },
+                ]}
+              />
+            }
+          >
             {data.dues.length ? (
               <div className="table-scroll">
                 <table className="compact-table affiliation-table">

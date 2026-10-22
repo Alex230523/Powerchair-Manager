@@ -10,6 +10,8 @@ import { DataGrid, type GridColumn } from "./data-grid";
 import { ChartFrame, DivergingBarChart, HorizontalBars } from "./charts";
 import { ChartMenu } from "./chart-menu";
 import { downloadCsv, exportPng, slug } from "./chart-export";
+import { exportCopy } from "./export-copy";
+import { useScope } from "./use-scope";
 import { Icon } from "./icons";
 import { fill, placeLabel, statisticsCopy } from "./statistics-copy";
 import {
@@ -69,7 +71,8 @@ export function StatisticsGame({ locale }: { locale: Locale }) {
   const t = statisticsCopy[locale],
     g = t.game;
   const summary = useStat<Summary>("summary", {}, api);
-  const { register, exportAll } = useCsvSections();
+  const { register, exportAll, excelAll } = useCsvSections();
+  const scope = useScope();
   const s = summary.data;
   useEffect(() => {
     if (!s?.tiles) return register("tiles", null);
@@ -91,6 +94,9 @@ export function StatisticsGame({ locale }: { locale: Locale }) {
         locale={locale}
         summary={s}
         onCsv={() => exportAll(["tiles", "teams", "goals", "scorers", "assisters", "minutes", "discipline", "competitions", "opponents", "tournaments"], `statistics-game-${slug(s?.season?.name ?? "club")}.csv`)}
+        onXlsx={() =>
+          excelAll(["tiles", "teams", "goals", "scorers", "assisters", "minutes", "discipline", "competitions", "opponents", "tournaments"], scope.organizationId, `${t.title} ${t.tabGame}`, s?.season?.name ?? "", exportCopy[locale].sheet)
+        }
       />
       <StatisticsTabs locale={locale} current="game" />
       {summary.error && <Failed locale={locale} retry={summary.retry} />}
@@ -166,7 +172,7 @@ function TeamsCard({ locale, register }: { locale: Locale; register: Register })
       title={g.title}
       sub={periodText(t, locale, data)}
       className="stats-wide"
-      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(g.title)}.csv`, rows)} />}
+      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(g.title)}.csv`, rows)} xlsx={{ title: g.title, rows }} />}
     >
       {error && <Failed locale={locale} retry={retry} />}
       {data &&
@@ -212,7 +218,7 @@ function GoalsCard({ locale, register }: { locale: Locale; register: Register })
           onPeriod={setPeriod}
           table={table}
           onTable={() => setTable((v) => !v)}
-          onCsv={() => downloadCsv(`${slug(g.title)}.csv`, rows)}
+          onCsv={() => downloadCsv(`${slug(g.title)}.csv`, rows)} xlsx={{ title: g.title, rows }}
           onPng={() => area.current && void exportPng(area.current, g.title, sub, `${slug(g.title)}.png`)}
         />
       }
@@ -284,7 +290,7 @@ function LeadersCard({ locale, register, kind }: { locale: Locale; register: Reg
       id={`stats-${kind}`}
       title={c.title}
       sub={periodText(t, locale, data)}
-      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} />}
+      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} xlsx={{ title: c.title, rows }} />}
     >
       {error && <Failed locale={locale} retry={retry} />}
       {data &&
@@ -348,7 +354,7 @@ function MinutesCard({ locale, register }: { locale: Locale; register: Register 
           onPeriod={setPeriod}
           table={table}
           onTable={() => setTable((v) => !v)}
-          onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)}
+          onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} xlsx={{ title: c.title, rows }}
           onPng={() => area.current && void exportPng(area.current, c.title, sub, `${slug(c.title)}.png`)}
         />
       }
@@ -424,7 +430,7 @@ function DisciplineCard({ locale, register }: { locale: Locale; register: Regist
       id="stats-discipline"
       title={c.title}
       sub={periodText(t, locale, data)}
-      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} />}
+      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} xlsx={{ title: c.title, rows }} />}
     >
       {error && <Failed locale={locale} retry={retry} />}
       {data && (
@@ -498,7 +504,7 @@ function CompetitionCard({ locale, register }: { locale: Locale; register: Regis
       tools={
         <Segmented label={c.choose} items={(["league", "cup", "tournament", "friendly"] as const).map((k) => ({ id: k, label: c.kinds[k] }))} value={kind} onChange={(v) => setKind(v as typeof kind)} />
       }
-      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} />}
+      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} xlsx={{ title: c.title, rows }} />}
     >
       {error && <Failed locale={locale} retry={retry} />}
       {r &&
@@ -560,7 +566,7 @@ function OpponentsCard({ locale, register }: { locale: Locale; register: Registe
       id="stats-opponents"
       title={c.title}
       sub={periodText(t, locale, data)}
-      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} />}
+      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} xlsx={{ title: c.title, rows }} />}
     >
       {error && <Failed locale={locale} retry={retry} />}
       {data &&
@@ -602,7 +608,7 @@ function TournamentsCard({ locale, register }: { locale: Locale; register: Regis
           {c.hall}
         </Link>
       }
-      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} />}
+      menu={<ChartMenu locale={locale} period={period} onPeriod={setPeriod} onCsv={() => downloadCsv(`${slug(c.title)}.csv`, rows)} xlsx={{ title: c.title, rows }} />}
     >
       {error && <Failed locale={locale} retry={retry} />}
       {data &&

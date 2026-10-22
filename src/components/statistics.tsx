@@ -10,7 +10,8 @@ import { useScope } from "./use-scope";
 import { Badge, Button, Card, DataTable, KpiCard, PageHeader, Segmented } from "./ui";
 import { ChartFrame, DonutChart, GroupedBarChart, LineChart, SplitBar, StackedBarChart, trendSentence, type ChartSeries } from "./charts";
 import { ChartMenu } from "./chart-menu";
-import { downloadCsv, exportPng, slug } from "./chart-export";
+import { excelFromRows, downloadCsv, exportPng, slug } from "./chart-export";
+import { exportCopy } from "./export-copy";
 import { fill, statisticsCopy, type StatisticsCopy } from "./statistics-copy";
 import { reportCopy } from "./report-copy";
 import { HallOfFame } from "./hall-of-fame";
@@ -122,7 +123,18 @@ export function StatisticsTabs({ locale, current }: { locale: Locale; current: "
 }
 
 /** The page header of both tabs: title, season and team in the subtitle, the report and the CSV of the tab. */
-export function StatisticsHeader({ locale, summary, onCsv }: { locale: Locale; summary: { season: { name: string } | null; team: { name: string } | null; restricted: boolean } | null; onCsv: () => void }) {
+export function StatisticsHeader({
+  locale,
+  summary,
+  onCsv,
+  onXlsx,
+}: {
+  locale: Locale;
+  summary: { season: { name: string } | null; team: { name: string } | null; restricted: boolean } | null;
+  onCsv: () => void;
+  /** Wave 17 (G2): the whole tab as an Excel file. */
+  onXlsx?: () => void;
+}) {
   const t = statisticsCopy[locale];
   const s = summary;
   const teamText = s?.team ? s.team.name : s?.restricted ? t.myTeams : t.allTeams;
@@ -135,6 +147,11 @@ export function StatisticsHeader({ locale, summary, onCsv }: { locale: Locale; s
           <Link className="button secondary" href={`/${locale}/statistics/report`}>
             {reportCopy[locale].title}
           </Link>
+          {onXlsx && (
+            <Button icon="download" variant="secondary" disabled={!s} onClick={onXlsx}>
+              {exportCopy[locale].openExcel}
+            </Button>
+          )}
           <Button icon="download" disabled={!s} onClick={onCsv}>
             {t.exportCsv}
           </Button>
@@ -159,14 +176,24 @@ export function useCsvSections() {
     }
     downloadCsv(filename, rows);
   }, []);
-  return { register, exportAll };
+  /** Wave 17 (G2): one sheet, a line per figure, its section in the first column. */
+  const excelAll = useCallback((order: string[], organizationId: string | null, subject: string, period: string, labels: { section: string; label: string; value: string }) => {
+    if (!organizationId) return;
+    const rows: (string | number | null)[][] = [[labels.section, labels.label, labels.value]];
+    for (const key of order) {
+      const sec = sections.current.get(key);
+      if (sec) for (const r of sec.rows) rows.push([sec.title, ...r]);
+    }
+    void excelFromRows(organizationId, subject, period, rows);
+  }, []);
+  return { register, exportAll, excelAll };
 }
 
 export function StatisticsClub({ locale }: { locale: Locale }) {
   const t = statisticsCopy[locale];
   const scope = useScope();
   const summary = useStat<Summary>("summary", {});
-  const { register, exportAll } = useCsvSections();
+  const { register, exportAll, excelAll } = useCsvSections();
   const s = summary.data;
   useEffect(() => {
     if (!s?.tiles) return register("tiles", null);
@@ -184,7 +211,12 @@ export function StatisticsClub({ locale }: { locale: Locale }) {
   }, [s, t, register]);
   return (
     <main id="main" className="statistics">
-      <StatisticsHeader locale={locale} summary={s} onCsv={() => exportAll(["tiles", "attendance", "headcount", "results", "storage"], `statistics-${slug(s?.season?.name ?? "club")}.csv`)} />
+      <StatisticsHeader
+        locale={locale}
+        summary={s}
+        onCsv={() => exportAll(["tiles", "attendance", "headcount", "results", "storage"], `statistics-${slug(s?.season?.name ?? "club")}.csv`)}
+        onXlsx={() => excelAll(["tiles", "attendance", "headcount", "results", "storage"], scope.organizationId, t.title, s?.season?.name ?? "", exportCopy[locale].sheet)}
+      />
       <StatisticsTabs locale={locale} current="club" />
       {summary.error && <Failed locale={locale} retry={summary.retry} />}
       <div role="status" className="sr-only">
@@ -328,7 +360,7 @@ function AttendanceCard({ locale, register }: { locale: Locale; register: Regist
           onPeriod={setPeriod}
           table={table}
           onTable={() => setTable((v) => !v)}
-          onCsv={() => downloadCsv(`${slug(a.title)}.csv`, rows)}
+          onCsv={() => downloadCsv(`${slug(a.title)}.csv`, rows)} xlsx={{ title: a.title, rows }}
           onPng={() => area.current && void exportPng(area.current, a.title, sub, `${slug(a.title)}.png`)}
         />
       }
@@ -471,7 +503,7 @@ function HeadcountCard({ locale, register }: { locale: Locale; register: Registe
           onPeriod={setPeriod}
           table={table}
           onTable={() => setTable((v) => !v)}
-          onCsv={() => downloadCsv(`${slug(h.title)}.csv`, rows)}
+          onCsv={() => downloadCsv(`${slug(h.title)}.csv`, rows)} xlsx={{ title: h.title, rows }}
           onPng={() => area.current && void exportPng(area.current, `${h.title} · ${h.views[view]}`, sub, `${slug(h.title)}.png`)}
         />
       }
@@ -569,7 +601,7 @@ function ResultsCard({ locale, register }: { locale: Locale; register: Register 
           onPeriod={setPeriod}
           table={table}
           onTable={() => setTable((v) => !v)}
-          onCsv={() => downloadCsv(`${slug(r.title)}.csv`, rows)}
+          onCsv={() => downloadCsv(`${slug(r.title)}.csv`, rows)} xlsx={{ title: r.title, rows }}
           onPng={() => area.current && void exportPng(area.current, r.title, sub, `${slug(r.title)}.png`)}
         />
       }
@@ -675,7 +707,7 @@ function StorageCard({ locale, register }: { locale: Locale; register: Register 
           locale={locale}
           table={table}
           onTable={() => setTable((v) => !v)}
-          onCsv={() => downloadCsv(`${slug(st.title)}.csv`, rows)}
+          onCsv={() => downloadCsv(`${slug(st.title)}.csv`, rows)} xlsx={{ title: st.title, rows }}
           onPng={() => area.current && void exportPng(area.current, st.title, usedLine, `${slug(st.title)}.png`)}
         />
       }

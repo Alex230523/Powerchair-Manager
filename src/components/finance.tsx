@@ -9,7 +9,7 @@ import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
-import { PageHeader, Badge, Button, EmptyState, Card, KpiCard, Toolbar } from "./ui";
+import { PageHeader, Badge, Button, EmptyState, Card, ExportButton, KpiCard, Toolbar } from "./ui";
 import { useScope } from "./use-scope";
 import { Modal } from "./modal";
 import { setupCopy } from "./setup-copy";
@@ -497,7 +497,25 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
 
           {section !== "operations" && (
           <Card title={<>{x.budget} · {view.season.label}
-                {view.teamId && <span className="muted"> · {view.teams.find((tm) => tm.id === view.teamId)?.name}</span>}</>} labelledBy="finance-budget" headingId="finance-budget" actions={view.can_edit && section === "budget" && (
+                {view.teamId && <span className="muted"> · {view.teams.find((tm) => tm.id === view.teamId)?.name}</span>}</>} labelledBy="finance-budget" headingId="finance-budget" actions={section === "budget" && (
+                <>
+                <ExportButton
+                  locale={locale}
+                  organizationId={view.organization_id}
+                  dataset="budget"
+                  subject={x.budget}
+                  period={view.season.label}
+                  rows={view.comparison}
+                  columns={[
+                    { id: "category", label: t.category, value: (r) => t.categories[r.category] ?? r.category },
+                    { id: "direction", label: t.direction, value: (r) => (r.direction === "in" ? t.in : t.out) },
+                    { id: "planned", label: x.planned, type: "money", value: (r) => (r.planned ?? 0) / 100 },
+                    { id: "actual", label: x.actual, type: "money", value: (r) => r.actual / 100 },
+                    { id: "ratio", label: `${x.progress} (%)`, type: "number", value: (r) => r.ratio },
+                    { id: "gap", label: x.gap, type: "money", value: (r) => (r.planned ? r.gap / 100 : null) },
+                  ]}
+                />
+                {view.can_edit && (
                 <button
                   type="button"
                   className="button secondary"
@@ -506,6 +524,8 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                 >
                   {editingBudget ? t.close : x.editBudget}
                 </button>
+                )}
+                </>
               )}>
             <p className="muted">{x.budgetIntro}</p>
             {editingBudget ? (
@@ -661,6 +681,27 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                   ))}
                 </select>
               </label>
+              {/* Wave 17 (G2): the operations shown, with their filters. */}
+              <ExportButton
+                locale={locale}
+                organizationId={view.organization_id}
+                dataset="operations"
+                subject={x.operationsWord}
+                period={view.season.label}
+                rows={entries}
+                columns={[
+                  { id: "date", label: t.date, type: "date", value: (e) => e.occurred_on },
+                  { id: "label", label: t.label, value: (e) => e.label },
+                  { id: "direction", label: t.direction, value: (e) => (e.direction === "in" ? t.in : t.out) },
+                  { id: "category", label: t.category, value: (e) => t.categories[e.category] ?? e.category },
+                  { id: "team", label: x.teamWord, value: (e) => e.team_name ?? "" },
+                  { id: "amount", label: t.amount, type: "money", value: (e) => ((e.direction === "in" ? 1 : -1) * e.amount_cents) / 100 },
+                  { id: "method", label: t.method, value: (e) => t.methods[e.method] ?? e.method },
+                  { id: "counterparty", label: t.counterparty, value: (e) => e.counterparty },
+                  { id: "reference", label: t.reference, value: (e) => e.reference },
+                  { id: "cancelled", label: t.cancelled, value: (e) => (e.cancelled_at ? t.cancelled : "") },
+                ]}
+              />
             </Toolbar>
             {entries.length ? (
               <div
