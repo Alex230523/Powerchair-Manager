@@ -117,9 +117,11 @@ test("president's home: header, Créer, to-dos, list and week, figures and money
     // Figures and the money card.
     await page.goto("/fr");
     const figures = page.getByRole("region", { name: "Chiffres clés" });
-    await expect(figures.locator(".stat-card")).toHaveCount(4);
+    // Wave 16 (A): the president's seven key figures, the treasury first.
+    await expect(figures.locator(".stat-card")).toHaveCount(7);
+    await expect(figures.locator(".stat-card").first()).toContainText("Trésorerie");
     await figures.getByRole("button", { name: "Tous les chiffres", exact: true }).click();
-    expect(await figures.locator(".stat-card").count()).toBeGreaterThan(4);
+    expect(await figures.locator(".stat-card").count()).toBeGreaterThan(7);
     const money = page.getByRole("region", { name: "Situation financière" });
     await expect(money).toContainText("Trésorerie");
     await expect(money).toContainText("Aucune cotisation émise cette saison.");

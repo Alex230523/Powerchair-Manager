@@ -20,7 +20,13 @@ const schema = "w15sp_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, seasonA: string, president: Principal, presidentB: Principal, coach: Principal, otherCoach: Principal, coachProfile: string;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+// Days counted from Brussels' today, as the reminders do (between 22:00 and midnight UTC the dates differ).
+const brussels = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+const day = (n: number) => {
+  const d = new Date(brussels + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 const plus = (iso: string, n: number) => {
   const d = new Date(iso + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);

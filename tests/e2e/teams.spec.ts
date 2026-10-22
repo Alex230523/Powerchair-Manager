@@ -153,10 +153,11 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await expect(page.locator("main table")).not.toContainText("Emma Peeters");
     const memberships = (
       await db.query(
-        "SELECT t.name,(m.ends_on=CURRENT_DATE-1) AS closed_yesterday,(m.starts_on=CURRENT_DATE) AS from_today FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.profile_id=$1 AND NOT m.cancelled ORDER BY m.starts_on",
+        "SELECT t.name,(m.ends_on=(now() AT TIME ZONE 'Europe/Brussels')::date-1) AS closed_yesterday,(m.starts_on=(now() AT TIME ZONE 'Europe/Brussels')::date) AS from_today FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.profile_id=$1 AND NOT m.cancelled ORDER BY m.starts_on",
         [emma],
       )
     ).rows;
+    // Dates are Brussels' (the app's), not the database server's: they differ from 22:00 UTC.
     expect(memberships).toEqual([
       { name: "Équipe A", closed_yesterday: true, from_today: false },
       { name: "Équipe B", closed_yesterday: null, from_today: true },

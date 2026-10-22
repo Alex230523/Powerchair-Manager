@@ -11,6 +11,8 @@ import {
 } from "@/domains/dashboard/summary";
 import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
+import { boardCopy } from "./home-board-copy";
+import { cssVars } from "./css-vars";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
@@ -134,8 +136,10 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   documentsExpiring: "document",
   teamsOverCapacity: "team",
 };
-/** The four figures a president reads first; the rest unfolds behind "Tous les chiffres". */
+/** The four figures read first; the rest unfolds behind "Tous les chiffres". */
 const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendingResponses", "waitingList"];
+/** The president's key figures (wave 16, A), in this order, the treasury first and full width. */
+const presidentMetrics: Metric["key"][] = ["treasury", "seasonPlayers", "seasonTeams", "seasonCoaches", "chairs", "trainingsDone", "matchesPlayed"];
 const mondayOf = (iso: string) => {
   const d = new Date(iso.slice(0, 10) + "T12:00:00Z");
   const day = (d.getUTCDay() + 6) % 7;
@@ -166,13 +170,18 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
     ...data.agenda.map((e) => ({ kind: "event" as const, day: e.startsAt, e })),
     ...data.deadlines.map((d) => ({ kind: "deadline" as const, day: d.date + "T23:59:59Z", d })),
   ].sort((a, b) => a.day.localeCompare(b.day));
-  const todoTotal = data.todos.reduce((n, item) => n + item.count, 0);
+  const todoTotal = data.board
+    ? [...data.board.squares, ...data.board.also].reduce((n, item) => n + (item.key === "clubStatus" ? 0 : item.count), 0)
+    : data.todos.reduce((n, item) => n + item.count, 0);
+  const keyFigures = data.metrics.some((m) => m.key === "seasonPlayers");
+  const leading = keyFigures ? presidentMetrics : firstMetrics;
   const ordered = [...data.metrics].sort((a, b) => {
-    const ia = firstMetrics.indexOf(a.key),
-      ib = firstMetrics.indexOf(b.key);
+    const ia = leading.indexOf(a.key),
+      ib = leading.indexOf(b.key);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
   });
-  const shownMetrics = moreFigures ? ordered : ordered.slice(0, 4);
+  const firstCount = keyFigures ? ordered.filter((m) => presidentMetrics.includes(m.key)).length : 4;
+  const shownMetrics = moreFigures ? ordered : ordered.slice(0, firstCount);
   const can = data.can ?? { event: false, player: false, operation: false, mail: false };
   const createItems = [
     ...(can.event ? [{ label: t.createEvent, href: href("/calendar?create=1"), icon: "calendar" as IconName }] : []),
@@ -229,7 +238,9 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {t.todo}
           {todoTotal > 0 && <Badge tone="primary">{todoTotal}</Badge>}
         </h2>
-        {data.todos.length ? (
+        {data.board && data.board.squares.length ? (
+          <Board locale={locale} board={data.board} href={href} />
+        ) : data.todos.length ? (
           <ul className="todo-list">
             {data.todos.slice(0, 6).map((item) => (
               <li key={item.key}>
@@ -292,12 +303,12 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
               <Card title={t.figures} labelledBy="dash-figures" headingId="dash-figures">
                 <ul className="dash-figures stat-row-grid" data-cols="2">
                   {shownMetrics.map((m) => (
-                    <li key={m.key}>
+                    <li key={m.key} data-wide={(keyFigures && m.key === "treasury") || undefined}>
                       <MetricCard locale={locale} metric={m} />
                     </li>
                   ))}
                 </ul>
-                {ordered.length > 4 && (
+                {ordered.length > firstCount && (
                   <p className="card-link-row">
                     <button type="button" className="text-button" aria-expanded={moreFigures} onClick={() => setMoreFigures((v) => !v)}>
                       {moreFigures ? t.fewerFigures : t.allFigures}
@@ -445,6 +456,12 @@ const metricIcons: Record<Metric["key"], IconName> = {
   duesNext30: "dues",
   treasury: "funding",
   myNextDue: "dues",
+  seasonPlayers: "players",
+  seasonTeams: "team",
+  seasonCoaches: "whistle",
+  chairs: "wheelchair",
+  trainingsDone: "attendance",
+  matchesPlayed: "trophy",
 };
 function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
   const t = homeCopy[locale].metrics[metric.key];
@@ -458,8 +475,77 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
         month: "long",
         timeZone: "UTC",
       }).format(new Date(metric.date + "T12:00:00Z"))
-    : t.hint;
+    : metric.key === "chairs" && metric.extra
+      ? boardCopy[locale].chairsService(metric.extra)
+      : t.hint;
   return <KpiCard label={t.label} value={value} description={hint || undefined} icon={metricIcons[metric.key]} href={metric.href ? `/${locale}${metric.href}` : undefined} />;
+}
+const badgeTone = (tone: "ok" | "warn" | "low") => (tone === "ok" ? "success" : tone === "warn" ? "warning" : "danger");
+const boardIcons: Record<"documents" | "moneyTasks" | "clubStatus", IconName> = { documents: "document", moneyTasks: "handshake", clubStatus: "landmark" };
+/** « À faire » (wave 16, A): fixed squares, green when up to date, and the « Aussi : » line. */
+function Board({ locale, board, href }: { locale: Locale; board: NonNullable<Dashboard["board"]>; href: (route: string) => string }) {
+  const t = homeCopy[locale],
+    b = boardCopy[locale];
+  const copyOf = (key: NonNullable<Dashboard["board"]>["squares"][number]["key"]) => (key in b.titles ? b.titles[key as keyof typeof b.titles] : t.todos[key as keyof typeof t.todos]);
+  const day = (iso: string) => new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso + "T12:00:00Z"));
+  return (
+    <>
+      <ul className="todo-list board">
+        {board.squares.map((sq) => {
+          const c = copyOf(sq.key);
+          const empty = sq.key === "clubStatus" && sq.status?.total === 0;
+          const done = sq.count === 0 && !empty;
+          const icon: IconName = done ? "check" : sq.key in boardIcons ? boardIcons[sq.key as keyof typeof boardIcons] : todoIcons[sq.key as keyof typeof todoIcons];
+          return (
+            <li key={sq.key}>
+              <Link className="card interactive todo-card" href={href(sq.href)} data-state={done ? "done" : "open"} aria-label={empty ? `${c.title} : ${b.statusEmpty}` : b.name(c.title, sq.count)}>
+                <span className="card-body">
+                  <span className="todo-row">
+                    <IconTile icon={icon} tone={done ? "success" : sq.tone === "info" ? "neutral" : sq.tone} />
+                    {!done && !empty && <span className="todo-count">{sq.key === "clubStatus" && sq.status ? b.statusProgress(sq.status.done, sq.status.total) : sq.count}</span>}
+                    <span className="todo-text">
+                      <strong>{c.title}</strong>
+                      <span>{done ? b.upToDate : empty ? b.statusEmpty : c.text}</span>
+                      {sq.key === "clubStatus" && sq.status && sq.status.total > 0 && (
+                        <>
+                          <span className="progress-bar" aria-hidden="true">
+                            <span style={cssVars({ progress: `${Math.round((sq.status.done / sq.status.total) * 100)}%` })} />
+                          </span>
+                          {sq.status.next.map((n) => (
+                            <span key={n.title} className="todo-next">
+                              {n.title}
+                              {n.due ? ` ${b.statusDue(day(n.due))}` : ""}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                      {sq.key === "documents" && !!sq.expiring && <span className="todo-next">{b.expiring(sq.expiring)}</span>}
+                    </span>
+                    <span className="todo-arrow" aria-hidden="true">
+                      <Icon name="arrow" size={16} />
+                    </span>
+                  </span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {board.also.length > 0 && (
+        <p className="board-also">
+          {b.also}{" "}
+          {board.also.map((sq, i) => (
+            <span key={sq.key}>
+              {i > 0 && " · "}
+              <Link href={href(sq.href)}>
+                {sq.count} {copyOf(sq.key).title.toLowerCase()}
+              </Link>
+            </span>
+          ))}
+        </p>
+      )}
+    </>
+  );
 }
 function AgendaRow({
   locale,
@@ -516,13 +602,13 @@ function AgendaRow({
             )}
           </span>
           {r && (
-            <span className="readiness">
-              <Badge tone={r.tone === "ok" ? "success" : r.tone === "warn" ? "warning" : "danger"} dot>
-                {r.players} {t.players} · {r.coaches} {t.coaches}
-                <span className="sr-only">
-                  {" "}
-                  · {t.readinessWord[r.tone]} · {t.readiness[r.tone]}
-                </span>
+            // Two badges, each with its own threshold (wave 16, A); read as one sentence.
+            <span className="readiness" role="group" aria-label={boardCopy[locale].presence(r.players, t.readinessWord[r.playersTone].toLowerCase(), r.coaches, t.readinessWord[r.coachesTone].toLowerCase())}>
+              <Badge tone={badgeTone(r.playersTone)} dot>
+                <span aria-hidden="true">{boardCopy[locale].playersCount(r.players)}</span>
+              </Badge>
+              <Badge tone={badgeTone(r.coachesTone)} dot>
+                <span aria-hidden="true">{boardCopy[locale].coachesCount(r.coaches)}</span>
               </Badge>
             </span>
           )}

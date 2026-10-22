@@ -2590,12 +2590,13 @@ caption {
 .dash-side .stat-label {
   font-size: var(--text-xs);
 }
-@media (max-width: 1440px) and (min-width: 1101px) {
+@media (max-width: 1440px) and (min-width: 861px) {
   .dash-side .stat-top .icon-tile {
     display: none;
   }
 }
-@media (max-width: 1100px) {
+/* Wave 16 (A): two columns down to 860 px, then events first. */
+@media (max-width: 860px) {
   .dash-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -5299,8 +5300,13 @@ input.narrow {
   color: var(--warning-ink);
 }
 .readiness {
-  display: inline-flex;
-  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.readiness .badge {
+  white-space: nowrap;
 }
 @media (max-width: 900px) {
   .todo-list {
@@ -7663,4 +7669,73 @@ ul.task-list {
   display: grid;
   gap: var(--space-1);
   font-size: var(--text-sm);
+}
+
+/* ---------- Home of the president (wave 16, A) ---------- */
+.todo-card[data-state="done"] {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+.todo-next {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.progress-bar {
+  display: block;
+  height: 4px;
+  margin: 4px 0 2px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.progress-bar > span {
+  display: block;
+  width: var(--progress, 0%);
+  height: 100%;
+  background: var(--success);
+}
+.board-also {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.dash-figures > li[data-wide] {
+  grid-column: 1 / -1;
+}
+.obligations-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.obligations-tools .compact-field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+.obligations-progress {
+  display: grid;
+  gap: 2px;
+  min-width: 140px;
+  font-size: var(--text-sm);
+}
+.obligations-actions,
+.obligations-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+.obligations-row-actions {
+  margin-left: 0;
+}
+.obligation-detail {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+.readiness .badge-dot {
+  width: 8px;
+  height: 8px;
 }
