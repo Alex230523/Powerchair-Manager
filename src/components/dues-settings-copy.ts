@@ -31,7 +31,7 @@ export const duesSettingsCopy = {
     confirm: "Confirmer le changement",
     auto: {
       title: "Rappels automatiques",
-      intro: "Quand les rappels sont activés, un mail part tout seul aux familles concernées, avec le même texte qu'un rappel envoyé à la main. Les envois sont tracés dans la page Rappels.",
+      intro: "Quand les rappels sont activés, un mail part tout seul aux familles concernées, avec le même texte qu'un rappel envoyé à la main. Les envois sont tracés dans Réglages, Notifications et résumé (Rappels).",
       on: "Envoyer les rappels de cotisation automatiquement",
       before: "Jours avant l'échéance",
       after: "Jours de retard avant le premier rappel",
@@ -72,7 +72,7 @@ export const duesSettingsCopy = {
     confirm: "Wijziging bevestigen",
     auto: {
       title: "Automatische herinneringen",
-      intro: "Als de herinneringen aanstaan, vertrekt vanzelf een mail naar de betrokken gezinnen, met dezelfde tekst als een handmatige herinnering. De verzendingen staan op de pagina Herinneringen.",
+      intro: "Als de herinneringen aanstaan, vertrekt vanzelf een mail naar de betrokken gezinnen, met dezelfde tekst als een handmatige herinnering. De verzendingen staan in Instellingen, Meldingen en overzicht (Herinneringen).",
       on: "Herinneringen voor lidgeld automatisch versturen",
       before: "Dagen vóór de vervaldag",
       after: "Dagen achterstand vóór de eerste herinnering",
@@ -113,7 +113,7 @@ export const duesSettingsCopy = {
     confirm: "Confirm the change",
     auto: {
       title: "Automatic reminders",
-      intro: "When reminders are on, a mail goes out by itself to the families concerned, with the same wording as a reminder sent by hand. Sendings are logged on the Reminders page.",
+      intro: "When reminders are on, a mail goes out by itself to the families concerned, with the same wording as a reminder sent by hand. Sendings are logged in Settings, Notifications and digest (Reminders).",
       on: "Send dues reminders automatically",
       before: "Days before the due date",
       after: "Days late before the first reminder",

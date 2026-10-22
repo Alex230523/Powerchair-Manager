@@ -6,7 +6,6 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import {
   tripDetail,
   tripExecute,
-  tripOfflinePack,
   tripsView,
 } from "../../src/domains/trips/service";
 import { playerProfileExecute } from "../../src/domains/player-profile/service";
@@ -242,23 +241,11 @@ it("prepares a trip with participants, an adapted vehicle and care, each role se
   expect(declined).toMatchObject({ status: "declined", chair: "powerchair", needs: "Chargeur" });
   expect((await tripsView(db, player)).trips).toHaveLength(1);
 
-  // Offline book: care instructions, no confidential health for a coach.
-  await tripExecute(
-    db,
-    player,
-    { action: "participant", participantId: leaRow.id, status: "confirmed", chair: "none", needs: "" },
-    club,
-  );
-  const pack = await tripOfflinePack(db, coach, id);
-  const leaPack = pack.people.find((p) => p.name === "Léa Joueuse")!;
-  expect(leaPack.care[0].title).toBe("Transfert au lève-personne");
-  expect("health" in leaPack).toBe(false);
-  await expect(tripOfflinePack(db, player, id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // The care instructions read for the trip are logged (the offline book was removed in wave 17).
   const kinds = (
     await db.query("SELECT kind FROM sensitive_access_log WHERE resource_id=$1", [id])
   ).rows.map((r) => r.kind);
   expect(kinds).toContain("trip_care");
-  expect(kinds).toContain("offline_book");
 });
 
 it("keeps a trip with ledger lines: cancel, not delete", async () => {

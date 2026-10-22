@@ -3276,6 +3276,80 @@ th.num {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* Wave 17 (G3): the reminder boxes in Settings, at every width and text size.
+   Labels above their field, fields at full width, long addresses wrapping,
+   the situation and its badge on separate lines when space is short. */
+.reminders {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.reminders-head h2 {
+  margin: 0 0 var(--space-1);
+}
+.reminders-head p {
+  margin: 0;
+}
+.reminders .section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.reminders .finance-form label,
+.reminders .card-body > label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.reminders .card-body > label {
+  margin-bottom: var(--space-3);
+}
+.reminders input:not([type="checkbox"]),
+.reminders select,
+.reminders textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.reminders textarea {
+  resize: vertical;
+}
+.reminders td,
+.reminders th {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.reminders td .badge {
+  margin-inline-start: var(--space-1);
+  white-space: nowrap;
+}
+.reminders .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.reminders .table-scroll + .button {
+  margin-top: var(--space-3);
+}
+.duration-field {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-3) 0;
+  padding: 0;
+  border: 0;
+}
+.duration-field legend {
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+.duration-field label:not(.check) {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 16rem;
+}
 
 /* Finance: budget, receipts, printable report. */
 .panel-head {
@@ -3914,9 +3988,6 @@ input.narrow {
 .support-list {
   margin: 8px 0 12px;
 }
-.offline-book .book-people {
-  margin-top: 8px;
-}
 @media (max-width: 560px) {
   .trip-facts div {
     grid-template-columns: 1fr;
@@ -3924,11 +3995,6 @@ input.narrow {
   }
   .schedule-day li {
     grid-template-columns: 48px 1fr;
-  }
-}
-@media print {
-  .offline-book button {
-    display: none;
   }
 }
 

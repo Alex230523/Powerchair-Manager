@@ -144,9 +144,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "settings",
               folded: true,
               items: [
-                ...item("/reminders", "reminders", "bellRing", !off.has("reminders") && has("dues.manage", "documents.manage", "notifications.manage")),
                 ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
-                ...item("/offline-book", "offlineBook", "bookLock", !off.has("trips") && has("calendar.read", "calendar.manage")),
                 ...item("/settings", "settings", "settings"),
               ],
             },
@@ -248,7 +246,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
           ? ([
               ...(kind === "club" && !member
                 ? ([
-                    ...item("/reminders", "reminders", "bellRing", !off.has("reminders") && has("dues.manage", "documents.manage", "notifications.manage")),
                     ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
                   ] satisfies NavItem[])
                 : []),
@@ -257,9 +254,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
           : state
             ? ([registrations] satisfies NavItem[])
             : []),
-        ...(kind === "club" && !member && !off.has("trips") && has("calendar.read", "calendar.manage")
-          ? ([{ route: "/offline-book", label: "offlineBook", icon: "bookLock" }] satisfies NavItem[])
-          : []),
       ],
     };
   return [...groups, admin].filter((g) => g.items.length > 0);

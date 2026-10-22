@@ -152,7 +152,7 @@ export function Documents({ locale }: { locale: Locale }) {
           <p>
             <Link
               className="button secondary"
-              href={`/${locale}/reminders?kind=documents`}
+              href={`/${locale}/settings/notifications?kind=documents#settings-reminders`}
             >
               {remindLabel[locale]}
             </Link>

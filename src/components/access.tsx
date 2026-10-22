@@ -1,4 +1,6 @@
 "use client";
+import { DurationField, readDuration } from "./duration-field";
+import { durationText } from "./duration-copy";
 import { shellCopy } from "./app-shell";
 import { clearOfflineData } from "@/lib/offline-queue";
 import Link from "next/link";
@@ -559,7 +561,6 @@ export function Access({ locale }: { locale: Locale }) {
                   <form
                     onSubmit={(e) =>
                       submit(e, async (data) => {
-                        const until = String(data.get("until") ?? "");
                         const result = await command({
                           action: "invite",
                           email: data.get("email"),
@@ -572,9 +573,7 @@ export function Access({ locale }: { locale: Locale }) {
                                 ).toISOString(),
                               }
                             : {}),
-                          validUntil: until
-                            ? new Date(until + "T23:59:59Z").toISOString()
-                            : null,
+                          validUntil: readDuration(data, "until"),
                         });
                         setInvitationLink(
                           `${window.location.origin}/${locale}/access#invitation=${result.token}`,
@@ -640,10 +639,7 @@ export function Access({ locale }: { locale: Locale }) {
                       {t.from}
                       <input name="from" type="date" />
                     </label>
-                    <label>
-                      {t.until}
-                      <input name="until" type="date" />
-                    </label>
+                    <DurationField locale={locale} name="until" />
                     <Button disabled={busy}>{t.create}</Button>
                   </form>
                   {invitationLink && (
@@ -668,8 +664,7 @@ export function Access({ locale }: { locale: Locale }) {
                               new Date(m.valid_until) <= new Date()
                             ? t.expired
                             : t.active}
-                        {m.valid_until &&
-                          ` · ${new Date(m.valid_until).toLocaleDateString(locale)}`}
+                        {` · ${durationText(locale, m.valid_until)}`}
                       </p>
                       {state.permissions.includes("mandates.manage") && (
                         <div className="actions">
