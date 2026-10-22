@@ -36,6 +36,10 @@ export type InvitationRow = {
   issued_by_federation: string | null;
   succession: boolean;
   kind: "club" | "federation";
+  /** Wave 17 (G1): what the outgoing president keeps, and the message of the handover. */
+  outgoing_user_id: string | null;
+  outgoing_role: "member" | "coach" | "none" | null;
+  message: string;
 };
 
 /** An invitation created from a file (add a person, import, accepted registration, « Renvoyer »). */
@@ -55,13 +59,17 @@ export async function inviteProfile(
     /** Wave 16 (I3): sent by the club's federation (a president). */
     issuedByFederation?: string | null;
     succession?: boolean;
+    /** Wave 17 (G1): the date the new president takes office (default: on acceptance). */
+    effectiveFrom?: string | null;
+    outgoing?: { userId: string; role: "member" | "coach" | "none" } | null;
+    message?: string;
   },
 ) {
   const token = randomBytes(32).toString("hex");
   const id = (
     await c.query(
-      `INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,created_by,valid_from,profile_id,team_id,guardian_of,greeting,resent_from,issued_by_federation,succession)
-       VALUES($1,lower($2),$3,$11,$4,now()+interval '7 days',$5,now(),$6,$7,$8,$9,$10,$12,$13) RETURNING id`,
+      `INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,created_by,valid_from,profile_id,team_id,guardian_of,greeting,resent_from,issued_by_federation,succession,outgoing_user_id,outgoing_role,message)
+       VALUES($1,lower($2),$3,$11,$4,now()+interval '7 days',$5,GREATEST(now(),COALESCE($14::timestamptz,now())),$6,$7,$8,$9,$10,$12,$13,$15,$16,$17) RETURNING id`,
       [
         org,
         i.email,
@@ -76,6 +84,10 @@ export async function inviteProfile(
         i.grants ?? [],
         i.issuedByFederation ?? null,
         i.succession ?? false,
+        i.effectiveFrom ?? null,
+        i.outgoing?.userId ?? null,
+        i.outgoing?.role ?? null,
+        (i.message ?? "").slice(0, 1000),
       ],
     )
   ).rows[0].id as string;
@@ -146,12 +158,7 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
     ])
   ).rows[0].id as string;
   await c.query("UPDATE invitation SET accepted_at=now() WHERE id=$1", [invite.id]);
-  if (invite.succession)
-    // A new president: the other presidents' mandates end now, after the new one exists.
-    await c.query("UPDATE role_assignment SET revoked_at=now() WHERE organization_id=$1 AND role='club_president' AND id<>$2 AND revoked_at IS NULL", [
-      invite.organization_id,
-      mandate,
-    ]);
+  if (invite.succession) await applySuccession(c, invite, mandate, user.id);
   if (invite.profile_id) await takeOverFile(c, invite.organization_id, invite.profile_id, user.id);
   if (invite.profile_id && invite.guardian_of) {
     // The club invited this parent for this child: a declared link becomes a verified one.
@@ -170,6 +177,66 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
   }
   await audit(c, invite.organization_id, user.id, "invitation.accepted", mandate);
   return mandate;
+}
+
+/**
+ * Wave 17 (G1): the change of club president, whether the federation (I3)
+ * or the outgoing president (Settings > Members) started it. One transaction
+ * with the acceptance: the new mandate starts at the date of effect (or now),
+ * every other president's mandate ends exactly then, so the club never has
+ * two presidents nor none; the outgoing president keeps the role chosen;
+ * the federation and both people are told.
+ */
+export async function applySuccession(c: PoolClient, invite: InvitationRow, mandate: string, newUser: string) {
+  const at = (await c.query("SELECT GREATEST(now(),$1::timestamptz) AS at,GREATEST(now(),$1::timestamptz)<=now() AS now", [invite.valid_from])).rows[0] as { at: Date; now: boolean };
+  await c.query("UPDATE role_assignment SET valid_from=$2 WHERE id=$1", [mandate, at.at]);
+  const outgoing = (
+    await c.query(
+      `UPDATE role_assignment SET ${at.now ? "revoked_at=now()" : "valid_until=$3"} WHERE organization_id=$1 AND role='club_president' AND id<>$2 AND revoked_at IS NULL AND (valid_until IS NULL OR valid_until>$3) RETURNING user_id`,
+      [invite.organization_id, mandate, at.at],
+    )
+  ).rows.map((r) => r.user_id as string);
+  if (invite.outgoing_user_id && invite.outgoing_role && invite.outgoing_user_id !== newUser) {
+    if (invite.outgoing_role === "coach")
+      await c.query("INSERT INTO role_assignment(organization_id,user_id,role,grants,valid_from,created_by) VALUES($1,$2,'coach','{}',$3,$4)", [
+        invite.organization_id,
+        invite.outgoing_user_id,
+        at.at,
+        invite.created_by,
+      ]);
+    // « Aucun »: no role kept; at once, the account also leaves the club's members.
+    if (invite.outgoing_role === "none" && at.now)
+      await c.query("UPDATE organization_membership SET active=false WHERE organization_id=$1 AND user_id=$2", [invite.organization_id, invite.outgoing_user_id]);
+  }
+  await audit(c, invite.organization_id, newUser, "presidency.transferred", mandate, {
+    from: outgoing,
+    keeps: invite.outgoing_role,
+    effective: at.at,
+    byFederation: !!invite.issued_by_federation,
+  });
+  const fed = (await c.query("SELECT federation_id FROM organization WHERE id=$1", [invite.organization_id])).rows[0]?.federation_id as string | null;
+  const told = (
+    await c.query(
+      `SELECT DISTINCT u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale,r.organization_id FROM "user" u LEFT JOIN person pe ON pe.user_id=u.id
+         LEFT JOIN role_assignment r ON r.user_id=u.id AND r.organization_id=$2 AND r.role='federation_president' AND r.revoked_at IS NULL
+        WHERE u.id=ANY($1::text[]) OR r.id IS NOT NULL`,
+      [[newUser, ...outgoing], fed],
+    )
+  ).rows as { id: string; email: string; name: string; locale: "fr" | "nl" | "en"; organization_id: string | null }[];
+  const { publish } = await import("../notifications/queue");
+  for (const u of told)
+    await publish(c, {
+      organizationId: u.organization_id ?? invite.organization_id,
+      userId: u.id,
+      email: u.email,
+      kind: "access_changed",
+      category: "security",
+      resourceType: "membership",
+      resourceId: mandate,
+      eventKey: `presidency:${mandate}:${u.id}`,
+      locale: (["fr", "nl", "en"].includes(u.locale) ? u.locale : "fr") as "fr" | "nl" | "en",
+      variables: { name: u.name, organization: (await c.query("SELECT name FROM organization WHERE id=$1", [invite.organization_id])).rows[0].name, url: `${process.env.BETTER_AUTH_URL ?? ""}/${u.locale}/access` },
+    });
 }
 
 /** The account's own person record now carries the club file (unless another account already does). */
@@ -332,5 +399,8 @@ export async function resendInvitation(c: PoolClient, org: string, actor: string
     resentFrom: old.id,
     issuedByFederation: old.issued_by_federation,
     succession: old.succession,
+    effectiveFrom: old.valid_from,
+    outgoing: old.outgoing_user_id && old.outgoing_role ? { userId: old.outgoing_user_id, role: old.outgoing_role } : null,
+    message: old.message,
   });
 }

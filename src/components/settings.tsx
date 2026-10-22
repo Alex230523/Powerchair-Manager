@@ -1,5 +1,6 @@
 "use client";
 import { TutorialSettings } from "./first-steps";
+import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
 import { TaskTemplates } from "./tasks";
 import { Reminders } from "./reminders";
@@ -377,6 +378,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
+          {/* Wave 17 (G1): the president hands over the presidency. */}
+          {shown && category === "members" && ws?.selected?.role === "club_president" && <PresidencyHandover locale={locale} />}
           {shown && category === "members" && !manage && !(gov && (gov.can.profiles || gov.profiles.length > 0)) && <EmptyState title={t.noMember} />}
 
           {shown && category === "account" && manage && ws.selected?.role === "club_president" && people && (

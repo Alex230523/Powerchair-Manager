@@ -9294,3 +9294,13 @@ ul.task-page li {
   margin: var(--space-4) 0 var(--space-2);
   font-size: var(--text-md);
 }
+
+/* Wave 17 (G1, C5): a row of radios or checkboxes in a form. */
+.stack-form fieldset.check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
