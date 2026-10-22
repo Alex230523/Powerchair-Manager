@@ -28,6 +28,9 @@ import {
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
+import { PlaceDialog } from "./place-dialog";
+import { placesCopy } from "./places-copy";
+import { placesFor, type PlaceCategory } from "@/domains/venues/schema";
 import { setupCopy } from "./setup-copy";
 import { eventCopy } from "./calendar-event-copy";
 import { InvitePicker, initialInvite } from "./event-invite";
@@ -48,6 +51,9 @@ type Place = {
   charging: boolean;
   logistics: string;
   archived: boolean;
+  /** Wave 17 (C4). */
+  category: PlaceCategory;
+  home: boolean;
   version: number;
 };
 type Item = {
@@ -267,7 +273,8 @@ export function Calendar({
     [offset, setOffset] = useState(0),
     [place, setPlace] = useState(""),
     [selected, setSelected] = useState(eventId ?? ""),
-    [placeEdit, setPlaceEdit] = useState(""),
+    [placeDialog, setPlaceDialog] = useState(false),
+    [newPlace, setNewPlace] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -383,12 +390,15 @@ export function Calendar({
     void task(() => fn(d));
   }
   const event = data?.events.find((e) => e.id === selected),
-    base = event ?? copyOf ?? undefined,
-    venue = data?.places.find((p) => p.id === placeEdit);
+    base = event ?? copyOf ?? undefined;
   // Wave 16 (E1): the club's types and the form's type and team.
   const types = data?.eventTypes ?? [],
     formType = typeId || base?.event_type_id || types.find((x) => !x.archived)?.id || "",
-    teamValue = formTeam === "-" ? "" : formTeam || base?.team_id || "";
+    teamValue = formTeam === "-" ? "" : formTeam || base?.team_id || "",
+    formFamily = types.find((x) => x.id === formType)?.family ?? base?.kind ?? "training";
+  const pc = placesCopy[locale];
+  // A new place opens in the category that fits the event being written.
+  const placeCategory: PlaceCategory = ["training", "match", "friendly", "tournament", "camp"].includes(formFamily) ? "training" : "other";
   const count = (e: Item, response: string) => e.attendance.filter((i) => i.response === response).length;
   const answered = (e: Item) => e.attendance.some((i) => i.response !== "none" || i.actual !== "unchecked") || !!e.register?.closed;
   const mapLink = (q: string) => `https://www.openstreetmap.org/search?query=${encodeURIComponent(q)}`;
@@ -479,7 +489,12 @@ export function Calendar({
                   <Link className="button secondary" href={"/" + locale + "/trips"}>{extra.trips}</Link>
                 )}
                 {data.canPlan && (
-                  <Link className="button secondary" href={"/" + locale + "/venues"}>{extra.venues}</Link>
+                  <Link className="button secondary" href={"/" + locale + "/venues"}>{pc.manage}</Link>
+                )}
+                {data.manage && (
+                  <Button variant="secondary" icon="pin" onClick={() => setPlaceDialog(true)}>
+                    {pc.add}
+                  </Button>
                 )}
                 <Link className="button secondary" href={"/" + locale + "/tournaments"}>{ev.tournaments}</Link>
                 {data.canPlan && (
@@ -1182,18 +1197,30 @@ export function Calendar({
                     </fieldset>
                     <fieldset className="event-section">
                       <legend>{ev.sections.place}</legend>
-                      <Field id="event-place" label={t.place}>
-                        <select id="event-place" name="place" defaultValue={base?.place_id ?? ""}>
-                          <option value="">{t.none}</option>
-                          {data.places
-                            .filter((v) => !v.archived || v.id === event?.place_id)
-                            .map((v) => (
-                              <option key={v.id} value={v.id}>
-                                {v.name}
-                              </option>
+                      <div className="field-with-action">
+                        <Field id="event-place" label={t.place}>
+                          {/* Wave 17 (C4): training and match places first for a training or a match. */}
+                          <select id="event-place" name="place" key={newPlace ?? "place"} defaultValue={newPlace ?? base?.place_id ?? ""}>
+                            <option value="">{t.none}</option>
+                            {[...new Set(placesFor(data.places, formFamily).map((v) => v.category as PlaceCategory))].map((c) => (
+                              <optgroup key={c} label={pc.categories[c]}>
+                                {placesFor(data.places, formFamily)
+                                  .filter((v) => v.category === c && (!v.archived || v.id === event?.place_id))
+                                  .map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      {v.name}
+                                    </option>
+                                  ))}
+                              </optgroup>
                             ))}
-                        </select>
-                      </Field>
+                          </select>
+                        </Field>
+                        {data.manage && (
+                          <Button type="button" variant="secondary" icon="plus" onClick={() => setPlaceDialog(true)}>
+                            {pc.add}
+                          </Button>
+                        )}
+                      </div>
                       <p className="muted small">{extra.location}</p>
                       <Field id="event-shared" label={extra.shared}>
                         <select id="event-shared" name="sharedVenue" defaultValue={base?.shared_venue_id ?? ""}>
@@ -1211,17 +1238,6 @@ export function Calendar({
                       {base && (base.place_address || base.free_location) && (
                         <a href={mapLink(base.place_address || base.free_location)} target="_blank" rel="noopener noreferrer">
                           {ev.openMap}
-                        </a>
-                      )}
-                      {data.manage && (
-                        <a
-                          href="#shared-venue"
-                          onClick={() => {
-                            const el = document.getElementById("shared-venue") as HTMLDetailsElement | null;
-                            if (el) el.open = true;
-                          }}
-                        >
-                          {extra.venue}
                         </a>
                       )}
                     </fieldset>
@@ -1347,202 +1363,17 @@ export function Calendar({
                 </Panel>
               </div>
             )}
-            <details className="calendar-settings">
-              <summary>{t.places}</summary>
-              <Panel title={t.places}>
-                <p>{t.placeHint}</p>
-                <ul className="records">
-                  {data.places.map((v) => (
-                    <li key={v.id}>
-                      <h3>{v.name}</h3>
-                      <p>
-                        {v.address} · {v.contact}
-                      </p>
-                      <p>
-                        {v.capacity !== null && t.capacity + " : " + v.capacity}{" "}
-                        · {t.cost} : {(v.cost_cents / 100).toFixed(2)}
-                      </p>
-                      <p>
-                        {[
-                          v.accessible && t.accessible,
-                          v.toilets && t.toilets,
-                          v.parking && t.parking,
-                          v.storage && t.storage,
-                          v.charging && t.charging,
-                          v.archived && t.archived,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                      <p>{v.logistics}</p>
-                      {data.manage && (
-                        <Button onClick={() => setPlaceEdit(v.id)}>
-                          {t.edit} {v.name}
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {data.manage && (
-                  <>
-                    <Button
-                      onClick={() => setPlaceEdit("new:" + crypto.randomUUID())}
-                    >
-                      {t.newPlace}
-                    </Button>
-                    <form
-                      key={placeEdit + ":" + (venue?.version ?? 0)}
-                      onSubmit={(e) =>
-                        form(e, async (d) => {
-                          const result = await send({
-                            action: "place",
-                            id: venue?.id,
-                            expectedVersion: venue?.version,
-                            name: d.get("name"),
-                            address: d.get("address"),
-                            contact: d.get("contact"),
-                            capacity: d.get("capacity")
-                              ? Number(d.get("capacity"))
-                              : null,
-                            costCents: Math.round(
-                              Number(d.get("cost") || 0) * 100,
-                            ),
-                            logistics: d.get("logistics"),
-                            accessible: d.has("accessible"),
-                            toilets: d.has("toilets"),
-                            parking: d.has("parking"),
-                            storage: d.has("storage"),
-                            charging: d.has("charging"),
-                            archived: d.has("archived"),
-                          });
-                          setPlaceEdit(result.id);
-                        })
-                      }
-                    >
-                      <Field id="place-name" label={t.placeName}>
-                        <input
-                          id="place-name"
-                          name="name"
-                          required
-                          minLength={2}
-                          maxLength={120}
-                          defaultValue={venue?.name}
-                        />
-                      </Field>
-                      <Field id="place-address" label={t.address}>
-                        <input
-                          id="place-address"
-                          name="address"
-                          maxLength={500}
-                          defaultValue={venue?.address}
-                        />
-                      </Field>
-                      <Field id="place-contact" label={t.contact}>
-                        <input
-                          id="place-contact"
-                          name="contact"
-                          maxLength={250}
-                          defaultValue={venue?.contact}
-                        />
-                      </Field>
-                      <Field id="place-capacity" label={t.capacity}>
-                        <input
-                          id="place-capacity"
-                          name="capacity"
-                          type="number"
-                          min={1}
-                          max={100000}
-                          defaultValue={venue?.capacity ?? ""}
-                        />
-                      </Field>
-                      <Field id="place-cost" label={t.cost}>
-                        <input
-                          id="place-cost"
-                          name="cost"
-                          type="number"
-                          min={0}
-                          max={1000000}
-                          step="0.01"
-                          defaultValue={venue ? venue.cost_cents / 100 : 0}
-                        />
-                      </Field>
-                      {(
-                        [
-                          "accessible",
-                          "toilets",
-                          "parking",
-                          "storage",
-                          "charging",
-                          "archived",
-                        ] as const
-                      ).map((v) => (
-                        <label className="check" key={v}>
-                          <input
-                            type="checkbox"
-                            name={v}
-                            defaultChecked={venue?.[v]}
-                          />
-                          {t[v]}
-                        </label>
-                      ))}
-                      <Field id="place-logistics" label={t.logistics}>
-                        <textarea
-                          id="place-logistics"
-                          name="logistics"
-                          maxLength={2000}
-                          defaultValue={venue?.logistics}
-                        />
-                      </Field>
-                      <Button disabled={busy}>{t.savePlace}</Button>
-                    </form>
-                  </>
-                )}
-              </Panel>
-            </details>
-            {data.manage && (
-              <details id="shared-venue" className="calendar-settings">
-                <summary>{extra.venue}</summary>
-                <Panel title={extra.venue}>
-                  <p>{extra.public}</p>
-                  <form
-                    onSubmit={(e) =>
-                      form(e, async (d) => {
-                        await send({
-                          action: "sharedVenue",
-                          name: d.get("name"),
-                          address: d.get("address"),
-                        });
-                      })
-                    }
-                  >
-                    <Field
-                      id="shared-name"
-                      label={extra.shared + " · " + t.placeName}
-                    >
-                      <input
-                        id="shared-name"
-                        name="name"
-                        minLength={2}
-                        maxLength={120}
-                        required
-                      />
-                    </Field>
-                    <Field
-                      id="shared-address"
-                      label={extra.shared + " · " + t.address}
-                    >
-                      <input
-                        id="shared-address"
-                        name="address"
-                        minLength={2}
-                        maxLength={500}
-                        required
-                      />
-                    </Field>
-                    <Button disabled={busy}>{extra.venue}</Button>
-                  </form>
-                </Panel>
-              </details>
+            {placeDialog && (
+              <PlaceDialog
+                locale={locale}
+                category={placeCategory}
+                close={() => setPlaceDialog(false)}
+                saved={(id) => {
+                  setPlaceDialog(false);
+                  setNewPlace(id);
+                  void load();
+                }}
+              />
             )}
             {subscriptionOpen && (
               <Modal title={p.subscribeTitle} close={() => setSubscriptionOpen(false)} className="player-dialog subscribe-dialog">

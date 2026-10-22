@@ -66,11 +66,6 @@ export const eventFields = z.object({
 });
 export const commandSchema = z.discriminatedUnion("action", [
   z.object({
-    action: z.literal("sharedVenue"),
-    name: text(120).min(2),
-    address: text(500).min(2),
-  }),
-  z.object({
     action: z.literal("place"),
     id: id.optional(),
     expectedVersion: z.number().int().positive().optional(),

@@ -621,23 +621,23 @@ it("requires an individual traced correction rather than rewriting a past series
 });
 
 it("shares only public venue details and keeps free locations out of the directory and in ICS", async () => {
-  const v = await run(admin, {
-    action: "sharedVenue",
-    name: "Shared arena",
-    address: "Public street 2",
-  });
+  // Wave 17 (C4): a hall reaches the directory once the federation validates it; a club outside it does not see it.
+  const v = (
+    await db.query(
+      "INSERT INTO shared_venue(name,address,created_by,organization_id) VALUES('Shared arena','Public street 2',$1,$2) RETURNING id",
+      [admin.userId, org],
+    )
+  ).rows[0] as { id: string };
+  expect(
+    (await calendarView(db, admin, range)).sharedVenues.some(
+      (x) => x.id === v.id,
+    ),
+  ).toBe(true);
   expect(
     (await calendarView(db, outsider, range)).sharedVenues.some(
       (x) => x.id === v.id,
     ),
-  ).toBe(true);
-  await expect(
-    run(player, {
-      action: "sharedVenue",
-      name: "Denied arena",
-      address: "Street",
-    }),
-  ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  ).toBe(false);
   const id = await create({ placeId: null, sharedVenueId: v.id });
   expect(
     (await calendarView(db, admin, range)).events.find((e) => e.id === id)

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/locale";
 import { Venues } from "@/components/venues";
-export const metadata = { title: "Annuaire des salles · Powerchair Football Manager" };
+export const metadata = { title: "Lieux · Powerchair Football Manager" };
 export default async function Page({
   params,
 }: {

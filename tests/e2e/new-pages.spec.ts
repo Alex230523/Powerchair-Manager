@@ -219,13 +219,14 @@ test("new club, federation and referee pages load and pass axe", async ({
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
     // Menu groups are folded until opened: the entries exist, visible or not. Wave 14 regroups the
     // president's menu: Équipes, Activités (trips and halls are back), Communication, Argent, Club, Plus.
-    for (const name of ["Transferts", "Finances", "Déplacements", "Salles", "Mes équipes", "Réglages"])
+    for (const name of ["Transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
     for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club", "Plus"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
     await page.goto("/fr/calendar");
     await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
-    await expect(page.locator("main").getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
+    // Wave 17 (C4): « Lieux » is managed on its page, a place is added from the calendar.
+    await expect(page.locator("main").getByRole("link", { name: "Gérer les lieux", exact: true })).toBeVisible();
     // Wave 15: notifications and dues rates sit in their own settings sub-pages; the photo is in My account.
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Notifications et résumé", exact: true })).toBeVisible();

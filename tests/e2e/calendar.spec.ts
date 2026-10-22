@@ -104,21 +104,21 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       await accessible(page);
     }
     await page.goto("/fr/calendar");
-    await page
-      .locator("summary")
-      .filter({ hasText: /^Lieux$/ })
-      .click();
-    await page.getByLabel("Nom du lieu", { exact: true }).fill("Salle pilote");
-    await page.getByLabel("Adresse", { exact: true }).fill("Rue du sport 1");
-    await page.getByLabel("Capacité (facultative)", { exact: true }).fill("10");
-    await page.getByLabel("Accès PMR", { exact: true }).check();
-    await page.getByLabel("Recharge", { exact: true }).check();
-    await page
+    // Wave 17 (C4): « Ajouter un lieu » in the header opens the place window.
+    await page.getByRole("button", { name: "Ajouter un lieu", exact: true }).click();
+    const placeWindow = page.getByRole("dialog", { name: "Ajouter un lieu" });
+    await placeWindow.getByLabel("Nom du lieu", { exact: true }).fill("Salle pilote");
+    await placeWindow.getByLabel("Adresse", { exact: true }).fill("Rue du sport 1");
+    await placeWindow.getByLabel("Capacité (facultative)", { exact: true }).fill("10");
+    await placeWindow.getByLabel("Accès PMR", { exact: true }).check();
+    await placeWindow.getByLabel("Recharge", { exact: true }).check();
+    await placeWindow
       .getByRole("button", { name: "Enregistrer le lieu", exact: true })
       .click();
-    await expect(
-      page.getByRole("heading", { name: "Salle pilote", exact: true }),
-    ).toBeVisible();
+    await expect(placeWindow).toHaveCount(0);
+    await expect
+      .poll(async () => (await db.query("SELECT count(*)::int AS n FROM calendar_place WHERE organization_id=$1 AND name='Salle pilote'", [org])).rows[0].n)
+      .toBe(1);
     const place = (
         await db.query(
           "SELECT id FROM calendar_place WHERE organization_id=$1",
@@ -265,10 +265,6 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         )
       ).rows[0].local_start,
     ).toBe(shiftLocal(date + "T10:00", 7));
-    await page
-      .locator("summary")
-      .filter({ hasText: /^Lieux$/ })
-      .click();
     for (const mode of ["Mois", "Semaine", "Liste"]) {
       await page.getByRole("group", { name: "Vue", exact: true }).getByRole("button", { name: mode, exact: true }).click();
       if (mode !== "Liste")

@@ -36,6 +36,7 @@ import { moneyDeadlinesIn } from "../funding/service";
 import { groupProfiles } from "../communication/service";
 import { inviteForEvent } from "../attendance/service";
 import { offerUndo } from "../undo/service";
+import { visibleVenue } from "../venues/schema";
 import { setProgram, programOf, type ProgramItem } from "../exercises/service";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
@@ -204,7 +205,8 @@ async function validate(s: Scope, input: EventInput) {
   if (
     input.sharedVenueId &&
     !(
-      await s.c.query("SELECT 1 FROM shared_venue WHERE id=$1", [
+      await s.c.query(`SELECT 1 FROM shared_venue v WHERE ${visibleVenue()} AND v.id=$2`, [
+        org,
         input.sharedVenueId,
       ])
     ).rowCount
@@ -586,7 +588,9 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       hasMore: rows.length > 100,
       sharedVenues: (
         await s.c.query(
-          "SELECT id,name,address FROM shared_venue ORDER BY name,id",
+          // Wave 17 (C4): the validated halls of the federation, and those this club proposed.
+          `SELECT v.id,v.name,v.address,v.category FROM shared_venue v WHERE ${visibleVenue()} ORDER BY v.category,v.name,v.id`,
+          [s.a.organization_id],
         )
       ).rows,
       documentOptions,
@@ -723,23 +727,6 @@ export async function calendarExecute(
     async (s) => {
       // Week copies go through calendarCopyWeek (their own result).
       if (input.action === "copyWeek") throw new AccessError("INVALID_INPUT", 400);
-      if (input.action === "sharedVenue") {
-        needManage(s);
-        const row = (
-          await s.c.query(
-            "INSERT INTO shared_venue(name,address,created_by,organization_id) VALUES($1,$2,$3,$4) RETURNING id",
-            [input.name, input.address, p.userId, s.a.organization_id],
-          )
-        ).rows[0];
-        await audit(
-          s.c,
-          s.a.organization_id,
-          p.userId,
-          "calendar.sharedVenue",
-          row.id,
-        );
-        return { id: row.id as string };
-      }
       if (input.action === "place") {
         needManage(s);
         if (input.id) {

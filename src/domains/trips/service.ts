@@ -1,3 +1,4 @@
+import { visibleVenue } from "../venues/schema";
 import type { Pool, PoolClient } from "pg";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -179,7 +180,9 @@ export async function tripsView(db: Pool, p: Principal) {
       venues: x.manage
         ? (
             await x.c.query(
-              "SELECT id,name,city FROM shared_venue ORDER BY name LIMIT 500",
+              // Wave 17 (C4): the federation's validated halls only.
+              `SELECT v.id,v.name,v.city FROM shared_venue v WHERE ${visibleVenue()} ORDER BY v.name LIMIT 500`,
+              [x.org],
             )
           ).rows
         : [],

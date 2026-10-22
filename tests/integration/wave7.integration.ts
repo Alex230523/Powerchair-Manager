@@ -281,8 +281,7 @@ it("keeps a trip with ledger lines: cancel, not delete", async () => {
 });
 
 it("shares halls with their accessibility, with history and stale-version protection", async () => {
-  const { id } = await venueExecute(db, president, {
-    action: "save",
+  const fields = {
     name: "Sporthal Gent",
     address: "Rue du Sport 1",
     city: "Gent",
@@ -301,7 +300,14 @@ it("shares halls with their accessibility, with history and stale-version protec
     court: "",
     notes: "",
     checkedOn: today(),
-  });
+  };
+  // Wave 17 (C4): a club proposes its halls, it no longer writes the directory directly.
+  await expect(venueExecute(db, president, { action: "save", ...fields })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // A hall the club proposed and the federation validated: the club still completes it.
+  const id = (
+    await db.query("INSERT INTO shared_venue(name,address,created_by,organization_id) VALUES('Sporthal Gent','Rue du Sport 1',$1,$2) RETURNING id", [president.userId, club])
+  ).rows[0].id as string;
+  await venueExecute(db, president, { action: "save", id, version: 1, ...fields });
   const view = await venuesView(db, coach);
   const hall = view.venues.find((v) => v.id === id)!;
   expect(hall).toMatchObject({ step_free: true, adapted_toilets: null, charging: true, added_by: "Club vague 7" });
@@ -310,29 +316,7 @@ it("shares halls with their accessibility, with history and stale-version protec
     venueExecute(db, coach, { action: "shareFromPlace", placeId: randomUUID() }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(
-    venueExecute(db, president, {
-      action: "save",
-      id,
-      version: hall.version + 1,
-      name: "Sporthal Gent",
-      address: "Rue du Sport 1",
-      city: "Gent",
-      phone: "",
-      website: "",
-      stepFree: true,
-      adaptedToilets: true,
-      changingRooms: false,
-      showers: null,
-      lift: null,
-      hoist: null,
-      parking: true,
-      charging: true,
-      doorWidthCm: 90,
-      floor: "Parquet",
-      court: "",
-      notes: "",
-      checkedOn: null,
-    }),
+    venueExecute(db, president, { action: "save", id, version: hall.version + 1, ...fields, adaptedToilets: true, checkedOn: null }),
   ).rejects.toMatchObject({ code: "STALE_VERSION" });
   expect(
     (await db.query("SELECT count(*)::int AS n FROM shared_venue_history WHERE venue_id=$1", [id]))
