@@ -465,17 +465,19 @@ export async function execute(
         return { token };
       } else if (command.action === "resendInvitation") {
         // « Renvoyer »: a fresh link for the same person, the old one stops working.
-        const old = (await client.query("SELECT role,grants FROM invitation WHERE id=$1 AND organization_id=$2", [command.id, context.organization_id])).rows[0] as
-          | { role: Role; grants: Permission[] }
+        const old = (await client.query("SELECT role,grants,issued_by_federation FROM invitation WHERE id=$1 AND organization_id=$2", [command.id, context.organization_id])).rows[0] as
+          | { role: Role; grants: Permission[]; issued_by_federation: string | null }
           | undefined;
         if (!old) throw new AccessError("NOT_FOUND", 404);
+        // The federation's own invitations (a club's president) stay the federation's to handle.
+        if (old.issued_by_federation) throw new AccessError("FORBIDDEN");
         // Never hand out again what this profile could not hand out itself.
         const mine = permissions(context.role, context.grants);
         if ((isAdmin(old.role) && !isAdmin(context.role)) || !old.grants.every((g) => mine.includes(g))) throw new AccessError("FORBIDDEN");
         await resendInvitation(client, context.organization_id, p.userId, command.id);
       } else if (command.action === "cancelInvitation") {
         const changed = await client.query(
-          "UPDATE invitation SET revoked_at=now() WHERE id=$1 AND organization_id=$2 AND accepted_at IS NULL AND revoked_at IS NULL RETURNING id",
+          "UPDATE invitation SET revoked_at=now() WHERE id=$1 AND organization_id=$2 AND accepted_at IS NULL AND revoked_at IS NULL AND issued_by_federation IS NULL RETURNING id",
           [command.id, context.organization_id],
         );
         if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);

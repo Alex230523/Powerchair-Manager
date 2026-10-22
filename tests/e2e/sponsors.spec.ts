@@ -104,9 +104,9 @@ test("sponsor packages, conditions, partner sheet, calendar layer, home and agre
 
     // 5. The home: a to-do and the date in the coming events.
     await page.goto("/fr");
-    await expect(page.locator(".todo-card").filter({ hasText: "Conditions de sponsor à livrer" })).toBeVisible();
+    await expect(page.locator(".todo-card").filter({ hasText: "Sponsors et subsides" })).toBeVisible();
     await expect(page.locator(".agenda").getByText(/Garage Dupont/).first()).toBeVisible();
-    await page.locator(".todo-card").filter({ hasText: "Conditions de sponsor à livrer" }).click();
+    await page.locator(".todo-card").filter({ hasText: "Sponsors et subsides" }).click();
     await expect(page).toHaveURL("/fr/tasks");
     // Two conditions are still open: one due today, one without a date.
     await expect(page.locator(".task-page li")).toHaveCount(2);

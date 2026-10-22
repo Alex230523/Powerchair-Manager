@@ -8,6 +8,7 @@ import { brusselsToday } from "../people/service";
 import { receiptMaxBytes, receiptType } from "../finance/schema";
 import { publish } from "../notifications/queue";
 import { accountsDeadlines } from "../accounts/service";
+import { obligationRows } from "../club/obligations";
 import {
   conditionTasks,
   examplePackages,
@@ -897,7 +898,7 @@ export async function fundingTasksView(db: Pool, p: Principal) {
 export type MoneyDeadline = {
   id: string;
   date: string;
-  kind: "condition" | "payment" | "renewal" | "grant" | "grantReport" | "grantEnd" | "grantRecheck" | "task" | "accountsAssembly" | "accountsFiling" | "tournamentDay";
+  kind: "condition" | "payment" | "renewal" | "grant" | "grantReport" | "grantEnd" | "grantRecheck" | "task" | "accountsAssembly" | "accountsFiling" | "tournamentDay" | "obligation";
   /** "tournament": a match day shown in the calendar (21/10/2026), always on, not part of the money layer. */
   source: "partner" | "grant" | "accounts" | "tournament";
   title: string;
@@ -952,6 +953,11 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
     for (const d of await accountsDeadlines(c, org))
       if (d.date >= from && d.date <= to)
         out.push({ id: `${d.kind}:${d.year.from}`, date: d.date, kind: d.kind, source: "accounts", title: d.year.label, href: `/funding/annual-accounts?year=${d.year.from}` });
+    // The club's obligations still to do (wave 16, A): affiliations, insurance, assembly…
+    for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++)
+      for (const o of await obligationRows(c, org, y))
+        if (!o.done_on && o.due_on && o.due_on >= from && o.due_on <= to)
+          out.push({ id: "obligation:" + o.id, date: o.due_on, kind: "obligation", source: "accounts", title: o.title, href: "/settings/club#settings-obligations" });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }

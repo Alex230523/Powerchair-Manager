@@ -1,5 +1,6 @@
 "use client";
 import { TeamPlacesSettings } from "./team-places-settings";
+import { ClubObligations } from "./club-obligations";
 import { FiscalYearPanel } from "./fiscal-year";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -360,6 +361,7 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
+          {shown && category === "club" && <ClubObligations locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
           {shown && category === "members" && !manage && !(gov && (gov.can.profiles || gov.profiles.length > 0)) && <EmptyState title={t.noMember} />}

@@ -212,13 +212,16 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     ...((role === "referee"
                       ? [{ route: "/referee", label: "refereeSpace", icon: "whistle" }]
                       : [
+                          // Wave 16 (I3): the order of the federation president's day.
                           { route: "/federation/clubs", label: "federationClubs", icon: "club" },
-                          { route: "/federation/courses", label: "courses", icon: "team" },
-                          { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
+                          { route: "/federation/teams", label: "federationTeams", icon: "players" },
+                          { route: "/tournaments", label: "tournaments", icon: "trophy" },
                           { route: "/federation/referees", label: "designations", icon: "whistle" },
+                          { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
+                          { route: "/federation/courses", label: "courses", icon: "team" },
                         ]) satisfies NavItem[]),
+                    ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
-                    { route: "/tournaments", label: "tournaments", icon: "trophy" },
                     { route: "/venues", label: "venues", icon: "pin" },
                     { route: "/documents", label: "documents", icon: "document" },
                   ],

@@ -190,6 +190,11 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "Verifieer eerst uw e-mailadres.",
     en: englishErrors["VERIFY_EMAIL"] ?? "Action unavailable.",
   },
+  AFFILIATION_TAKEN: {
+    fr: "Un autre club de la fédération a déjà ce numéro d'affiliation.",
+    nl: "Een andere club van de federatie heeft dit aansluitingsnummer al.",
+    en: englishErrors["AFFILIATION_TAKEN"] ?? "Action unavailable.",
+  },
   ACCOUNT_EXISTS: {
     fr: "Un compte existe déjà avec cette adresse. Connectez-vous pour accepter l'invitation.",
     nl: "Er bestaat al een account met dit adres. Meld u aan om de uitnodiging te aanvaarden.",

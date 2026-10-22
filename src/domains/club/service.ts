@@ -12,6 +12,8 @@ import {
 } from "../access/service";
 import { permissions } from "../access/policy";
 import { palettes, tints } from "./appearance";
+import { proposeObligations } from "./obligations";
+import { today } from "../calendar/access";
 
 export const identitySchema = z.object({
   action: z.literal("identity"),
@@ -29,6 +31,8 @@ export const identitySchema = z.object({
     .optional(),
   /** Club affiliation (in Belgium the BPCF). Omitted: unchanged. */
   federationId: z.uuid().nullable().optional(),
+  /** Wave 16 (A): the club's legal form; the club status proposes its obligations from it. Omitted: unchanged. */
+  legalForm: z.enum(["asbl", "de_facto", "other"]).nullable().optional(),
 });
 export const logoSchema = z.object({
   action: z.literal("logo"),
@@ -69,7 +73,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,o.legal_form,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -141,6 +145,17 @@ export async function clubExecute(
           input.iban ?? null,
         ],
       );
+      if (input.legalForm !== undefined && a.kind === "club") {
+        const before = (await c.query("SELECT legal_form FROM organization WHERE id=$1", [a.organization_id])).rows[0]?.legal_form ?? null;
+        if (before !== input.legalForm) {
+          await c.query("UPDATE organization SET legal_form=$2 WHERE id=$1", [a.organization_id, input.legalForm]);
+          // A new form: its obligations are proposed for this year (nothing removed, all editable).
+          if (input.legalForm) {
+            const locale = ((await c.query("SELECT locale FROM person WHERE user_id=$1", [p.userId])).rows[0]?.locale ?? "fr") as "fr" | "nl" | "en";
+            await proposeObligations(c, a.organization_id, p.userId, Number(today().slice(0, 4)), locale);
+          }
+        }
+      }
       if (input.federationId !== undefined) {
         if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
         if (

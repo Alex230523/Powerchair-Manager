@@ -1,4 +1,5 @@
 export const englishErrors: Record<string, string> = {
+  AFFILIATION_TAKEN: "Another club of the federation already has this affiliation number.",
   ACCOUNT_EXISTS: "An account already exists with this address. Sign in to accept the invitation.",
   INVITATION_REQUIRED: "An invitation is required to create an account. Ask the person in charge of your club or federation.",
   TEAM_FULL: "This team is full: put the application on the waiting list, or tick « Accept even if the team is full ».",
