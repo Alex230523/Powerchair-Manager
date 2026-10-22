@@ -692,6 +692,9 @@ try {
           name: input.name,
           brand: "Démo Sport",
           model: "Pivot 10",
+          // Wave 17 (Q1): a model is required; this one waits for the federation.
+          modelId: null,
+          newModel: { brand: "Démo Sport", name: "Pivot 10" },
           serialNumber:
             "DEMO-" + input.name.replace(/\D/g, "").padStart(3, "0"),
           ownership: input.ownership,
