@@ -13,9 +13,16 @@ import { permissions } from "../access/policy";
 import { ownProfiles, type Actor } from "../calendar/access";
 import { commandSchema, type Command } from "./schema";
 import { stockExecute, stockView } from "./stock";
+import { modelsView, resolveModel, decideModel } from "./models";
+import { storageView, storageExecute, storageIn } from "./storage";
+import { loansView, loanExecute } from "./loans";
 export { commandSchema };
 
-export type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean };
+/**
+ * `fed`: the federation the organisation belongs to (itself for a
+ * federation), the family within which chairs are lent (wave 17, Q1).
+ */
+export type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean; kind: "club" | "federation"; fed: string | null; orgName: string };
 export type Chair = {
   id: string;
   name: string;
@@ -32,6 +39,14 @@ export type Chair = {
   notes: string;
   storage: string;
   version: number;
+  model_id: string | null;
+  storage_location_id: string | null;
+  lendable: boolean;
+  created_at: string;
+  model_brand: string | null;
+  model_name: string | null;
+  model_status: "validated" | "proposed" | "refused" | null;
+  storage_name: string | null;
 };
 export type ChairLink = {
   id: string;
@@ -43,7 +58,10 @@ export type ChairLink = {
   ends_on: string | null;
 };
 const chairColumns =
-  "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.storage,c.version";
+  "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.storage,c.version,c.model_id,c.storage_location_id,c.lendable,c.created_at";
+/** Reads: the model and the storage place by name (wave 17, Q1). */
+const chairSelect = `${chairColumns},cm.brand AS model_brand,cm.name AS model_name,cm.status AS model_status,sl.name AS storage_name
+  FROM equipment_chair c LEFT JOIN chair_model cm ON cm.id=c.model_id LEFT JOIN storage_location sl ON sl.id=c.storage_location_id`;
 const linkColumns =
   "l.id,l.chair_id,l.profile_id,p.full_name,l.is_primary,l.starts_on::text,l.ends_on::text";
 
@@ -77,14 +95,24 @@ async function scope<T>(
       (expected && expected !== a.organization_id)
     )
       throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
+    // Wave 17 (Q1): the federation keeps its own fleet with the same screens.
+    const federation = a.kind === "federation";
+    const fed = federation
+      ? a.organization_id
+      : ((await c.query("SELECT federation_id FROM organization WHERE id=$1", [a.organization_id])).rows[0]?.federation_id ?? null);
     const out = await fn({
       c,
       p,
       a,
+      kind: federation ? "federation" : "club",
+      fed,
+      orgName: a.organization_name,
       manage:
         mfaSatisfied(a.twoFactorEnabled) &&
-        permissions(a.role, a.grants).includes("equipment.manage"),
+        (federation
+          ? ["federation_president", "federation_worker"].includes(a.role)
+          : permissions(a.role, a.grants).includes("equipment.manage")),
     });
     await c.query("COMMIT");
     return out;
@@ -135,7 +163,7 @@ export async function chairsFor(
 ) {
   const chairs = (
     await c.query(
-      `SELECT ${chairColumns} FROM equipment_chair c WHERE c.organization_id=$1 AND ($2 OR EXISTS(SELECT 1 FROM equipment_chair_assignment l WHERE l.chair_id=c.id AND l.ends_on IS NULL AND l.profile_id=ANY($3::uuid[]))) ORDER BY c.status='retired',c.name`,
+      `SELECT ${chairSelect} WHERE c.organization_id=$1 AND ($2 OR EXISTS(SELECT 1 FROM equipment_chair_assignment l WHERE l.chair_id=c.id AND l.ends_on IS NULL AND l.profile_id=ANY($3::uuid[]))) ORDER BY c.status='retired',c.name`,
       [org, includeAll, profiles],
     )
   ).rows as Chair[];
@@ -185,19 +213,24 @@ export async function equipmentView(db: Pool, p: Principal, raw: { season?: stri
           ).rows
         : [],
       ...(await stockView(s)),
-      history: s.manage
+      history: (s.manage
         ? (
             await s.c.query(
-              'SELECT h.chair_id,h.action,h.created_at,u.name AS actor FROM equipment_history h JOIN "user" u ON u.id=h.actor_id WHERE h.organization_id=$1 ORDER BY h.created_at DESC LIMIT 100',
+              'SELECT h.chair_id,h.action,h.created_at,u.name AS actor,h.after_data AS details FROM equipment_history h JOIN "user" u ON u.id=h.actor_id WHERE h.organization_id=$1 ORDER BY h.created_at DESC LIMIT 500',
               [org],
             )
           ).rows
-        : [],
+        : []) as { chair_id: string; action: string; created_at: string; actor: string; details: Record<string, unknown> | null }[],
+      // Wave 17 (Q1).
+      kind: s.kind,
+      models: await modelsView(s),
+      storage: await storageView(s),
+      loans: await loansView(s),
     };
   });
 }
 
-async function log(
+export async function log(
   s: Scope,
   chairId: string,
   action: string,
@@ -243,21 +276,49 @@ export async function equipmentExecute(
         input.action === "cancelWish"
       )
         return stockExecute(s, input);
+      if (input.action === "storage") return storageExecute(s, input);
+      if (input.action === "decideModel") return decideModel(s, input);
+      if (
+        input.action === "lend" ||
+        input.action === "requestLoan" ||
+        input.action === "decideLoan" ||
+        input.action === "handOver" ||
+        input.action === "returnLoan" ||
+        input.action === "cancelLoan"
+      )
+        return loanExecute(s, input);
       if (!s.manage)
         throw new AccessError(
           mfaSatisfied(s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
         );
       const o = s.a.organization_id;
+      if (input.action === "service") {
+        const before = (await s.c.query(`SELECT ${chairColumns} FROM equipment_chair c WHERE c.id=$1 AND c.organization_id=$2 FOR UPDATE`, [input.chairId, o])).rows[0];
+        if (!before) throw new AccessError("NOT_FOUND", 404);
+        if (before.version !== input.expectedVersion) throw new AccessError("STALE_VERSION", 409);
+        if (input.nextOn && input.nextOn < input.doneOn) throw new AccessError("INVALID_DATE", 400);
+        await s.c.query(
+          "UPDATE equipment_chair SET last_service_on=$3,next_service_on=$4,status=CASE WHEN status='maintenance' THEN 'available' ELSE status END,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
+          [input.chairId, o, input.doneOn, input.nextOn],
+        );
+        await log(s, input.chairId, "service", { last: before.last_service_on, next: before.next_service_on }, { last: input.doneOn, next: input.nextOn, note: input.note });
+        return { id: input.chairId };
+      }
       if (input.action === "chair") {
         for (const [a, b] of [
           [input.acquiredOn, input.lastServiceOn],
           [input.lastServiceOn, input.nextServiceOn],
         ])
           if (a && b && b < a) throw new AccessError("INVALID_DATE", 400);
+        // Wave 17 (Q1): the model and the purchase date are required; the
+        // free-text columns follow the model and the storage place.
+        if (!input.acquiredOn) throw new AccessError("ACQUIRED_REQUIRED", 400);
+        const model = await resolveModel(s, input.modelId ?? null, input.newModel ?? null);
+        const place = input.storageLocationId ? await storageIn(s, input.storageLocationId) : null;
         const values = [
           input.name,
-          input.brand,
-          input.model,
+          model.brand || input.brand,
+          model.name,
           input.serialNumber,
           input.ownership,
           input.status,
@@ -267,12 +328,15 @@ export async function equipmentExecute(
           input.lastServiceOn,
           input.nextServiceOn,
           input.notes,
-          input.storage ?? "",
+          place ? place.name.slice(0, 120) : (input.storage ?? ""),
+          model.id,
+          place?.id ?? null,
+          input.lendable ?? false,
         ];
         if (!input.id) {
           const row = (
             await s.c.query(
-              `INSERT INTO equipment_chair(organization_id,name,brand,model,serial_number,ownership,status,max_speed_kmh,battery,acquired_on,last_service_on,next_service_on,notes,storage) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING ${chairColumns.replaceAll("c.", "")}`,
+              `INSERT INTO equipment_chair(organization_id,name,brand,model,serial_number,ownership,status,max_speed_kmh,battery,acquired_on,last_service_on,next_service_on,notes,storage,model_id,storage_location_id,lendable) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING ${chairColumns.replaceAll("c.", "")}`,
               [o, ...values],
             )
           ).rows[0];
@@ -290,8 +354,9 @@ export async function equipmentExecute(
           throw new AccessError("STALE_VERSION", 409);
         const after = (
           await s.c.query(
-            `UPDATE equipment_chair SET name=$3,brand=$4,model=$5,serial_number=$6,ownership=$7,status=$8,max_speed_kmh=$9,battery=$10,acquired_on=$11,last_service_on=$12,next_service_on=$13,notes=$14,storage=$15,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING ${chairColumns.replaceAll("c.", "")}`,
-            [input.id, o, ...values],
+            `UPDATE equipment_chair SET name=$3,brand=$4,model=$5,serial_number=$6,ownership=$7,status=$8,max_speed_kmh=$9,battery=$10,acquired_on=$11,last_service_on=$12,next_service_on=$13,notes=$14,storage=CASE WHEN $19 THEN storage ELSE $15 END,model_id=$16,storage_location_id=CASE WHEN $19 THEN storage_location_id ELSE $17 END,lendable=CASE WHEN $20 THEN lendable ELSE $18 END,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING ${chairColumns.replaceAll("c.", "")}`,
+            // A command without a place or the « Prêtable » flag keeps them.
+            [input.id, o, ...values, input.storageLocationId === undefined, input.lendable === undefined],
           )
         ).rows[0];
         // Retiring a chair closes its current links; the history stays.

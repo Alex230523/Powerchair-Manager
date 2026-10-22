@@ -9,6 +9,7 @@ export const stockCopy = {
     category: "Catégorie",
     categories: {
       ball: "Ballon",
+      cone: "Cônes",
       first_aid: "Premiers secours",
       battery: "Batterie",
       charger: "Chargeur",
@@ -62,6 +63,7 @@ export const stockCopy = {
     category: "Categorie",
     categories: {
       ball: "Bal",
+      cone: "Kegels",
       first_aid: "Eerste hulp",
       battery: "Batterij",
       charger: "Lader",
@@ -115,6 +117,7 @@ export const stockCopy = {
     category: "Category",
     categories: {
       ball: "Ball",
+      cone: "Cones",
       first_aid: "First aid",
       battery: "Battery",
       charger: "Charger",

@@ -222,6 +222,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
                           { route: "/federation/affiliations", label: "affiliations", icon: "landmark" },
                           { route: "/federation/courses", label: "courses", icon: "team" },
+                          // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
+                          { route: "/equipment", label: "equipment", icon: "wheelchair" },
                         ]) satisfies NavItem[]),
                     ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },

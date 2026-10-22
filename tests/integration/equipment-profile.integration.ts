@@ -85,7 +85,10 @@ const chairInput = (name: string) => ({
   status: "available" as const,
   maxSpeedKmh: 10,
   battery: "",
-  acquiredOn: null,
+  // Wave 17 (Q1): a model and a purchase date are required.
+  newModel: { brand: "Test", name: "T1" },
+  modelId: null,
+  acquiredOn: "2024-01-01",
   lastServiceOn: null,
   nextServiceOn: null,
   notes: "",

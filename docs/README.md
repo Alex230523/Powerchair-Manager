@@ -100,6 +100,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [Vague 17, G1 : transmission de la présidence](evolutions/2026-10-22-k-vague-17-g1-presidence.md) |
 | 22/10/2026 | [Vague 17, G2 : export Excel partout](evolutions/2026-10-22-l-vague-17-g2-exports.md) |
 | 22/10/2026 | [Vague 17, J4 : journées de classification](evolutions/2026-10-22-m-vague-17-j4-classification.md) |
+| 22/10/2026 | [Vague 17, Q1 : matériel, modèles, prêts, stockage](evolutions/2026-10-22-n-vague-17-q1-materiel.md) |
 
 ## Convention
 

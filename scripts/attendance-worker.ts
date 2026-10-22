@@ -5,6 +5,7 @@ import { duesReminderTick } from "../src/domains/reminders/service";
 import { fundingTaskTick } from "../src/domains/funding/service";
 import { affiliationTick } from "../src/domains/affiliations/service";
 import { licenceReminderTick } from "../src/domains/licences/service";
+import { equipmentLoanTick } from "../src/domains/equipment/loans";
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 console.log("Attendance worker ready");
 let stopping = false;
@@ -34,6 +35,9 @@ try {
       // Driving licences that expire within 30 days, told once to their holder (wave 17, O1).
       const licences = await licenceReminderTick(db);
       if (licences) console.log("Licence reminders sent:", licences);
+      // Chair loans ending within seven days, told once to both clubs (wave 17, Q1).
+      const loans = await equipmentLoanTick(db);
+      if (loans) console.log("Loan return reminders sent:", loans);
     } catch (e) {
       console.error(
         "Attendance worker:",
