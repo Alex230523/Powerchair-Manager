@@ -78,7 +78,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
       uncertain: "Incertain",
       none: "Pas encore répondu",
     },
-    noAnswer: "Pas de convocation",
+    noAnswer: "Pas d'invitation",
     presence: "Présences",
     presenceHint: "Séances passées dont le registre est clôturé.",
     training: "Entraînements",

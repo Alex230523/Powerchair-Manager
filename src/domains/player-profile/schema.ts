@@ -75,7 +75,7 @@ export type AttendanceSummary = {
   late: number;
 };
 /**
- * Attendance figures for one player. Cancelled events and withdrawn call-ups
+ * Attendance figures for one player. Cancelled events and withdrawn invitations
  * are ignored; presence only counts once the register is closed, so an open
  * register never lowers a rate.
  */

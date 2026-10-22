@@ -72,7 +72,7 @@ const fr = {
     club: "Club",
     clubAverage: "Moyenne du club",
     empty: "Aucun registre clôturé sur cette période : les courbes apparaîtront avec les premiers pointages.",
-    hint: "Présents (retards et départs anticipés compris) sur convoqués, registres clôturés seulement. Une période sans séance reste vide.",
+    hint: "Présents (retards et départs anticipés compris) sur invités, registres clôturés seulement. Une période sans séance reste vide.",
   },
   headcount: {
     title: "Effectif par année",
@@ -355,7 +355,7 @@ const nl: Copy = {
     club: "Club",
     clubAverage: "Clubgemiddelde",
     empty: "Geen afgesloten register in deze periode: de lijnen verschijnen met de eerste registraties.",
-    hint: "Aanwezigen (te laat en vroeger vertrokken inbegrepen) op opgeroepenen, enkel afgesloten registers. Een periode zonder sessie blijft leeg.",
+    hint: "Aanwezigen (te laat en vroeger vertrokken inbegrepen) op uitgenodigden, enkel afgesloten registers. Een periode zonder sessie blijft leeg.",
   },
   headcount: {
     title: "Ledenaantal per jaar",
@@ -637,7 +637,7 @@ const en: Copy = {
     club: "Club",
     clubAverage: "Club average",
     empty: "No closed register in this period: the lines appear with the first registers.",
-    hint: "Present (late arrivals and early departures included) out of those called up, closed registers only. A period without a session stays empty.",
+    hint: "Present (late arrivals and early departures included) out of those invited, closed registers only. A period without a session stays empty.",
   },
   headcount: {
     title: "Headcount per year",

@@ -164,7 +164,7 @@ test("invitation response, offline refusal, independent pointage, closure and tr
       .fill("1");
     await page
       .getByRole("button", {
-        name: "Envoyer / modifier les convocations",
+        name: "Envoyer / modifier les invitations",
         exact: true,
       })
       .click();

@@ -252,7 +252,7 @@ export async function applyAbsences(
 }
 /**
  * Wave 16 (E1): the invitations of an event chosen in the calendar form
- * (groups and people), written as « Convoquer » writes them: one register,
+ * (groups and people), written as « Inviter » writes them: one register,
  * one invitation per person, earlier answers kept, people no longer invited
  * withdrawn, absences announced in advance applied, invited people told.
  * The caller has checked that the actor may plan this event.

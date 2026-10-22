@@ -41,7 +41,7 @@ export const calendarCopy = {
     instructions: "Consignes",
     participants: "Participants supplémentaires prévus",
     participantHint:
-      "Les membres actuellement affectés à l’équipe sont inclus. Ce choix ne vaut ni convocation ni réponse de présence.",
+      "Les membres actuellement affectés à l’équipe sont inclus. Ce choix ne vaut ni invitation ni réponse de présence.",
     documentsHint:
       "Les documents associés restent soumis à leurs propres droits ; aucun accès n’est accordé par ce lien.",
     repeat: "Récurrence",
@@ -141,7 +141,7 @@ export const calendarCopy = {
     instructions: "Instructies",
     participants: "Extra geplande deelnemers",
     participantHint:
-      "Huidige teamleden zijn inbegrepen. Dit is geen oproep of aanwezigheidsantwoord.",
+      "Huidige teamleden zijn inbegrepen. Dit is geen uitnodiging of aanwezigheidsantwoord.",
     documentsHint:
       "Gekoppelde documenten behouden hun eigen toegangsrechten; deze koppeling verleent geen toegang.",
     repeat: "Herhaling",

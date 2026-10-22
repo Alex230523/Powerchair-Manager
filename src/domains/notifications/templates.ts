@@ -180,12 +180,12 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
       body: "An update is available in your secure workspace for {organization}.\n{url}",
     },
     fr: {
-      subject: "Convocations et présences · {organization}",
-      body: "Bonjour {name},\nUne convocation, une relance ou une alerte d’effectif est disponible. Consultez les informations à jour.\n{url}",
+      subject: "Invitations et présences · {organization}",
+      body: "Bonjour {name},\nUne invitation, une relance ou une alerte d’effectif est disponible. Consultez les informations à jour.\n{url}",
     },
     nl: {
-      subject: "Oproepen en aanwezigheid · {organization}",
-      body: "Hallo {name},\nEen oproep, herinnering of bezettingsmelding staat klaar. Bekijk de actuele informatie.\n{url}",
+      subject: "Uitnodigingen en aanwezigheid · {organization}",
+      body: "Hallo {name},\nEen uitnodiging, herinnering of bezettingsmelding staat klaar. Bekijk de actuele informatie.\n{url}",
     },
   },
   calendar_update: {

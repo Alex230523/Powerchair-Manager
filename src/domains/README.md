@@ -16,7 +16,7 @@ Un dossier par module. Les routes API appellent ces fonctions ; l'interface n'y 
 | `registrations/`  | Formulaires, candidatures, décisions, pièces jointes                                                     |
 | `documents/`      | Pièces demandées, versions chiffrées, validation, échéances, partage fédéral                             |
 | `calendar/`       | Lieux, séries d'événements, visibilité, flux ICS                                                         |
-| `attendance/`     | Convocations, réponses, pointage, relances                                                               |
+| `attendance/`     | Invitations, réponses, pointage, relances                                                               |
 | `dues/`           | Barèmes, créances, échéanciers (paiements : lot 09)                                                      |
 | `messages/`       | Messagerie interne                                                                                       |
 | `statistics/`     | Synthèse des présences (fonctions pures)                                                                 |

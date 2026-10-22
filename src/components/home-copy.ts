@@ -72,7 +72,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       {
         title: "Calendrier et présences",
-        text: "Entraînements, convocations, réponses et pointage le jour même.",
+        text: "Entraînements, invitations, réponses et pointage le jour même.",
       },
       {
         title: "Inscriptions et documents",
@@ -151,7 +151,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       myAttendance: {
         title: "Présences à confirmer",
-        text: "Convocations qui attendent votre réponse",
+        text: "Invitations qui attendent votre réponse",
       },
       myDocuments: {
         title: "Documents à fournir",
@@ -248,7 +248,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       {
         title: "Kalender en aanwezigheid",
-        text: "Trainingen, oproepingen, antwoorden en registratie op de dag zelf.",
+        text: "Trainingen, uitnodigingen, antwoorden en registratie op de dag zelf.",
       },
       {
         title: "Inschrijvingen en documenten",
@@ -326,7 +326,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       myAttendance: {
         title: "Aanwezigheid te bevestigen",
-        text: "Oproepingen wachten op je antwoord",
+        text: "Uitnodigingen wachten op je antwoord",
       },
       myDocuments: {
         title: "Documenten aan te leveren",
@@ -423,7 +423,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       {
         title: "Calendar and attendance",
-        text: "Training sessions, call-ups, answers and same-day check-in.",
+        text: "Training sessions, invitations, answers and same-day check-in.",
       },
       {
         title: "Registrations and documents",
@@ -501,7 +501,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       myAttendance: {
         title: "Attendance to confirm",
-        text: "Call-ups waiting for your answer",
+        text: "Invitations waiting for your answer",
       },
       myDocuments: {
         title: "Documents to provide",

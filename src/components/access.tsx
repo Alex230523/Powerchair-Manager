@@ -264,8 +264,8 @@ export function Access({ locale }: { locale: Locale }) {
       locale === "en"
         ? "Manage invitations and attendance"
         : locale === "fr"
-          ? "Gérer convocations et présences"
-          : "Oproepen en aanwezigheid beheren",
+          ? "Gérer invitations et présences"
+          : "Uitnodigingen en aanwezigheid beheren",
     "calendar.read":
       locale === "en"
         ? "Read the entire organisation calendar"
