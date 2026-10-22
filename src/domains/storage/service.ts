@@ -40,6 +40,9 @@ export function originHref(origin: string, ref: string) {
       return "/funding/operations";
     case "statement":
       return "/funding/statements";
+    case "licence":
+    case "training":
+      return `/coaches/${ref}`;
     case "partner":
       return `/funding/partners?partner=${ref}`;
     case "grant":

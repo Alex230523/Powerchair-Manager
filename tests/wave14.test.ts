@@ -30,7 +30,7 @@ describe("president menu (wave 14)", () => {
     expect(routes.activities).toEqual(["/calendar", "/matches", "/trips", "/venues", "/tournaments"]);
     expect(routes.communication).toEqual(["/communication", "/documents"]);
     expect(routes.money).toEqual(["/funding", "/dues"]);
-    expect(routes.clubGroup).toEqual(["/club/manage", "/equipment", "/contacts"]);
+    expect(routes.clubGroup).toEqual(["/club/manage", "/equipment", "/contacts", "/tasks"]);
     // Wave 17 (G3): Relances moved to Settings, the offline book is gone.
     expect(routes.more).toEqual(["/privacy", "/settings"]);
   });
@@ -42,7 +42,8 @@ describe("president menu (wave 14)", () => {
     expect(routes).not.toContain("/fundraising");
     expect(routes).not.toContain("/offline-book");
     const few = menuGroups(base("club_president", ["people.read"]));
-    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "more"]);
+    // Wave 17 (O1): a president always plans the club's tasks.
+    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "clubGroup", "more"]);
   });
   it("labels every group and item in the three languages", () => {
     for (const locale of ["fr", "nl", "en"] as const)

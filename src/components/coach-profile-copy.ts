@@ -87,7 +87,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     sessions: "séances",
     formations: "Formations",
     formationsHint:
-      "Les formations sont créées par la fédération. Le président du club demande l'ajout, la fédération confirme.",
+      "Les formations sont créées par la fédération. Le coach ou le président demande la validation, avec un justificatif ; la fédération confirme.",
     noFormation: "Aucune formation enregistrée.",
     statuses: {
       requested: "En attente de la fédération",
@@ -97,7 +97,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     },
     validUntil: "Valable jusqu'au",
     completed: "Obtenue le",
-    requestTitle: "Demander l'ajout d'une formation",
+    requestTitle: "Demander la validation d'une formation",
     course: "Formation",
     chooseCourse: "Choisir une formation",
     note: "Message pour la fédération (facultatif)",
@@ -151,7 +151,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     sessions: "sessies",
     formations: "Opleidingen",
     formationsHint:
-      "Opleidingen worden door de federatie aangemaakt. De clubvoorzitter vraagt de toevoeging aan, de federatie bevestigt.",
+      "Opleidingen worden door de federatie aangemaakt. De coach of de voorzitter vraagt de validatie aan, met een bewijsstuk; de federatie bevestigt.",
     noFormation: "Geen opleiding geregistreerd.",
     statuses: {
       requested: "Wacht op de federatie",
@@ -161,7 +161,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     },
     validUntil: "Geldig tot",
     completed: "Behaald op",
-    requestTitle: "Toevoeging van een opleiding aanvragen",
+    requestTitle: "Validatie van een opleiding aanvragen",
     course: "Opleiding",
     chooseCourse: "Kies een opleiding",
     note: "Bericht voor de federatie (optioneel)",
@@ -215,7 +215,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     sessions: "sessions",
     formations: "Courses",
     formationsHint:
-      "Courses are created by the federation. The club president asks for one to be added, the federation confirms.",
+      "Courses are created by the federation. The coach or the president asks for validation, with a proof; the federation confirms.",
     noFormation: "No course recorded.",
     statuses: {
       requested: "Awaiting the federation",
@@ -225,7 +225,7 @@ export const coachProfileCopy: Record<Locale, Copy> = {
     },
     validUntil: "Valid until",
     completed: "Completed on",
-    requestTitle: "Ask for a course to be added",
+    requestTitle: "Ask for a course to be validated",
     course: "Course",
     chooseCourse: "Choose a course",
     note: "Message for the federation (optional)",

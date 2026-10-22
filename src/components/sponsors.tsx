@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import type { fundingView, fundingTasksView, PackageRow, TaskRow } from "@/domains/funding/service";
+import type { fundingView, PackageRow, TaskRow } from "@/domains/funding/service";
 import { errors } from "./access-copy";
-import { useData, usePost } from "./use-api";
+import { useData } from "./use-api";
 import { sponsorsCopy } from "./sponsors-copy";
 import { fundingCopy } from "./funding-copy";
-import { Badge, Button, Card, EmptyState, PageHeader, Segmented, Toolbar } from "./ui";
+import { Badge, Button, Card, EmptyState, PageHeader } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 
@@ -616,94 +616,6 @@ export function PaymentBadge({ locale, payment }: { locale: Locale; payment: Par
   return <Badge tone="info" dot>{fill(s.expectedOn, { d: dayLabel(locale, payment.date) })}</Badge>;
 }
 
-/* ---------- Tasks page (/tasks): every task for money people, one's own otherwise ---------- */
-type Tasks = Awaited<ReturnType<typeof fundingTasksView>>;
-export function FundingTasks({ locale, kind: initialKind = "all" }: { locale: Locale; kind?: "all" | "partner" | "grant" }) {
-  const s = sponsorsCopy[locale],
-    t = fundingCopy[locale] as (typeof fundingCopy)["fr"];
-  const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
-  const { data, error, setError, reload } = useData<Tasks>("/api/funding/tasks", failure);
-  const { busy, message, post } = usePost("/api/funding", reload, setError, failure);
-  const [mine, setMine] = useState(false),
-    [show, setShow] = useState<"todo" | "done">("todo"),
-    [kind, setKind] = useState(initialKind);
-  const { ticked, tick } = useTick();
-  if (!data)
-    return (
-      <main id="main" className="access funding-tasks">
-        <PageHeader title={s.tasksTitle} />
-        {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
-      </main>
-    );
-  const own = new Set(data.own);
-  const rows = data.tasks.filter(
-    (x) =>
-      x.status === show &&
-      (kind === "all" || (kind === "partner" ? !!x.partner_id : !!x.grant_id)) &&
-      (!mine || (x.responsible_id && own.has(x.responsible_id))),
-  );
-  return (
-    <main id="main" className="access funding-tasks">
-      <PageHeader title={s.tasksTitle} subtitle={s.tasksIntro} />
-      {error && <p role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
-      <Card title={s.tasksTitle} labelledBy="tasks-title" headingId="tasks-title"
-        actions={
-          <Toolbar label={t.status}>
-            <Segmented label={t.status} items={[{ id: "todo", label: s.pending }, { id: "done", label: s.tasksDone }]} value={show} onChange={(v) => setShow(v as "todo" | "done")} />
-            <Segmented
-              label={s.tasksSource}
-              items={[
-                { id: "all", label: s.sourceAll },
-                { id: "partner", label: s.sourcePartner },
-                { id: "grant", label: s.sourceGrant },
-              ]}
-              value={kind}
-              onChange={(v) => setKind(v as "all" | "partner" | "grant")}
-            />
-            {data.can.all && (
-              <label className="check">
-                <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-                {s.tasksMine}
-              </label>
-            )}
-          </Toolbar>
-        }>
-        {rows.length ? (
-          <ul className="task-list task-page">
-            {rows.map((x) => {
-              const late = x.status === "todo" && x.due_on && x.due_on < data.today;
-              const href = data.can.all ? (x.partner_id ? `/${locale}/funding/partners?partner=${x.partner_id}` : `/${locale}/funding/grants?grant=${x.grant_id}`) : null;
-              return (
-                <li key={x.id} data-status={x.status}>
-                  <label className="check task-check">
-                    <input type="checkbox" checked={ticked(x)} disabled={busy} onChange={(e) => tick(x.id, e.target.checked, () => post({ organizationId: data.organization_id, action: "taskDone", id: x.id, done: e.target.checked }, t.saved))} />
-                    <span className="task-title">{x.title}</span>
-                  </label>
-                  <p className="task-meta muted small">
-                    <Badge tone={x.partner_id ? "primary" : "info"}>{x.partner_id ? s.sourcePartner : s.sourceGrant}</Badge>{" "}
-                    {href ? <Link href={href}>{x.file_name}</Link> : x.file_name}
-                    {" · "}
-                    {x.due_on ? `${s.dueOn} ${dayLabel(locale, x.due_on)}` : s.noDate}
-                    {late && (
-                      <Badge tone="danger">
-                        <Icon name="alert" size={14} /> {s.overdue}
-                      </Badge>
-                    )}
-                    {" · "}
-                    {s.responsible} : {x.responsible_name ?? s.nobody}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState icon="check" tone="success" title={s.tasksEmpty} />
-        )}
-      </Card>
-    </main>
-  );
-}
 
 /* ---------- Public partner report (no account) ---------- */
 type Report = { club: string; organizationId: string; logoVersion: string | null; partner: string; package: string | null; season: string | null; tasks: { title: string; status: string; done_on: string | null; proof_url: string; proofs: { id: string; filename: string }[] }[] };

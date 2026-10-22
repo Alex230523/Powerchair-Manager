@@ -15,6 +15,7 @@ import {
 import { offerUndo } from "../undo/service";
 import { inviteProfile } from "../access/invite";
 import { permissions, type Permission } from "../access/policy";
+import { trainingState } from "../licences/schema";
 import {
   ageOn,
   orderedDates,
@@ -487,6 +488,18 @@ async function readPeople(s: Scope, filters: Filters) {
     return true;
   });
   const situations = await situationsOf(s, all, matching);
+  // Wave 17 (O1): « Formé », « En attente de validation » or « Non formé » for each coach.
+  const coachIds = matching.filter((m) => m.directory_roles.includes("coach")).map((m) => m.id);
+  const courses = coachIds.length
+    ? ((
+        await s.client.query(
+          `SELECT q.profile_id,q.status,k.title,q.completed_on::text AS completed_on,(q.decided_at AT TIME ZONE 'Europe/Brussels')::date::text AS decided_on,q.valid_until::text AS valid_until
+             FROM training_request q JOIN training_course k ON k.id=q.course_id
+            WHERE q.organization_id=$1 AND q.profile_id=ANY($2::uuid[]) AND q.status IN ('approved','requested')`,
+          [s.context.organization_id, coachIds],
+        )
+      ).rows as { profile_id: string; status: string; title: string; completed_on: string | null; decided_on: string | null; valid_until: string | null }[])
+    : [];
   const profiles = matching.map((profile) => {
     const detail = v.details.has(profile.id);
     const canEdit =
@@ -523,6 +536,12 @@ async function readPeople(s: Scope, filters: Filters) {
       departure_status: profile.departure_status,
       departure_note: detail ? profile.departure_note : "",
       situation: situations.get(profile.id) ?? null,
+      training: profile.directory_roles.includes("coach")
+        ? trainingState(
+            courses.filter((x) => x.profile_id === profile.id),
+            today(),
+          )
+        : null,
     };
   });
   const teamIds = new Set(

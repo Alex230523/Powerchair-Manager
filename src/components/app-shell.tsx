@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { FirstSteps } from "./first-steps";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
@@ -638,6 +639,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           {children}
           <ToastHost locale={locale} />
         </div>
+        {signedIn && <FirstSteps locale={locale} role={role} />}
         {bottom.length > 0 && (
           <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
             {bottom.map((i) => {

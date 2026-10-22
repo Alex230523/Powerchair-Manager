@@ -34,6 +34,7 @@ type Copy = {
   coach: string;
   course: string;
   requestedBy: string;
+  proof: string;
   statuses: Record<string, string>;
   completedOn: string;
   decisionNote: string;
@@ -82,6 +83,7 @@ export const coursesCopy: Record<Locale, Copy> = {
     coach: "Coach",
     course: "Formation",
     requestedBy: "Demandé par",
+    proof: "Justificatif : {name}",
     statuses: {
       requested: "En attente",
       approved: "Validée",
@@ -137,6 +139,7 @@ export const coursesCopy: Record<Locale, Copy> = {
     coach: "Coach",
     course: "Opleiding",
     requestedBy: "Aangevraagd door",
+    proof: "Bewijsstuk: {name}",
     statuses: {
       requested: "In behandeling",
       approved: "Gevalideerd",
@@ -191,6 +194,7 @@ export const coursesCopy: Record<Locale, Copy> = {
     coach: "Coach",
     course: "Course",
     requestedBy: "Requested by",
+    proof: "Proof: {name}",
     statuses: {
       requested: "Pending",
       approved: "Approved",

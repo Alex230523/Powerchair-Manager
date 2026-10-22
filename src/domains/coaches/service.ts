@@ -17,6 +17,8 @@ import {
 } from "../people/service";
 import { ageOn } from "../people/schema";
 import { teamResults } from "../competitions/service";
+import { ensureStorage } from "../storage/service";
+import { proofMaxBytes, proofType, safeName } from "../licences/schema";
 import {
   clubCommand,
   federationCommand,
@@ -27,6 +29,14 @@ import {
   type CoachAttendanceRow,
 } from "./schema";
 export { clubCommand, federationCommand };
+
+/** The club file of the signed-in account in this club, if any. */
+async function ownProfile(c: PoolClient, org: string, userId: string) {
+  return (
+    (await c.query("SELECT cp.id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE cp.organization_id=$1 AND pe.user_id=$2 LIMIT 1", [org, userId])).rows[0]
+      ?.id as string | undefined
+  );
+}
 
 const coachRoles = ["coach", "assistant"];
 const statusText: Record<string, Record<"fr" | "nl" | "en", string>> = {
@@ -161,12 +171,15 @@ export async function coachProfileView(db: Pool, p: Principal, id: string) {
       (r) => v.full || (r.team_id && v.visibleTeams.has(r.team_id)),
     ) as CoachAttendanceRow[];
     const mfa = mfaSatisfied(!!s.user.twoFactorEnabled);
-    const canRequest = mfa && s.rights.includes("mandates.manage");
+    const self = v.own?.id === id;
+    const canRequest = mfa && (s.rights.includes("mandates.manage") || self);
+    // Wave 17 (O1): the licence and the « À faire » tab, for the coach and those who plan.
+    const planner = mfa && (s.context.role === "club_president" || s.rights.includes("calendar.manage") || s.rights.includes("teams.manage"));
     const formations =
       details || canRequest
         ? (
             await c.query(
-              `SELECT q.id,q.status,q.note,q.requested_at,q.decided_at,q.decision_note,q.completed_on::text,q.valid_until::text,
+              `SELECT q.id,q.status,q.note,q.requested_at,q.decided_at,q.decision_note,q.completed_on::text,q.valid_until::text,q.proof_filename,
                       k.title,k.level,k.hours::float AS hours,f.name AS federation
                  FROM training_request q JOIN training_course k ON k.id=q.course_id JOIN organization f ON f.id=k.federation_id
                 WHERE q.organization_id=$1 AND q.profile_id=$2 ORDER BY q.requested_at DESC`,
@@ -217,7 +230,7 @@ export async function coachProfileView(db: Pool, p: Principal, id: string) {
       formations,
       courses,
       federation: affiliation?.name ?? null,
-      can: { request: canRequest },
+      can: { request: canRequest, licence: self || planner, tasks: self || planner, self },
     };
   });
 }
@@ -227,6 +240,7 @@ export async function coachExecute(
   p: Principal,
   command: ClubCommand,
   expected: string,
+  proof: { name: string; bytes: Uint8Array } | null = null,
 ) {
   return peopleScope(db, p, true, async (s) => {
     const c = s.client,
@@ -234,7 +248,15 @@ export async function coachExecute(
     if (expected !== org) throw new AccessError("CONTEXT_CHANGED", 409);
     if (!mfaSatisfied(!!s.user.twoFactorEnabled))
       throw new AccessError("MFA_REQUIRED");
-    if (!s.rights.includes("mandates.manage"))
+    // Wave 17 (O1): a coach may also ask for their own course to be validated.
+    const self = await ownProfile(c, org, p.userId);
+    const subject =
+      command.action === "requestCourse"
+        ? command.profileId
+        : ((
+            await c.query("SELECT profile_id FROM training_request WHERE id=$1 AND organization_id=$2", [command.id, org])
+          ).rows[0]?.profile_id as string | undefined);
+    if (!s.rights.includes("mandates.manage") && !(subject && subject === self))
       throw new AccessError("FORBIDDEN");
     let target: string;
     if (command.action === "requestCourse") {
@@ -255,10 +277,18 @@ export async function coachExecute(
         [command.profileId, command.courseId],
       );
       if (open.rowCount) throw new AccessError("DUPLICATE", 409);
+      // The certificate, when given: a PDF or a photo, counted in the club's storage.
+      let proofFile: { name: string; type: string; bytes: Uint8Array } | null = null;
+      if (proof) {
+        const type = proofType(proof.bytes);
+        if (!type || proof.bytes.length > proofMaxBytes) throw new AccessError("INVALID_FILE", 400);
+        await ensureStorage(c, org, proof.bytes.length);
+        proofFile = { name: safeName(proof.name, "attestation"), type, bytes: proof.bytes };
+      }
       target = (
         await c.query(
-          "INSERT INTO training_request(organization_id,profile_id,course_id,note,requested_by) VALUES($1,$2,$3,$4,$5) RETURNING id",
-          [org, command.profileId, command.courseId, command.note, p.userId],
+          "INSERT INTO training_request(organization_id,profile_id,course_id,note,requested_by,proof_filename,proof_media_type,proof_content) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+          [org, command.profileId, command.courseId, command.note, p.userId, proofFile?.name ?? null, proofFile?.type ?? null, proofFile ? Buffer.from(proofFile.bytes) : null],
         )
       ).rows[0].id;
       const person = (
@@ -347,7 +377,7 @@ export async function coursesView(db: Pool, p: Principal) {
     // Only what the decision needs: the coach's name and club, never contacts.
     const requests = (
       await c.query(
-        `SELECT q.id,q.status,q.note,q.requested_at,q.decided_at,q.decision_note,q.completed_on::text,q.valid_until::text,
+        `SELECT q.id,q.status,q.note,q.requested_at,q.decided_at,q.decision_note,q.completed_on::text,q.valid_until::text,q.proof_filename,
                 k.title AS course,o.name AS club,cp.full_name AS coach,u.name AS requested_by
            FROM training_request q JOIN training_course k ON k.id=q.course_id JOIN organization o ON o.id=q.organization_id
            JOIN club_person cp ON cp.id=q.profile_id JOIN "user" u ON u.id=q.requested_by
@@ -478,4 +508,18 @@ export async function coursesExecute(
     },
     expected,
   );
+}
+
+/** Federation side: the certificate sent with a request, sandboxed by the route. */
+export async function requestProof(db: Pool, p: Principal, id: string) {
+  return federation(db, p, false, async (c, fed) => {
+    const f = (
+      await c.query(
+        "SELECT q.proof_filename AS filename,q.proof_media_type AS media_type,q.proof_content AS content FROM training_request q JOIN training_course k ON k.id=q.course_id WHERE q.id=$1 AND k.federation_id=$2 AND q.proof_content IS NOT NULL",
+        [id, fed],
+      )
+    ).rows[0] as { filename: string; media_type: string; content: Buffer } | undefined;
+    if (!f) throw new AccessError("NOT_FOUND", 404);
+    return f;
+  });
 }

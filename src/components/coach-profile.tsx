@@ -10,7 +10,10 @@ import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { initials } from "./app-shell";
 import { Card, Stat } from "./player-profile";
-import { Badge, EmptyState } from "./ui";
+import { Badge, EmptyState, Tabs } from "./ui";
+import { DriverLicence } from "./driver-licence";
+import { Tasks } from "./tasks";
+import { coachSpaceCopy } from "./coach-space-copy";
 
 type View = Awaited<ReturnType<typeof coachProfileView>>;
 const record = {
@@ -39,7 +42,9 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [tab, setTab] = useState<"profile" | "todo">("profile");
+  const space = coachSpaceCopy[locale];
   const failure = useCallback(
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
     [t, locale],
@@ -89,18 +94,20 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
     };
   }, [id, failure]);
 
-  async function send(body: Record<string, unknown>, done: string) {
+  async function send(body: Record<string, unknown> | FormData, done: string) {
     setBusy(true);
     setError("");
     setMessage("");
     try {
+      if (body instanceof FormData) body.set("organizationId", view?.organization_id ?? "");
       const r = await fetch("/api/coach-profile", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...body,
-          organizationId: view?.organization_id,
-        }),
+        ...(body instanceof FormData
+          ? { body }
+          : {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...body, organizationId: view?.organization_id }),
+            }),
       });
       const v = await r.json();
       if (!r.ok) throw new Error(v.error);
@@ -115,15 +122,15 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
   function request(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    void send(
-      {
-        action: "requestCourse",
-        profileId: id,
-        courseId: f.get("course"),
-        note: f.get("note") ?? "",
-      },
-      t.requested,
-    );
+    // Wave 17 (O1): sent with its certificate, when one is chosen.
+    const body = new FormData();
+    body.set("action", "requestCourse");
+    body.set("profileId", id);
+    body.set("courseId", String(f.get("course") ?? ""));
+    body.set("note", String(f.get("note") ?? ""));
+    const file = f.get("file");
+    if (file instanceof File && file.size > 0) body.set("file", file);
+    void send(body, t.requested);
     e.currentTarget.reset();
   }
 
@@ -174,7 +181,25 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <div className="profile-grid">
+      {view.can.tasks && (
+        <Tabs
+          label={space.tabs}
+          items={[
+            { id: "profile", label: space.profile },
+            { id: "todo", label: space.todo },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as "profile" | "todo")}
+          idPrefix={`coach-tab-${id}`}
+          panelId={(v) => `coach-panel-${id}-${v}`}
+        />
+      )}
+      {view.can.tasks && tab === "todo" ? (
+        <div role="tabpanel" id={`coach-panel-${id}-todo`} aria-labelledby={`coach-tab-${id}-todo`}>
+          <Tasks locale={locale} embedded responsibleId={view.can.self ? undefined : id} />
+        </div>
+      ) : (
+      <div className="profile-grid" {...(view.can.tasks ? { role: "tabpanel", id: `coach-panel-${id}-profile`, "aria-labelledby": `coach-tab-${id}-profile` } : {})}>
         <Card title={t.identity} icon="user">
           {view.details ? (
             <dl className="facts">
@@ -307,6 +332,9 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
                   {f.decision_note && (
                     <span className="muted"> · {f.decision_note}</span>
                   )}
+                  {f.proof_filename && (
+                    <span className="muted"> · {space.proofOf.replace("{name}", f.proof_filename)}</span>
+                  )}
                   {view.can.request && f.status === "requested" && (
                     <button
                       type="button"
@@ -355,6 +383,10 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
                   {t.note}
                   <textarea id="course-note" name="note" maxLength={1000} />
                 </label>
+                <label htmlFor="course-proof">
+                  {space.proof}
+                  <input id="course-proof" name="file" type="file" accept="application/pdf,image/png,image/jpeg" />
+                </label>
                 <button className="button" disabled={busy}>
                   {t.request}
                 </button>
@@ -365,7 +397,9 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
               </p>
             ))}
         </Card>
+        {view.can.licence && <DriverLicence locale={locale} profileId={id} />}
       </div>
+      )}
     </Root>
   );
 }

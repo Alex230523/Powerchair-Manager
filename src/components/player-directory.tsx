@@ -18,6 +18,35 @@ import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { setupCopy } from "./setup-copy";
 import { InviteFields, isMinor } from "./invite-fields";
+import { coachSpaceCopy } from "./coach-space-copy";
+import type { TrainingState } from "@/domains/licences/schema";
+
+/** Wave 17 (O1): « Formé » (course and date in the tooltip), « En attente de validation » or « Non formé ». */
+function TrainingBadge({ locale, state }: { locale: Locale; state: TrainingState | null | undefined }) {
+  const t = coachSpaceCopy[locale];
+  if (state?.status === "trained") {
+    const date = state.on
+      ? new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(state.on + "T12:00:00Z"))
+      : "";
+    const tip = t.trainedTip.replace("{title}", state.title).replace("{date}", date);
+    return (
+      <span className="training-badge" title={tip}>
+        <Badge tone="success">{t.trained}</Badge>
+        <span className="sr-only"> · {tip}</span>
+      </span>
+    );
+  }
+  if (state?.status === "pending") {
+    const tip = t.pendingTip.replace("{title}", state.title);
+    return (
+      <span className="training-badge" title={tip}>
+        <Badge tone="warning">{t.pending}</Badge>
+        <span className="sr-only"> · {tip}</span>
+      </span>
+    );
+  }
+  return <Badge tone="neutral">{t.untrained}</Badge>;
+}
 const copy = {
   fr: {
     players: "Joueurs",
@@ -329,6 +358,7 @@ export function PlayerDirectory({
     }
   }
   const sc = sheetCopy[locale];
+  const space = coachSpaceCopy[locale];
   const situationText = (r: Profile) => {
     const x = r.situation;
     if (!x) return "—";
@@ -534,6 +564,16 @@ export function PlayerDirectory({
                 ? [
                     { key: "position", header: t.position, sort: positionOf, cell: (r: Profile) => positionOf(r) || "—" },
                     { key: "number", header: t.number, sort: (r: Profile) => r.jersey_number, cell: (r: Profile) => r.jersey_number ?? "—" },
+                  ]
+                : []),
+              ...(role === "coach" && !former
+                ? [
+                    {
+                      key: "training",
+                      header: space.training,
+                      sort: (r: Profile) => (r.training?.status === "trained" ? 0 : r.training?.status === "pending" ? 1 : 2),
+                      cell: (r: Profile) => <TrainingBadge locale={locale} state={r.training} />,
+                    },
                   ]
                 : []),
               { key: "age", header: p.age, sort: ageOf, cell: (r) => ageOf(r) ?? "—" },

@@ -136,6 +136,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
+                // Wave 17 (O1): the club's tasks, by type.
+                ...item("/tasks", "tasks", "clipboardList"),
               ],
             },
             {
@@ -188,6 +190,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
+                  // Wave 17 (O1): one's tasks (all of them for those who plan).
+                  ...item("/tasks", "tasks", "clipboardList", role === "coach" || has("calendar.manage", "teams.manage", "dues.read", "dues.manage")),
                 ],
               },
               {

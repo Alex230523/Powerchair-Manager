@@ -312,6 +312,13 @@ export function Courses({ locale }: { locale: Locale }) {
                       {t.statuses[q.status] ?? q.status}
                     </Badge>
                     {q.note && <p className="message-text">{q.note}</p>}
+                    {q.proof_filename && (
+                      <p>
+                        <a href={`/api/courses/proof?id=${q.id}`} target="_blank" rel="noreferrer">
+                          {t.proof.replace("{name}", q.proof_filename)}
+                        </a>
+                      </p>
+                    )}
                     {q.status === "approved" && q.completed_on && (
                       <p className="muted">
                         {day(q.completed_on)}

@@ -8911,3 +8911,77 @@ details.event-section > summary {
   font-weight: 400;
   font-size: var(--text-xs);
 }
+
+/* Wave 17 (O1): tasks by type, the coach's licence, the first-connection tour. */
+.task-group {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-4);
+}
+.task-group > h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+ul.task-page li {
+  position: relative;
+  padding-inline-end: calc(var(--space-3) + 2.25rem);
+}
+.task-page .task-remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}
+.task-detail {
+  margin: 0;
+  color: var(--muted);
+}
+.licence-form .check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.licence-state {
+  margin: var(--space-2) 0;
+}
+.training-badge {
+  display: inline-flex;
+}
+.first-steps {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + var(--bottom-nav-space, 0px));
+  z-index: 40;
+  width: min(380px, calc(100vw - 2 * var(--space-4)));
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+}
+.first-steps:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.first-steps h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.first-steps p {
+  margin: 0;
+}
+.first-steps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+[data-tour-target] {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}

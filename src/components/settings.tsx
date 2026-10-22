@@ -1,4 +1,7 @@
 "use client";
+import { TutorialSettings } from "./first-steps";
+import { tutorialAudience } from "@/domains/tutorial/schema";
+import { TaskTemplates } from "./tasks";
 import { Reminders } from "./reminders";
 import { DurationField, readDuration } from "./duration-field";
 import { durationText } from "./duration-copy";
@@ -362,6 +365,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
         <div className="settings-content" onChange={markDirty} onInput={markDirty} onClickCapture={markClean} onSubmitCapture={markClean}>
           {!shown && <EmptyState icon="lock" title={h.notAvailable} action={<Link href={`/${locale}/settings`}>{h.back}</Link>} />}
           {shown && category === "account" && <AccountPanels locale={locale} />}
+          {/* Wave 17 (O1): the first-connection tour, started again on demand. */}
+          {shown && category === "account" && tutorialAudience(ws?.selected?.role) && <TutorialSettings locale={locale} />}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
           {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}
@@ -577,6 +582,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           )}
           {shown && category === "activities" && gov?.can.presence && <TeamPlacesSettings locale={locale} />}
           {shown && category === "activities" && <EventTypesSettings locale={locale} />}
+          {/* Wave 17 (O1): the task templates (transport, training…), for those who plan. */}
+          {shown && category === "activities" && <TaskTemplates locale={locale} />}
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}

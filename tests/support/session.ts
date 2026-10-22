@@ -9,7 +9,10 @@ import { createAuth } from "../../src/lib/auth";
  * in like anybody.
  */
 export async function createAccount(db: Pool, name: string, email: string, password: string) {
-  return (await createAuth(db).api.signUpEmail({ body: { name, email, password } })).user;
+  const user = (await createAuth(db).api.signUpEmail({ body: { name, email, password } })).user;
+  // The first-connection tour (wave 17, O1) is tested in coaches.spec; elsewhere it stays out of the way.
+  await db.query("INSERT INTO user_tutorial(user_id,audience,tutorial_seen_at) SELECT $1,a,now() FROM unnest(ARRAY['coach','player','parent']) a ON CONFLICT DO NOTHING", [user.id]);
+  return user;
 }
 
 const labels = {

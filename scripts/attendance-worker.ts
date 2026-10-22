@@ -4,6 +4,7 @@ import { eventMailTick } from "../src/domains/communication/service";
 import { duesReminderTick } from "../src/domains/reminders/service";
 import { fundingTaskTick } from "../src/domains/funding/service";
 import { affiliationTick } from "../src/domains/affiliations/service";
+import { licenceReminderTick } from "../src/domains/licences/service";
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 console.log("Attendance worker ready");
 let stopping = false;
@@ -30,6 +31,9 @@ try {
       // Affiliation periods that open today, told once to the presidents (wave 17, N2).
       const affiliations = await affiliationTick(db);
       if (affiliations) console.log("Affiliation renewals sent:", affiliations);
+      // Driving licences that expire within 30 days, told once to their holder (wave 17, O1).
+      const licences = await licenceReminderTick(db);
+      if (licences) console.log("Licence reminders sent:", licences);
     } catch (e) {
       console.error(
         "Attendance worker:",
