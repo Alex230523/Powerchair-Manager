@@ -1363,8 +1363,6 @@
 "components/registrations-copy.ts";"registrationExtras.guestSend";"Recevoir mon lien";"Mijn link ontvangen";"Send me my link";"ok";""
 "components/registrations-copy.ts";"registrationExtras.guestSent";"Si l'adresse est valide, un lien vient d'y être envoyé. Pensez à vérifier les indésirables.";"Als het adres geldig is, werd er net een link naartoe gestuurd. Kijk ook bij ongewenste berichten.";"If the address is valid, a link has just been sent to it. Check your spam folder too.";"ok";""
 "components/registrations-copy.ts";"registrationExtras.haveAccount";"J'ai déjà un compte : me connecter";"Ik heb al een account: aanmelden";"I already have an account: sign in";"ok";""
-"components/registrations-copy.ts";"registrationExtras.tigerstorm";"Partir du modèle Tigerstorm";"Starten van het Tigerstorm-model";"Start from the Tigerstorm template";"ok";""
-"components/registrations-copy.ts";"registrationExtras.tigerstormHint";"Modèle inspiré du formulaire d'inscription de Tigerstorm : adaptez les textes, l'horaire et le tarif avant de publier.";"Model gebaseerd op het inschrijvingsformulier van Tigerstorm: pas teksten, uurrooster en tarief aan voor publicatie.";"Template based on Tigerstorm's registration form: adjust wording, schedule and fee before publishing.";"ok";""
 "components/registrations-copy.ts";"registrationExtras.share";"Aperçu et intégration";"Voorbeeld en integratie";"Preview and embed";"ok";""
 "components/registrations-copy.ts";"registrationExtras.shareTitle";"Formulaire";"Formulier";"Form";"ok";""
 "components/registrations-copy.ts";"registrationExtras.publicLink";"Lien public";"Openbare link";"Public link";"ok";""

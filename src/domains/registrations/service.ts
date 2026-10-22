@@ -28,6 +28,9 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { fillDues, seasonFeeSql } from "./templates";
 import { permissions } from "../access/policy";
 import { inviteProfile } from "../access/invite";
+import { formOpenSql } from "./open";
+import { offerUndo, undoSeconds } from "../undo/service";
+import type { DecisionUndo } from "./undo";
 
 /** Confidential answers are sealed with the application id as associated data. */
 const secretAad = (applicationId: string) => "registration:" + applicationId;
@@ -148,11 +151,24 @@ const formSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().max(2000),
   fields: fieldsSchema,
-  published: z.boolean(),
+  /** Left out by the editor: opening to the public is done from « Partager ». */
+  published: z.boolean().optional(),
   capacity: z.number().int().min(1).max(10000).nullable(),
 });
 export const commandSchema = z.discriminatedUnion("action", [
   formSchema,
+  /** Wave 17 (F1): open to the public, with optional opening and closing dates. */
+  z.object({
+    action: z.literal("publish"),
+    id,
+    published: z.boolean(),
+    opensOn: z.iso.date().nullable().default(null),
+    closesOn: z.iso.date().nullable().default(null),
+  }),
+  z.object({ action: z.literal("archive"), id, archived: z.boolean() }),
+  /** Saves a form of the club as a template of the club. */
+  z.object({ action: z.literal("saveTemplate"), formId: id, name: z.string().trim().min(2).max(120) }),
+  z.object({ action: z.literal("deleteTemplate"), id }),
   z.object({
     action: z.literal("draft"),
     ...applicationSchema.shape,
@@ -307,7 +323,7 @@ export async function publicForm(db: Pool, formId: string) {
   id.parse(formId);
   const row = (
     await db.query(
-      "SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,f.organization_id,f.season_id,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND f.published AND NOT s.archived",
+      `SELECT f.id,f.title,f.description,f.fields,f.version,f.capacity,f.organization_id,f.season_id,o.name AS organization_name,s.name AS season_name,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM registration_form f JOIN organization o ON o.id=f.organization_id JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE f.id=$1 AND ${formOpenSql("f")} AND NOT s.archived`,
       [formId],
     )
   ).rows[0];
@@ -374,9 +390,20 @@ export async function registrationView(
       );
     return {
       context,
+      // Wave 17 (F1): the list of forms, with the applications received and whether the public can apply today.
       forms: (
         await c.query(
-          "SELECT * FROM registration_form WHERE organization_id=$1 ORDER BY updated_at DESC",
+          `SELECT f.*,f.opens_on::text AS opens_on,f.closes_on::text AS closes_on,s.name AS season_name,
+                  (SELECT count(*)::int FROM registration_application a WHERE a.form_id=f.id AND a.organization_id=f.organization_id AND a.submitted_at IS NOT NULL) AS applications,
+                  ${formOpenSql("f")} AND NOT s.archived AS open
+             FROM registration_form f JOIN season s ON s.id=f.season_id AND s.organization_id=f.organization_id
+            WHERE f.organization_id=$1 ORDER BY f.archived,f.updated_at DESC`,
+          [org],
+        )
+      ).rows,
+      templates: (
+        await c.query(
+          "SELECT id,name,description,fields,capacity,created_at FROM registration_template WHERE organization_id=$1 ORDER BY name",
           [org],
         )
       ).rows,
@@ -460,7 +487,7 @@ export async function registrationExecute(
 ) {
   return tx(db, async (c) => {
     await identity(c, p);
-    const adminMode = ["form", "decision", "note"].includes(input.action);
+    const adminMode = ["form", "publish", "archive", "saveTemplate", "deleteTemplate", "decision", "note"].includes(input.action);
     const context = adminMode ? await manager(c, p, expectedOrg) : null;
     if (input.action === "form") {
       const season = (
@@ -484,13 +511,13 @@ export async function registrationExecute(
         if (existing.season_id !== input.seasonId)
           throw new AccessError("SEASON_IMMUTABLE", 409);
         await c.query(
-          "UPDATE registration_form SET title=$2,description=$3,fields=$4,published=$5,capacity=$6,version=version+1,updated_at=now() WHERE id=$1",
+          "UPDATE registration_form SET title=$2,description=$3,fields=$4,published=COALESCE($5,published),capacity=$6,version=version+1,updated_at=now() WHERE id=$1",
           [
             formId,
             input.title,
             input.description,
             JSON.stringify(input.fields),
-            input.published,
+            input.published ?? null,
             input.capacity,
           ],
         );
@@ -504,7 +531,7 @@ export async function registrationExecute(
               input.title,
               input.description,
               JSON.stringify(input.fields),
-              input.published,
+              input.published ?? false,
               input.capacity,
             ],
           )
@@ -517,6 +544,39 @@ export async function registrationExecute(
         formId!,
       );
       return { id: formId };
+    }
+    if (input.action === "publish" || input.action === "archive") {
+      const org = context!.organization_id;
+      if (input.action === "publish" && input.opensOn && input.closesOn && input.closesOn < input.opensOn) throw new AccessError("INVALID_DATES", 400);
+      const done =
+        input.action === "publish"
+          ? await c.query(
+              "UPDATE registration_form SET published=$3,opens_on=$4,closes_on=$5,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 AND NOT archived",
+              [input.id, org, input.published, input.opensOn, input.closesOn],
+            )
+          : await c.query("UPDATE registration_form SET archived=$3,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2", [input.id, org, input.archived]);
+      if (!done.rowCount) throw new AccessError("NOT_FOUND", 404);
+      await audit(c, org, p.userId, "registration.form." + (input.action === "publish" ? (input.published ? "open" : "close") : input.archived ? "archive" : "restore"), input.id);
+      return { id: input.id };
+    }
+    if (input.action === "saveTemplate") {
+      const org = context!.organization_id;
+      const f = (await c.query("SELECT description,fields,capacity FROM registration_form WHERE id=$1 AND organization_id=$2", [input.formId, org])).rows[0];
+      if (!f) throw new AccessError("NOT_FOUND", 404);
+      const id = (
+        await c.query(
+          "INSERT INTO registration_template(organization_id,name,description,fields,capacity,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING id",
+          [org, input.name, f.description, JSON.stringify(f.fields), f.capacity, p.userId],
+        )
+      ).rows[0].id as string;
+      await audit(c, org, p.userId, "registration.template", id);
+      return { id };
+    }
+    if (input.action === "deleteTemplate") {
+      const org = context!.organization_id;
+      if (!(await c.query("DELETE FROM registration_template WHERE id=$1 AND organization_id=$2", [input.id, org])).rowCount) throw new AccessError("NOT_FOUND", 404);
+      await audit(c, org, p.userId, "registration.template.delete", input.id);
+      return { id: input.id };
     }
     if (input.action === "draft") {
       if (input.website) throw new AccessError("INVALID_INPUT", 400);
@@ -532,7 +592,7 @@ export async function registrationExecute(
       if (rate.count > 20) throw new AccessError("RATE_LIMITED", 429);
       const f = (
         await c.query(
-          "SELECT f.* FROM registration_form f JOIN season s ON s.id=f.season_id WHERE f.id=$1 AND f.published AND NOT s.archived FOR SHARE OF f",
+          `SELECT f.* FROM registration_form f JOIN season s ON s.id=f.season_id WHERE f.id=$1 AND ${formOpenSql("f")} AND NOT s.archived FOR SHARE OF f`,
           [input.formId],
         )
       ).rows[0];
@@ -661,16 +721,33 @@ export async function registrationExecute(
       return { id: a.id };
     }
     let status: Status;
+    // Wave 17 (F1): what a decision changes, for « Annuler ».
+    const undo: DecisionUndo | null =
+      input.action === "decision"
+        ? {
+            status: input.status,
+            before: { status: a.status, decided_at: a.decided_at, decided_by: a.decided_by, profile_id: a.profile_id },
+            profile: null,
+            membership: null,
+            sport: null,
+            support: null,
+            followups: [],
+            invitations: [],
+            parent: null,
+            mails: [],
+            notifications: [],
+          }
+        : null;
     if (input.action === "submit") {
       if (!["draft", "incomplete"].includes(a.status))
         throw new AccessError("INVALID_TRANSITION", 409);
       const open = (
         await c.query(
-          "SELECT f.published,s.archived FROM registration_form f JOIN season s ON s.id=f.season_id WHERE f.id=$1",
+          `SELECT ${formOpenSql("f")} AS open,s.archived FROM registration_form f JOIN season s ON s.id=f.season_id WHERE f.id=$1`,
           [a.form_id],
         )
       ).rows[0];
-      if (!open?.published || open.archived)
+      if (!open?.open || open.archived)
         throw new AccessError("FORM_CLOSED", 409);
       const files = (
         await c.query(
@@ -708,13 +785,12 @@ export async function registrationExecute(
         throw new AccessError("INVALID_TRANSITION", 409);
       status = "withdrawn";
     } else {
-      if (!["submitted", "incomplete", "review", "waiting"].includes(a.status))
+      // A refusal can be reconsidered later from the application's sheet.
+      if (!["submitted", "incomplete", "review", "waiting", "refused"].includes(a.status) || a.status === input.status)
         throw new AccessError("INVALID_TRANSITION", 409);
       status = input.status;
-      if (
-        ["incomplete", "refused"].includes(status) &&
-        input.message.length < 5
-      )
+      // Asking for a complement needs to say what is missing; the reason of a refusal is optional.
+      if (status === "incomplete" && input.message.length < 5)
         throw new AccessError("MESSAGE_REQUIRED", 400);
       if (status === "accepted") {
         const f = (
@@ -748,6 +824,7 @@ export async function registrationExecute(
           profileId = prior.profile_id;
         }
         let selfPerson: string | undefined;
+        let createdPerson: string | null = null;
         if (a.subject_kind === "self") {
           selfPerson = (
             await c.query("SELECT id FROM person WHERE user_id=$1", [
@@ -795,16 +872,21 @@ export async function registrationExecute(
             throw new AccessError("CONFIRM_IDENTITY", 409);
         } else if (matches.length) throw new AccessError("MATCH_EXISTING", 409);
         else {
-          const identity =
-            selfPerson ??
-            (await c.query("INSERT INTO person DEFAULT VALUES RETURNING id"))
-              .rows[0].id;
+          if (!selfPerson) createdPerson = (await c.query("INSERT INTO person DEFAULT VALUES RETURNING id")).rows[0].id;
+          const identity = selfPerson ?? createdPerson;
           profileId = (
             await c.query(
               "INSERT INTO club_person(organization_id,person_id,full_name,birth_date) VALUES($1,$2,$3,$4) RETURNING id",
               [org, identity, a.subject_name, a.birth_date],
             )
           ).rows[0].id;
+          undo!.profile = { id: profileId!, created: true, person: createdPerson, snapshot: null };
+        }
+        if (!undo!.profile) {
+          const before = (
+            await c.query("SELECT status,directory_roles,former_roles,email,phone,jersey_number FROM club_person WHERE id=$1 AND organization_id=$2", [profileId, org])
+          ).rows[0];
+          undo!.profile = { id: profileId!, created: false, person: null, snapshot: before };
         }
         await c.query(
           "UPDATE club_person SET status='active',directory_roles=CASE WHEN 'player'=ANY(directory_roles) THEN directory_roles ELSE array_append(directory_roles,'player') END,former_roles=array_remove(former_roles,'player'),version=version+1,updated_at=now() WHERE id=$1",
@@ -828,15 +910,21 @@ export async function registrationExecute(
             ).rows[0].n as number;
             if (players >= team.capacity) throw new AccessError("TEAM_FULL", 409);
           }
-          await c.query(
-            "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'player',GREATEST((SELECT starts_on FROM season WHERE id=$4),LEAST(CURRENT_DATE,(SELECT ends_on FROM season WHERE id=$4)))) ON CONFLICT(team_id,profile_id,role) WHERE ends_on IS NULL DO NOTHING",
-            [org, team.id, profileId, a.season_id],
-          );
+          undo!.membership =
+            (
+              await c.query(
+                "INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'player',GREATEST((SELECT starts_on FROM season WHERE id=$4),LEAST(CURRENT_DATE,(SELECT ends_on FROM season WHERE id=$4)))) ON CONFLICT(team_id,profile_id,role) WHERE ends_on IS NULL DO NOTHING RETURNING id",
+                [org, team.id, profileId, a.season_id],
+              )
+            ).rows[0]?.id ?? null;
         }
         await c.query(
           "UPDATE registration_application SET profile_id=$2 WHERE id=$1",
           [a.id, profileId],
         );
+        const sportBefore = (await c.query("SELECT control,jersey_size,sport_notes FROM player_sport_profile WHERE profile_id=$1 AND organization_id=$2", [profileId, org])).rows[0] ?? null;
+        const supportBefore =
+          (await c.query("SELECT emergency_contact,confidential_ciphertext FROM player_support_profile WHERE profile_id=$1 AND organization_id=$2", [profileId, org])).rows[0] ?? null;
         await applyMappings(
           c,
           org,
@@ -845,16 +933,32 @@ export async function registrationExecute(
           allAnswers(a),
           p.userId,
         );
-        await c.query(
-          "INSERT INTO registration_followup(application_id,kind) VALUES($1,'documents'),($1,'dues') ON CONFLICT DO NOTHING",
-          [a.id],
-        );
-        await inviteApplicant(c, org, p.userId, permissions(context!.role, context!.grants).includes("invitations.create"), {
+        const sportNow = !!(await c.query("SELECT 1 FROM player_sport_profile WHERE profile_id=$1 AND organization_id=$2", [profileId, org])).rowCount;
+        const supportNow = !!(await c.query("SELECT 1 FROM player_support_profile WHERE profile_id=$1 AND organization_id=$2", [profileId, org])).rowCount;
+        undo!.sport = sportNow
+          ? {
+              created: !sportBefore,
+              before: sportBefore,
+              history: sportBefore
+                ? []
+                : (await c.query("SELECT id FROM classification_history WHERE profile_id=$1 AND organization_id=$2 AND valid_to IS NULL", [profileId, org])).rows.map((r) => r.id),
+            }
+          : null;
+        undo!.support = supportNow ? { created: !supportBefore, before: supportBefore } : null;
+        undo!.followups = (
+          await c.query(
+            "INSERT INTO registration_followup(application_id,kind) VALUES($1,'documents'),($1,'dues') ON CONFLICT DO NOTHING RETURNING kind",
+            [a.id],
+          )
+        ).rows.map((r) => r.kind);
+        const invited = await inviteApplicant(c, org, p.userId, permissions(context!.role, context!.grants).includes("invitations.create"), {
           applicant: a.applicant_user_id,
           self: a.subject_kind === "self",
           profileId: profileId!,
           teamId: input.teamId ?? null,
         });
+        undo!.invitations = invited.invitations;
+        undo!.parent = invited.parent;
       }
     }
     const updated = (
@@ -871,6 +975,17 @@ export async function registrationExecute(
       input.action === "decision" ? input.message : "",
     );
     if (updated.submitted_at) await notify(c, updated);
+    if (undo) {
+      // The email and the invitation leave once the undo window is over: an undone decision sends nothing.
+      undo.mails = (
+        await c.query(
+          "UPDATE mail_job SET available_at=now()+make_interval(secs => $2) WHERE organization_id=$1 AND created_at=now() AND state='pending' RETURNING id",
+          [org, undoSeconds],
+        )
+      ).rows.map((r) => r.id);
+      undo.notifications = (await c.query("SELECT id FROM app_notification WHERE organization_id=$1 AND created_at=now()", [org])).rows.map((r) => r.id);
+      return { id: a.id, undo: await offerUndo(c, org, p.userId, "registrationDecision", a.id, undo) };
+    }
     return { id: a.id };
   });
 }
@@ -886,22 +1001,24 @@ async function inviteApplicant(
   actor: string,
   allowed: boolean,
   i: { applicant: string; self: boolean; profileId: string; teamId: string | null },
-) {
-  if (!allowed) return;
-  if ((await c.query("SELECT 1 FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND revoked_at IS NULL", [org, i.applicant])).rowCount) return;
+): Promise<{ invitations: string[]; parent: string | null }> {
+  const none = { invitations: [], parent: null };
+  if (!allowed) return none;
+  if ((await c.query("SELECT 1 FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND revoked_at IS NULL", [org, i.applicant])).rowCount) return none;
   const who = (await c.query('SELECT u.email,u.name,p.id AS person FROM "user" u JOIN person p ON p.user_id=u.id WHERE u.id=$1', [i.applicant])).rows[0] as
     | { email: string; name: string; person: string }
     | undefined;
-  if (!who) return;
-  if ((await c.query("SELECT 1 FROM invitation WHERE organization_id=$1 AND lower(email)=lower($2) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>now()", [org, who.email])).rowCount) return;
+  if (!who) return none;
+  if ((await c.query("SELECT 1 FROM invitation WHERE organization_id=$1 AND lower(email)=lower($2) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>now()", [org, who.email])).rowCount) return none;
   const greeting = (who.name ?? "").trim().split(/\s+/)[0] ?? "";
   if (i.self) {
-    await inviteProfile(c, org, actor, { email: who.email, role: "player", profileId: i.profileId, teamId: i.teamId, greeting });
-    return;
+    const sent = await inviteProfile(c, org, actor, { email: who.email, role: "player", profileId: i.profileId, teamId: i.teamId, greeting });
+    return { invitations: [sent.id], parent: null };
   }
   // The parent's own file in this club, created if needed (no access until the invitation is accepted).
+  const existing = (await c.query("SELECT id FROM club_person WHERE organization_id=$1 AND person_id=$2", [org, who.person])).rows[0]?.id as string | undefined;
   const parent =
-    ((await c.query("SELECT id FROM club_person WHERE organization_id=$1 AND person_id=$2", [org, who.person])).rows[0]?.id as string | undefined) ??
+    existing ??
     ((
       await c.query("INSERT INTO club_person(organization_id,person_id,full_name,email) VALUES($1,$2,$3,lower($4)) RETURNING id", [
         org,
@@ -910,7 +1027,8 @@ async function inviteApplicant(
         who.email,
       ])
     ).rows[0].id as string);
-  await inviteProfile(c, org, actor, { email: who.email, role: "guardian", profileId: parent, teamId: i.teamId, guardianOf: i.profileId, greeting });
+  const sent = await inviteProfile(c, org, actor, { email: who.email, role: "guardian", profileId: parent, teamId: i.teamId, guardianOf: i.profileId, greeting });
+  return { invitations: [sent.id], parent: existing ? null : parent };
 }
 export async function attachmentUpload(
   db: Pool,

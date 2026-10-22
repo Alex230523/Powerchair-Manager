@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
+import { revertDecision, type DecisionUndo } from "../registrations/undo";
 import { isAdmin, permissions, type Permission } from "../access/policy";
 
 /**
@@ -11,7 +12,7 @@ import { isAdmin, permissions, type Permission } from "../access/policy";
  * server, with the rights of the action checked again, once, and leaves a
  * line in the audit log. Definitive deletions and sent emails offer none.
  */
-export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel"] as const;
+export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision"] as const;
 export type UndoKind = (typeof undoKinds)[number];
 /** Server window; the message on screen lasts 8 seconds (longer while hovered). */
 export const undoSeconds = 120;
@@ -26,6 +27,8 @@ type Payloads = {
   payment: { receivable: string | null; plan: string | null };
   /** Wave 16 (E1): the events a cancellation touched. */
   eventCancel: { ids: string[] };
+  /** Wave 17 (F1): everything a decision on an application changed. */
+  registrationDecision: DecisionUndo;
 };
 
 export async function offerUndo<K extends UndoKind>(c: PoolClient, org: string, userId: string, kind: K, target: string, payload: Payloads[K]) {
@@ -58,6 +61,8 @@ function allowed(kind: UndoKind, role: Parameters<typeof permissions>[0], grants
     case "eventCancel":
       // The coach who cancelled a team event may put it back too.
       return has("calendar.manage") || (mfa && role === "coach");
+    case "registrationDecision":
+      return has("registrations.manage");
   }
 }
 
@@ -102,6 +107,9 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
     if (!(await c.query(sql, values)).rowCount) throw new AccessError("NOT_FOUND", 404);
   };
   switch (kind) {
+    case "registrationDecision":
+      await revertDecision(c, org, userId, target, payload as Payloads["registrationDecision"]);
+      return;
     case "teamArchive":
     case "seasonArchive": {
       const p = payload as Payloads["teamArchive"];

@@ -24,7 +24,7 @@ import {
   builtin,
   validateTemplate,
 } from "../src/domains/notifications/templates";
-import { tigerstormTemplate } from "../src/domains/registrations/templates";
+import { platformTemplate } from "../src/domains/registrations/templates";
 import { importLimit, peopleCommand } from "../src/domains/people/schema";
 import { delegable } from "../src/domains/access/policy";
 import {
@@ -167,14 +167,22 @@ describe("coach education and attendance", () => {
 });
 
 describe("registration template", () => {
+  it.each(["player", "renewal", "camp"] as const)("platform template %s is valid and neutral in the three languages", (id) => {
+    for (const lang of ["fr", "nl", "en"] as const) {
+      const t = platformTemplate(id, lang);
+      expect(fieldsSchema.safeParse(t.fields).success).toBe(true);
+      expect(t.fields.length).toBeLessThanOrEqual(20);
+      // Wave 17 (F1): no club name, no account number in a product sold to every club.
+      expect(JSON.stringify(t)).not.toMatch(/tigerstorm|BE\d{2} ?\d{4}/i);
+    }
+  });
   it.each(["fr", "nl", "en"] as const)("is a valid form in %s", (lang) => {
-    const t = tigerstormTemplate(lang);
+    const t = platformTemplate("player", lang);
     expect(fieldsSchema.safeParse(t.fields).success).toBe(true);
     expect(t.fields.length).toBeLessThanOrEqual(20);
     // The amount comes from the season's dues plan (wave 10), never from the text.
     expect(t.description).toMatch(/\{cotisation\}/);
     expect(JSON.stringify(t.fields)).not.toMatch(/250/);
-    expect(t.description).toMatch(/BE41 3632 6208 1310/);
     const confidential = t.fields
       .filter((f) => f.confidential)
       .map((f) => f.key);
@@ -191,7 +199,7 @@ describe("registration template", () => {
 });
 
 describe("registration answers", () => {
-  const fields = fieldsSchema.parse(tigerstormTemplate("fr").fields);
+  const fields = fieldsSchema.parse(platformTemplate("player", "fr").fields);
   const base = {
     address: "Rue 1",
     postal_code: "1030",

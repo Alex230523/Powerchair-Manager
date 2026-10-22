@@ -347,17 +347,15 @@ it("allows incomplete and resubmission while keeping internal notes private", as
   ).rows;
   expect(history.filter((r) => r.status === "submitted")).toHaveLength(2);
 });
-it("requires a reason for refusals and requested complements", async () => {
+it("requires what is missing for a complement, the reason of a refusal is optional", async () => {
   const app = await draft();
   await submit(app);
-  await expect(decide(app, "refused", { message: "" })).rejects.toMatchObject({
-    code: "MESSAGE_REQUIRED",
-  });
   await expect(
     decide(app, "incomplete", { message: "No" }),
   ).rejects.toMatchObject({ code: "MESSAGE_REQUIRED" });
-  await decide(app, "refused");
-  await expect(decide(app)).rejects.toMatchObject({
+  // Wave 17 (F1): refusing without a reason, then the same decision again is refused.
+  await decide(app, "refused", { message: "" });
+  await expect(decide(app, "refused", { message: "" })).rejects.toMatchObject({
     code: "INVALID_TRANSITION",
   });
 });
