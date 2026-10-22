@@ -10,6 +10,8 @@ export const categories = [
   "travel",
   "competition",
   "insurance",
+  /** Wave 17 (N2): federation and insurance affiliations. */
+  "affiliation",
   "other",
 ] as const;
 export const methods = ["transfer", "cash", "card", "other"] as const;

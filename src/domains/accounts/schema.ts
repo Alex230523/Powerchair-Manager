@@ -17,7 +17,7 @@ export const statuses = ["draft", "verified", "approved", "filed"] as const;
 export function defaultRubric(direction: "in" | "out", category: Category): Rubric {
   if (direction === "in")
     return ({ dues: "dues", donation: "gifts", sponsor: "gifts", subsidy: "subsidies", equipment: "goods_in", event: "other_in" } as Partial<Record<Category, Rubric>>)[category] ?? "other_in";
-  return ({ equipment: "goods_out", venue: "services", travel: "services", competition: "services", insurance: "services", event: "services" } as Partial<Record<Category, Rubric>>)[category] ?? "other_out";
+  return ({ equipment: "goods_out", venue: "services", travel: "services", competition: "services", insurance: "services", affiliation: "services", event: "services" } as Partial<Record<Category, Rubric>>)[category] ?? "other_out";
 }
 
 /** The financial year containing a day, for a start written "MM-DD": [from, to] inclusive. */

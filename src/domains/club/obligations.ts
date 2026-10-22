@@ -70,6 +70,7 @@ export async function obligationRows(c: PoolClient, org: string, y: number) {
                 CASE o.auto_source
                   WHEN 'accounts_approved' THEN (SELECT max(a.approved_on) FROM annual_accounts a WHERE a.organization_id=o.organization_id AND a.superseded_at IS NULL AND a.status IN ('approved','filed') AND extract(year FROM a.approved_on)=o.year)
                   WHEN 'accounts_filed' THEN (SELECT max(a.filed_on) FROM annual_accounts a WHERE a.organization_id=o.organization_id AND a.superseded_at IS NULL AND a.status='filed' AND extract(year FROM a.filed_on)=o.year)
+                  WHEN 'affiliation' THEN (SELECT d.paid_on FROM affiliation_due d WHERE d.id=o.affiliation_due_id AND d.organization_id=o.organization_id)
                 END)::text AS done_on,
               (o.done_on IS NULL AND o.auto_source<>'none') AS automatic
          FROM club_obligation o LEFT JOIN club_person cp ON cp.id=o.responsible_profile_id AND cp.organization_id=o.organization_id
@@ -89,7 +90,7 @@ export async function obligationRows(c: PoolClient, org: string, y: number) {
     proof_url: string;
     responsible_profile_id: string | null;
     responsible: string | null;
-    auto_source: "none" | "accounts_approved" | "accounts_filed";
+    auto_source: "none" | "accounts_approved" | "accounts_filed" | "affiliation";
     position: number;
     version: number;
     automatic: boolean;
@@ -177,7 +178,8 @@ export async function obligationsExecute(db: Pool, p: Principal, command: Obliga
         return { ok: true as const, added };
       }
       // « Préparer l'année suivante »: the yearly lines again, unticked, one year later.
-      const rows = (await obligationRows(s.c, s.org, command.year)).filter((r) => r.periodicity === "annual");
+      // Affiliation lines come back by themselves when the next period opens (wave 17, N2).
+      const rows = (await obligationRows(s.c, s.org, command.year)).filter((r) => r.periodicity === "annual" && r.auto_source !== "affiliation");
       let added = 0;
       for (const r of rows) {
         const exists = await s.c.query(
