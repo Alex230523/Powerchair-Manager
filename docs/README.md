@@ -96,6 +96,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [Vague 17, O1 : coachs, tâches, formation, permis et première connexion](evolutions/2026-10-22-g-vague-17-o1-coachs.md) |
 | 22/10/2026 | [Vague 17, J2 : présences, une séance à la fois](evolutions/2026-10-22-h-vague-17-j2-presences.md) |
 | 22/10/2026 | [Vague 17, C4 : lieux, catégories et partage validé](evolutions/2026-10-22-i-vague-17-c4-lieux.md) |
+| 22/10/2026 | [Vague 17, C5 : matchs, amicaux entre clubs et ligne complète](evolutions/2026-10-22-j-vague-17-c5-matchs.md) |
 
 ## Convention
 

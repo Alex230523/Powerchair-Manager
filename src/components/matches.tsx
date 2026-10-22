@@ -9,6 +9,8 @@ import {
   fromOurSide,
 } from "@/domains/competitions/schema";
 import { matchesCopy } from "./matches-copy";
+import { matchLineCopy } from "./match-line-copy";
+import { FriendlyDialog, Invitations, MatchLine, ScoreToConfirm, TournamentMatches } from "./match-line";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
 import { Badge, EmptyState, PageHeader } from "./ui";
@@ -21,6 +23,7 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 /** Club matches: fixtures, line-ups, results and player statistics. */
 export function Matches({ locale }: { locale: Locale }) {
   const t = matchesCopy[locale];
+  const lc = matchLineCopy[locale];
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -28,6 +31,7 @@ export function Matches({ locale }: { locale: Locale }) {
     [busy, setBusy] = useState(false),
     [show, setShow] = useState<"upcoming" | "played" | "all">("upcoming"),
     [editing, setEditing] = useState<Match | "new" | null>(null),
+    [friendly, setFriendly] = useState(false),
     [dialog, setDialog] = useState<{
       kind: "lineup" | "result";
       match: Match;
@@ -59,7 +63,7 @@ export function Matches({ locale }: { locale: Locale }) {
     };
   }, [failure]);
 
-  async function send(body: Record<string, unknown>) {
+  async function send(body: Record<string, unknown>, done?: string) {
     setBusy(true);
     setError("");
     setMessage("");
@@ -75,7 +79,7 @@ export function Matches({ locale }: { locale: Locale }) {
       const v = await r.json();
       if (!r.ok) throw new Error(v.error);
       await load();
-      setMessage(t.saved);
+      setMessage(done ?? (typeof v.tasks === "number" ? lc.organized.replace("{n}", String(v.tasks)) : t.saved));
       return true;
     } catch (e) {
       setError(failure(e instanceof Error ? e.message : ""));
@@ -152,6 +156,11 @@ export function Matches({ locale }: { locale: Locale }) {
     <main id="main" className="access matches">
       <PageHeader title={t.title} subtitle={t.intro} actions={manageable.length > 0 && (
           <div className="directory-actions">
+            {view.can.friendly && (
+              <button type="button" className="button secondary" onClick={() => setFriendly(true)}>
+                {lc.newFriendly}
+              </button>
+            )}
             <button
               type="button"
               className="button"
@@ -163,6 +172,7 @@ export function Matches({ locale }: { locale: Locale }) {
         )} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
+      <Invitations locale={locale} view={view} busy={busy} send={send} />
 
       {view.teams.length > 0 && (
         <ul className="team-cards">
@@ -256,6 +266,7 @@ export function Matches({ locale }: { locale: Locale }) {
                         · {m.home ? t.home : t.away}
                       </span>
                       {m.venue && <span className="muted"> · {m.venue}</span>}
+                      <MatchLine locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />
                     </td>
                     <td>
                       {t.kinds[m.kind]}
@@ -287,6 +298,7 @@ export function Matches({ locale }: { locale: Locale }) {
                           {t.statuses[m.status]}
                         </Badge>
                       )}
+                      <ScoreToConfirm locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />
                       {report && (
                         <details className="report-details">
                           <summary>
@@ -343,6 +355,8 @@ export function Matches({ locale }: { locale: Locale }) {
         <EmptyState title={t.empty} />
       )}
 
+      <TournamentMatches locale={locale} view={view} />
+      {friendly && <FriendlyDialog locale={locale} view={view} busy={busy} close={() => setFriendly(false)} send={send} />}
       {editing && (
         <Modal
           title={current ? `${t.edit} : ${current.opponent}` : t.add}

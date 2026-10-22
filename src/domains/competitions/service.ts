@@ -30,6 +30,13 @@ import {
   type StatRow,
 } from "./schema";
 export { clubCommand, federationCommand, refereeCommand };
+import { byTournamentDay, friendlyCommand, type FriendlyCommand } from "./schema";
+import { friendlyContext, friendlyExecute, proposeScore, tournamentMatches, upcomingDetails } from "./friendly";
+export { friendlyCommand };
+/** Wave 17 (C5): friendlies between clubs, scores to confirm, transport to organise. */
+export const friendlyMatchExecute = (db: Pool, p: Principal, command: FriendlyCommand, expected: string) => friendlyExecute(db, p, command, expected, manageable);
+type Tally = { coming: number; invited: number; names: string[]; waiting: string[]; tone: "ok" | "warn" | "low" };
+export type MatchLine = { players: Tally; coaches: Tally; transport: "home" | "ready" | "todo"; transportTasks: number };
 
 type Lang = "fr" | "nl" | "en";
 const statusText: Record<string, Record<Lang, string>> = {
@@ -109,7 +116,7 @@ async function notify(
 /* ---------------------------------------------------------------- Club side */
 
 /** Teams whose matches the actor may edit: team managers, or coaches of the team. */
-function manageable(s: PeopleScope, visibleTeams: Set<string>) {
+export function manageable(s: PeopleScope, visibleTeams: Set<string>) {
   const mfa = mfaSatisfied(!!s.user.twoFactorEnabled);
   if (!mfa) return new Set<string>();
   if (s.rights.includes("teams.manage")) return visibleTeams;
@@ -130,6 +137,8 @@ export async function matchesView(db: Pool, p: Principal) {
         `SELECT m.id,m.team_id,t.name AS team,m.opponent,m.home,m.kind,m.competition,m.starts_at,
                 to_char(m.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS local_start,
                 m.venue,m.calendar_event_id,m.status,m.our_score,m.their_score,m.notes,m.version,
+                m.place_id,m.linked_match_id,m.score_status,(m.score_proposed_by=$1) AS score_ours,
+                (SELECT json_build_object('id',i.id,'status',i.status,'answer',i.answer) FROM match_invitation i WHERE i.match_id=m.id ORDER BY i.created_at DESC LIMIT 1) AS invitation,
                 (SELECT count(*)::int FROM match_player mp WHERE mp.match_id=m.id) AS lineup,
                 (SELECT json_build_object('home_score',r.home_score,'away_score',r.away_score,'incidents',r.incidents,'submitted_at',r.submitted_at) FROM match_report r WHERE r.match_id=m.id) AS report,
                 COALESCE((SELECT json_agg(json_build_object('name',u.name,'role',a.role,'status',a.status)) FROM referee_assignment a JOIN "user" u ON u.id=a.referee_id WHERE a.match_id=m.id AND a.status IN ('proposed','accepted')),'[]') AS referees
@@ -177,13 +186,22 @@ export async function matchesView(db: Pool, p: Principal) {
           )
         ).rows
       : [];
+    // Wave 17 (C5): the full line of upcoming matches, the federal tournament matches, the friendlies to answer.
+    const details = await upcomingDetails(c, org, matches);
+    const friendly = await friendlyContext(c, org);
+    const planner = mfaSatisfied(!!s.user.twoFactorEnabled) && (s.context.role === "club_president" || s.rights.includes("calendar.manage"));
     return {
       organization_id: org,
       today: day,
       teams,
-      matches,
+      matches: matches.map((m) => ({ ...m, line: details.get(m.id) ?? null })) as (typeof matches[number] & { line: MatchLine | null })[],
       players,
       events,
+      tournament: byTournamentDay(await tournamentMatches(c, org)),
+      invitations: planner ? friendly.invitations : [],
+      opponents: can.size ? friendly.opponents : [],
+      places: can.size ? friendly.places : [],
+      can: { answer: planner, friendly: can.size > 0 },
     };
   });
 }
@@ -359,6 +377,8 @@ export async function matchExecute(
         "UPDATE match SET status='played',our_score=$3,their_score=$4,version=version+1 WHERE id=$1 AND organization_id=$2",
         [command.id, org, command.ourScore, command.theirScore],
       );
+      // Wave 17 (C5): a friendly with another club: the score is proposed to it.
+      await proposeScore(c, org, command.id);
       target = command.id;
     }
     await audit(c, org, p.userId, "match." + command.action, target);

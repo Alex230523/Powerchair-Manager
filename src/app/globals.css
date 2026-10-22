@@ -9235,3 +9235,62 @@ ul.task-page li {
 .proposal-list li {
   align-items: flex-start;
 }
+
+/* Wave 17 (C5): the full line of a match, with tips on hover and focus. */
+.match-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-1);
+}
+.match-line-item,
+.score-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.tip {
+  position: relative;
+  display: inline-flex;
+}
+.tip-trigger {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: help;
+}
+.tip-trigger:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-pill);
+}
+.tip-body {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-xs);
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  white-space: normal;
+}
+.tip:hover .tip-body,
+.tip:focus-within .tip-body {
+  display: block;
+}
+.tip[data-hidden] .tip-body {
+  display: none;
+}
+.tournament-day h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-md);
+}
