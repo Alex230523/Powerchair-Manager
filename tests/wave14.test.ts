@@ -26,7 +26,7 @@ describe("president menu (wave 14)", () => {
   it("places each page where the design says", () => {
     const routes = Object.fromEntries(groups.map((g) => [g.id, g.items.map((i) => i.route)]));
     // Wave 16 (E2): the exercise sheets after the attendance.
-    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/licenses", "/statistics"]);
+    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/licenses", "/transfers", "/statistics"]);
     expect(routes.activities).toEqual(["/calendar", "/matches", "/trips", "/venues", "/tournaments"]);
     expect(routes.communication).toEqual(["/communication", "/documents"]);
     expect(routes.money).toEqual(["/funding", "/dues"]);

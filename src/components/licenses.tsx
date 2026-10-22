@@ -15,6 +15,7 @@ import { ClassificationBadge } from "./classification-badge";
 import { ClassificationDays } from "./classification-days";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
+const fillCount = (s: string, n: number) => s.replace("{n}", String(n));
 export function ClubLicenses({ locale }: { locale: Locale }) {
   const t = licensesCopy[locale];
   const failure = useCallback(
@@ -549,6 +550,10 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
           <ClassificationDays locale={locale} />
 
           <Card title={t.transfers} labelledBy="fed-transfers" headingId="fed-transfers">
+            {/* Wave 17 (J3): the offers of the transfer market are validated in the market. */}
+            <p>
+              <Link href={`/${locale}/transfers`}>{fillCount(t.toValidate, data.toValidate)} →</Link>
+            </p>
             {data.transfers.length ? (
               <div className="table-scroll">
                 <table className="ledger">

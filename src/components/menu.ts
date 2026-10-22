@@ -76,6 +76,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/dues", "dues", "dues"),
               ...item("/fundraising", "fundraising", "piggyBank", !!state?.fundraisingOpen),
               registrations,
+              // Wave 17 (J3): « Visible par les autres clubs », the player's or the parent's choice.
+              ...item("/transfers", "transfers", "handshake"),
             ],
           },
         ]
@@ -94,6 +96,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 // Wave 16 (E2): the coaches' exercise sheets.
                 ...item("/exercises", "exercises", "clipboardList", true),
                 ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
+                // Wave 17 (J3): the transfer market between the federation's clubs.
+                ...item("/transfers", "transfers", "handshake", has("people.read")),
                 ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage")),
               ],
             },
@@ -164,6 +168,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                   ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
                   ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
+                  ...item("/transfers", "transfers", "handshake", has("people.read")),
                   ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
                 ],
               },
@@ -220,6 +225,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           { route: "/tournaments", label: "tournaments", icon: "trophy" },
                           { route: "/federation/referees", label: "designations", icon: "whistle" },
                           { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
+                          { route: "/transfers", label: "transfers", icon: "handshake" },
                           { route: "/federation/affiliations", label: "affiliations", icon: "landmark" },
                           { route: "/federation/courses", label: "courses", icon: "team" },
                           // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.

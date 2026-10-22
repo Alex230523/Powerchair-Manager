@@ -1,6 +1,8 @@
 import type { Pool, PoolClient } from "pg";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
+import { setVisibility } from "../transfers/consent";
+const brusselsDay = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
 import { AccessError, audit } from "./service";
 import { isAdmin, permissions, roleAllowed, type Permission, type Role } from "./policy";
 import { saveCare } from "../trips/service";
@@ -267,6 +269,8 @@ export const welcomeCommand = z.discriminatedUnion("action", [
     classification: z.enum(["PF1", "PF2", "pending"]).nullable(),
     chair: z.enum(["own", "club"]).nullable(),
     care: z.string().trim().max(1000),
+    /** Wave 17 (J3): « Visible par les autres clubs de la fédération », off unless ticked. */
+    transferVisible: z.boolean().default(false),
   }),
 ]);
 export type WelcomeCommand = z.infer<typeof welcomeCommand>;
@@ -335,7 +339,7 @@ export async function welcomeDispute(db: Pool, token: string, note: string) {
  * the invitation and records what the person gave. Sensitive answers go to
  * their own sealed tables (care instructions), never in a generic field.
  */
-export async function welcomeComplete(db: Pool, token: string, userId: string, input: Extract<WelcomeCommand, { action: "create" }>) {
+export async function welcomeComplete(db: Pool, token: string, userId: string, input: Omit<Extract<WelcomeCommand, { action: "create" }>, "transferVisible"> & { transferVisible?: boolean }) {
   const c = await db.connect();
   try {
     await c.query("BEGIN");
@@ -370,6 +374,11 @@ export async function welcomeComplete(db: Pool, token: string, userId: string, i
         await c.query("INSERT INTO equipment_chair_assignment(organization_id,chair_id,profile_id,is_primary,starts_on,created_by) VALUES($1,$2,$3,true,CURRENT_DATE,$4)", [org, chair, player, userId]);
       }
       if (player && input.care) await saveCare(c, org, userId, player, { moment: "as_needed", time: "", title: "Consignes données à l’inscription", details: input.care, active: true });
+      // Only the adult player, or a parent for a minor: setVisibility checks it.
+      if (player && input.transferVisible) {
+        const person = (await c.query("SELECT person_id FROM club_person WHERE id=$1", [player])).rows[0]?.person_id as string | undefined;
+        if (person) await setVisibility(c, userId, person, true, brusselsDay());
+      }
     }
     await c.query("COMMIT");
     return { organizationId: org };

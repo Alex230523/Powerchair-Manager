@@ -1,7 +1,7 @@
 import type { Locale } from "../lib/locale";
 
 const fr = {
-  clubTitle: "Transferts, licences et classifications",
+  clubTitle: "Licences et classifications",
   clubIntro:
     "Demandez les licences de la saison et la validation des classifications à votre fédération.",
   fedTitle: "Licences, classifications et transferts",
@@ -59,6 +59,7 @@ const fr = {
   validate: "Valider",
   validUntil: "Valable jusqu'au",
   control: "Commande",
+  toValidate: "Transferts de la bourse à valider : {n}",
   transfers: "Transferts entre clubs",
   from: "De",
   to: "Vers",
@@ -90,7 +91,7 @@ const fr = {
 };
 type Copy = typeof fr;
 const nl: Copy = {
-  clubTitle: "Transfers, licenties en classificaties",
+  clubTitle: "Licenties en classificaties",
   clubIntro:
     "Vraag de licenties van het seizoen en de validatie van de classificaties aan bij uw federatie.",
   fedTitle: "Licenties, classificaties en transfers",
@@ -148,6 +149,7 @@ const nl: Copy = {
   validate: "Valideren",
   validUntil: "Geldig tot",
   control: "Bediening",
+  toValidate: "Transfers van de beurs te valideren: {n}",
   transfers: "Transfers tussen clubs",
   from: "Van",
   to: "Naar",
@@ -179,7 +181,7 @@ const nl: Copy = {
   },
 };
 const en: Copy = {
-  clubTitle: "Transfers, licences and classifications",
+  clubTitle: "Licences and classifications",
   clubIntro:
     "Ask your federation for this season's licences and for classification checks.",
   fedTitle: "Licences, classifications and transfers",
@@ -236,6 +238,7 @@ const en: Copy = {
   validate: "Validate",
   validUntil: "Valid until",
   control: "Control",
+  toValidate: "Market transfers to validate: {n}",
   transfers: "Transfers between clubs",
   from: "From",
   to: "To",

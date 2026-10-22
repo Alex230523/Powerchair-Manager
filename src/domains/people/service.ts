@@ -1408,90 +1408,9 @@ export async function peopleExecute(
           )
         )
           throw new AccessError("TRANSFER_INVALID", 404);
-        const source = (
-          await c.query(
-            "SELECT c.*,p.user_id FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.id=$1 AND c.organization_id=$2 AND c.status=$3",
-            [
-              transfer.source_profile_id,
-              transfer.source_organization_id,
-              "active",
-            ],
-          )
-        ).rows[0];
-        if (!source) throw new AccessError("TRANSFER_INVALID", 404);
-        const previous = (
-          await c.query(
-            "SELECT id,status FROM club_person WHERE organization_id=$1 AND person_id=$2",
-            [org, source.person_id],
-          )
-        ).rows[0];
-        if (previous?.status === "active")
-          throw new AccessError("DUPLICATE", 409);
-        if (previous) {
-          await c.query(
-            "UPDATE club_person SET status='active',full_name=$3,birth_date=$4,email=$5,phone=$6,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
-            [
-              previous.id,
-              org,
-              source.full_name,
-              source.birth_date,
-              source.email,
-              source.phone,
-            ],
-          );
-          target = previous.id;
-        } else {
-          target = (
-            await c.query(
-              "INSERT INTO club_person(organization_id,person_id,full_name,birth_date,email,phone,joined_on) VALUES($1,$2,$3,$4,$5,$6,CURRENT_DATE) RETURNING id",
-              [
-                org,
-                source.person_id,
-                source.full_name,
-                source.birth_date,
-                source.email,
-                source.phone,
-              ],
-            )
-          ).rows[0].id;
-        }
-        await c.query(
-          "UPDATE club_person SET status='transferred',version=version+1,updated_at=now() WHERE id=$1",
-          [source.id],
-        );
-        await c.query(
-          "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE organization_id=$1 AND profile_id=$2 AND (ends_on IS NULL OR ends_on>CURRENT_DATE)",
-          [transfer.source_organization_id, source.id],
-        );
-        await c.query(
-          "UPDATE guardian_relationship SET revoked_at=now() WHERE organization_id=$1 AND (subject_profile_id=$2 OR guardian_profile_id=$2) AND revoked_at IS NULL",
-          [transfer.source_organization_id, source.id],
-        );
-        if (source.user_id) {
-          await c.query(
-            "UPDATE role_assignment SET revoked_at=now() WHERE organization_id=$1 AND user_id=$2 AND role='player' AND revoked_at IS NULL",
-            [transfer.source_organization_id, source.user_id],
-          );
-          const membership = await c.query(
-            "SELECT active FROM organization_membership WHERE organization_id=$1 AND user_id=$2",
-            [org, source.user_id],
-          );
-          if (membership.rowCount && !membership.rows[0].active)
-            throw new AccessError("MEMBERSHIP_DISABLED");
-          await c.query(
-            "INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
-            [org, source.user_id],
-          );
-          const existing = await c.query(
-            "SELECT id FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND role='player' AND revoked_at IS NULL AND valid_from<=now() AND (valid_until IS NULL OR valid_until>now())",
-            [org, source.user_id],
-          );
-          if (!existing.rowCount)
-            await c.query(
-              "INSERT INTO role_assignment(organization_id,user_id,role,created_by) VALUES($1,$2,'player',$3)",
-              [org, source.user_id, p.userId],
-            );
-        }
+        const moved = await moveProfile(c, { organization: transfer.source_organization_id, profile: transfer.source_profile_id }, org, p.userId);
+        target = moved.target;
+        const source = { id: moved.source };
         await c.query(
           "UPDATE person_transfer SET accepted_at=now(),target_organization_id=$2 WHERE id=$1",
           [transfer.id, org],
@@ -1509,6 +1428,103 @@ export async function peopleExecute(
     },
     command.action === "acceptTransfer" ? command.token : undefined,
   );
+}
+/**
+ * Moves a club profile to another club: the new club's profile (re)opens,
+ * the old one is marked transferred, its team links, guardians and player
+ * role close. The token transfer uses it, and so does the transfer market
+ * (wave 17, J3) once the federation validates; there a player without club
+ * may come from an inactive profile.
+ */
+export async function moveProfile(
+  c: PoolClient,
+  from: { organization: string; profile: string },
+  org: string,
+  actor: string,
+  statuses: string[] = ["active"],
+) {
+  let target: string;
+  const source = (
+    await c.query(
+      "SELECT c.*,p.user_id FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.id=$1 AND c.organization_id=$2 AND c.status=ANY($3::text[])",
+      [from.profile, from.organization, statuses],
+    )
+  ).rows[0];
+  if (!source) throw new AccessError("TRANSFER_INVALID", 404);
+  const previous = (
+    await c.query(
+      "SELECT id,status FROM club_person WHERE organization_id=$1 AND person_id=$2",
+      [org, source.person_id],
+    )
+  ).rows[0];
+  if (previous?.status === "active")
+    throw new AccessError("DUPLICATE", 409);
+  if (previous) {
+    await c.query(
+      "UPDATE club_person SET status='active',full_name=$3,birth_date=$4,email=$5,phone=$6,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
+      [
+        previous.id,
+        org,
+        source.full_name,
+        source.birth_date,
+        source.email,
+        source.phone,
+      ],
+    );
+    target = previous.id as string;
+  } else {
+    target = (
+      await c.query(
+        "INSERT INTO club_person(organization_id,person_id,full_name,birth_date,email,phone,joined_on) VALUES($1,$2,$3,$4,$5,$6,CURRENT_DATE) RETURNING id",
+        [
+          org,
+          source.person_id,
+          source.full_name,
+          source.birth_date,
+          source.email,
+          source.phone,
+        ],
+      )
+    ).rows[0].id;
+  }
+  await c.query(
+    "UPDATE club_person SET status='transferred',version=version+1,updated_at=now() WHERE id=$1",
+    [source.id],
+  );
+  await c.query(
+    "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE organization_id=$1 AND profile_id=$2 AND (ends_on IS NULL OR ends_on>CURRENT_DATE)",
+    [from.organization, source.id],
+  );
+  await c.query(
+    "UPDATE guardian_relationship SET revoked_at=now() WHERE organization_id=$1 AND (subject_profile_id=$2 OR guardian_profile_id=$2) AND revoked_at IS NULL",
+    [from.organization, source.id],
+  );
+  if (source.user_id) {
+    await c.query(
+      "UPDATE role_assignment SET revoked_at=now() WHERE organization_id=$1 AND user_id=$2 AND role='player' AND revoked_at IS NULL",
+      [from.organization, source.user_id],
+    );
+    const membership = await c.query(
+      "SELECT active FROM organization_membership WHERE organization_id=$1 AND user_id=$2",
+      [org, source.user_id],
+    );
+    if (membership.rowCount && !membership.rows[0].active)
+      throw new AccessError("MEMBERSHIP_DISABLED");
+    await c.query(
+      "INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
+      [org, source.user_id],
+    );
+    const existing = await c.query(
+      "SELECT id FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND role='player' AND revoked_at IS NULL AND valid_from<=now() AND (valid_until IS NULL OR valid_until>now())",
+      [org, source.user_id],
+    );
+    if (!existing.rowCount)
+      await c.query(
+        "INSERT INTO role_assignment(organization_id,user_id,role,created_by) VALUES($1,$2,'player',$3)",
+        [org, source.user_id, actor],
+      );
+  }
+  return { target, source: source.id as string };
 }
 // Shared with the player profile: one visibility model for every view of a person.
 export type PeopleScope = Scope;

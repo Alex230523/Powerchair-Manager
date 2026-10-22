@@ -9434,3 +9434,47 @@ ul.task-page li {
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border);
 }
+
+/* Wave 17 (J3): the transfer market. */
+.transfer-rules-text {
+  white-space: pre-line;
+}
+.transfer-thread {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-xs);
+  background: var(--surface-soft);
+}
+.transfer-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.transfer-messages > li {
+  max-width: 40rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.transfer-messages > li[data-mine] {
+  justify-self: end;
+  border-color: var(--primary);
+}
+.transfer-messages p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.transfer-windows {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.transfer-provinces select {
+  margin-left: var(--space-2);
+}

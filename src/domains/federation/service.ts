@@ -326,6 +326,8 @@ export async function federationLicensesView(db: Pool, p: Principal) {
         [fed],
       )
     ).rows;
+    // Wave 17 (J3): offers of the transfer market waiting for the federation.
+    const toValidate = (await c.query("SELECT count(*)::int AS n FROM transfer_offer WHERE federation_id=$1 AND status='accepted' AND completed_at IS NULL", [fed])).rows[0].n as number;
     return {
       organization_id: fed,
       season: seasonOf(brusselsToday()).label,
@@ -333,6 +335,7 @@ export async function federationLicensesView(db: Pool, p: Principal) {
       licenses,
       classifications,
       transfers,
+      toValidate,
     };
   });
 }

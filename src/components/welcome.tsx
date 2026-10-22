@@ -31,6 +31,7 @@ type Draft = {
   classification: "" | "PF1" | "PF2" | "pending";
   chair: "" | "own" | "club";
   care: string;
+  transferVisible: boolean;
 };
 
 /** « Créer mon compte » from an invitation (wave 16, I2): who invites you, then three short steps. */
@@ -42,7 +43,7 @@ export function Welcome({ locale, token, signedIn }: { locale: Locale; token: st
   const [disputing, setDisputing] = useState(false);
   const [disputed, setDisputed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState<Draft>({ firstName: "", lastName: "", birthDate: "", phone: "", locale, classification: "", chair: "", care: "" });
+  const [draft, setDraft] = useState<Draft>({ firstName: "", lastName: "", birthDate: "", phone: "", locale, classification: "", chair: "", care: "", transferVisible: false });
   const [missing, setMissing] = useState<string[]>([]);
   const [password, setPassword] = useState({ first: "", second: "", privacy: false });
   const [passwordError, setPasswordError] = useState("");
@@ -151,6 +152,7 @@ export function Welcome({ locale, token, signedIn }: { locale: Locale; token: st
       classification: draft.classification || null,
       chair: draft.chair || null,
       care: draft.care,
+      transferVisible: draft.transferVisible,
     });
     if (done?.home) window.location.assign(done.home);
   }
@@ -343,6 +345,14 @@ export function Welcome({ locale, token, signedIn }: { locale: Locale; token: st
                 aria-describedby={describedBy("welcome-care", true)}
               />
             </Field>
+            {/* Wave 17 (J3): the player's or the parent's own choice, off by default. */}
+            <label className="check">
+              <input type="checkbox" checked={draft.transferVisible} onChange={(e) => set("transferVisible", e.target.checked)} aria-describedby="welcome-transfer-help" />
+              {t.transferVisible}
+            </label>
+            <p className="field-help" id="welcome-transfer-help">
+              {t.transferHelp}
+            </p>
             <div className="welcome-actions">
               <Button type="button" variant="secondary" onClick={() => setStep(1)}>
                 {t.back}
