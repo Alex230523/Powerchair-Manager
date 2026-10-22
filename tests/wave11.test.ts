@@ -76,7 +76,7 @@ describe("wave 11 texts", () => {
   });
   it("uses no long dashes and names the renamed pages", () => {
     expect(JSON.stringify([fundingCopy, duesSettingsCopy])).not.toMatch(/[–—]/);
-    expect(shellCopy.fr.funding).toBe("Finance du club");
+    expect(shellCopy.fr.funding).toBe("Finances");
     expect(shellCopy.fr.licenses).toBe("Transferts");
     expect(shellCopy.fr.contacts).toBe("Carnet de contacts");
   });

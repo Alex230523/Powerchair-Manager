@@ -92,6 +92,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [Vague 17, F1 : formulaires et décisions d'inscription](evolutions/2026-10-22-c-vague-17-f1-inscriptions.md) |
 | 22/10/2026 | [Vague 17, J1 : anciens joueurs et fiche en fenêtre](evolutions/2026-10-22-d-vague-17-j1-anciens-joueurs.md) |
 | 22/10/2026 | [Vague 17, N2 : affiliations et cotisations fédérales](evolutions/2026-10-22-e-vague-17-n2-affiliations.md) |
+| 22/10/2026 | [Vague 17, N1 : finances restructurées](evolutions/2026-10-22-f-vague-17-n1-finances.md) |
 
 ## Convention
 

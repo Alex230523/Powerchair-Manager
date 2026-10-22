@@ -221,7 +221,7 @@ test("new club, federation and referee pages load and pass axe", async ({
     // president's menu: Équipes, Activités (trips and halls are back), Communication, Argent, Club, Plus.
     for (const name of ["Transferts", "Finances", "Déplacements", "Salles", "Mes équipes", "Réglages"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
-    for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"])
+    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club", "Plus"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
     await page.goto("/fr/calendar");
     await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
@@ -229,7 +229,7 @@ test("new club, federation and referee pages load and pass axe", async ({
     // Wave 15: notifications and dues rates sit in their own settings sub-pages; the photo is in My account.
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Notifications et résumé", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Argent", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Finances", exact: true })).toBeVisible();
     await page.goto("/fr/settings/money");
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
     await page.locator(".profile-menu > summary").click();

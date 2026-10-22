@@ -8810,3 +8810,104 @@ details.event-section > summary {
   max-height: 240px;
   overflow: auto;
 }
+
+/* ---------- Wave 17 (N1): the « Finances » tabs, the add form, deletion ---------- */
+.finance-nav {
+  margin: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.finance-nav ul {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.finance-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.finance-nav a:hover {
+  color: var(--heading);
+}
+.finance-nav a[aria-current="page"] {
+  color: var(--heading);
+  border-bottom-color: var(--primary);
+}
+.finance-subnav {
+  margin-top: calc(-1 * var(--space-3));
+}
+.finance-subnav a {
+  min-height: 40px;
+  font-weight: 500;
+}
+.kind-choice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.kind-choice legend {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+.kind-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.kind-option:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--surface-soft);
+}
+.kind-option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.kind-option input {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.last-operations {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.last-operations li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.last-operations strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ledger-actions .icon-button {
+  margin-inline-start: var(--space-2);
+  vertical-align: middle;
+}
+.statement-account {
+  display: block;
+  font-weight: 400;
+  font-size: var(--text-xs);
+}

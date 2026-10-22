@@ -52,7 +52,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
     const cards = page.locator(".settings-grid > li");
     await expect(cards).toHaveCount(7);
-    for (const name of ["Mon compte", "Notifications et résumé", "Club", "Membres et droits", "Activités", "Argent", "Journaux et confidentialité"])
+    for (const name of ["Mon compte", "Notifications et résumé", "Club", "Membres et droits", "Activités", "Finances", "Journaux et confidentialité"])
       await expect(page.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
     await axe(page, "settings home");
 
@@ -74,13 +74,13 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     // Unsaved changes: leaving asks first; staying keeps the page, leaving drops the change.
     const ok = page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true });
     await ok.fill("4");
-    await nav.getByRole("link", { name: "Argent" }).click();
+    await nav.getByRole("link", { name: "Finances" }).click();
     const warn = page.getByRole("dialog", { name: "Changements non enregistrés" });
     await expect(warn).toBeVisible();
     await warn.getByRole("button", { name: "Rester sur la page", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/settings\/activities/);
     await expect(ok).toHaveValue("4");
-    await nav.getByRole("link", { name: "Argent" }).click();
+    await nav.getByRole("link", { name: "Finances" }).click();
     await page.getByRole("dialog", { name: "Changements non enregistrés" }).getByRole("button", { name: "Quitter sans enregistrer", exact: true }).click();
     await expect(page).toHaveURL("/fr/settings/money");
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();

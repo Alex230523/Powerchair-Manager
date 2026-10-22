@@ -12,7 +12,7 @@ import { isAdmin, permissions, type Permission } from "../access/policy";
  * server, with the rights of the action checked again, once, and leaves a
  * line in the audit log. Definitive deletions and sent emails offer none.
  */
-export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision", "affiliationPaid"] as const;
+export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision", "affiliationPaid", "operationDelete"] as const;
 export type UndoKind = (typeof undoKinds)[number];
 /** Server window; the message on screen lasts 8 seconds (longer while hovered). */
 export const undoSeconds = 120;
@@ -31,6 +31,8 @@ type Payloads = {
   registrationDecision: DecisionUndo;
   /** Wave 17 (N2): an affiliation marked « en ordre », and the expense it created. */
   affiliationPaid: { transaction: string | null };
+  /** Wave 17 (N1): a deleted operation, and whether it was already cancelled before. */
+  operationDelete: { wasCancelled: boolean };
 };
 
 export async function offerUndo<K extends UndoKind>(c: PoolClient, org: string, userId: string, kind: K, target: string, payload: Payloads[K]) {
@@ -66,6 +68,7 @@ function allowed(kind: UndoKind, role: Parameters<typeof permissions>[0], grants
     case "registrationDecision":
       return has("registrations.manage");
     case "affiliationPaid":
+    case "operationDelete":
       return has("dues.manage");
   }
 }
@@ -91,7 +94,7 @@ export async function undoExecute(db: Pool, p: Principal, input: z.infer<typeof 
     if (row.expired) throw new AccessError("UNDO_EXPIRED", 410);
     if (!allowed(row.kind, a.role, a.grants, mfaSatisfied(!!user.twoFactorEnabled))) throw new AccessError("FORBIDDEN");
     // A module switched off since: nothing comes back through it.
-    const owner = ({ payment: "dues", chairRetire: "equipment", messageHide: "messages", affiliationPaid: "finance" } as Record<string, string>)[row.kind];
+    const owner = ({ payment: "dues", chairRetire: "equipment", messageHide: "messages", affiliationPaid: "finance", operationDelete: "finance" } as Record<string, string>)[row.kind];
     if (owner && (a.disabled_modules ?? []).includes(owner)) throw new AccessError("MODULE_OFF");
     await revert(c, a.organization_id, p.userId, row.kind, row.target_id, row.payload as never);
     await c.query("UPDATE undo_action SET used_at=now() WHERE id=$1", [row.id]);
@@ -114,6 +117,14 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
     case "registrationDecision":
       await revertDecision(c, org, userId, target, payload as Payloads["registrationDecision"]);
       return;
+    case "operationDelete": {
+      const p = payload as Payloads["operationDelete"];
+      await one(
+        `UPDATE finance_transaction SET deleted_at=NULL,deleted_by=NULL,delete_reason=''${p.wasCancelled ? "" : ",cancelled_at=NULL,cancelled_by=NULL,cancel_reason=''"} WHERE id=$1 AND organization_id=$2 AND deleted_at IS NOT NULL`,
+        [target, org],
+      );
+      return;
+    }
     case "affiliationPaid": {
       const p = payload as Payloads["affiliationPaid"];
       await one("UPDATE affiliation_due SET paid_on=NULL,marked_by=NULL,transaction_id=NULL WHERE id=$1 AND organization_id=$2 AND paid_on IS NOT NULL", [target, org]);

@@ -10,6 +10,8 @@ import { financeCopy } from "./finance-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, Button, Card, DataTable, EmptyState, PageHeader, type Tone } from "./ui";
+import { FinanceNav } from "./finance-nav";
+import { financeSectionsCopy } from "./finance-sections-copy";
 import { Icon } from "./icons";
 
 type View = Awaited<ReturnType<typeof accountsView>>;
@@ -79,10 +81,16 @@ export function AnnualAccounts({ locale, year: initialYear }: { locale: Locale; 
             <a className="button secondary" href={`/api/accounts/export?year=${data.year.from}&locale=${locale}`} download>
               {a.exportXlsx}
             </a>
+            <Link className="button secondary" href={`/${locale}/funding/report`}>
+              {financeSectionsCopy[locale].annualReport}
+            </Link>
             <Button onClick={() => window.print()}>{a.print}</Button>
           </span>
         }
       />
+      <div className="no-print">
+        <FinanceNav locale={locale} current="accounts" />
+      </div>
       <p className="notice accounts-banner" role="note">
         <Icon name="alert" size={16} /> {a.banner} {a.disclaimer}
       </p>

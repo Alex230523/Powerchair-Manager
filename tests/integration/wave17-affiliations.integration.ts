@@ -23,7 +23,7 @@ import { seasonOf } from "../../src/domains/finance/schema";
 const schema = "w17aff_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
-let fed: string, clubA: string, clubB: string, clubC: string, fedPresident: Principal, presidentA: Principal, presidentB: Principal, coachA: Principal;
+let fed: string, clubA: string, clubB: string, fedPresident: Principal, presidentA: Principal, presidentB: Principal, coachA: Principal;
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const month = Number(today.slice(5, 7));
 
@@ -62,7 +62,7 @@ beforeAll(async () => {
   fed = (await db.query("INSERT INTO organization(name,kind) VALUES('Fédération test','federation') RETURNING id")).rows[0].id;
   clubA = (await db.query("INSERT INTO organization(name,kind,federation_id) VALUES('Club A','club',$1) RETURNING id", [fed])).rows[0].id;
   clubB = (await db.query("INSERT INTO organization(name,kind,federation_id) VALUES('Club B','club',$1) RETURNING id", [fed])).rows[0].id;
-  clubC = (await db.query("INSERT INTO organization(name,kind,federation_id) VALUES('Club C','club',$1) RETURNING id", [fed])).rows[0].id;
+  await db.query("INSERT INTO organization(name,kind,federation_id) VALUES('Club C','club',$1) RETURNING id", [fed]);
   fedPresident = await actor(fed, "federation_president");
   presidentA = await actor(clubA, "club_president");
   presidentB = await actor(clubB, "club_president");

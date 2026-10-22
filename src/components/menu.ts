@@ -123,10 +123,9 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupMoney",
               icon: "funding",
               items: [
+                // Wave 17 (N1): one « Finances » page with tabs, and « Cotisations » kept apart (often opened).
                 ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
-                ...item("/fundraising", "pots", "piggyBank", has("dues.read", "dues.manage")),
-                ...item("/funding/affiliations", "affiliations", "badgeCheck", has("dues.read", "dues.manage")),
               ],
             },
             {
@@ -196,12 +195,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 label: "groupFinance",
                 icon: "funding",
                 items: [
-                  ...item("/funding", "funding", "funding", has("dues.read", "dues.manage")),
+                  ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                   ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
-                  ...item("/funding/grants", "grants", "document", has("dues.read", "dues.manage")),
-                  ...item("/funding/partners", "partners", "team", has("dues.read", "dues.manage")),
-                  ...item("/funding/affiliations", "affiliations", "badgeCheck", has("dues.read", "dues.manage")),
-                  ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
                 ],
               },
             ]

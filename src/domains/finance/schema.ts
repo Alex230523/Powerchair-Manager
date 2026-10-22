@@ -56,6 +56,12 @@ export const commandSchema = z.discriminatedUnion("action", [
     id: z.uuid(),
     reason: text(500).min(5),
   }),
+  /** Wave 17 (N1): deleting an operation of a year not approved yet, with a short reason. */
+  z.object({
+    action: z.literal("delete"),
+    id: z.uuid(),
+    reason: text(500).min(3),
+  }),
 ]);
 export type Command = z.infer<typeof commandSchema>;
 export type Entry = {
@@ -175,3 +181,33 @@ export function receiptType(bytes: Uint8Array) {
   return null;
 }
 export const receiptMaxBytes = 5 * 1024 * 1024;
+
+/**
+ * Wave 17 (N1): the closing balance of a bank statement in CSV: the last
+ * value of the column called « Solde », « Saldo » or « Balance » (Belgian
+ * banks write 1.234,56 or 1234.56), in cents; null when not found.
+ */
+export function csvClosingBalance(text: string): number | null {
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return null;
+  const sep = [";", ",", "\t"].sort((a, b) => lines[0].split(b).length - lines[0].split(a).length)[0];
+  const cells = (l: string) => l.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+  const col = cells(lines[0]).findIndex((h) => /^(solde|saldo|balance)\b/i.test(h));
+  if (col < 0) return null;
+  for (let i = lines.length - 1; i > 0; i--) {
+    const raw = cells(lines[i])[col]?.replace(/\s|€|EUR/gi, "");
+    if (!raw) continue;
+    // « 1.234,56 » or « 1234.56 »: the last separator is the decimal one.
+    const normal = /,\d{1,2}$/.test(raw) ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, "");
+    const n = Number(normal);
+    if (Number.isFinite(n)) return Math.round(n * 100);
+  }
+  return null;
+}
+/** PDF or CSV, by content: a statement is never anything else. */
+export function statementType(bytes: Uint8Array, name: string): "application/pdf" | "text/csv" | null {
+  if (bytes.length >= 5 && String.fromCharCode(...bytes.subarray(0, 5)) === "%PDF-") return "application/pdf";
+  if (/\.csv$/i.test(name) && !bytes.subarray(0, 4096).includes(0)) return "text/csv";
+  return null;
+}
+export const statementMaxBytes = 5 * 1024 * 1024;

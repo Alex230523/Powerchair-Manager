@@ -1,4 +1,5 @@
 "use client";
+import { FinanceNav } from "./finance-nav";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/locale";
@@ -65,6 +66,9 @@ export function FinanceReport({
           {x.back}
         </Link>
       </p>
+      <div className="no-print">
+        <FinanceNav locale={locale} current="accounts" />
+      </div>
       {!report && <h1>{x.report}</h1>}
       {error && <p role="alert">{error}</p>}
       {!report && !error && <p role="status">…</p>}

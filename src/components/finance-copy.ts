@@ -45,7 +45,7 @@ type Copy = {
 };
 export const financeCopy: Record<Locale, Copy> = {
   fr: {
-    title: "Finance du club",
+    title: "Finances",
     intro:
       "Trésorerie du club : recettes, dépenses et historique des opérations.",
     balance: "Trésorerie",
@@ -110,7 +110,7 @@ export const financeCopy: Record<Locale, Copy> = {
     },
   },
   nl: {
-    title: "Clubfinanciën",
+    title: "Financiën",
     intro: "Kas van de club: inkomsten, uitgaven en verrichtingen.",
     balance: "Kas",
     balanceHint: "Saldo van alle geregistreerde verrichtingen",
@@ -174,7 +174,7 @@ export const financeCopy: Record<Locale, Copy> = {
     },
   },
   en: {
-    title: "Club finances",
+    title: "Finances",
     intro: "Club treasury: income, expenses and transaction history.",
     balance: "Treasury",
     balanceHint: "Balance of all recorded transactions",

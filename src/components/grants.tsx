@@ -1,4 +1,5 @@
 "use client";
+import { FinanceNav } from "./finance-nav";
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -103,6 +104,7 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
           </>
         }
       />
+      <FinanceNav locale={locale} current="income" income="grants" />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <div className="stat-row-grid" data-cols="4">

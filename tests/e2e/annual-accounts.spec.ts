@@ -50,7 +50,7 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
 
     // 1. From the finance page to the draft of last year.
     await page.goto("/fr/funding");
-    await page.getByRole("link", { name: "Comptes annuels", exact: true }).click();
+    await page.getByRole("navigation", { name: "Sections des finances" }).getByRole("link", { name: "Comptes annuels et rapports", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/funding\/annual-accounts$/);
     await expect(page.locator(".accounts-banner")).toContainText("Projet généré depuis la plateforme");
     const statement = page.locator("#accounts-statement");

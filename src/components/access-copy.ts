@@ -143,6 +143,21 @@ export const accessCopy = {
   en: english.accessCopy,
 };
 export const errors: Record<string, { fr: string; nl: string; en: string }> = {
+  YEAR_APPROVED: {
+    fr: "L'exercice de cette opération est approuvé par l'assemblée générale : elle ne peut plus être supprimée.",
+    nl: "Het boekjaar van deze verrichting is goedgekeurd door de algemene vergadering: ze kan niet meer verwijderd worden.",
+    en: "The financial year of this operation is approved by the general assembly: it can no longer be deleted.",
+  },
+  LINKED_OPERATION: {
+    fr: "Cette opération a été créée ailleurs (cotisation, sponsor, affiliation) : supprimez-la depuis son origine.",
+    nl: "Deze verrichting werd elders aangemaakt (lidgeld, sponsor, aansluiting): verwijder ze via haar oorsprong.",
+    en: "This operation was created elsewhere (dues, sponsor, affiliation): delete it from where it came from.",
+  },
+  ALREADY_PAID: {
+    fr: "Cette affiliation est déjà en ordre.",
+    nl: "Deze aansluiting is al in orde.",
+    en: "This affiliation is already settled.",
+  },
   STORAGE_FULL: {
     fr: "L'espace de stockage du club est plein : le fichier n'a pas été envoyé. Le président voit ce qui prend de la place dans Statistiques, carte Stockage.",
     nl: "De opslagruimte van de club is vol: het bestand werd niet verstuurd. De voorzitter ziet wat ruimte inneemt in Statistieken, kaart Opslag.",

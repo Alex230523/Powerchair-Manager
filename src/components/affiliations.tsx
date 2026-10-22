@@ -9,6 +9,7 @@ import { Badge, Button, Card, EmptyState, PageHeader } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { useData, usePost } from "./use-api";
+import { FinanceNav } from "./finance-nav";
 import { undoToast, showToast } from "./toast";
 
 /**
@@ -274,6 +275,7 @@ export function ClubAffiliations({ locale }: { locale: Locale }) {
   return (
     <main id="main" className="access affiliations">
       <PageHeader title={t.title} subtitle={t.intro} actions={data?.canManage ? <Button icon="plus" onClick={() => setAdding(true)}>{t.add}</Button> : undefined} />
+      <FinanceNav locale={locale} current="affiliations" />
       {error && <p role="alert">{error}</p>}
       <p role="status" className="sr-only">
         {data ? message : t.loading}

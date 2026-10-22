@@ -81,7 +81,8 @@ test("finance and dues: budget progress, ledger, collection bar, overdue icon, r
     await expect(budget.locator('.budget-progress[data-tone="warning"]')).toContainText("95 %");
     await expect(budget.locator('.budget-progress[data-tone="danger"]')).toContainText("150 %");
     await expect(budget.locator('.budget-progress[data-tone="success"]')).toContainText("20 %");
-    // 2. The ledger: income in success ink with +, spending in plain text with −, categories as badges.
+    // 2. The ledger (its own tab since wave 17, N1): income in success ink with +, spending in plain text with −, categories as badges.
+    await page.goto("/fr/funding/operations");
     await expect(page.locator("td.amount-in").filter({ hasText: "+" }).first()).toBeVisible();
     await expect(page.locator("td.amount-spent").filter({ hasText: "−" }).first()).toBeVisible();
     await expect(page.locator(".ledger .badge").filter({ hasText: "Matériel" }).first()).toBeVisible();

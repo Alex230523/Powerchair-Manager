@@ -37,7 +37,9 @@ export function originHref(origin: string, ref: string) {
     case "registration":
       return "/registrations";
     case "receipt":
-      return "/funding";
+      return "/funding/operations";
+    case "statement":
+      return "/funding/statements";
     case "partner":
       return `/funding/partners?partner=${ref}`;
     case "grant":

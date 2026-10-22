@@ -5,24 +5,33 @@ import type { Locale } from "@/lib/locale";
 import type { financeView } from "@/domains/finance/service";
 import { budgetTone, categories, methods } from "@/domains/finance/schema";
 import { cssVars } from "./css-vars";
-import { accountsCopy } from "./accounts-copy";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { ShowMore, useShowMore } from "./use-api";
-import { PageHeader, Badge, EmptyState, Card, KpiCard, Toolbar } from "./ui";
-import { shellCopy } from "./shell-copy";
+import { PageHeader, Badge, Button, EmptyState, Card, KpiCard, Toolbar } from "./ui";
 import { useScope } from "./use-scope";
 import { Modal } from "./modal";
 import { setupCopy } from "./setup-copy";
+import { useRouter } from "next/navigation";
+import { FinanceNav } from "./finance-nav";
+import { MoreMenu } from "./more-menu";
+import { financeSectionsCopy } from "./finance-sections-copy";
+import { undoToast } from "./toast";
 
 type View = Awaited<ReturnType<typeof financeView>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
-/** `create` opens the "add an operation" form at once (the "Créer" menu of the home page). */
-export function Finance({ locale, create = false }: { locale: Locale; create?: boolean }) {
+/**
+ * `create` opens the "add an operation" form at once (the "Créer" menu of the home page).
+ * Wave 17 (N1): one « Finances » page in tabs; this component draws the
+ * overview, the operations (the ledger) and the budget.
+ */
+export function Finance({ locale, create = false, section = "overview" }: { locale: Locale; create?: boolean; section?: "overview" | "operations" | "budget" }) {
   const t = financeCopy[locale],
-    x = financeExtras[locale];
+    x = financeExtras[locale],
+    n = financeSectionsCopy[locale];
+  const router = useRouter();
   const [view, setView] = useState<View | null>(null),
     [denied, setDenied] = useState(false),
     [error, setError] = useState(""),
@@ -34,7 +43,8 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
     [direction, setDirection] = useState(""),
     [category, setCategory] = useState(""),
     [editingBudget, setEditingBudget] = useState(false),
-    [reportSeason, setReportSeason] = useState("");
+    [kind, setKind] = useState<"in" | "out">("out"),
+    [deleting, setDeleting] = useState<View["entries"][number] | null>(null);
   const money = (cents: number) =>
     new Intl.NumberFormat(tag(locale), {
       style: "currency",
@@ -84,7 +94,8 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
     };
   }, [locale, scopedUrl]);
 
-  async function send(body: Record<string, unknown>) {
+  /** The server's answer (an id, an undo offer), or null when it failed. */
+  async function sendFor(body: Record<string, unknown>): Promise<{ id?: string; undo?: string } | null> {
     setBusy(true);
     setError("");
     setMessage("");
@@ -101,21 +112,23 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
       if (!r.ok) throw new Error(v.error);
       await load();
       setMessage(t.saved);
-      return true;
+      return v;
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
       setError(errors[code]?.[locale] ?? code);
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
   }
+  const send = async (body: Record<string, unknown>) => (await sendFor(body)) !== null;
   function record(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const value = (k: string) => String(f.get(k) ?? "").trim();
     const receivableId = value("receivable") || null;
-    void send({
+    const receipt = f.get("receipt");
+    void sendFor({
       action: "record",
       occurredOn: value("date"),
       label: value("label"),
@@ -130,7 +143,12 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
       counterparty: value("counterparty"),
       reference: value("reference"),
       notes: value("notes"),
-    }).then((ok) => ok && setAdding(false));
+    }).then(async (r) => {
+      if (!r) return;
+      setAdding(false);
+      // The receipt chosen in the form follows the new line.
+      if (r.id && receipt instanceof File && receipt.size > 0) await attach(r.id, receipt);
+    });
   }
 
   async function attach(transactionId: string, file: File) {
@@ -246,33 +264,23 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
         actions={
           view && (
             <>
-              <Link className="button secondary" href={`/${locale}/dues`}>
-                {t.dues}
-              </Link>
-              <Link className="button secondary" href={`/${locale}/funding/grants`}>
-                {shellCopy[locale].grants}
-              </Link>
-              <Link className="button secondary" href={`/${locale}/funding/partners`}>
-                {shellCopy[locale].partners}
-              </Link>
-              <Link className="button secondary" href={`/${locale}/funding/report?season=${view.season.label}`}>
-                {x.report}
-              </Link>
-              <Link className="button secondary" href={`/${locale}/funding/annual-accounts`}>
-                {accountsCopy[locale].title}
-              </Link>
-              <button className="button secondary" type="button" onClick={exportCsv} disabled={!entries.length}>
-                {t.export}
-              </button>
               {view.can_edit && (
-                <button className="button" type="button" aria-expanded={adding} onClick={() => setAdding(!adding)}>
-                  {adding ? t.close : t.add}
-                </button>
+                <Button icon="plus" aria-expanded={adding} onClick={() => setAdding(true)}>
+                  {n.add}
+                </Button>
               )}
+              <MoreMenu
+                label={n.more}
+                items={[
+                  { label: n.export, run: exportCsv, hidden: !entries.length },
+                  { label: n.annualReport, run: () => router.push(`/${locale}/funding/report?season=${view.season.label}`) },
+                ]}
+              />
             </>
           )
         }
       />
+      <FinanceNav locale={locale} current={section} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
@@ -280,6 +288,7 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
 
       {view && s && (
         <>
+          {section === "overview" && (
           <ul className="stat-row-grid" data-cols="4">
             <li>
               <KpiCard label={t.balance} value={money(s.balance)} description={t.balanceHint} icon="funding" tone={s.balance < 0 ? "danger" : "primary"} />
@@ -291,15 +300,10 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
               <KpiCard label={`${t.expenses} · ${t.season} ${view.season.label}`} value={money(s.expenses)} description={`${s.result >= 0 ? "+" : ""}${money(s.result)}`} icon="dues" tone="danger" />
             </li>
             <li>
-              <KpiCard
-                label={`${t.duesPlanned} · ${t.season} ${view.season.label}`}
-                value={money(view.dues.season)}
-                description={`${t.duesHint.replace("{amount}", money(view.dues.next30))}${view.dues.collected > 0 ? ` · ${x.collected.replace("{amount}", money(view.dues.collected))}` : ""}`}
-                icon="dues"
-              />
+              <KpiCard label={n.next30} value={money(view.dues.next30)} description={n.next30Hint} icon="calendar" />
             </li>
           </ul>
-          <p className="notice">{t.bankNote}</p>
+          )}
 
           {adding && (
             <Modal title={t.add} close={() => setAdding(false)}>
@@ -316,18 +320,17 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                       defaultValue={view.today}
                     />
                   </label>
-                  <label htmlFor="fin-direction">
-                    {t.direction}
-                    <select
-                      id="fin-direction"
-                      name="direction"
-                      defaultValue="in"
-                    >
-                      <option value="in">{t.in}</option>
-                      <option value="out">{t.out}</option>
-                    </select>
-                  </label>
                 </div>
+                <fieldset className="kind-choice">
+                  <legend>{n.kind}</legend>
+                  {(["out", "in"] as const).map((k) => (
+                    <label key={k} className="kind-option" data-kind={k}>
+                      <input type="radio" name="direction" value={k} checked={kind === k} onChange={() => setKind(k)} />
+                      <Icon name={k === "out" ? "dues" : "funding"} size={22} />
+                      <span>{k === "out" ? n.expense : n.income}</span>
+                    </label>
+                  ))}
+                </fieldset>
                 <label htmlFor="fin-label">
                   {t.label}
                   <input
@@ -448,6 +451,13 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                   {t.notes}
                   <textarea id="fin-notes" name="notes" maxLength={2000} />
                 </label>
+                <label htmlFor="fin-receipt">
+                  {n.receipt}
+                  <input id="fin-receipt" name="receipt" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" aria-describedby="fin-receipt-hint" />
+                  <span id="fin-receipt-hint" className="muted">
+                    {n.receiptHint}
+                  </span>
+                </label>
                 <button className="button" disabled={busy}>
                   {t.save}
                 </button>
@@ -455,7 +465,7 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
             </Modal>
           )}
 
-          {categoryRows.length > 0 && (
+          {section === "overview" && categoryRows.length > 0 && (
             <Card title={<>{t.byCategory} · {t.season} {view.season.label}</>} labelledBy="finance-categories" headingId="finance-categories">
               <ul className="category-bars">
                 {categoryRows.map(([key, v]) => (
@@ -485,8 +495,9 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
             </Card>
           )}
 
+          {section !== "operations" && (
           <Card title={<>{x.budget} · {view.season.label}
-                {view.teamId && <span className="muted"> · {view.teams.find((tm) => tm.id === view.teamId)?.name}</span>}</>} labelledBy="finance-budget" headingId="finance-budget" actions={view.can_edit && (
+                {view.teamId && <span className="muted"> · {view.teams.find((tm) => tm.id === view.teamId)?.name}</span>}</>} labelledBy="finance-budget" headingId="finance-budget" actions={view.can_edit && section === "budget" && (
                 <button
                   type="button"
                   className="button secondary"
@@ -588,7 +599,32 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
               <EmptyState title={x.noBudget} />
             )}
           </Card>
+          )}
+          {section === "overview" && (
+            <Card title={n.last} labelledBy="finance-last" headingId="finance-last" actions={<Link href={`/${locale}/funding/operations`}>{n.seeAll} →</Link>}>
+              {view.entries.filter((e) => !e.cancelled_at).length ? (
+                <ul className="last-operations">
+                  {view.entries
+                    .filter((e) => !e.cancelled_at)
+                    .slice(0, 5)
+                    .map((e) => (
+                      <li key={e.id}>
+                        <span className="muted">{day(e.occurred_on)}</span>
+                        <strong>{e.label}</strong>
+                        <span className={e.direction === "in" ? "amount-in" : "amount-spent"}>
+                          {e.direction === "in" ? "+" : "−"}
+                          {money(e.amount_cents)}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <EmptyState title={t.empty} />
+              )}
+            </Card>
+          )}
 
+          {section === "operations" && (
           <section aria-labelledby="finance-history">
             <h2 id="finance-history">{t.history}</h2>
             <Toolbar label={x.ledgerFilters}>
@@ -738,7 +774,7 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                             </label>
                           )}
                         </td>
-                        <td>
+                        <td className="ledger-actions">
                           {!e.cancelled_at &&
                             view.can_edit &&
                             (cancelling === e.id ? (
@@ -787,6 +823,11 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
                                 {t.cancel}
                               </button>
                             ))}
+                          {view.can_edit && (
+                            <button type="button" className="icon-button sm" aria-label={n.deleteOf.replace("{label}", e.label)} title={n.deleteOf.replace("{label}", e.label)} disabled={busy} onClick={() => setDeleting(e)}>
+                              <Icon name="trash" size={16} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -809,50 +850,57 @@ export function Finance({ locale, create = false }: { locale: Locale; create?: b
               />
             )}
           </section>
+          )}
         </>
       )}
-
-      {view && (
-        <Card title={x.report} labelledBy="finance-report" headingId="finance-report">
-          <p className="muted">{x.reportIntro}</p>
-          <div className="inline-form">
-            <label htmlFor="report-season">
-              {x.reportSeason}
-              <select
-                id="report-season"
-                value={reportSeason || view.season.label}
-                onChange={(e) => setReportSeason(e.target.value)}
-              >
-                {view.seasons.map((season) => (
-                  <option key={season} value={season}>
-                    {season}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Link
-              className="button"
-              href={`/${locale}/funding/report?season=${reportSeason || view.season.label}`}
+      {deleting && view && (
+        <Modal title={deleting.origin ? n.linkedTitle : n.deleteTitle.replace("{label}", deleting.label)} close={() => setDeleting(null)}>
+          {deleting.origin ? (
+            <>
+              <p>{n.linked[deleting.origin]}</p>
+              <div className="actions">
+                <Link className="button" href={`/${locale}${deleting.origin === "dues" ? "/dues" : deleting.origin === "sponsor" ? "/funding/partners" : "/funding/affiliations"}`}>
+                  {n.open}
+                </Link>
+                <button type="button" className="button secondary" onClick={() => setDeleting(null)}>
+                  {n.cancel}
+                </button>
+              </div>
+            </>
+          ) : (
+            <form
+              className="stack-form"
+              onSubmit={(ev) => {
+                ev.preventDefault();
+                const reason = String(new FormData(ev.currentTarget).get("reason") ?? "").trim();
+                const line = deleting;
+                void sendFor({ action: "delete", id: line.id, reason }).then((r) => {
+                  if (!r) return;
+                  setDeleting(null);
+                  undoToast(locale, n.deleted, r.undo, view.organization_id, load, "trash");
+                });
+              }}
             >
-              {x.openReport}
-            </Link>
-            <a
-              className="button secondary"
-              href={`/api/finance/report?format=csv&season=${reportSeason || view.season.label}`}
-            >
-              {x.csv}
-            </a>
-          </div>
-        </Card>
+              <p>
+                {n.deleteText} <strong>{(deleting.direction === "in" ? "+" : "−") + money(deleting.amount_cents)}</strong>
+              </p>
+              <label htmlFor="delete-reason">
+                {n.deleteReason}
+                <input id="delete-reason" name="reason" required minLength={3} maxLength={500} />
+              </label>
+              <div className="actions">
+                <button className="button danger" disabled={busy}>
+                  {n.deleteConfirm}
+                </button>
+                <button type="button" className="button secondary" onClick={() => setDeleting(null)}>
+                  {n.cancel}
+                </button>
+              </div>
+            </form>
+          )}
+        </Modal>
       )}
 
-      <Card title={<><Icon name="dues" size={18} />
-          {t.dues}</>} labelledBy="finance-dues" headingId="finance-dues">
-        <p>{t.duesText}</p>
-        <Link className="button secondary" href={`/${locale}/dues`}>
-          {t.openDues}
-        </Link>
-      </Card>
     </main>
   );
 }

@@ -8,6 +8,7 @@ import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, EmptyState, PageHeader, Card } from "./ui";
+import { FinanceNav } from "./finance-nav";
 
 export const fundraisingCopy = {
   fr: {
@@ -587,6 +588,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
       <PageHeader title={t.title} subtitle={t.intro} actions={data.can.manage && editing !== "group" && (
           <button type="button" className="button" onClick={() => setEditing("group")}>{t.newGroup}</button>
         )} />
+      {data.can.manage && <FinanceNav locale={locale} current="income" income="fundraising" />}
       {error && <p role="alert">{error}</p>}
       {(message || copied) && <p role="status">{copied || message}</p>}
       {editing === "group" && <Card label={t.newGroup}>{groupForm()}</Card>}

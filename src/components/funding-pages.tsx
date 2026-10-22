@@ -10,6 +10,7 @@ import { useData, usePost } from "./use-api";
 import { fundingCopy } from "./funding-copy";
 import { shellCopy } from "./shell-copy";
 import { Badge, Card, EmptyState, PageHeader, StatCard, Tabs, Toolbar, type Tone } from "./ui";
+import { FinanceNav } from "./finance-nav";
 import { Modal } from "./modal";
 import { sponsorsCopy } from "./sponsors-copy";
 import { PackagesPanel, PartnerSheet, PaymentBadge } from "./sponsors";
@@ -41,16 +42,10 @@ export function useFunding(locale: Locale) {
     d ? new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")) : "";
   return { t, data, error, setError, reload, message, busy, post, day };
 }
-export function Nav({ locale, current }: { locale: Locale; current: "grants" | "partners" }) {
+/** Wave 17 (N1): the finance tabs replace the links to the other money pages; the contacts book stays at hand. */
+export function Nav({ locale }: { locale: Locale; current: "grants" | "partners" }) {
   const s = shellCopy[locale];
-  return (
-    <>
-      <Link className="button secondary" href={`/${locale}/funding`}>{s.funding}</Link>
-      {current !== "grants" && <Link className="button secondary" href={`/${locale}/funding/grants`}>{s.grants}</Link>}
-      {current !== "partners" && <Link className="button secondary" href={`/${locale}/funding/partners`}>{s.partners}</Link>}
-      <Link className="button secondary" href={`/${locale}/contacts`}>{s.contacts}</Link>
-    </>
-  );
+  return <Link className="button secondary" href={`/${locale}/contacts`}>{s.contacts}</Link>;
 }
 export function ContactSelect({
   name,
@@ -174,6 +169,7 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
           </>
         }
       />
+      <FinanceNav locale={locale} current="income" income="partners" />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <Tabs

@@ -64,7 +64,7 @@ const fr: Copy = {
     club: { title: "Club", text: "Nom, logo et contact du club, modules activés." },
     members: { title: "Membres et droits", text: "Ce que chaque coach peut voir et gérer, profils de droits." },
     activities: { title: "Activités", text: "Effectif attendu aux entraînements et aux matchs." },
-    money: { title: "Argent", text: "Barèmes de cotisation, alerte de saison lancée, rappels automatiques." },
+    money: { title: "Finances", text: "Barèmes de cotisation, alerte de saison lancée, rappels automatiques." },
     journals: { title: "Journaux et confidentialité", text: "Qui a changé quels droits, qui a lu des données de santé." },
   },
   entries: {
@@ -130,7 +130,7 @@ const nl: Copy = {
     club: { title: "Club", text: "Naam, logo en contact van de club, actieve modules." },
     members: { title: "Leden en rechten", text: "Wat elke coach mag zien en beheren, rechtenprofielen." },
     activities: { title: "Activiteiten", text: "Verwachte bezetting op trainingen en wedstrijden." },
-    money: { title: "Geld", text: "Lidgeldtarieven, waarschuwing bij gestart seizoen, automatische herinneringen." },
+    money: { title: "Financiën", text: "Lidgeldtarieven, waarschuwing bij gestart seizoen, automatische herinneringen." },
     journals: { title: "Logboeken en privacy", text: "Wie welke rechten wijzigde, wie gezondheidsgegevens las." },
   },
   entries: {
@@ -196,7 +196,7 @@ const en: Copy = {
     club: { title: "Club", text: "Club name, logo and contact, enabled modules." },
     members: { title: "Members and rights", text: "What each coach may see and manage, rights profiles." },
     activities: { title: "Activities", text: "Expected attendance at trainings and matches." },
-    money: { title: "Money", text: "Membership rates, season-started warning, automatic reminders." },
+    money: { title: "Finances", text: "Membership rates, season-started warning, automatic reminders." },
     journals: { title: "Logs and privacy", text: "Who changed which rights, who read health data." },
   },
   entries: {
