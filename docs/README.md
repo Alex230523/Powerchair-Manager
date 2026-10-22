@@ -7,6 +7,7 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md)                                           | Développeurs           | Couches, autorisations, données, ajout d'un module                           |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md)                                     | Développeurs           | Conventions, tests, définition de « terminé »                                |
 | [GUIDE-LOCAL.md](GUIDE-LOCAL.md)                                             | Développeurs, testeurs | Installation locale complète, usage de chaque module, workers                |
+| [PRODUCTION.md](PRODUCTION.md)                                               | Responsable technique  | Mise en ligne à coût zéro : services gratuits, quotas, tâches de fond, sauvegardes, incident |
 | [cahier-des-charges/](cahier-des-charges/Powerchair_Football_Manager_v2.pdf) | Tous                   | Cahier des charges v2.0 : 20 modules, 7 profils, feuille de route en 21 lots |
 
 ## Notes de lots (`lots/`)
@@ -106,6 +107,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [A1 : to-do centrale du club et de la fédération](evolutions/2026-10-22-q-a1-todo-centrale.md) |
 | 22/10/2026 | [A2 : Subsides & sponsors](evolutions/2026-10-22-r-a2-subsides-sponsors.md) |
 | 22/10/2026 | [A4 : CRM simple relié à tout](evolutions/2026-10-22-s-a4-crm.md) |
+| 22/10/2026 | [B2 : mise en production à coût zéro (prête, non activée)](evolutions/2026-10-22-t-b2-production.md) |
 
 ## Convention
 

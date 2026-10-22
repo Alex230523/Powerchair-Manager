@@ -1,0 +1,38 @@
+# B2 TEMPLATE, NOT ACTIVE. Copy to .github/workflows/scheduler.yml to switch it on.
+# Calls the background tasks of the production site. Needs two repository
+# secrets: PFM_URL (https://your-domain, no trailing slash) and CRON_SECRET
+# (the same value as on the host). See docs/PRODUCTION.md, « Tâches de fond ».
+#
+# Minutes: a private repository has 2,000 free minutes a month and each run
+# is billed at least one minute. Every 30 minutes is 1,440 minutes a month;
+# more often only on a public repository, or use cron-job.org (free) for the
+# frequent calls and keep this file for the hourly ones.
+name: Scheduler
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: scheduler
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call the background tasks
+        env:
+          PFM_URL: ${{ secrets.PFM_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          failed=0
+          for task in mail attendance reminders documents watchdog; do
+            code=$(curl -sS -o /tmp/out.json -w '%{http_code}' -X POST -H "Authorization: Bearer $CRON_SECRET" --max-time 90 "$PFM_URL/api/cron/$task" || echo 000)
+            echo "$task: $code $(cat /tmp/out.json 2>/dev/null)"
+            [ "$code" = "200" ] || failed=1
+          done
+          exit $failed

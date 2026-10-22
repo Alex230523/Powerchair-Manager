@@ -1,4 +1,5 @@
 import { ensureStorage } from "../storage/service";
+import { storageAdapter } from "../../lib/storage-adapter";
 import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { Pool, type PoolClient } from "pg";
@@ -419,7 +420,8 @@ async function addVersion(
       sequence,
       file.name.replace(/[^\p{L}\p{N}._ -]/gu, "_").slice(0, 120),
       file.type,
-      seal({ data: file.bytes.toString("base64") }, "document:" + versionId),
+      // B2: the store chosen by STORAGE_DRIVER (PostgreSQL by default) keeps the sealed content.
+      await storageAdapter().put("document:" + versionId, seal({ data: file.bytes.toString("base64") }, "document:" + versionId)),
       sha,
       s.p.userId,
       source.templateId ?? null,
@@ -834,7 +836,7 @@ export async function documentDownload(
           versionId,
         );
       const body = unseal<{ data: string }>(
-        f.content_ciphertext,
+        await storageAdapter().get("document:" + versionId, f.content_ciphertext),
         "document:" + versionId,
       );
       return { bytes: Buffer.from(body.data, "base64"), filename: f.filename };
@@ -919,7 +921,7 @@ export async function documentSign(
       ).rows[0];
       const text = Buffer.from(
         unseal<{ data: string }>(
-          source.content_ciphertext,
+          await storageAdapter().get("document:" + source.id, source.content_ciphertext),
           "document:" + source.id,
         ).data,
         "base64",

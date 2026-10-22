@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { previewRedirects, previewSettings } from "./src/lib/preview";
+import { pageHeaders, widgetHeaders } from "./src/lib/security-headers";
 const config: NextConfig = {
   poweredByHeader: false,
   // Vercel previews: the branch address, inlined at build time (src/lib/preview.ts).
@@ -14,32 +15,17 @@ const config: NextConfig = {
     return [
       {
         source: "/:locale/registration-widget/:id",
-        headers: [
-          { key: "Content-Security-Policy", value: "frame-ancestors *" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "no-referrer" },
-        ],
+        headers: [...widgetHeaders],
       },
       {
         source: "/:locale/hall-of-fame-widget/:id",
-        headers: [
-          { key: "Content-Security-Policy", value: "frame-ancestors *" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "no-referrer" },
-        ],
+        headers: [...widgetHeaders],
       },
       {
         source:
           "/:path((?!fr/registration-widget/|nl/registration-widget/|en/registration-widget/|fr/hall-of-fame-widget/|nl/hall-of-fame-widget/|en/hall-of-fame-widget/).*)",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "X-Frame-Options", value: "DENY" },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
-          },
-        ],
+        // B2: HSTS and a CSP that closes framing, plugins and foreign form targets.
+        headers: [...pageHeaders],
       },
     ];
   },
