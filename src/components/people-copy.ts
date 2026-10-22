@@ -18,8 +18,6 @@ export const peopleCopy = {
     team: "Équipe",
     season: "Saison",
     sportRole: "Fonction dans l’équipe",
-    minAge: "Âge minimum",
-    maxAge: "Âge maximum",
     joinedBefore: "Entrée avant le",
     empty: "Aucun élément à afficher.",
     addPerson: "Ajouter une personne",
@@ -129,8 +127,6 @@ export const peopleCopy = {
     team: "Team",
     season: "Seizoen",
     sportRole: "Functie in het team",
-    minAge: "Minimumleeftijd",
-    maxAge: "Maximumleeftijd",
     joinedBefore: "Lid sinds vóór",
     empty: "Geen items om weer te geven.",
     addPerson: "Persoon toevoegen",
@@ -232,6 +228,16 @@ export const peopleErrors: Record<
   string,
   { fr: string; nl: string; en: string }
 > = {
+  CONFIRM_REQUIRED: {
+    fr: "Cochez la confirmation pour continuer.",
+    nl: "Vink de bevestiging aan om verder te gaan.",
+    en: "Tick the confirmation to continue.",
+  },
+  PROFILE_ACTIVE: {
+    fr: "Cette personne fait encore partie du club : enregistrez d'abord son départ.",
+    nl: "Deze persoon maakt nog deel uit van de club: registreer eerst het vertrek.",
+    en: "This person is still in the club: record the departure first.",
+  },
   GUARDIAN_REQUIRED: {
     fr: "Pour inviter un joueur mineur, indiquez le nom et l'email du parent.",
     nl: "Om een minderjarige speler uit te nodigen, vul de naam en het e-mailadres van de ouder in.",

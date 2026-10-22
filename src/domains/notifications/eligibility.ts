@@ -1,7 +1,7 @@
 import { notificationAllowed as attendanceAllowed } from "../attendance/access";
 import { notificationAllowed as calendarAllowed } from "../calendar/access";
 import { notificationAllowed } from "../documents/access";
-import type { Db, Category, ResourceType, Envelope } from "./queue";
+import { deceasedUser, type Db, type Category, type ResourceType, type Envelope } from "./queue";
 import {
   permissions,
   isAdmin,
@@ -113,6 +113,8 @@ export async function allowed(
     );
   }
   if (!target.recipient_user_id) return addressAllowed(db, target, envelope);
+  // Wave 17 (J1): no email any more to a person who has died, whatever was queued before.
+  if (target.resource_type !== "auth" && (await deceasedUser(db, target.recipient_user_id))) return false;
   const result = await db.query(
     'SELECT id,email,active,"emailVerified" FROM "user" WHERE id=$1',
     [target.recipient_user_id],

@@ -71,7 +71,6 @@ type Copy = {
   control: string;
   controls: Record<string, string>;
   sportNotes: string;
-  positionLink: string;
   chairs: string;
   noChair: string;
   primary: string;
@@ -191,7 +190,6 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       other: "Autre",
     },
     sportNotes: "Notes sportives (points forts, rôle, consignes)",
-    positionLink: "Poste et numéro se modifient dans la fiche du répertoire.",
     chairs: "Fauteuils",
     noChair: "Aucun fauteuil lié à ce joueur.",
     primary: "Principal",
@@ -312,7 +310,6 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       other: "Andere",
     },
     sportNotes: "Sportnotities (sterktes, rol, instructies)",
-    positionLink: "Positie en nummer wijzigt u in de fiche van het register.",
     chairs: "Rolstoelen",
     noChair: "Geen rolstoel gekoppeld aan deze speler.",
     primary: "Hoofdrolstoel",
@@ -434,7 +431,6 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       other: "Other",
     },
     sportNotes: "Sport notes (strengths, role, instructions)",
-    positionLink: "Position and number are edited in the directory record.",
     chairs: "Chairs",
     noChair: "No chair linked to this player.",
     primary: "Main",

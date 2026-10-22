@@ -40,6 +40,9 @@ export const importRow = z.object({
   guardianPhone: text(40).optional(),
 });
 export type ImportRow = z.infer<typeof importRow>;
+/** Wave 17 (J1): why someone left the club. */
+export const departureStatuses = ["stopped", "moved", "unknown", "deceased"] as const;
+export type DepartureStatus = (typeof departureStatuses)[number];
 export const peopleCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("directoryRole"),
@@ -51,6 +54,20 @@ export const peopleCommand = z.discriminatedUnion("action", [
     id,
     role: z.enum(["player", "coach"]),
     archived: z.boolean(),
+    /** Wave 17 (J1): why the person leaves (not « deceased »: see « departure »). */
+    departureStatus: z.enum(["stopped", "moved", "unknown"]).optional(),
+    departureNote: text(500).optional(),
+  }),
+  /**
+   * Wave 17 (J1): the reason of a departure, changed later. « Décédé » is set
+   * or lifted by the club president only, with an explicit confirmation.
+   */
+  z.object({
+    action: z.literal("departure"),
+    id,
+    status: z.enum(departureStatuses),
+    note: text(500).default(""),
+    confirm: z.boolean().default(false),
   }),
   z.object({
     action: z.literal("gameInfo"),

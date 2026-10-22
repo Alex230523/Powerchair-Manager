@@ -111,6 +111,8 @@ export async function templateFor(
 }
 async function insert(client: PoolClient, input: Publication) {
   z.email().parse(input.email);
+  // Wave 17 (J1): nothing more for a person who has died (only account recovery stays possible).
+  if (input.userId && input.resourceType !== "auth" && (await deceasedUser(client, input.userId))) return undefined;
   const base = new URL(process.env.BETTER_AUTH_URL!),
     url = new URL(input.variables.url, base);
   if (url.origin !== base.origin) throw new Error("INVALID_MAIL_URL");
@@ -253,4 +255,11 @@ export async function publishAuth(
     inApp: false,
     variables: { name: user.name, organization: "", url },
   });
+}
+
+/** Wave 17 (J1): the account belongs to a person whose file says « Décédé ». */
+export async function deceasedUser(client: Pick<PoolClient, "query">, userId: string) {
+  return !!(
+    await client.query("SELECT 1 FROM club_person c JOIN person p ON p.id=c.person_id WHERE p.user_id=$1 AND c.departure_status='deceased' LIMIT 1", [userId])
+  ).rowCount;
 }

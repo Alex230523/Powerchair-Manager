@@ -21,16 +21,27 @@ import { MoveDialog } from "./teams";
 import { teamsCopy } from "./teams-copy";
 import { Badge, Tabs, EmptyState } from "./ui";
 import { undoToast } from "./toast";
+import { sheetCopy } from "./player-sheet-copy";
+import { peopleCopy } from "./people-copy";
 import { toastCopy } from "./toast-copy";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
 type Tab = "personal" | "sport";
-type Editing = "" | "support" | "confidential" | "sport";
+type Editing = "" | "support" | "confidential" | "sport" | "identity" | "game";
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
-export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
-  const t = playerProfileCopy[locale];
+/**
+ * The player's sheet. Wave 17 (J1): one sheet only, shown in a window from
+ * the directory (`embedded`) or as a full page (/players/[id]); the identity,
+ * the position and number and the team assignment are edited here too.
+ */
+export function PlayerProfile({ locale, id, embedded = false, onChanged }: { locale: Locale; id: string; embedded?: boolean; onChanged?: () => void }) {
+  const t = playerProfileCopy[locale],
+    sc = sheetCopy[locale],
+    pc = peopleCopy[locale];
+  const Root = embedded ? "div" : "main";
+  const rootId = embedded ? undefined : "main";
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
@@ -75,15 +86,16 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
   }, [id]);
 
   const [moving, setMoving] = useState(false);
-  async function send(body: Record<string, unknown>) {
+  /** Identity, position and team go through the directory's commands. */
+  async function send(body: Record<string, unknown>, endpoint = "/api/player-profile") {
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      const r = await fetch("/api/player-profile", {
+      const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, id, organizationId: view?.context.id }),
+        body: JSON.stringify({ id, ...body, organizationId: view?.context.id }),
       });
       const v = await r.json();
       if (!r.ok) throw new Error(v.error);
@@ -96,6 +108,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
       if (fresh.ok) setView(await fresh.json());
       setEditing("");
       setMessage(t.saved);
+      onChanged?.();
     } catch (e) {
       setError(failure(e instanceof Error ? e.message : ""));
     } finally {
@@ -105,19 +118,22 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
   function submit(
     e: FormEvent<HTMLFormElement>,
     fn: (f: FormData) => Record<string, unknown>,
+    endpoint?: string,
   ) {
     e.preventDefault();
-    void send(fn(new FormData(e.currentTarget)));
+    void send(fn(new FormData(e.currentTarget)), endpoint);
   }
 
   if (!view)
     return (
-      <main id="main" className="access player-profile">
-        <p>
-          <Link href={`/${locale}/players`}>← {t.back}</Link>
-        </p>
+      <Root id={rootId} className="access player-profile">
+        {!embedded && (
+          <p>
+            <Link href={`/${locale}/players`}>← {t.back}</Link>
+          </p>
+        )}
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
-      </main>
+      </Root>
     );
 
   const p = view.player;
@@ -166,19 +182,22 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
     );
 
   return (
-    <main id="main" className="access player-profile">
-      <p className="back-link">
-        <Link href={`/${locale}/players`}>
-          <Icon name="back" size={16} />
-          {t.back}
-        </Link>
-      </p>
+    <Root id={rootId} className={`access player-profile ${embedded ? "embedded" : ""}`.trim()}>
+      {!embedded && (
+        <p className="back-link">
+          <Link href={`/${locale}/players`}>
+            <Icon name="back" size={16} />
+            {t.back}
+          </Link>
+        </p>
+      )}
       <div className="profile-hero">
         <span className="avatar avatar-xl" aria-hidden="true">
           {initials(p.full_name)}
         </span>
         <div className="profile-title">
-          <h1>{p.full_name}</h1>
+          {/* In the window, the dialog's title already says the name. */}
+          {!embedded && <h1>{p.full_name}</h1>}
           <ul className="profile-tags">
             {currentTeams.map((a) => (
               <li key={a.id}>{a.team}</li>
@@ -193,6 +212,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               }
             </li>
             {former && <li data-tone="muted">{t.formerPlayer}</li>}
+            {p.departure_status === "deceased" && <li data-tone="muted">{sc.inMemoriam}</li>}
           </ul>
         </div>
       </div>
@@ -216,8 +236,50 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
         hidden={tab !== "personal"}
         className="profile-grid"
       >
-        <Card title={t.identity}>
-          {view.can.details ? (
+        <Card title={t.identity} action={view.can.details && view.can.managePeople ? editButton("identity", t.identity) : null}>
+          {editing === "identity" && view.can.details ? (
+            <form
+              onSubmit={(e) =>
+                submit(
+                  e,
+                  (f) => ({
+                    action: "updatePerson",
+                    version: p.version,
+                    fullName: f.get("fullName"),
+                    birthDate: f.get("birthDate") || null,
+                    email: f.get("email") || "",
+                    phone: f.get("phone") || "",
+                    joinedOn: f.get("joinedOn"),
+                  }),
+                  "/api/people",
+                )
+              }
+            >
+              <label htmlFor="sheet-name">
+                {pc.name}
+                <input id="sheet-name" name="fullName" required minLength={2} maxLength={120} defaultValue={p.full_name} />
+              </label>
+              <label htmlFor="sheet-birth">
+                {pc.birth}
+                <input id="sheet-birth" name="birthDate" type="date" max={view.today} defaultValue={p.birth_date ?? ""} />
+              </label>
+              <label htmlFor="sheet-email">
+                {pc.email}
+                <input id="sheet-email" name="email" type="email" defaultValue={p.email ?? ""} />
+              </label>
+              <label htmlFor="sheet-phone">
+                {pc.phone}
+                <input id="sheet-phone" name="phone" maxLength={40} defaultValue={p.phone ?? ""} />
+              </label>
+              <label htmlFor="sheet-joined">
+                {pc.joined}
+                <input id="sheet-joined" name="joinedOn" type="date" required max={view.today} defaultValue={p.joined_on ?? view.today} />
+              </label>
+              <button className="button" disabled={busy}>
+                {t.save}
+              </button>
+            </form>
+          ) : view.can.details ? (
             <dl className="facts">
               <dt>{t.birth}</dt>
               <dd>
@@ -668,12 +730,82 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
               <dd>{text(view.sport.sport_notes)}</dd>
             </dl>
           )}
-          {view.can.editPosition && (
-            <p className="muted">
-              <Link href={`/${locale}/players`}>{t.positionLink}</Link>
-            </p>
-          )}
         </Card>
+
+        {view.can.editPosition && !former && (
+          <Card title={sc.teamCard} icon="team" action={editButton("game", sc.positionEdit)}>
+            {editing === "game" ? (
+              <form
+                onSubmit={(e) =>
+                  submit(
+                    e,
+                    (f) => ({
+                      action: "gameInfo",
+                      version: p.version,
+                      position: f.get("position") ?? "",
+                      jerseyNumber: f.get("number") === "" ? null : Number(f.get("number")),
+                    }),
+                    "/api/people",
+                  )
+                }
+              >
+                <label htmlFor="sheet-position">
+                  {t.position}
+                  <input id="sheet-position" name="position" maxLength={80} defaultValue={p.playing_position} />
+                </label>
+                <label htmlFor="sheet-number">
+                  {t.jersey}
+                  <input id="sheet-number" name="number" type="number" min={0} max={99} defaultValue={p.jersey_number ?? ""} />
+                </label>
+                <button className="button" disabled={busy}>
+                  {t.save}
+                </button>
+              </form>
+            ) : (
+              <dl className="facts">
+                <dt>{t.position}</dt>
+                <dd>{p.playing_position || "—"}</dd>
+                <dt>{t.jersey}</dt>
+                <dd>{p.jersey_number ?? "—"}</dd>
+              </dl>
+            )}
+            <h3 className="card-subtitle">{sc.assignTitle}</h3>
+            {view.otherTeams.length ? (
+              <form
+                className="sheet-assign"
+                onSubmit={(e) =>
+                  submit(
+                    e,
+                    (f) => ({ action: "assign", profileId: p.id, teamId: f.get("team"), role: "player", position: p.playing_position ?? "", startsOn: f.get("from"), endsOn: null }),
+                    "/api/people",
+                  )
+                }
+              >
+                <label htmlFor="sheet-team">
+                  {pc.team}
+                  <select id="sheet-team" name="team" required>
+                    {view.otherTeams
+                      .filter((o) => !currentTeams.some((a) => a.team_id === o.id))
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label htmlFor="sheet-from">
+                  {sc.startsOn}
+                  <input id="sheet-from" name="from" type="date" required defaultValue={view.today} />
+                </label>
+                <button className="button secondary" disabled={busy}>
+                  {sc.assign}
+                </button>
+              </form>
+            ) : (
+              <p className="muted">{sc.noOpenTeam}</p>
+            )}
+          </Card>
+        )}
 
         <Card title={t.chairs} icon="wheelchair">
           {view.chairs.length ? (
@@ -824,7 +956,7 @@ export function PlayerProfile({ locale, id }: { locale: Locale; id: string }) {
           }}
         />
       )}
-      </main>
+      </Root>
   );
 }
 
