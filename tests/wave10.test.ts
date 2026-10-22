@@ -7,7 +7,7 @@ import {
   readiness,
 } from "../src/domains/dashboard/presence";
 import { duesState, settle } from "../src/domains/dues/schema";
-import { fillDues, tigerstormTemplate } from "../src/domains/registrations/templates";
+import { fillDues, platformTemplate } from "../src/domains/registrations/templates";
 import { homeCopy } from "../src/components/home-copy";
 import { governanceCopy } from "../src/components/governance-copy";
 import { settingsCopy } from "../src/components/settings-copy";
@@ -76,12 +76,12 @@ describe("dues rows", () => {
 
 describe("registration form and the dues plan", () => {
   it("writes no amount in the template, only placeholders", () => {
-    const text = JSON.stringify(tigerstormTemplate("fr"));
+    const text = JSON.stringify(platformTemplate("player", "fr"));
     expect(text).not.toMatch(/250 ?€|€ ?250/);
     expect(text).toContain("{cotisation}");
     expect(text).toContain("{cotisation/4}");
     // Options stay plain: answers are compared with the stored option text.
-    const pay = tigerstormTemplate("fr").fields.find((f) => f.maps === "installments")!;
+    const pay = platformTemplate("player", "fr").fields.find((f) => f.maps === "installments")!;
     expect(pay.options).toEqual(["1 fois", "2 fois", "3 fois", "4 fois"]);
   });
   it("fills the amount of the season, split by installment", () => {

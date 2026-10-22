@@ -1,5 +1,13 @@
 import {
   Accessibility,
+  Archive,
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  Eye,
+  GripVertical,
+  Share2,
+  Trash2,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
@@ -117,6 +125,14 @@ const icons = {
   medal: Medal,
   star: Star,
   storage: HardDrive,
+  archive: Archive,
+  arrowDown: ArrowDown,
+  arrowUp: ArrowUp,
+  copy: Copy,
+  eye: Eye,
+  grip: GripVertical,
+  share: Share2,
+  trash: Trash2,
 } satisfies Record<string, LucideIcon>;
 export type IconName = keyof typeof icons;
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

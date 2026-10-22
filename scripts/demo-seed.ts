@@ -45,7 +45,7 @@ import {
   clubLicensesExecute,
   federationLicensesExecute,
 } from "../src/domains/federation/service";
-import { tigerstormTemplate } from "../src/domains/registrations/templates";
+import { platformTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
 const CLUB = "Club démo Powerchair";
@@ -875,7 +875,7 @@ try {
   }
 
   // 9. A submitted application waiting for the club's decision.
-  const template = tigerstormTemplate("fr");
+  const template = platformTemplate("player", "fr");
   const form = (
     await db.query(
       "INSERT INTO registration_form(organization_id,season_id,title,description,fields,published) VALUES($1,$2,$3,$4,$5,true) RETURNING id",

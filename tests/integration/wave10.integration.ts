@@ -10,7 +10,7 @@ import { attendanceExecute, attendanceView } from "../../src/domains/attendance/
 import { governanceExecute, governanceView } from "../../src/domains/club/governance";
 import { dashboardView } from "../../src/domains/dashboard/service";
 import { publicForm, registrationExecute } from "../../src/domains/registrations/service";
-import { tigerstormTemplate } from "../../src/domains/registrations/templates";
+import { platformTemplate } from "../../src/domains/registrations/templates";
 
 const schema = "wave10_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -382,8 +382,8 @@ it("fills the registration form with the amount of the season's dues plan", asyn
       action: "form",
       seasonId: season,
       title: "Inscription 2026-27",
-      description: tigerstormTemplate("fr").description,
-      fields: tigerstormTemplate("fr").fields,
+      description: platformTemplate("player", "fr").description,
+      fields: platformTemplate("player", "fr").fields,
       published: true,
       capacity: null,
     },

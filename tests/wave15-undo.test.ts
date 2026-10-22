@@ -1,14 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { undoKinds, undoSeconds } from "../src/domains/undo/service";
 import { toastCopy } from "../src/components/toast-copy";
 
 /** Wave 15 (C10): toasts with "Annuler" after a reversible action. */
 describe("undo", () => {
   it("knows the same kinds as the database", () => {
-    // The latest list of kinds (0048 added eventCancel, wave 16 E1).
-    const sql = readFileSync("db/migrations/0048_event_types_invitations.sql", "utf8");
-    const listed = sql.match(/undo_action_kind_check CHECK \(kind IN \(([^)]*)\)/)![1].match(/'([a-zA-Z]+)'/g)!.map((s) => s.slice(1, -1));
+    // The latest list of kinds: the last migration that rewrites the check (0048 eventCancel, 0051 registrationDecision).
+    const lists = readdirSync("db/migrations")
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((f) => readFileSync("db/migrations/" + f, "utf8").match(/undo_action_kind_check CHECK \(kind IN \(([^)]*)\)/))
+      .filter((m): m is RegExpMatchArray => !!m);
+    const listed = lists[lists.length - 1][1].match(/'([a-zA-Z]+)'/g)!.map((s) => s.slice(1, -1));
     expect(listed).toEqual([...undoKinds]);
     // Longer than the 8 seconds on screen, so a hovered message can still be used.
     expect(undoSeconds).toBeGreaterThan(8);

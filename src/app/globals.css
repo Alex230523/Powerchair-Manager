@@ -8461,3 +8461,214 @@ details.event-section > summary {
   font-family: var(--font-ui);
   font-size: var(--text-sm);
 }
+
+/* ---------- Registrations, wave 17 (F1): forms list, question cards, sharing, one-click decisions ---------- */
+.forms-archived {
+  margin-bottom: var(--space-3);
+}
+.forms-grid tr.selected-row > * {
+  background: var(--surface-soft);
+}
+.forms-grid .form-open[aria-pressed="true"] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.icon-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.more-menu {
+  position: relative;
+  display: inline-block;
+}
+.more-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  text-align: left;
+}
+.more-menu-panel .button {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+.registrations .question-list {
+  display: grid;
+  gap: var(--space-4);
+}
+.registrations fieldset.question-card {
+  position: relative;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-width: 0;
+}
+.question-card legend {
+  padding-inline: var(--space-2);
+  font-weight: 700;
+  color: var(--heading);
+}
+.question-card.dragging {
+  opacity: 0.6;
+  border-style: dashed;
+}
+.question-tools {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.question-grip {
+  cursor: grab;
+  touch-action: none;
+}
+.question-card .question-remove:hover {
+  color: var(--danger-ink);
+  border-color: var(--danger);
+}
+.question-card input,
+.question-card select,
+.question-card textarea {
+  max-width: 100%;
+}
+.decision-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.decision-button {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--on-primary);
+  cursor: pointer;
+}
+.decision-button.accept {
+  background: var(--success);
+}
+.decision-button.accept:hover {
+  background: var(--success-ink);
+}
+.decision-button.refuse {
+  background: var(--danger);
+}
+.decision-button.refuse:hover {
+  background: var(--danger-ink);
+}
+.decision-button:disabled {
+  background: var(--surface-soft);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.decision-buttons.labelled .decision-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: auto;
+  min-height: 36px;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  font-weight: 600;
+}
+.decision-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.decision-panel h3 {
+  margin: 0;
+}
+.template-choice + .template-choice {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.template-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+.template-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.template-list li > div:first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.template-list p {
+  margin: 2px 0 0;
+}
+.share-opening {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.share-opening .button {
+  justify-self: start;
+}
+.share-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.share-dates label {
+  display: grid;
+  gap: 2px;
+}
+.share-panel {
+  padding-top: var(--space-3);
+}
+.share-panel .embed-block input {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.share-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.share-dialog .subscribe-qr {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+.team-choice .check {
+  min-height: 2.75rem;
+}

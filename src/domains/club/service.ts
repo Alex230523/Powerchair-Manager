@@ -1,3 +1,4 @@
+import { formOpenSql } from "../registrations/open";
 import { ensureStorage } from "../storage/service";
 import type { Pool } from "pg";
 import { z } from "zod";
@@ -224,7 +225,7 @@ export async function clubLogoForForm(db: Pool, formId: string) {
   z.uuid().parse(formId);
   return (
     await db.query(
-      "SELECT l.media_type,l.content FROM registration_form f JOIN organization_logo l ON l.organization_id=f.organization_id WHERE f.id=$1 AND f.published",
+      `SELECT l.media_type,l.content FROM registration_form f JOIN organization_logo l ON l.organization_id=f.organization_id WHERE f.id=$1 AND ${formOpenSql("f")}`,
       [formId],
     )
   ).rows[0] as { media_type: string; content: Buffer } | undefined;
