@@ -7,6 +7,8 @@ import {
   peopleVisibility,
 } from "../people/service";
 import { canRead, type Event } from "../calendar/access";
+import { searchContacts } from "../crm/service";
+import { mfaSatisfied } from "../../lib/security-policy";
 
 /**
  * Global search (Ctrl+K). It reuses each module's own visibility rules: a
@@ -54,6 +56,11 @@ export async function search(db: Pool, p: Principal, q: string) {
       if (await canRead(s.client, actor, e))
         events.push({ id: e.id, title: e.title, starts_at: e.starts_at });
     }
-    return { people, teams, events };
+    // A4: the contact book, for those who read it (president and coaches).
+    const contacts =
+      s.context.kind === "club" && ["club_president", "coach"].includes(s.context.role) && mfaSatisfied(!!s.user.twoFactorEnabled)
+        ? await searchContacts(s.client, s.context.organization_id, needle)
+        : [];
+    return { people, teams, events, contacts };
   });
 }

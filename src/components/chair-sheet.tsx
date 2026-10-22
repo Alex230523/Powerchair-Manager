@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { ContactPicker } from "./contact-picker";
+import { crmCopy } from "./crm-copy";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/locale";
@@ -402,6 +404,8 @@ export function ChairForm({ locale, view, chair, busy, send, onDone }: { locale:
       notes: v("notes"),
       storageLocationId: v("place") || null,
       lendable: d.get("lendable") === "on",
+      // A4: absent when the club's contact book is not reachable (the link stays).
+      ...(d.has("supplier") ? { supplierContactId: v("supplier") || null } : {}),
     }).then((r) => r && onDone?.(r.id));
   }
   return (
@@ -512,6 +516,7 @@ export function ChairForm({ locale, view, chair, busy, send, onDone }: { locale:
       <p className="field-help" id={id("lendable-help")}>
         {f.lendableHint}
       </p>
+      {view.kind === "club" && <ContactPicker locale={locale} name="supplier" value={chair?.supplier_contact_id ?? null} label={crmCopy[locale].supplier} none={crmCopy[locale].nobody} />}
       <label htmlFor={id("notes")}>
         {t.notes}
         <textarea id={id("notes")} name="notes" maxLength={2000} defaultValue={chair?.notes} />

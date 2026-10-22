@@ -69,6 +69,7 @@ function href(locale: Locale, t: TaskRow) {
   if (t.pot_id) return at(`/fundraising`);
   if (t.document_id) return at(`/documents`);
   if (t.receivable_id) return at(`/dues`);
+  if (t.contact_id) return at(`/contacts?contact=${t.contact_id}`);
   if (t.source_kind === "accountsAssembly" || t.source_kind === "accountsFiling") return at(`/funding/annual-accounts`);
   return null;
 }

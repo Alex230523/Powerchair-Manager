@@ -23,21 +23,7 @@ export const contactTags = [
   "other",
 ] as const;
 export type ContactTag = (typeof contactTags)[number];
-export const contactCommand = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("contact"),
-    id: z.uuid().optional(),
-    fullName: text(120).min(2),
-    organizationName: text(160),
-    role: text(120),
-    email: z.union([z.literal(""), z.email().max(200)]),
-    phone: text(40),
-    tags: z.array(z.enum(contactTags)).max(10),
-    notes: text(4000),
-    archived: z.boolean().optional(),
-  }),
-]);
-export type ContactCommand = z.infer<typeof contactCommand>;
+/** The contact book's commands live in crm/schema (A4). */
 
 export const grantStatuses = ["idea", "submitted", "granted", "refused", "paid", "closed"] as const;
 export type GrantStatus = (typeof grantStatuses)[number];

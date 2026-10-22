@@ -6,7 +6,8 @@ import { execute, userAvatar, workspace, type Principal } from "../../src/domain
 import { duesExecute, duesView } from "../../src/domains/dues/service";
 import { governanceExecute, governanceView } from "../../src/domains/club/governance";
 import { dashboardView } from "../../src/domains/dashboard/service";
-import { contactsExecute, contactsView, fundingExecute, fundingView } from "../../src/domains/funding/service";
+import { fundingExecute, fundingView } from "../../src/domains/funding/service";
+import { contactsExecute, contactsView } from "../../src/domains/crm/service";
 import { duesReminderTick } from "../../src/domains/reminders/service";
 
 const schema = "wave11_" + randomUUID().replaceAll("-", ""),

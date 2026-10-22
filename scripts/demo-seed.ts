@@ -29,6 +29,8 @@ import { duesExecute } from "../src/domains/dues/service";
 import { tasksExecute } from "../src/domains/tasks/service";
 import { fundingExecute } from "../src/domains/funding/service";
 import { fundingCommand } from "../src/domains/funding/schema";
+import { contactsExecute } from "../src/domains/crm/service";
+import { contactCommand } from "../src/domains/crm/schema";
 import { taskCommand, yearTemplate, type YearKey } from "../src/domains/tasks/schema";
 import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
@@ -742,6 +744,15 @@ try {
     responsibleId: people.president,
     lastContactOn: day(-95),
   });
+
+  // A4: the contact book as a CRM: an organisation, a log, a next action, a sponsor's contact.
+  const crm = (cmd: Record<string, unknown>) => contactsExecute(db, president, contactCommand.parse(cmd), org) as Promise<{ id: string }>;
+  const alderman = await crm({ action: "contact", fullName: "Claire Échevine (démo)", organizationName: "Commune (démo)", role: "Échevine des sports", email: "", phone: "", tags: ["public"], notes: "" });
+  await crm({ action: "interaction", contactId: alderman.id, kind: "meeting", summary: "Présentation du projet de fauteuils", happenedOn: day(-40) });
+  await crm({ action: "interaction", contactId: alderman.id, kind: "call", summary: "L'appel à projets ouvre bientôt", happenedOn: day(-5) });
+  await crm({ action: "nextAction", contactId: alderman.id, title: "Envoyer le budget prévisionnel", dueOn: day(8), responsibleId: people.president });
+  const garage = await crm({ action: "contact", fullName: "Marc Garage (démo)", organizationName: "Garage démo", role: "Gérant", email: "", phone: "", tags: ["sponsor"], notes: "" });
+  await crm({ action: "interaction", contactId: garage.id, kind: "note", summary: "Préfère être appelé le matin" });
 
   // 7. Equipment: club chairs (one shared), a player's own chair, a loan chair in repair.
   const chair = async (input: {

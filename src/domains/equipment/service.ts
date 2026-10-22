@@ -47,6 +47,9 @@ export type Chair = {
   model_name: string | null;
   model_status: "validated" | "proposed" | "refused" | null;
   storage_name: string | null;
+  /** A4: the supplier, a contact of the club's book. */
+  supplier_contact_id: string | null;
+  supplier_name: string | null;
 };
 export type ChairLink = {
   id: string;
@@ -58,10 +61,11 @@ export type ChairLink = {
   ends_on: string | null;
 };
 const chairColumns =
-  "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.storage,c.version,c.model_id,c.storage_location_id,c.lendable,c.created_at";
+  "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.storage,c.version,c.model_id,c.storage_location_id,c.lendable,c.created_at,c.supplier_contact_id";
 /** Reads: the model and the storage place by name (wave 17, Q1). */
-const chairSelect = `${chairColumns},cm.brand AS model_brand,cm.name AS model_name,cm.status AS model_status,sl.name AS storage_name
-  FROM equipment_chair c LEFT JOIN chair_model cm ON cm.id=c.model_id LEFT JOIN storage_location sl ON sl.id=c.storage_location_id`;
+const chairSelect = `${chairColumns},cm.brand AS model_brand,cm.name AS model_name,cm.status AS model_status,sl.name AS storage_name,sup.full_name AS supplier_name
+  FROM equipment_chair c LEFT JOIN chair_model cm ON cm.id=c.model_id LEFT JOIN storage_location sl ON sl.id=c.storage_location_id
+  LEFT JOIN contact sup ON sup.id=c.supplier_contact_id AND sup.organization_id=c.organization_id`;
 const linkColumns =
   "l.id,l.chair_id,l.profile_id,p.full_name,l.is_primary,l.starts_on::text,l.ends_on::text";
 
@@ -132,6 +136,13 @@ async function scope<T>(
  * their own (or represented child's) profiles, and for a coach the
  * players of the teams they currently coach.
  */
+/** A4: the chair's supplier, a contact of the same club (absent: unchanged). */
+async function setSupplier(c: PoolClient, org: string, chairId: string, contactId: string | null | undefined) {
+  if (contactId === undefined) return;
+  if (contactId && !(await c.query("SELECT 1 FROM contact WHERE id=$1 AND organization_id=$2", [contactId, org])).rowCount) throw new AccessError("NOT_FOUND", 404);
+  await c.query("UPDATE equipment_chair SET supplier_contact_id=$3 WHERE id=$1 AND organization_id=$2", [chairId, org, contactId]);
+}
+
 export async function readableProfiles(c: PoolClient, a: Actor) {
   const visible = await ownProfiles(c, a);
   if (a.role === "coach" && mfaSatisfied(a.twoFactorEnabled)) {
@@ -341,6 +352,7 @@ export async function equipmentExecute(
             )
           ).rows[0];
           await log(s, row.id, "create", null, row);
+          await setSupplier(s.c, o, row.id as string, input.supplierContactId);
           return { id: row.id as string };
         }
         const before = (
@@ -359,6 +371,7 @@ export async function equipmentExecute(
             [input.id, o, ...values, input.storageLocationId === undefined, input.lendable === undefined],
           )
         ).rows[0];
+        await setSupplier(s.c, o, input.id, input.supplierContactId);
         // Retiring a chair closes its current links; the history stays.
         const closed =
           input.status === "retired"

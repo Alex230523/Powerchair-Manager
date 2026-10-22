@@ -3,7 +3,8 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
-import { contactsView, fundingExecute, fundingTasksView, fundingView, grantChairsExport, moneyDeadlines } from "../../src/domains/funding/service";
+import { fundingExecute, fundingTasksView, fundingView, grantChairsExport, moneyDeadlines } from "../../src/domains/funding/service";
+import { contactsView } from "../../src/domains/crm/service";
 import { dashboardView } from "../../src/domains/dashboard/service";
 
 /** Wave 15 (C2): funders, grant file fields, standard check-list, next year, equipment financed. */

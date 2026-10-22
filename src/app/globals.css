@@ -9640,3 +9640,82 @@ ul.task-page li {
 .task-linked {
   margin-bottom: var(--space-3);
 }
+
+/* A4: the contact book as a light CRM. */
+.contact-picker {
+  display: grid;
+  gap: var(--space-1);
+}
+.contact-picker-create {
+  justify-self: start;
+  min-height: 44px;
+}
+.contact-picker-new {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.contact-picker-new .button,
+.contact-log-form .button,
+.contact-next-form .button,
+.contact-sheet .row-actions .button,
+.duplicate-list .button {
+  min-height: 44px;
+}
+.contact-log-form,
+.contact-next-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.contact-log,
+.organization-list,
+.duplicate-list,
+.contact-linked ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.contact-log li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-1);
+  min-height: 44px;
+}
+.contact-log li[data-kind="sent"] {
+  color: var(--muted);
+}
+.contact-linked {
+  display: grid;
+  gap: var(--space-2);
+}
+.contact-linked dt {
+  font-weight: 600;
+}
+.contact-linked dd {
+  margin: 0;
+}
+.organization-list li,
+.duplicate-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.organization-list p,
+.duplicate-list p {
+  margin: 0;
+}
+.contact-sheet section + section {
+  margin-top: var(--space-4);
+}

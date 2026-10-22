@@ -10,6 +10,7 @@ import { receiptMaxBytes, receiptType } from "../finance/schema";
 import { publish } from "../notifications/queue";
 import { accountsDeadlines } from "../accounts/service";
 import { obligationRows } from "../club/obligations";
+import { logInteraction } from "../crm/log";
 import {
   conditionTasks,
   examplePackages,
@@ -18,13 +19,12 @@ import {
   grantNext,
   partnerNext,
   paymentState,
-  type ContactCommand,
   type FundingCommand,
   type GrantStatus,
   type TaskStatus,
 } from "./schema";
 
-type Scope = {
+export type Scope = {
   c: PoolClient;
   org: string;
   userId: string;
@@ -38,7 +38,8 @@ type Scope = {
   own: Set<string>;
 };
 
-async function scope<T>(
+/** Also the scope of the contact book (A4, crm/service). */
+export async function scope<T>(
   db: Pool,
   p: Principal,
   write: boolean,
@@ -81,69 +82,10 @@ async function scope<T>(
     c.release();
   }
 }
-async function log(s: Scope, action: string, target: string, details: unknown = {}) {
+export async function log(s: Scope, action: string, target: string, details: unknown = {}) {
   await s.c.query(
     "INSERT INTO audit_log(organization_id,actor_id,action,target_id,details) VALUES($1,$2,$3,$4,$5)",
     [s.org, s.userId, action, target, JSON.stringify(details)],
-  );
-}
-
-export type ContactRow = {
-  id: string;
-  full_name: string;
-  organization_name: string;
-  role: string;
-  email: string;
-  phone: string;
-  tags: string[];
-  notes: string;
-  archived: boolean;
-  version: number;
-  updated_at: string;
-  /** Where the contact is used: grants and partners linked to it. */
-  grants: number;
-  partners: number;
-  /** The files themselves, to open them from the contact (wave 15). */
-  files: { kind: "grant" | "partner" | "funder"; id: string; name: string }[];
-};
-const selectContacts =
-  "SELECT c.id,c.full_name,c.organization_name,c.role,c.email,c.phone,c.tags,c.notes,c.archived,c.version,c.updated_at::text AS updated_at,(SELECT count(*)::int FROM grant_application g WHERE g.contact_id=c.id) AS grants,(SELECT count(*)::int FROM partner p WHERE p.contact_id=c.id) AS partners,COALESCE((SELECT json_agg(x ORDER BY x.name) FROM (SELECT 'grant' AS kind,g.id,CASE WHEN g.program<>'' THEN g.funder||' · '||g.program ELSE g.funder END AS name FROM grant_application g WHERE g.contact_id=c.id AND g.organization_id=c.organization_id UNION ALL SELECT 'partner',p.id,p.name FROM partner p WHERE p.contact_id=c.id AND p.organization_id=c.organization_id UNION ALL SELECT 'funder',f.id,f.name FROM grant_funder f WHERE f.contact_id=c.id AND f.organization_id=c.organization_id) x),'[]') AS files FROM contact c WHERE c.organization_id=$1";
-
-export async function contactsView(db: Pool, p: Principal) {
-  return scope(db, p, false, async (s) => {
-    if (!s.contactsRead) throw new AccessError("FORBIDDEN");
-    const contacts = (
-      await s.c.query(selectContacts + " ORDER BY c.archived,c.full_name", [s.org])
-    ).rows as ContactRow[];
-    return { organization_id: s.org, can: { manage: s.contactsManage }, contacts };
-  });
-}
-export async function contactsExecute(db: Pool, p: Principal, cmd: ContactCommand, expected: string) {
-  return scope(
-    db,
-    p,
-    true,
-    async (s) => {
-      if (!s.contactsManage) throw new AccessError("FORBIDDEN");
-      if (cmd.id) {
-        const changed = await s.c.query(
-          "UPDATE contact SET full_name=$3,organization_name=$4,role=$5,email=$6,phone=$7,tags=$8,notes=$9,archived=COALESCE($10,archived),version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
-          [cmd.id, s.org, cmd.fullName, cmd.organizationName, cmd.role, cmd.email, cmd.phone, cmd.tags, cmd.notes, cmd.archived ?? null],
-        );
-        if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
-        await log(s, "contact.update", cmd.id);
-        return { id: cmd.id };
-      }
-      const id = (
-        await s.c.query(
-          "INSERT INTO contact(organization_id,full_name,organization_name,role,email,phone,tags,notes,archived,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
-          [s.org, cmd.fullName, cmd.organizationName, cmd.role, cmd.email, cmd.phone, cmd.tags, cmd.notes, cmd.archived ?? false, s.userId],
-        )
-      ).rows[0].id as string;
-      await log(s, "contact.create", id);
-      return { id };
-    },
-    expected,
   );
 }
 
@@ -182,6 +124,8 @@ export type GrantRow = {
   opens_on: string | null;
   starts_on: string | null;
   received_cents: number;
+  /** A4: the last exchange with the grant's contact. */
+  contact_last_on: string | null;
 };
 export type FunderRow = {
   id: string;
@@ -281,7 +225,7 @@ export function partnerNearest(
   return dates.sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
 }
 const selectGrants =
-  "SELECT g.id,g.season_id,se.name AS season_name,g.funder,g.program,g.purpose,g.requested_cents,g.granted_cents,g.status,g.deadline_on::text AS deadline_on,g.submitted_on::text AS submitted_on,g.decision_on::text AS decision_on,g.paid_on::text AS paid_on,g.report_due_on::text AS report_due_on,g.contact_id,c.full_name AS contact_name,g.notes,g.version,g.funder_id,g.program_url,g.conditions,g.explanation,g.ends_on::text AS ends_on,g.recheck_on::text AS recheck_on,g.previous_id,(SELECT n.id FROM grant_application n WHERE n.previous_id=g.id LIMIT 1) AS next_id,g.opens_on::text AS opens_on,g.starts_on::text AS starts_on,(SELECT COALESCE(sum(x.amount_cents),0)::int FROM grant_payment x WHERE x.grant_id=g.id AND x.organization_id=g.organization_id) AS received_cents FROM grant_application g LEFT JOIN season se ON se.id=g.season_id LEFT JOIN contact c ON c.id=g.contact_id WHERE g.organization_id=$1";
+  "SELECT g.id,g.season_id,se.name AS season_name,g.funder,g.program,g.purpose,g.requested_cents,g.granted_cents,g.status,g.deadline_on::text AS deadline_on,g.submitted_on::text AS submitted_on,g.decision_on::text AS decision_on,g.paid_on::text AS paid_on,g.report_due_on::text AS report_due_on,g.contact_id,c.full_name AS contact_name,g.notes,g.version,g.funder_id,g.program_url,g.conditions,g.explanation,g.ends_on::text AS ends_on,g.recheck_on::text AS recheck_on,g.previous_id,(SELECT n.id FROM grant_application n WHERE n.previous_id=g.id LIMIT 1) AS next_id,g.opens_on::text AS opens_on,g.starts_on::text AS starts_on,(SELECT COALESCE(sum(x.amount_cents),0)::int FROM grant_payment x WHERE x.grant_id=g.id AND x.organization_id=g.organization_id) AS received_cents,(SELECT max(i.happened_on)::text FROM contact_interaction i WHERE i.contact_id=g.contact_id AND i.organization_id=g.organization_id AND i.kind<>'note') AS contact_last_on FROM grant_application g LEFT JOIN season se ON se.id=g.season_id LEFT JOIN contact c ON c.id=g.contact_id WHERE g.organization_id=$1";
 const selectPartners =
   "SELECT p.id,p.name,p.kind,p.status,p.amount_cents,p.in_kind,p.counterpart,p.starts_on::text AS starts_on,p.ends_on::text AS ends_on,p.next_action_on::text AS next_action_on,p.next_action,p.contact_id,c.full_name AS contact_name,p.notes,p.version,p.package_id,pk.name AS package_name,p.signed_on::text AS signed_on,p.payment_due_on::text AS payment_due_on,p.paid_on::text AS paid_on,p.renewal_on::text AS renewal_on,p.payment_transaction_id,p.report_token,p.responsible_id,rp.full_name AS responsible_name,p.last_contact_on::text AS last_contact_on,pk.season_id AS package_season_id FROM partner p LEFT JOIN contact c ON c.id=p.contact_id LEFT JOIN partner_package pk ON pk.id=p.package_id LEFT JOIN club_person rp ON rp.id=p.responsible_id AND rp.organization_id=p.organization_id WHERE p.organization_id=$1";
 
@@ -786,6 +730,9 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           const changed = await s.c.query("UPDATE partner SET report_token=$3 WHERE id=$1 AND organization_id=$2", [cmd.partnerId, s.org, token]);
           if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
           await log(s, "partner.report", cmd.partnerId, { public: cmd.public });
+          // A4: the report shared with the sponsor goes to its contact's exchange log.
+          const contact = (await s.c.query("SELECT contact_id FROM partner WHERE id=$1", [cmd.partnerId])).rows[0]?.contact_id as string | null;
+          if (contact && cmd.public) await logInteraction(s.c, { org: s.org, contactId: contact, kind: "sent", summary: "Rapport partenaire partagé", authorId: s.userId, source: "partner_report" });
           return { id: cmd.partnerId, token };
         }
       }

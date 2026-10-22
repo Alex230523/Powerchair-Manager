@@ -21,6 +21,8 @@ export const datasets = [
   "registrations",
   "matches",
   "statistics",
+  // A4: the contact book.
+  "contacts",
 ] as const;
 export type Dataset = (typeof datasets)[number];
 export const columnTypes = ["text", "number", "money", "date"] as const;

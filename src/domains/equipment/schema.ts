@@ -54,6 +54,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     newModel: z.object({ brand: text(80), name: text(80).min(2) }).nullable().optional(),
     storageLocationId: id.nullable().optional(),
     lendable: z.boolean().optional(),
+    /** A4: the supplier, a contact of the club's book. Absent keeps it. */
+    supplierContactId: id.nullable().optional(),
   }),
   z.object({
     action: z.literal("assign"),

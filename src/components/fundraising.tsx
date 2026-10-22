@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { ContactPicker } from "./contact-picker";
+import { crmCopy } from "./crm-copy";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
@@ -535,6 +537,8 @@ export function Fundraising({ locale }: { locale: Locale }) {
             donor: String(f.get("donor") ?? ""),
             anonymous: f.get("anonymous") === "on",
             profileId: String(f.get("collector") ?? "") || null,
+            // A4: the donor in the contact book, when the book is reachable.
+            ...(f.has("donorContact") ? { contactId: String(f.get("donorContact") ?? "") || null } : {}),
           }).then((ok) => ok && form.reset());
         }}
       >
@@ -562,6 +566,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
           {t.donor}
           <input name="donor" maxLength={160} />
         </label>
+        <ContactPicker locale={locale} name="donorContact" value={null} label={crmCopy[locale].donor} none={crmCopy[locale].nobody} />
         <label className="check">
           <input type="checkbox" name="anonymous" />
           {t.anonymous}

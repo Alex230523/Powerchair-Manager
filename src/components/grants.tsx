@@ -3,6 +3,7 @@ import { FinanceNav } from "./finance-nav";
 import { SupportTabs } from "./grants-sponsors";
 import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { DataGrid } from "./data-grid";
+import { ContactPicker } from "./contact-picker";
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -15,7 +16,7 @@ import { Badge, Button, Card, EmptyState, ExportButton, PageHeader, StatCard, Ta
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { HistoryList, TaskList, dayLabel, euro } from "./sponsors";
-import { ContactSelect, Nav, cents, dateOrNull, grantTone, useFunding } from "./funding-pages";
+import { Nav, cents, dateOrNull, grantTone, useFunding } from "./funding-pages";
 
 type View = Awaited<ReturnType<typeof fundingView>>;
 type Grant = View["grants"][number];
@@ -252,7 +253,16 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                 key: "contact",
                 header: gs.colContact,
                 sort: (x) => x.contact_name ?? "",
-                cell: (x) => (x.contact_name ? <Link href={`/${locale}/contacts?contact=${x.contact_id}`}>{x.contact_name}</Link> : <span className="muted">…</span>),
+                cell: (x) =>
+                  x.contact_name ? (
+                    <>
+                      <Link href={`/${locale}/contacts?contact=${x.contact_id}`}>{x.contact_name}</Link>
+                      {/* A4: the last exchange with this contact. */}
+                      {x.contact_last_on && <span className="muted small"> · {day(x.contact_last_on)}</span>}
+                    </>
+                  ) : (
+                    <span className="muted">…</span>
+                  ),
               },
               { key: "status", header: t.status, sort: (x) => grantStatuses.indexOf(x.status), cell: (x) => <Badge tone={grantTone[x.status]} dot>{g.statuses[x.status]}</Badge> },
               { key: "filed", header: gs.colFiled, sort: (x) => Number(x.status !== "idea"), cell: (x) => (x.status === "idea" ? gs.no : gs.yes) },
@@ -428,7 +438,7 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                 <input name="recheck" type="date" defaultValue={v?.recheck_on ?? ""} aria-describedby="grant-recheck-hint" />
                 <span className="muted small field-hint" id="grant-recheck-hint">{c.recheckHint}</span>
               </label>
-              <ContactSelect name="contact" value={v?.contact_id ?? null} contacts={data.contacts} label={t.contact} none={t.noContact} />
+              <ContactPicker locale={locale} name="contact" value={v?.contact_id ?? null} label={t.contact} none={t.noContact} />
             </div>
             <label>
               {c.conditions}
@@ -756,7 +766,7 @@ function FunderForm({ locale, data, funder, busy, post, close }: { locale: Local
             {c.funderPhone}
             <input name="phone" type="tel" maxLength={40} defaultValue={funder.phone} />
           </label>
-          <ContactSelect name="contact" value={funder.contact_id} contacts={data.contacts} label={c.funderContact} none={t.noContact} />
+          <ContactPicker locale={locale} name="contact" value={funder.contact_id} label={c.funderContact} none={t.noContact} />
         </div>
         <label>
           {c.funderAddress}

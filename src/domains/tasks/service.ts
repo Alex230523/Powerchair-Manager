@@ -93,6 +93,8 @@ export type TaskRow = {
   pot_id: string | null;
   document_id: string | null;
   receivable_id: string | null;
+  /** A4: a contact's next action. */
+  contact_id: string | null;
   source_kind: string;
   source_params: { about?: string };
   auto_closed: boolean;
@@ -113,8 +115,8 @@ const canWork = (s: Scope, t: { category: Category; responsible_id: string | nul
 
 const select = `SELECT t.id,t.kind,t.category,t.title,t.detail,t.due_on::text AS due_on,t.status,t.done_on::text AS done_on,t.priority,t.recurrence,t.checklist,
         t.responsible_id,t.responsible_user_id,COALESCE(cp.full_name,ru.name) AS responsible_name,t.team_id,
-        t.partner_id,t.grant_id,t.event_id,t.match_id,t.trip_id,t.obligation_id,t.chair_id,t.pot_id,t.document_id,t.receivable_id,t.source_kind,t.source_params,t.auto_closed,
-        COALESCE(pa.name, g.funder, e.title, CASE WHEN m.id IS NOT NULL THEN mt.name||' · '||m.opponent END, tr.title, o.title, ch.name, pot.name, doc.name) AS about
+        t.partner_id,t.grant_id,t.event_id,t.match_id,t.trip_id,t.obligation_id,t.chair_id,t.pot_id,t.document_id,t.receivable_id,t.source_kind,t.source_params,t.auto_closed,t.contact_id,
+        COALESCE(pa.name, g.funder, e.title, CASE WHEN m.id IS NOT NULL THEN mt.name||' · '||m.opponent END, tr.title, o.title, ch.name, pot.name, doc.name, ct.full_name) AS about
    FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN "user" ru ON ru.id=t.responsible_user_id
    LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
    LEFT JOIN calendar_event e ON e.id=t.event_id AND e.organization_id=t.organization_id
@@ -122,7 +124,8 @@ const select = `SELECT t.id,t.kind,t.category,t.title,t.detail,t.due_on::text AS
    LEFT JOIN trip tr ON tr.id=t.trip_id AND tr.organization_id=t.organization_id
    LEFT JOIN club_obligation o ON o.id=t.obligation_id AND o.organization_id=t.organization_id
    LEFT JOIN equipment_chair ch ON ch.id=t.chair_id AND ch.organization_id=t.organization_id
-   LEFT JOIN fundraising_pot pot ON pot.id=t.pot_id LEFT JOIN club_document doc ON doc.id=t.document_id`;
+   LEFT JOIN fundraising_pot pot ON pot.id=t.pot_id LEFT JOIN club_document doc ON doc.id=t.document_id
+   LEFT JOIN contact ct ON ct.id=t.contact_id AND ct.organization_id=t.organization_id`;
 
 export async function tasksView(db: Pool, p: Principal) {
   return scope(db, p, false, async (s) => {
@@ -267,7 +270,7 @@ const insert = (s: Scope, i: Insert) =>
   );
 
 /** The person given a task hears it at once (the reminders at J-7 and J-1 follow in fundingTaskTick). */
-async function tellResponsible(s: Scope, taskId: string) {
+async function tellResponsible(s: Pick<Scope, "c" | "org" | "userId">, taskId: string) {
   const r = (
     await s.c.query(
       `SELECT t.title,t.due_on::text AS due_on,o.name AS organization,u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
@@ -293,6 +296,9 @@ async function tellResponsible(s: Scope, taskId: string) {
     variables: { name: r.name, organization: r.organization, url: `${process.env.BETTER_AUTH_URL ?? ""}/${r.locale}/tasks?task=${taskId}`, title: r.title, due: r.due_on ?? "" },
   });
 }
+
+/** A4: a task created elsewhere (a contact's next action) is told the same way. */
+export const tellTaskResponsible = (c: PoolClient, org: string, actorId: string, taskId: string) => tellResponsible({ c, org, userId: actorId }, taskId);
 
 async function taskFor(s: Scope, id: string) {
   const t = (

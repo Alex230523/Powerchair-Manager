@@ -14,6 +14,7 @@ import { FinanceNav } from "./finance-nav";
 import { SupportTabs } from "./grants-sponsors";
 import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { DataGrid } from "./data-grid";
+import { ContactPicker } from "./contact-picker";
 import { Modal } from "./modal";
 import { sponsorsCopy } from "./sponsors-copy";
 import { PackagesPanel, PartnerSheet, PaymentBadge } from "./sponsors";
@@ -51,33 +52,6 @@ export function Nav({ locale }: { locale: Locale; current: "grants" | "partners"
   const s = shellCopy[locale];
   return <Link className="button secondary" href={`/${locale}/contacts`}>{s.contacts}</Link>;
 }
-export function ContactSelect({
-  name,
-  value,
-  contacts,
-  label,
-  none,
-}: {
-  name: string;
-  value: string | null;
-  contacts: View["contacts"];
-  label: string;
-  none: string;
-}) {
-  return (
-    <label>
-      {label}
-      <select name={name} defaultValue={value ?? ""}>
-        <option value="">{none}</option>
-        {contacts.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.full_name}{c.organization_name ? ` · ${c.organization_name}` : ""}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 export const grantTone: Record<string, Tone> = { idea: "neutral", submitted: "info", granted: "success", refused: "danger", paid: "success", closed: "neutral" };
 const partnerTone: Record<string, Tone> = { prospect: "info", active: "success", ended: "neutral" };
@@ -94,7 +68,6 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
     [seasonFilter, setSeasonFilter] = useState(""),
     [tab, setTab] = useState<"partners" | "packages">(start.tab ?? "partners"),
     [sheet, setSheet] = useState<string | null>(start.partner ?? null),
-    [newContact, setNewContact] = useState(false),
     [packageId, setPackageId] = useState<string | null>(null);
   if (!data)
     return (
@@ -128,7 +101,6 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
   const season = data.seasons.find((x) => x.id === pkg?.season_id) ?? data.seasons[0];
   const openForm = (x: Partner | "new") => {
     setPackageId(null);
-    setNewContact(false);
     setEditing(x);
   };
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -150,16 +122,7 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
         endsOn: dateOrNull(f.get("ends")),
         nextActionOn: dateOrNull(f.get("nextActionOn")),
         nextAction: String(f.get("nextAction") ?? ""),
-        ...(newContact
-          ? {
-              newContact: {
-                fullName: String(f.get("contactName") ?? ""),
-                organizationName: String(f.get("contactCompany") ?? ""),
-                email: String(f.get("contactEmail") ?? "").trim(),
-                phone: String(f.get("contactPhone") ?? ""),
-              },
-            }
-          : { contactId: String(f.get("contact") ?? "") || null }),
+        contactId: String(f.get("contact") ?? "") || null,
         notes: String(f.get("notes") ?? ""),
         packageId: String(f.get("package") ?? "") || null,
         signedOn: dateOrNull(f.get("signed")),
@@ -465,39 +428,8 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
               />
             </label>
             <p className="muted small" id="renewal-hint">{sp.renewalHint}</p>
-            {data.can.contactsManage && (
-              <label className="check">
-                <input type="checkbox" checked={newContact} onChange={(e) => setNewContact(e.target.checked)} />
-                {sp.newContactToggle}
-              </label>
-            )}
-            {newContact ? (
-              <fieldset className="official">
-                <legend>{sp.contactPerson}</legend>
-                <div className="form-pair">
-                  <label>
-                    {sp.contactName}
-                    <input name="contactName" required minLength={2} maxLength={120} />
-                  </label>
-                  <label>
-                    {sp.contactCompany}
-                    <input name="contactCompany" maxLength={160} />
-                  </label>
-                </div>
-                <div className="form-pair">
-                  <label>
-                    {sp.contactEmail}
-                    <input name="contactEmail" type="email" maxLength={200} />
-                  </label>
-                  <label>
-                    {sp.contactPhone}
-                    <input name="contactPhone" maxLength={40} />
-                  </label>
-                </div>
-              </fieldset>
-            ) : (
-              <ContactSelect name="contact" value={editing === "new" ? null : editing.contact_id} contacts={data.contacts} label={sp.contactPerson} none={t.noContact} />
-            )}
+            {/* A4: one field to choose or create the contact, as everywhere. */}
+            <ContactPicker locale={locale} name="contact" value={editing === "new" ? null : editing.contact_id} label={sp.contactPerson} none={t.noContact} />
             <label>
               {p.inKind}
               <input name="inKind" maxLength={400} defaultValue={editing === "new" ? "" : editing.in_kind} />
