@@ -8672,3 +8672,55 @@ details.event-section > summary {
 .team-choice .check {
   min-height: 2.75rem;
 }
+
+/* ---------- Wave 17 (J1): the single sheet in a window, the departure window ---------- */
+.stack-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.sheet-dialog {
+  width: min(1040px, calc(100% - 24px));
+}
+.sheet-heading {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  flex-wrap: wrap;
+  margin: -20px -20px 0;
+  padding: 16px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.sheet-heading h2 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sheet-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sheet-tools .button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.sheet-dialog .player-profile {
+  padding: var(--space-4) 0 0;
+}
+.sheet-dialog .player-profile section {
+  padding: 0;
+  border-bottom: 0;
+}
+.sheet-assign {
+  display: grid;
+  gap: var(--space-2);
+}
+.departure-form fieldset {
+  display: grid;
+  gap: 2px;
+}
+.departure-form .check {
+  min-height: 2.75rem;
+}

@@ -283,8 +283,6 @@ export const english = {
     team: "Team",
     season: "Season",
     sportRole: "Team role",
-    minAge: "Minimum age",
-    maxAge: "Maximum age",
     joinedBefore: "Joined before",
     empty: "No items to display.",
     addPerson: "Add person",

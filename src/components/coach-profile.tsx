@@ -30,7 +30,10 @@ const record = {
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** Coach profile: details, teams, upcoming sessions, attendance and courses. */
-export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
+/** Wave 17 (J1): also shown in a window from the directory (`embedded`). */
+export function CoachProfile({ locale, id, embedded = false }: { locale: Locale; id: string; embedded?: boolean }) {
+  const Root = embedded ? "div" : "main";
+  const rootId = embedded ? undefined : "main";
   const t = coachProfileCopy[locale];
   const kinds = kindLabels[locale] as Record<string, string>;
   const [view, setView] = useState<View | null>(null),
@@ -124,7 +127,7 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
     e.currentTarget.reset();
   }
 
-  const back = (
+  const back = embedded ? null : (
     <p className="back-link">
       <Link href={`/${locale}/coaches`}>
         <Icon name="back" size={16} />
@@ -134,10 +137,10 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
   );
   if (!view)
     return (
-      <main id="main" className="access player-profile">
+      <Root id={rootId} className="access player-profile">
         {back}
         {error ? <p role="alert">{error}</p> : <p role="status">{t.loading}</p>}
-      </main>
+      </Root>
     );
 
   const c = view.coach,
@@ -149,14 +152,14 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
   ].filter((g) => g.key !== "other" || g.v.invited > 0);
   const current = view.teams.filter((x) => x.current);
   return (
-    <main id="main" className="access player-profile coach-profile">
+    <Root id={rootId} className={`access player-profile coach-profile ${embedded ? "embedded" : ""}`.trim()}>
       {back}
       <div className="profile-hero">
         <span className="avatar avatar-xl" aria-hidden="true">
           {initials(c.full_name)}
         </span>
         <div className="profile-title">
-          <h1>{c.full_name}</h1>
+          {!embedded && <h1>{c.full_name}</h1>}
           <ul className="profile-tags">
             <li data-tone="accent">{t.coach}</li>
             {current.map((x) => (
@@ -363,6 +366,6 @@ export function CoachProfile({ locale, id }: { locale: Locale; id: string }) {
             ))}
         </Card>
       </div>
-    </main>
+    </Root>
   );
 }

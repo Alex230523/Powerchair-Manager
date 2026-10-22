@@ -83,6 +83,8 @@ function rightsFor(s: PeopleScope, all: Records, v: Visibility, id: string) {
           s.rights.includes("people.manage"))) ||
       coachOf,
     editPosition: mfa && s.rights.includes("teams.manage"),
+    /** Wave 17 (J1): the identity is edited in the single sheet too. */
+    managePeople: peopleManage,
     viewMoney:
       own ||
       !!relation ||
@@ -255,6 +257,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         jersey_number: profile.jersey_number,
         has_account: !!profile.user_id,
         version: profile.version,
+        departure_status: (profile as { departure_status?: string | null }).departure_status ?? null,
         ...(can.details
           ? {
               birth_date: profile.birth_date,
@@ -273,6 +276,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         editConfidential: can.editConfidential,
         editSport: can.editSport,
         editPosition: can.editPosition,
+        managePeople: can.managePeople,
         viewMoney: can.viewMoney,
       },
       teams,

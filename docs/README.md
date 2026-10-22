@@ -90,6 +90,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [Vague 17, C6 : « invité » à la place de « convoqué »](evolutions/2026-10-22-a-vague-17-c6-invite.md) |
 | 22/10/2026 | [Vague 17, G3 : menu et réglages](evolutions/2026-10-22-b-vague-17-g3-menu-reglages.md) |
 | 22/10/2026 | [Vague 17, F1 : formulaires et décisions d'inscription](evolutions/2026-10-22-c-vague-17-f1-inscriptions.md) |
+| 22/10/2026 | [Vague 17, J1 : anciens joueurs et fiche en fenêtre](evolutions/2026-10-22-d-vague-17-j1-anciens-joueurs.md) |
 
 ## Convention
 

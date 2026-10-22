@@ -19,6 +19,7 @@ import {
   ageOn,
   orderedDates,
   peopleCommand,
+  type DepartureStatus,
   type PeopleCommand,
 } from "./schema";
 export { peopleCommand };
@@ -72,6 +73,9 @@ type Profile = {
   joined_on: string;
   status: string;
   version: number;
+  /** Wave 17 (J1): why the person left (null while in the club). */
+  departure_status: DepartureStatus | null;
+  departure_note: string;
 };
 type Relation = {
   id: string;
@@ -343,6 +347,62 @@ function visibility(s: Scope, all: Awaited<ReturnType<typeof records>>) {
     details,
   };
 }
+/**
+ * Wave 17 (J1): where a former member is today. Deceased first; then
+ * licensed this season in another club of the same federation (only that
+ * club's and team's names); then still in another team of this club; else
+ * the reason chosen when leaving.
+ */
+export type Situation =
+  | { kind: "deceased" }
+  | { kind: "club"; club: string; team: string | null }
+  | { kind: "team"; teams: string[] }
+  | { kind: "status"; status: Exclude<DepartureStatus, "deceased"> };
+async function situationsOf(s: Scope, all: Awaited<ReturnType<typeof records>>, people: Profile[]) {
+  const day = today();
+  const former = people.filter((p) => p.status !== "active" || p.former_roles.length > 0 || p.departure_status);
+  const out = new Map<string, Situation>();
+  if (!former.length) return out;
+  const elsewhere = new Map(
+    (
+      await s.client.query(
+        `SELECT DISTINCT ON (me.id) me.id,o.name AS club,
+                (SELECT t.name FROM team_membership m JOIN team t ON t.id=m.team_id
+                  WHERE m.profile_id=other.id AND m.organization_id=other.organization_id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL
+                    AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) ORDER BY m.starts_on DESC LIMIT 1) AS team
+           FROM club_person me
+           JOIN organization mine ON mine.id=me.organization_id AND mine.federation_id IS NOT NULL
+           JOIN club_person other ON other.person_id=me.person_id AND other.organization_id<>me.organization_id AND other.status='active'
+           JOIN organization o ON o.id=other.organization_id AND o.kind='club' AND o.federation_id=mine.federation_id
+           JOIN license l ON l.profile_id=other.id AND l.organization_id=other.organization_id AND l.status='active'
+          WHERE me.organization_id=$1 AND me.id=ANY($2::uuid[])
+          ORDER BY me.id,l.season DESC`,
+        [s.context.organization_id, former.map((p) => p.id)],
+      )
+    ).rows.map((r) => [r.id as string, { club: r.club as string, team: (r.team as string | null) ?? null }]),
+  );
+  for (const p of former) {
+    if (p.departure_status === "deceased") {
+      out.set(p.id, { kind: "deceased" });
+      continue;
+    }
+    const other = elsewhere.get(p.id);
+    if (other) {
+      out.set(p.id, { kind: "club", ...other });
+      continue;
+    }
+    const teams = [
+      ...new Set(
+        all.assignments
+          .filter((a) => a.profile_id === p.id && !a.cancelled && !a.closed_at && a.starts_on <= day && (!a.ends_on || a.ends_on >= day))
+          .map((a) => all.teams.find((t) => t.id === a.team_id)?.name)
+          .filter((n): n is string => !!n),
+      ),
+    ];
+    out.set(p.id, teams.length && p.status === "active" ? { kind: "team", teams } : { kind: "status", status: p.departure_status ?? "unknown" });
+  }
+  return out;
+}
 async function readPeople(s: Scope, filters: Filters) {
   const all = await records(s),
     v = visibility(s, all);
@@ -426,6 +486,7 @@ async function readPeople(s: Scope, filters: Filters) {
       return false;
     return true;
   });
+  const situations = await situationsOf(s, all, matching);
   const profiles = matching.map((profile) => {
     const detail = v.details.has(profile.id);
     const canEdit =
@@ -459,6 +520,9 @@ async function readPeople(s: Scope, filters: Filters) {
       assignments: all.assignments.filter(
         (a) => a.profile_id === profile.id && v.visibleTeams.has(a.team_id),
       ),
+      departure_status: profile.departure_status,
+      departure_note: detail ? profile.departure_note : "",
+      situation: situations.get(profile.id) ?? null,
     };
   });
   const teamIds = new Set(
@@ -761,15 +825,46 @@ export async function peopleExecute(
           throw new AccessError("NOT_FOUND", 404);
         if (!command.archived && existing.status !== "active")
           throw new AccessError("PROFILE_INACTIVE", 409);
+        // Wave 17 (J1): the reason of the departure, chosen in the departure window; cleared on return.
         await c.query(
-          "UPDATE club_person SET directory_roles=CASE WHEN $3=ANY(directory_roles) THEN directory_roles ELSE array_append(directory_roles,$3) END,former_roles=CASE WHEN $4 THEN CASE WHEN $3=ANY(former_roles) THEN former_roles ELSE array_append(former_roles,$3) END ELSE array_remove(former_roles,$3) END,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
-          [command.id, org, command.role, command.archived],
+          "UPDATE club_person SET directory_roles=CASE WHEN $3=ANY(directory_roles) THEN directory_roles ELSE array_append(directory_roles,$3) END,former_roles=CASE WHEN $4 THEN CASE WHEN $3=ANY(former_roles) THEN former_roles ELSE array_append(former_roles,$3) END ELSE array_remove(former_roles,$3) END,departure_status=CASE WHEN $4 THEN COALESCE($5,departure_status) WHEN cardinality(array_remove(former_roles,$3))=0 THEN NULL ELSE departure_status END,departure_note=CASE WHEN $4 THEN COALESCE($6,departure_note) WHEN cardinality(array_remove(former_roles,$3))=0 THEN '' ELSE departure_note END,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
+          [command.id, org, command.role, command.archived, command.departureStatus ?? null, command.departureNote ?? null],
         );
         if (command.archived)
           await c.query(
             "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE profile_id=$1 AND organization_id=$2 AND role=$3 AND closed_at IS NULL AND NOT cancelled AND (ends_on IS NULL OR ends_on>=CURRENT_DATE)",
             [command.id, org, command.role],
           );
+        target = command.id;
+      } else if (command.action === "departure") {
+        const existing = await profile(s, command.id);
+        // « Décédé » is set or lifted by the club president only, after an explicit confirmation.
+        if (command.status === "deceased" || existing.departure_status === "deceased") {
+          if (s.context.role !== "club_president") throw new AccessError("FORBIDDEN");
+          if (!command.confirm) throw new AccessError("CONFIRM_REQUIRED", 409);
+        }
+        if (command.status === "deceased") {
+          await c.query(
+            "UPDATE club_person SET status='archived',departure_status='deceased',departure_note=$3,former_roles=directory_roles,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
+            [command.id, org, command.note],
+          );
+          await c.query(
+            "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE profile_id=$1 AND organization_id=$2 AND closed_at IS NULL AND NOT cancelled AND (ends_on IS NULL OR ends_on>=CURRENT_DATE)",
+            [command.id, org],
+          );
+          // Nothing leaves any more: the emails waiting for this person, or about this file, are cancelled.
+          await c.query(
+            "UPDATE mail_job SET state='cancelled',completed_at=now() WHERE state='pending' AND ((recipient_user_id IS NOT NULL AND recipient_user_id=(SELECT user_id FROM person WHERE id=$1)) OR (organization_id=$2 AND resource_id=$3::text))",
+            [existing.person_id, org, command.id],
+          );
+        } else {
+          const former = existing.status !== "active" || existing.former_roles.length > 0;
+          if (!former && existing.departure_status !== "deceased") throw new AccessError("PROFILE_ACTIVE", 409);
+          await c.query(
+            "UPDATE club_person SET departure_status=$3,departure_note=$4,status=CASE WHEN departure_status='deceased' THEN 'inactive' ELSE status END,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
+            [command.id, org, command.status, command.note],
+          );
+        }
         target = command.id;
       } else if (command.action === "updateSeason") {
         if (!orderedDates(command.startsOn, command.endsOn))
