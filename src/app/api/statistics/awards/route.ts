@@ -1,0 +1,24 @@
+import { getDb } from "@/lib/db";
+import { awardsView, awardExecute, awardCommand } from "@/domains/awards/service";
+import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
+import { z } from "zod";
+export const dynamic = "force-dynamic";
+
+/** Wave 16 (S1): the club's Hall of fame. */
+export async function GET(request: Request) {
+  try {
+    return Response.json(await awardsView(getDb(), await principalIn(request, "statistics")), { headers: noStore });
+  } catch (e) {
+    return failure(e);
+  }
+}
+export async function POST(request: Request) {
+  try {
+    origin(request);
+    const p = await principalIn(request, "statistics"),
+      body = JSON.parse(new TextDecoder().decode(await bounded(request, 2_200_000)));
+    return Response.json(await awardExecute(getDb(), p, awardCommand.parse(body), z.uuid().parse(body.organizationId)), { headers: noStore });
+  } catch (e) {
+    return failure(e);
+  }
+}

@@ -145,6 +145,11 @@ export const accessCopy = {
   en: english.accessCopy,
 };
 export const errors: Record<string, { fr: string; nl: string; en: string }> = {
+  STORAGE_FULL: {
+    fr: "L'espace de stockage du club est plein : le fichier n'a pas été envoyé. Le président voit ce qui prend de la place dans Statistiques, carte Stockage.",
+    nl: "De opslagruimte van de club is vol: het bestand werd niet verstuurd. De voorzitter ziet wat ruimte inneemt in Statistieken, kaart Opslag.",
+    en: "The club's storage is full: the file was not sent. The president sees what takes up space in Statistics, Storage card.",
+  },
   SEASON_STARTED: {
     fr: "La saison est lancée : des cotisations ont déjà été émises sur ce barème. Confirmez le changement pour continuer.",
     nl: "Het seizoen is gestart: er is al lidgeld uitgegeven op dit tarief. Bevestig de wijziging om verder te gaan.",

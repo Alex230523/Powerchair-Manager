@@ -109,6 +109,7 @@ export function ClubTournaments({ locale, trips, organizationId, reload }: { loc
             )}
             <p className="actions">
               <Link href={`/${locale}/trips/${r.id}`}>{past && !r.final_rank ? t.enterResult : t.openTrip}</Link>
+              {past && trips.award && !r.awarded && r.final_rank !== null && r.final_rank <= 3 && <Link href={`/${locale}/statistics/club#hall-of-fame`}>{t.addAward}</Link>}
               {r.event_id && <Link href={`/${locale}/calendar?event=${r.event_id}`}>{t.openEvent}</Link>}
             </p>
           </Card>

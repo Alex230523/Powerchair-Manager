@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
@@ -181,6 +182,8 @@ export async function exerciseExecute(db: Pool, p: Principal, command: ExerciseC
         await own(command.id);
         const bytes = Buffer.from(command.data, "base64");
         if (!validDiagram(command.mediaType, bytes)) throw new AccessError("INVALID_FILE", 400);
+        const previous = Number((await s.c.query("SELECT size_bytes FROM exercise_diagram WHERE exercise_id=$1", [command.id])).rows[0]?.size_bytes ?? 0);
+        await ensureStorage(s.c, s.org, bytes.length, previous);
         await s.c.query(
           `INSERT INTO exercise_diagram(exercise_id,organization_id,media_type,content,updated_by) VALUES($1,$2,$3,$4,$5)
            ON CONFLICT(exercise_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,updated_by=EXCLUDED.updated_by,updated_at=now()`,

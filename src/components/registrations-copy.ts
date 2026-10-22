@@ -311,6 +311,11 @@ export const registrationErrors: Record<string, [string, string, string]> = {
     "Geef een reden voor de aanvulling of weigering.",
     englishErrors["MESSAGE_REQUIRED"] ?? "Action unavailable.",
   ],
+  STORAGE_FULL: [
+    "Le club ne peut plus recevoir de fichiers pour le moment (espace de stockage plein). Prévenez le club ; vos réponses sont gardées.",
+    "De club kan momenteel geen bestanden meer ontvangen (opslagruimte vol). Verwittig de club; uw antwoorden blijven bewaard.",
+    "The club cannot receive files for now (storage full). Let the club know; your answers are kept.",
+  ],
   INVALID_FILE: [
     "Fichier invalide : PDF, PNG ou JPEG, 2 Mo maximum.",
     "Ongeldig bestand: PDF, PNG of JPEG, maximaal 2 MB.",

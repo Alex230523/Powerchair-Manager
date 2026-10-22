@@ -1,399 +1,721 @@
 "use client";
-import { SeasonHeadcount } from "./retention";
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Locale } from "@/lib/locale";
-import { useScope, useSeeded, ApplyScope } from "./use-scope";
-import type { attendanceView } from "@/domains/attendance/service";
-import {
-  summarize,
-  percentage,
-  statisticsCsv,
-  monthlyRates,
-  monthsBetween,
-  type StatisticalEvent,
-} from "@/domains/statistics/summary";
-import { localAt, shiftLocal } from "@/domains/calendar/time";
-import { kindLabels } from "./calendar-copy";
-import { Button, Card, DataTable, EmptyState, PageHeader, StatCard, Toolbar } from "./ui";
-import { ChartFrame, LineChart, trendSentence, type ChartSeries } from "./charts";
-import { statisticsCopy } from "./statistics-copy";
+import { parsePeriod, periodParam, serializePeriod, type Period, type PeriodKind } from "@/domains/statistics/period";
+import { ageBands, isoWeek } from "@/domains/statistics/club-math";
+import { formatBytes, storageCategories } from "@/domains/storage/summary";
+import { useScope } from "./use-scope";
+import { Badge, Button, Card, DataTable, KpiCard, PageHeader, Segmented } from "./ui";
+import { ChartFrame, DonutChart, GroupedBarChart, LineChart, SplitBar, StackedBarChart, trendSentence, type ChartSeries } from "./charts";
+import { ChartMenu } from "./chart-menu";
+import { downloadCsv, exportPng, slug } from "./chart-export";
+import { fill, statisticsCopy, type StatisticsCopy } from "./statistics-copy";
 import { reportCopy } from "./report-copy";
-type View = Awaited<ReturnType<typeof attendanceView>>;
-export function Statistics({ locale }: { locale: Locale }) {
-  const t = statisticsCopy[locale],
-    today = localAt(new Date(), "Europe/Brussels").slice(0, 10);
+import { HallOfFame } from "./hall-of-fame";
+
+/**
+ * The statistics (wave 16, S1): two addresses, the « Club » tab here. The
+ * season and the team come from the top bar; each chart has its period in
+ * its « ... » menu, kept in the address. No filter bar.
+ */
+const colorOf = (c: string | null | undefined, i: number) => (c ? `var(--team-${c}-border)` : `var(--chart-${(i % 8) + 1})`);
+const palette = (i: number) => `var(--chart-${(i % 8) + 1})`;
+const shortDate = (locale: Locale, d: string) =>
+  new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
+const money = (locale: Locale, cents: number) =>
+  new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
+
+type Summary = {
+  season: { id: string; name: string } | null;
+  team: { id: string; name: string } | null;
+  restricted: boolean;
+  tiles: { players: number; coaches: number; trainings: number; matches: number; treasury: number | null; attendance: number | null } | null;
+  can: { money: boolean; storage: boolean; manageAwards: boolean };
+};
+type Spanned = { period: Period; from: string; to: string; names: string[] };
+type CsvSection = { title: string; rows: (string | number | null)[][] };
+
+/** One chart's data from /api/statistics/club, for the season and team of the top bar. */
+function useStat<T>(chart: string, params: Record<string, string | undefined>) {
   const scope = useScope();
-  // The top bar choice (wave 12) seeds the team filter and re-seeds it when it changes.
-  const globalTeam = scope.teamId ?? "";
-  const [dates, setDates] = useState({
-      from: shiftLocal(today + "T12:00", -90).slice(0, 10),
-      to: today,
-    }),
-    [team, setTeam] = useSeeded(globalTeam),
-    [kind, setKind] = useState(""),
-    [data, setData] = useState<View | null>(null),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(false),
-    [invalid, setInvalid] = useState(false);
-  const filters = useMemo(() => ({ ...dates, team }), [dates, team]);
-  const setFilters = (f: { from: string; to: string; team: string }) => {
-    setDates({ from: f.from, to: f.to });
-    setTeam(f.team);
-  };
+  const query = new URLSearchParams({ chart });
+  if (scope.seasonId) query.set("season", scope.seasonId);
+  if (scope.teamId) query.set("team", scope.teamId);
+  for (const [k, v] of Object.entries(params)) if (v) query.set(k, v);
+  const url = "/api/statistics/club?" + query;
+  const [state, setState] = useState<{ url: string; data: T | null; error: string }>({ url: "", data: null, error: "" });
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const c = new AbortController();
-    fetch("/api/attendance?" + new URLSearchParams({ ...filters, place: "" }), {
-      cache: "no-store",
-      signal: c.signal,
-    })
+    fetch(url, { cache: "no-store", signal: c.signal })
       .then(async (r) => {
-        if (!r.ok) throw Error();
-        return r.json();
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error ?? "UNAVAILABLE");
+        setState({ url, data: v as T, error: "" });
       })
-      .then((d) => {
-        if (!c.signal.aborted) {
-          setData(d);
-          setError(false);
-        }
-      })
-      .catch(() => {
-        if (!c.signal.aborted) {
-          setError(true);
-          setData(null);
-        }
-      })
-      .finally(() => {
-        if (!c.signal.aborted) setLoading(false);
+      .catch((e: Error) => {
+        if (!c.signal.aborted) setState({ url, data: null, error: e.message || "UNAVAILABLE" });
       });
     return () => c.abort();
-  }, [filters]);
-  // With a team chosen, the club's average comes from a second reading without the team filter.
-  const [club, setClub] = useState<{ key: string; events: StatisticalEvent[] } | null>(null);
-  useEffect(() => {
-    if (!filters.team) return;
-    const c = new AbortController();
-    fetch("/api/attendance?" + new URLSearchParams({ from: filters.from, to: filters.to, team: "", place: "" }), { cache: "no-store", signal: c.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d && !c.signal.aborted) setClub({ key: filters.from + filters.to, events: d.events });
-      })
-      .catch(() => {});
-    return () => c.abort();
-  }, [filters]);
-  const report = summarize(
-      (data?.events ?? []) as unknown as StatisticalEvent[],
-      kind,
-    ),
-    rate = (n: number, d: number) =>
-      percentage(n, d) === null ? "…" : percentage(n, d) + " %";
-  function exportCsv() {
-    const text = statisticsCsv([
-      [
-        t.name,
-        t.invited,
-        t.answers,
-        t.observed,
-        t.attended,
-        t.absent,
-        t.late,
-        t.early,
-        t.rate,
-      ],
-      ...report.people.map((p) => [
-        p.name,
-        p.invited,
-        p.answered,
-        p.closed,
-        p.attended,
-        p.absent,
-        p.late,
-        p.early,
-        percentage(p.attended, p.closed),
-      ]),
-    ]);
-    const url = URL.createObjectURL(
-      new Blob([text], { type: "text/csv;charset=utf-8" }),
-    );
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `statistics-${filters.from}-${filters.to}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-  const seasonValue =
-    data?.seasons.find((s) => s.starts_on === filters.from && s.ends_on === filters.to)?.id ?? "";
+  }, [url, attempt]);
+  // The previous figures stay on screen while the next ones load.
+  return { data: state.data, error: state.url === url ? state.error : "", loading: state.url !== url, retry: () => setAttempt((n) => n + 1) };
+}
+
+/** The period of a chart, kept in the address (?p-<chart>=). */
+function usePeriod(chart: string, fallback: PeriodKind): [Period, (p: Period) => void] {
+  const params = useSearchParams(),
+    router = useRouter(),
+    path = usePathname();
+  const raw = params.get(periodParam(chart));
+  const period = useMemo(() => parsePeriod(raw, fallback), [raw, fallback]);
+  const set = useCallback(
+    (p: Period) => {
+      const next = new URLSearchParams(params.toString());
+      if (p.kind === fallback) next.delete(periodParam(chart));
+      else next.set(periodParam(chart), serializePeriod(p));
+      router.replace(`${path}${next.size ? "?" + next : ""}`, { scroll: false });
+    },
+    [params, router, path, chart, fallback],
+  );
+  return [period, set];
+}
+
+/** The period under a chart's title: a season, seasons, or two dates. */
+function periodText(t: StatisticsCopy, locale: Locale, d: Spanned | null) {
+  if (!d) return t.loading;
+  if (d.period.kind === "custom") return fill(t.period.dates, { from: shortDate(locale, d.from), to: shortDate(locale, d.to) });
+  if (!d.names.length) return d.period.kind === "previous" ? t.period.none : fill(t.period.dates, { from: shortDate(locale, d.from), to: shortDate(locale, d.to) });
+  return d.names.length === 1 ? fill(t.period.one, { season: d.names[0] }) : fill(t.period.many, { first: d.names[0], last: d.names[d.names.length - 1] });
+}
+
+function Failed({ locale, retry }: { locale: Locale; retry: () => void }) {
+  const t = statisticsCopy[locale];
   return (
-    <main id="main" className="access statistics">
+    <p role="alert" className="error-message">
+      {t.error}{" "}
+      <button type="button" className="text-button" onClick={retry}>
+        {t.retry}
+      </button>
+    </p>
+  );
+}
+
+export function StatisticsTabs({ locale, current }: { locale: Locale; current: "club" }) {
+  const t = statisticsCopy[locale];
+  const params = useSearchParams();
+  const keep = new URLSearchParams();
+  for (const k of ["season", "team"]) if (params.get(k)) keep.set(k, params.get(k)!);
+  const q = keep.size ? "?" + keep : "";
+  return (
+    <nav className="page-tabs" aria-label={t.tabs}>
+      <Link href={`/${locale}/statistics/club${q}`} aria-current={current === "club" ? "page" : undefined}>
+        {t.tabClub}
+      </Link>
+    </nav>
+  );
+}
+
+export function StatisticsClub({ locale }: { locale: Locale }) {
+  const t = statisticsCopy[locale];
+  const scope = useScope();
+  const summary = useStat<Summary>("summary", {});
+  const sections = useRef(new Map<string, CsvSection>());
+  const register = useCallback((key: string, section: CsvSection | null) => {
+    if (section) sections.current.set(key, section);
+    else sections.current.delete(key);
+  }, []);
+  const s = summary.data;
+  const teamText = s?.team ? s.team.name : s?.restricted ? t.myTeams : t.allTeams;
+  function exportAll() {
+    const rows: (string | number | null)[][] = [];
+    for (const key of ["tiles", "attendance", "headcount", "results", "storage"]) {
+      const sec = sections.current.get(key);
+      if (!sec) continue;
+      rows.push([sec.title], ...sec.rows, []);
+    }
+    downloadCsv(`statistics-${slug(s?.season?.name ?? "club")}.csv`, rows);
+  }
+  useEffect(() => {
+    if (!s?.tiles) return register("tiles", null);
+    const x = s.tiles;
+    register("tiles", {
+      title: t.title,
+      rows: [
+        [t.tiles.players, x.players],
+        [t.tiles.coaches, x.coaches],
+        [t.tiles.trainings, x.trainings],
+        [t.tiles.matches, x.matches],
+        x.treasury !== null ? [t.tiles.treasury, (x.treasury / 100).toFixed(2)] : [t.tiles.attendance, x.attendance === null ? "" : `${x.attendance} %`],
+      ],
+    });
+  }, [s, t, register]);
+  return (
+    <main id="main" className="statistics">
       <PageHeader
         title={t.title}
-        subtitle={t.intro}
+        subtitle={s ? (s.season ? fill(t.subtitle, { season: s.season.name, team: teamText }) : t.noSeason) : t.loading}
         actions={
           <>
-            <Link className="button secondary" href={"/" + locale + "/attendance"}>
-              {t.attendance}
-            </Link>
-            <Link className="button secondary" href={"/" + locale + "/calendar"}>
-              {t.calendar}
-            </Link>
-            <Link className="button secondary" href={"/" + locale + "/statistics/report"}>
+            <Link className="button secondary" href={`/${locale}/statistics/report`}>
               {reportCopy[locale].title}
             </Link>
-            <Button disabled={!data || loading || data.limited || !report.people.length} onClick={exportCsv}>
-              {t.export}
+            <Button icon="download" disabled={!s} onClick={exportAll}>
+              {t.exportCsv}
             </Button>
           </>
         }
       />
-      <form
-        className="statistics-filters"
-        key={filters.from + filters.to + filters.team}
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget),
-            from = String(f.get("from")),
-            to = String(f.get("to"));
-          if (from >= to || Date.parse(to) - Date.parse(from) > 366 * 86400000) {
-            setInvalid(true);
-            return;
-          }
-          setInvalid(false);
-          setLoading(true);
-          setFilters({ from, to, team: String(f.get("team")) });
-        }}
-      >
-        <Toolbar label={t.apply} actions={<Button disabled={loading}>{t.apply}</Button>}>
-          <div className="toolbar-field">
-            <label htmlFor="stats-season">{t.season}</label>
-            <select
-              id="stats-season"
-              value={seasonValue}
-              disabled={loading}
-              onChange={(e) => {
-                const s = data?.seasons.find((s) => s.id === e.target.value);
-                if (s) {
-                  if (Date.parse(s.ends_on) - Date.parse(s.starts_on) > 366 * 86400000) {
-                    setInvalid(true);
-                    return;
-                  }
-                  setInvalid(false);
-                  setLoading(true);
-                  setFilters({ ...filters, from: s.starts_on, to: s.ends_on });
-                }
-              }}
-            >
-              <option value="">{t.custom}</option>
-              {data?.seasons.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="toolbar-field">
-            <label htmlFor="stats-from">{t.from}</label>
-            <input id="stats-from" name="from" type="date" required defaultValue={filters.from} />
-          </div>
-          <div className="toolbar-field">
-            <label htmlFor="stats-to">{t.to}</label>
-            <input id="stats-to" name="to" type="date" required defaultValue={filters.to} />
-          </div>
-          <div className="toolbar-field">
-            <label htmlFor="stats-team">{t.team}</label>
-            <select id="stats-team" name="team" defaultValue={filters.team}>
-              <option value="">{t.all}</option>
-              {data?.teams.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-            <ApplyScope locale={locale} differs={filters.team !== globalTeam} apply={() => scope.setTeam(filters.team || null)} />
-          </div>
-          <div className="toolbar-field">
-            <label htmlFor="stats-kind">{t.kind}</label>
-            <select id="stats-kind" value={kind} onChange={(e) => setKind(e.target.value)}>
-              <option value="">{t.all}</option>
-              {Object.entries(kindLabels[locale]).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-        </Toolbar>
-      </form>
-      {invalid && <p role="alert" className="error-message">{t.invalid}</p>}
-      {error && (
-        <p role="alert" className="error-message">
-          {t.error}{" "}
-          <button type="button" className="text-button" onClick={() => { setLoading(true); setError(false); setFilters({ ...filters }); }}>
-            {t.apply}
-          </button>
-        </p>
-      )}
-      <div role="status" className="sr-only">{loading ? t.loading : ""}</div>
-      {loading && !data && (
+      <StatisticsTabs locale={locale} current="club" />
+      {summary.error && <Failed locale={locale} retry={summary.retry} />}
+      <div role="status" className="sr-only">
+        {summary.loading ? t.loading : ""}
+      </div>
+      {!s && !summary.error && (
         <div className="stat-row-grid" data-cols="5" aria-hidden="true">
           {[0, 1, 2, 3, 4].map((k) => (
             <div key={k} className="skeleton stat-card" />
           ))}
         </div>
       )}
-      {data && (
-        <>
-          {data.limited && <p role="alert" className="notice">{t.partial}</p>}
-          <div className="stat-row-grid" data-cols="5">
-            <StatCard label={t.sessions} value={report.sessions} icon="calendar" tone="brand" />
-            <StatCard label={t.closed} value={report.closedSessions} icon="check" tone="success" hint={`${report.sessions ? Math.round((report.closedSessions / report.sessions) * 100) : 0} %`} />
-            <StatCard label={t.people} value={report.people.length} icon="players" tone="info" />
-            <StatCard label={t.rate} value={rate(report.total.attended, report.total.closed)} icon="attendance" tone="brand" hint={`${report.total.attended} / ${report.total.closed}`} />
-            <StatCard label={t.answers} value={rate(report.total.answered, report.total.invited)} icon="inbox" tone="warning" hint={`${report.total.answered} / ${report.total.invited}`} />
-          </div>
-          {!report.total.invited ? (
-            <EmptyState
-              icon="chart"
-              title={t.empty}
-              action={
-                <Link className="button secondary" href={"/" + locale + "/calendar"}>
-                  {t.calendar}
-                </Link>
-              }
-            />
+      {s?.tiles && (
+        <div className="stat-row-grid" data-cols="5">
+          <KpiCard label={t.tiles.players} value={s.tiles.players} description={t.tiles.playersHint} icon="players" />
+          <KpiCard label={t.tiles.coaches} value={s.tiles.coaches} description={t.tiles.coachesHint} icon="whistle" tone="info" />
+          <KpiCard label={t.tiles.trainings} value={s.tiles.trainings} description={t.tiles.trainingsHint} icon="attendance" tone="success" />
+          <KpiCard label={t.tiles.matches} value={s.tiles.matches} description={t.tiles.matchesHint} icon="trophy" tone="warning" />
+          {s.tiles.treasury !== null ? (
+            <KpiCard label={t.tiles.treasury} value={money(locale, s.tiles.treasury)} description={t.tiles.treasuryHint} icon="funding" />
           ) : (
-            <div className="statistics-columns">
-              <Card title={t.monthly} subtitle={t.monthlyIntro} id="stats-monthly">
-                <MonthlyChart
+            <KpiCard label={t.tiles.attendance} value={s.tiles.attendance === null ? "…" : `${s.tiles.attendance} %`} description={t.tiles.attendanceHint} icon="chart" />
+          )}
+        </div>
+      )}
+      {s && (
+        <div className="stats-grid" key={`${scope.seasonId}:${scope.teamId}`}>
+          <AttendanceCard locale={locale} register={register} />
+          <HeadcountCard locale={locale} register={register} />
+          <ResultsCard locale={locale} register={register} />
+          {s.can.storage && <StorageCard locale={locale} register={register} />}
+          <HallOfFame locale={locale} />
+        </div>
+      )}
+    </main>
+  );
+}
+
+type Register = (key: string, section: CsvSection | null) => void;
+
+/** The card frame of a chart: title, period under it, the « ... » menu and the tools. */
+function ChartCard({
+  id,
+  title,
+  sub,
+  tools,
+  menu,
+  className = "",
+  children,
+}: {
+  id: string;
+  title: string;
+  sub: string;
+  tools?: ReactNode;
+  menu: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card
+      id={id}
+      title={title}
+      subtitle={sub}
+      className={`stats-card ${className}`}
+      actions={
+        <span className="stats-card-tools">
+          {tools}
+          {menu}
+        </span>
+      }
+    >
+      {children}
+    </Card>
+  );
+}
+
+type AttendanceData = Spanned & {
+  grain: "month" | "week";
+  buckets: string[];
+  teams: { name: string; color: string | null; values: (number | null)[] }[];
+  club: (number | null)[];
+  scoped: (number | null)[] | null;
+};
+function AttendanceCard({ locale, register }: { locale: Locale; register: Register }) {
+  const t = statisticsCopy[locale],
+    a = t.attendance;
+  const [period, setPeriod] = usePeriod("attendance", "season");
+  const [grain, setGrain] = useState<"month" | "week">("month"),
+    [table, setTable] = useState(false);
+  const { data, error, retry } = useStat<AttendanceData>("attendance", { period: serializePeriod(period), grain });
+  const area = useRef<HTMLDivElement>(null);
+  const labels = useMemo(() => {
+    if (!data) return { short: [] as string[], long: [] as string[] };
+    if (data.grain === "week")
+      return {
+        short: data.buckets.map((b) => fill(a.weekShort, { n: isoWeek(b).week })),
+        long: data.buckets.map((b) => fill(a.weekLong, { n: isoWeek(b).week, date: shortDate(locale, b) })),
+      };
+    const f = (opts: Intl.DateTimeFormatOptions) => data.buckets.map((m) => new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(new Date(m + "-01T12:00Z")));
+    return { short: f({ month: "short", year: "2-digit" }), long: f({ month: "long", year: "numeric" }) };
+  }, [data, a, locale]);
+  const series: ChartSeries[] = useMemo(() => {
+    if (!data) return [];
+    const out: ChartSeries[] = data.teams.map((x, i) => ({ id: "team:" + x.name, label: x.name, color: colorOf(x.color, i), values: x.values, width: data.scoped && data.teams.length === 1 ? 3 : 2 }));
+    out.push(
+      data.scoped
+        ? { id: "club", label: a.clubAverage, color: "var(--primary)", width: 2, dashed: true, values: data.club }
+        : { id: "club", label: a.club, color: "var(--primary)", width: 3, values: data.club },
+    );
+    return out;
+  }, [data, a]);
+  const pct = (v: number) => `${Math.round(v)} %`;
+  const rows = useMemo(
+    () => (data ? [[a.bucket, ...series.map((s) => s.label)], ...data.buckets.map((_, i) => [labels.long[i], ...series.map((s) => (s.values[i] === null ? "" : `${s.values[i]} %`))])] : []),
+    [data, series, labels, a.bucket],
+  );
+  useEffect(() => register("attendance", data ? { title: a.title, rows } : null), [register, data, rows, a.title]);
+  const sub = periodText(t, locale, data);
+  const empty = data && !data.club.some((v) => v !== null);
+  return (
+    <ChartCard
+      id="stats-attendance"
+      title={a.title}
+      sub={sub}
+      className="stats-wide"
+      tools={
+        <Segmented
+          label={a.grain}
+          items={[
+            { id: "month", label: a.month },
+            { id: "week", label: a.week },
+          ]}
+          value={grain}
+          onChange={(v) => setGrain(v as "month" | "week")}
+        />
+      }
+      menu={
+        <ChartMenu
+          locale={locale}
+          period={period}
+          onPeriod={setPeriod}
+          table={table}
+          onTable={() => setTable((v) => !v)}
+          onCsv={() => downloadCsv(`${slug(a.title)}.csv`, rows)}
+          onPng={() => area.current && void exportPng(area.current, a.title, sub, `${slug(a.title)}.png`)}
+        />
+      }
+    >
+      {error && <Failed locale={locale} retry={retry} />}
+      {data && (
+        <div ref={area}>
+          {empty ? (
+            <p className="muted">{a.empty}</p>
+          ) : (
+            <ChartFrame
+              locale={locale}
+              view={table ? "table" : "chart"}
+              legend={series}
+              table={
+                <DataTable label={a.title}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{a.bucket}</th>
+                      {series.map((s) => (
+                        <th scope="col" className="num" key={s.id}>
+                          {s.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.buckets.map((b, i) => (
+                      <tr key={b}>
+                        <th scope="row">{labels.long[i]}</th>
+                        {series.map((s) => (
+                          <td className="num" key={s.id}>
+                            {s.values[i] === null ? "…" : pct(s.values[i] as number)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+              }
+            >
+              {(hidden) => (
+                <LineChart
                   locale={locale}
-                  from={filters.from}
-                  to={filters.to}
-                  kind={kind}
-                  team={filters.team}
-                  events={(data.events ?? []) as unknown as (StatisticalEvent & { team_id: string | null })[]}
-                  club={filters.team && club?.key === filters.from + filters.to ? club.events : null}
-                  teams={data.teams as { id: string; name: string; color: string | null }[]}
+                  summary={`${a.summary}. ${series.map((s) => trendSentence(s.label, labels.long, s.values, pct)).join(". ")}`}
+                  categories={labels.short}
+                  titles={labels.long}
+                  tickEvery={data.grain === "week" ? 4 : undefined}
+                  series={series.filter((s) => !hidden.has(s.id))}
+                  format={pct}
                 />
-                <p className="muted small">{t.hint}</p>
-              </Card>
-              <Card title={t.individual} subtitle={t.observed} id="stats-people" className="card-flush">
-                <div className="statistics-table-scroll" tabIndex={0} role="region" aria-label={t.individual}>
-                  <table className="compact-table">
+              )}
+            </ChartFrame>
+          )}
+          <p className="muted small">{a.hint}</p>
+        </div>
+      )}
+    </ChartCard>
+  );
+}
+
+type HeadcountData = Spanned & {
+  view: "teams" | "age" | "classification" | "coaches";
+  historyStart: string | null;
+  seasons: {
+    id: string;
+    name: string;
+    teams: { name: string; color: string | null; count: number }[];
+    total: number;
+    shared: number;
+    ages: { key: string; count: number }[] | null;
+    classes: { key: string; count: number }[] | null;
+    currentClassification: boolean;
+    retention: { stayed: number | null; joined: number | null; left: number | null; rate: number | null };
+  }[];
+};
+const classOrder = ["PF1", "PF2", "pending", "not_classified"] as const;
+function HeadcountCard({ locale, register }: { locale: Locale; register: Register }) {
+  const t = statisticsCopy[locale],
+    h = t.headcount;
+  const [period, setPeriod] = usePeriod("headcount", "last5");
+  const [view, setView] = useState<HeadcountData["view"]>("teams"),
+    [table, setTable] = useState(false);
+  const { data, error, retry } = useStat<HeadcountData>("headcount", { period: serializePeriod(period), view });
+  const area = useRef<HTMLDivElement>(null);
+  const grouped = data && (data.view === "teams" || data.view === "coaches");
+  // Teams (by name, a team keeps its name from one season to the next) or categories.
+  const keys = useMemo(() => {
+    if (!data) return [] as { id: string; label: string; color: string }[];
+    if (data.view === "age") return ageBands.map((k, i) => ({ id: k, label: h.ages[k], color: palette(i) }));
+    if (data.view === "classification") return classOrder.map((k, i) => ({ id: k, label: h.classes[k], color: palette(i) }));
+    const out: { id: string; label: string; color: string }[] = [];
+    for (const s of data.seasons) for (const x of s.teams) if (!out.some((k) => k.id === x.name)) out.push({ id: x.name, label: x.name, color: colorOf(x.color, out.length) });
+    return out;
+  }, [data, h]);
+  const value = useCallback(
+    (s: HeadcountData["seasons"][number], key: string) =>
+      (data?.view === "age" ? s.ages?.find((x) => x.key === key)?.count : data?.view === "classification" ? s.classes?.find((x) => x.key === key)?.count : s.teams.find((x) => x.name === key)?.count) ?? 0,
+    [data],
+  );
+  const shared = data?.seasons.reduce((n, s) => n + s.shared, 0) ?? 0;
+  const current = data?.view === "classification" && data.seasons.some((s) => s.currentClassification);
+  const withRetention = data?.view === "teams";
+  const rows = useMemo(
+    () =>
+      data
+        ? [
+            [h.season, ...keys.map((k) => k.label), h.total, ...(withRetention ? [h.stayed, h.joined, h.left, h.retention] : [])],
+            ...data.seasons.map((s) => [
+              s.name + (s.currentClassification ? ` (${h.currentMark})` : ""),
+              ...keys.map((k) => value(s, k.id)),
+              s.total,
+              ...(withRetention ? [s.retention.stayed, s.retention.joined, s.retention.left, s.retention.rate === null ? null : `${s.retention.rate} %`] : []),
+            ]),
+          ]
+        : [],
+    [data, keys, value, withRetention, h],
+  );
+  useEffect(() => register("headcount", data ? { title: `${h.title} (${h.views[data.view]})`, rows } : null), [register, data, rows, h]);
+  const sub = periodText(t, locale, data);
+  const summary = data ? `${h.summary} : ${data.seasons.map((s) => `${s.name} ${s.total} ${h.people}`).join(", ")}` : "";
+  const empty = data && !data.seasons.some((s) => s.total > 0);
+  return (
+    <ChartCard
+      id="stats-headcount"
+      title={h.title}
+      sub={sub}
+      tools={
+        <Segmented
+          label={h.view}
+          items={(["teams", "age", "classification", "coaches"] as const).map((k) => ({ id: k, label: h.views[k] }))}
+          value={view}
+          onChange={(v) => setView(v as HeadcountData["view"])}
+        />
+      }
+      menu={
+        <ChartMenu
+          locale={locale}
+          period={period}
+          onPeriod={setPeriod}
+          table={table}
+          onTable={() => setTable((v) => !v)}
+          onCsv={() => downloadCsv(`${slug(h.title)}.csv`, rows)}
+          onPng={() => area.current && void exportPng(area.current, `${h.title} · ${h.views[view]}`, sub, `${slug(h.title)}.png`)}
+        />
+      }
+    >
+      {error && <Failed locale={locale} retry={retry} />}
+      {data && (
+        <div ref={area}>
+          {empty ? (
+            <p className="muted">{data.view === "coaches" ? h.emptyCoaches : h.empty}</p>
+          ) : (
+            <ChartFrame
+              locale={locale}
+              view={table ? "table" : "chart"}
+              legend={keys}
+              table={
+                <>
+                  <DataTable label={h.title}>
                     <thead>
                       <tr>
-                        {[t.name, t.invited, t.answers, t.attended, t.absent, t.late, t.early, t.rate].map((h) => (
-                          <th scope="col" key={h}>
-                            {h}
+                        {rows[0].map((x, i) => (
+                          <th scope="col" className={i ? "num" : undefined} key={String(x)}>
+                            {x}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {report.people.map((p) => (
-                        <tr key={p.id}>
-                          <th scope="row">{p.name}</th>
-                          <td className="num">{p.invited}</td>
-                          <td className="num">{rate(p.answered, p.invited)}</td>
-                          <td className="num">
-                            {p.attended} / {p.closed}
-                          </td>
-                          <td className="num">{p.absent}</td>
-                          <td className="num">{p.late}</td>
-                          <td className="num">{p.early}</td>
-                          <td className="num">
-                            <strong>{rate(p.attended, p.closed)}</strong>
-                          </td>
+                      {rows.slice(1).map((r, i) => (
+                        <tr key={data.seasons[i].id}>
+                          <th scope="row">{r[0]}</th>
+                          {r.slice(1).map((v, j) => (
+                            <td className="num" key={j}>
+                              {v === null ? "…" : v}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
+                  </DataTable>
+                  {grouped && shared > 0 && <p className="muted small">{fill(h.shared, { n: shared })}</p>}
+                </>
+              }
+            >
+              {(hidden) =>
+                grouped ? (
+                  <GroupedBarChart
+                    locale={locale}
+                    summary={summary}
+                    hidden={hidden}
+                    groups={data.seasons.map((s) => ({ label: s.name, total: s.total, bars: keys.map((k) => ({ id: k.id, label: k.label, color: k.color, value: value(s, k.id) })).filter((b) => b.value > 0) }))}
+                  />
+                ) : (
+                  <StackedBarChart
+                    locale={locale}
+                    summary={summary}
+                    categories={data.seasons.map((s) => s.name)}
+                    segments={keys.filter((k) => !hidden.has(k.id)).map((k) => ({ ...k, values: data.seasons.map((s) => value(s, k.id)) }))}
+                  />
+                )
+              }
+            </ChartFrame>
           )}
-        </>
+          {data.view === "age" && <p className="muted small">{h.ageNote}</p>}
+          {current && <p className="muted small">{fill(h.currentNote, { date: shortDate(locale, data.historyStart ?? new Date().toISOString().slice(0, 10)) })}</p>}
+        </div>
       )}
-      <SeasonHeadcount locale={locale} />
-      <p className="muted small">{t.future}</p>
-    </main>
+    </ChartCard>
   );
 }
 
-/**
- * "Évolution mensuelle" (wave 15, 2.6): one line per team (2 px, team colour)
- * and the club (3 px, --primary), from 0 to 100 %; with a team chosen, its
- * line and the club's average dashed.
- */
-function MonthlyChart({
-  locale,
-  from,
-  to,
-  kind,
-  team,
-  events,
-  club,
-  teams,
-}: {
-  locale: Locale;
-  from: string;
-  to: string;
-  kind: string;
-  team: string;
-  events: (StatisticalEvent & { team_id: string | null })[];
-  club: StatisticalEvent[] | null;
-  teams: { id: string; name: string; color: string | null }[];
-}) {
-  const t = statisticsCopy[locale];
-  const months = monthsBetween(from, to);
-  const labels = months.map((m) => new Intl.DateTimeFormat(locale, { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(m + "-01T12:00Z")));
-  const long = (i: number) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(months[i] + "-01T12:00Z"));
-  const rates = monthlyRates(events, months, kind);
-  const colour = (id: string, i: number) => {
-    const c = teams.find((x) => x.id === id)?.color;
-    return c ? `var(--team-${c}-border)` : `var(--chart-${(i % 8) + 1})`;
-  };
-  const series: ChartSeries[] = [];
-  if (team) {
-    const name = teams.find((x) => x.id === team)?.name ?? t.team;
-    series.push({ id: team, label: name, color: colour(team, 0), width: 3, values: rates.club });
-    if (club) series.push({ id: "club", label: t.clubAverage, color: "var(--primary)", width: 2, dashed: true, values: monthlyRates(club, months, kind).club });
-  } else {
-    [...rates.teams]
-      .filter(([, v]) => v.some((x) => x !== null))
-      .map(([id, values]) => ({ id, values, name: teams.find((x) => x.id === id)?.name ?? id }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .forEach((x, i) => series.push({ id: x.id, label: x.name, color: colour(x.id, i), values: x.values }));
-    series.push({ id: "club", label: t.club, color: "var(--primary)", width: 3, values: rates.club });
-  }
-  const pct = (v: number) => `${Math.round(v)} %`;
-  const summary = `${t.monthlySummary}. ${series.map((s) => trendSentence(s.label, months.map((_, i) => long(i)), s.values, pct)).join(". ")}`;
+type ResultsData = Spanned & { teams: { name: string; color: string | null; team_id: string; season_id: string; won: number; drawn: number; lost: number }[] };
+function ResultsCard({ locale, register }: { locale: Locale; register: Register }) {
+  const t = statisticsCopy[locale],
+    r = t.results;
+  const [period, setPeriod] = usePeriod("results", "season");
+  const [table, setTable] = useState(false);
+  const { data, error, retry } = useStat<ResultsData>("results", { period: serializePeriod(period) });
+  const area = useRef<HTMLDivElement>(null);
+  const line = (x: { won: number; drawn: number; lost: number }) => fill(r.line, x);
+  const rows = useMemo(
+    () => (data ? [[r.team, r.played, r.won, r.drawn, r.lost], ...data.teams.map((x) => [x.name, x.won + x.drawn + x.lost, x.won, x.drawn, x.lost])] : []),
+    [data, r],
+  );
+  useEffect(() => register("results", data ? { title: r.title, rows } : null), [register, data, rows, r.title]);
+  const sub = periodText(t, locale, data);
   return (
-    <ChartFrame
-      locale={locale}
-      legend={series}
-      table={
-        <DataTable label={t.monthly}>
-          <thead>
-            <tr>
-              <th scope="col">{t.month}</th>
-              {series.map((s) => (
-                <th scope="col" className="num" key={s.id}>{s.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {months.map((m, i) => (
-              <tr key={m}>
-                <th scope="row">{long(i)}</th>
-                {series.map((s) => (
-                  <td className="num" key={s.id}>{s.values[i] === null ? "…" : pct(s.values[i] as number)}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </DataTable>
+    <ChartCard
+      id="stats-results"
+      title={r.title}
+      sub={sub}
+      menu={
+        <ChartMenu
+          locale={locale}
+          period={period}
+          onPeriod={setPeriod}
+          table={table}
+          onTable={() => setTable((v) => !v)}
+          onCsv={() => downloadCsv(`${slug(r.title)}.csv`, rows)}
+          onPng={() => area.current && void exportPng(area.current, r.title, sub, `${slug(r.title)}.png`)}
+        />
       }
     >
-      {(hidden) => <LineChart locale={locale} summary={summary} categories={labels} series={series.filter((s) => !hidden.has(s.id))} format={pct} />}
-    </ChartFrame>
+      {error && <Failed locale={locale} retry={retry} />}
+      {data &&
+        (!data.teams.length ? (
+          <p className="muted">{r.empty}</p>
+        ) : table ? (
+          <DataTable label={r.title}>
+            <thead>
+              <tr>
+                {rows[0].map((x, i) => (
+                  <th scope="col" className={i ? "num" : undefined} key={String(x)}>
+                    {x}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.teams.map((x) => (
+                <tr key={x.name}>
+                  <th scope="row">{x.name}</th>
+                  <td className="num">{x.won + x.drawn + x.lost}</td>
+                  <td className="num">{x.won}</td>
+                  <td className="num">{x.drawn}</td>
+                  <td className="num">{x.lost}</td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        ) : (
+          <div ref={area}>
+            <ul className="result-rings">
+            {data.teams.map((x) => {
+              const total = x.won + x.drawn + x.lost;
+              return (
+                <li key={x.name}>
+                  <Link href={`/${locale}/matches?season=${x.season_id}&team=${x.team_id}`} aria-label={`${fill(r.open, { team: x.name })} : ${total ? line(x) : r.none}`}>
+                    <DonutChart won={x.won} drawn={x.drawn} lost={x.lost} unit={total === 1 ? r.match : r.matches} />
+                    <span className="result-ring-name" data-export-text>
+                      <span className="team-dot" data-color={x.color ?? undefined} aria-hidden="true" />
+                      {x.name}
+                    </span>
+                    <span className="result-ring-line muted small" data-export-text>
+                      {total ? line(x) : r.none}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          </div>
+        ))}
+    </ChartCard>
+  );
+}
+
+type StorageData = {
+  used: number;
+  quota: number;
+  free: number;
+  percent: number;
+  level: "ok" | "warning" | "full";
+  segments: { key: string; share: number }[];
+  categories: { key: (typeof storageCategories)[number]; bytes: number; files: number }[];
+};
+type Largest = { files: { id: string; category: (typeof storageCategories)[number]; name: string; bytes: number; createdAt: string; href: string }[] };
+function StorageCard({ locale, register }: { locale: Locale; register: Register }) {
+  const t = statisticsCopy[locale],
+    st = t.storage;
+  const { data, error, retry } = useStat<StorageData>("storage", {});
+  const [largest, setLargest] = useState<Largest | null>(null),
+    [table, setTable] = useState(false);
+  const area = useRef<HTMLDivElement>(null);
+  const size = (n: number) => formatBytes(n, locale);
+  const colors = Object.fromEntries([...storageCategories.map((k, i) => [k, palette(i)]), ["free", "var(--grid-line)"]]) as Record<string, string>;
+  const usedLine = data ? fill(st.used, { used: size(data.used), quota: size(data.quota), percent: data.percent }) : "";
+  const rows = useMemo(
+    () =>
+      data
+        ? [
+            [st.category, st.size, st.filesHeader],
+            ...data.categories.map((c) => [st.categories[c.key], formatBytes(c.bytes, locale), c.files]),
+            [st.categories.free, formatBytes(data.free, locale), ""],
+          ]
+        : [],
+    [data, st, locale],
+  );
+  useEffect(() => register("storage", data ? { title: `${st.title} · ${usedLine}`, rows } : null), [register, data, rows, st.title, usedLine]);
+  async function showLargest() {
+    const r = await fetch(`/api/statistics/club?chart=largest`, { cache: "no-store" });
+    if (r.ok) setLargest(await r.json());
+  }
+  return (
+    <ChartCard
+      id="stats-storage"
+      title={st.title}
+      sub={st.quota}
+      tools={data && data.level !== "ok" ? <Badge tone={data.level === "full" ? "danger" : "warning"}>{data.level === "full" ? st.full : st.warning}</Badge> : undefined}
+      menu={
+        <ChartMenu
+          locale={locale}
+          table={table}
+          onTable={() => setTable((v) => !v)}
+          onCsv={() => downloadCsv(`${slug(st.title)}.csv`, rows)}
+          onPng={() => area.current && void exportPng(area.current, st.title, usedLine, `${slug(st.title)}.png`)}
+        />
+      }
+    >
+      {error && <Failed locale={locale} retry={retry} />}
+      {data && (
+        <div ref={area} className="storage">
+          {!table && <SplitBar label={`${st.summary} : ${usedLine}`} parts={data.segments.map((s) => ({ id: s.key, share: s.share, color: colors[s.key] }))} />}
+          <p className="storage-used" data-export-text>
+            {usedLine}
+          </p>
+          {data.level !== "ok" && <p className={data.level === "full" ? "notice" : "muted small"}>{data.level === "full" ? st.fullText : st.warningText}</p>}
+          <ul className="storage-legend">
+            {[...data.categories, { key: "free" as const, bytes: data.free, files: 0 }].map((c) => (
+              <li key={c.key}>
+                <span className="chart-swatch storage-swatch" data-key={c.key} aria-hidden="true" />
+                <span data-export-text>{st.categories[c.key]}</span>
+                <span className="num" data-export-text>
+                  {size(c.bytes)}
+                </span>
+                {c.key !== "free" && <span className="muted small">{fill(st.files, { n: c.files })}</span>}
+              </li>
+            ))}
+          </ul>
+          {data.level !== "ok" && !largest && (
+            <Button variant="secondary" size="sm" onClick={() => void showLargest()}>
+              {st.largest}
+            </Button>
+          )}
+          {largest && (
+            <DataTable label={st.largestTitle} caption={st.largestTitle}>
+              <thead>
+                <tr>
+                  <th scope="col">{st.file}</th>
+                  <th scope="col">{st.category}</th>
+                  <th scope="col" className="num">
+                    {st.size}
+                  </th>
+                  <th scope="col">{st.added}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {largest.files.map((f) => (
+                  <tr key={f.id}>
+                    <th scope="row">
+                      <Link href={`/${locale}${f.href}`}>{f.name}</Link>
+                    </th>
+                    <td>{st.categories[f.category]}</td>
+                    <td className="num">{size(f.bytes)}</td>
+                    <td>{shortDate(locale, String(f.createdAt).slice(0, 10))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </DataTable>
+          )}
+        </div>
+      )}
+    </ChartCard>
   );
 }
