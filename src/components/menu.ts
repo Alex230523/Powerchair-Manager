@@ -109,6 +109,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "calendar",
               items: [
                 ...item("/calendar", "calendar", "calendar"),
+                // B9: events open to the public (registration by a link).
+                ...item("/events", "openEvents", "megaphone", has("calendar.manage", "mandates.manage")),
                 ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                 ...item("/trips", "trips", "bus", has("calendar.read", "calendar.manage")),
                 ...item("/venues", "halls", "pin", has("calendar.manage")),
@@ -184,6 +186,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 icon: "calendar",
                 items: [
                   ...item("/calendar", "calendar", "calendar"),
+                  ...item("/events", "openEvents", "megaphone", has("calendar.manage")),
                   ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                   // Trips and halls are reached from the calendar page (wave 11).
                   ...item("/tournaments", "tournaments", "trophy"),

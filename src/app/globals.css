@@ -10168,3 +10168,25 @@ ul.task-page li {
   display: grid;
   gap: 12px;
 }
+
+/* B9: open events. */
+.open-event-detail {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.open-event-description {
+  white-space: pre-line;
+}
+.open-event-qr svg {
+  width: min(220px, 70vw);
+  height: auto;
+}
+.rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.rating-row .check {
+  min-height: 44px;
+}

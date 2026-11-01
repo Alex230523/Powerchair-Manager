@@ -79,14 +79,22 @@ async function candidates(c: PoolClient, org: string): Promise<(Candidate & { ca
 }
 /** The receivable a structured communication names (the receivable's or one of its instalments'). */
 async function byReference(c: PoolClient, org: string, reference: string) {
-  return (
+  const receivable = (
     await c.query(
-      `SELECT d.id,d.net_cents-(SELECT COALESCE(sum(t.amount_cents),0) FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in')::int AS remaining
+      `SELECT d.id,'receivable' AS target,d.net_cents-(SELECT COALESCE(sum(t.amount_cents),0) FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in')::int AS remaining
          FROM dues_receivable d WHERE d.organization_id=$1 AND d.status='open'
           AND (d.reference=$2 OR EXISTS (SELECT 1 FROM dues_installment i WHERE i.receivable_id=d.id AND i.reference=$2))`,
       [org, reference],
     )
-  ).rows[0] as { id: string; remaining: number } | undefined;
+  ).rows[0] as { id: string; target: "receivable" | "event"; remaining: number } | undefined;
+  if (receivable) return receivable;
+  // B9: an open event's fee, by the registration's own communication.
+  return (
+    await c.query(
+      "SELECT r.id,'event' AS target,(oe.fee_cents-r.paid_cents)::int AS remaining FROM open_registration r JOIN open_event oe ON oe.id=r.open_event_id AND oe.organization_id=r.organization_id WHERE r.organization_id=$1 AND r.payment_reference=$2 AND r.status<>'cancelled' AND r.paid_cents<oe.fee_cents",
+      [org, reference],
+    )
+  ).rows[0] as { id: string; target: "receivable" | "event"; remaining: number } | undefined;
 }
 
 export async function bankView(db: Pool, p: Principal) {
@@ -96,10 +104,11 @@ export async function bankView(db: Pool, p: Principal) {
       await s.c.query(
         `SELECT l.id,l.bank_account_id,l.booked_on::text AS booked_on,l.amount_cents,l.counterparty,l.counterparty_iban,l.communication,l.bank_ref,l.reference,l.status,l.note,
                 COALESCE((SELECT json_agg(json_build_object('id',a.id,'target',a.target,'target_id',a.target_id,'amount_cents',a.amount_cents,'automatic',a.automatic,
-                   'label',COALESCE(cp.full_name||' · '||d.category,ccp.full_name,pot.name,pa.name,CASE WHEN g.id IS NULL THEN NULL ELSE g.funder END,'')) ORDER BY a.created_at)
+                   'label',COALESCE(cp.full_name||' · '||d.category,ccp.full_name,pot.name,pa.name,CASE WHEN g.id IS NULL THEN NULL ELSE g.funder END,reg.full_name,'')) ORDER BY a.created_at)
                    FROM bank_allocation a LEFT JOIN dues_receivable d ON a.target='receivable' AND d.id=a.target_id LEFT JOIN club_person cp ON cp.id=d.profile_id
                    LEFT JOIN club_person ccp ON a.target='credit' AND ccp.id=a.target_id LEFT JOIN fundraising_pot pot ON a.target='pot' AND pot.id=a.target_id
                    LEFT JOIN partner pa ON a.target='partner' AND pa.id=a.target_id LEFT JOIN grant_application g ON a.target='grant' AND g.id=a.target_id
+                   LEFT JOIN open_registration reg ON a.target='event' AND reg.id=a.target_id AND reg.organization_id=a.organization_id
                   WHERE a.line_id=l.id AND a.cancelled_at IS NULL),'[]') AS allocations
            FROM bank_line l WHERE l.organization_id=$1 ORDER BY l.status='new' DESC,l.booked_on DESC,l.created_at DESC LIMIT 500`,
         [s.org],
@@ -208,6 +217,18 @@ async function allocate(s: Scope, line: Line, part: { target: string; targetId: 
         [pot.id, line.booked_on, `Virement ${line.counterparty || ""}`.trim().slice(0, 160).padEnd(2, "."), part.amountCents, line.counterparty.slice(0, 160), s.userId],
       )
     ).rows[0].id;
+  } else if (part.target === "event") {
+    const r = (
+      await s.c.query(
+        "SELECT r.id,r.full_name,e.title,(oe.fee_cents-r.paid_cents)::int AS remaining FROM open_registration r JOIN open_event oe ON oe.id=r.open_event_id AND oe.organization_id=r.organization_id JOIN calendar_event e ON e.id=oe.event_id WHERE r.id=$1 AND r.organization_id=$2 AND r.status<>'cancelled' FOR UPDATE OF r",
+        [part.targetId, s.org],
+      )
+    ).rows[0] as { id: string; full_name: string; title: string; remaining: number } | undefined;
+    if (!r) throw new AccessError("NOT_FOUND", 404);
+    if (part.amountCents > r.remaining) throw new AccessError("OVERPAID", 409);
+    category = "event";
+    label = `${r.title} · ${r.full_name}`.slice(0, 160);
+    await s.c.query("UPDATE open_registration SET paid_cents=paid_cents+$3,paid_at=CASE WHEN paid_cents+$3>=(SELECT fee_cents FROM open_event WHERE id=open_event_id) THEN now() ELSE paid_at END WHERE id=$1 AND organization_id=$2", [r.id, s.org, part.amountCents]);
   } else if (part.target === "partner") {
     const pa = (await s.c.query("SELECT id,name FROM partner WHERE id=$1 AND organization_id=$2", [part.targetId, s.org])).rows[0];
     if (!pa) throw new AccessError("NOT_FOUND", 404);
@@ -271,7 +292,15 @@ async function previewLines(s: Scope, accountId: string | null, lines: Statement
     seen.add(prints[i]);
     const reference = findReference(l.communication);
     const target = !duplicate && l.amountCents > 0 && reference ? await byReference(s.c, s.org, reference) : undefined;
-    out.push({ ...l, fingerprint: prints[i], duplicate, reference, automatic: !!target && l.amountCents <= target.remaining, receivableId: target?.id ?? null });
+    out.push({
+      ...l,
+      fingerprint: prints[i],
+      duplicate,
+      reference,
+      automatic: !!target && l.amountCents <= target.remaining,
+      receivableId: target?.target === "receivable" ? target.id : null,
+      registrationId: target?.target === "event" ? target.id : null,
+    });
   }
   return out;
 }
@@ -340,10 +369,10 @@ export async function bankExecute(db: Pool, p: Principal, cmd: BankCommand, expe
             if (!row) continue;
             created++;
             // By itself only when the communication names one receivable and the amount fits what is left.
-            if (l.automatic && l.receivableId) {
+            if (l.automatic && (l.receivableId || l.registrationId)) {
               const target = await byReference(s.c, s.org, l.reference!);
               if (target && row.amount_cents <= target.remaining) {
-                await allocate(s, row, { target: "receivable", targetId: target.id, amountCents: row.amount_cents }, true);
+                await allocate(s, row, { target: target.target, targetId: target.id, amountCents: row.amount_cents }, true);
                 await refreshStatus(s, row);
                 matched++;
               }
@@ -381,6 +410,7 @@ export async function bankExecute(db: Pool, p: Principal, cmd: BankCommand, expe
           await s.c.query("UPDATE finance_transaction SET cancelled_at=now(),cancelled_by=$3,cancel_reason=$4 WHERE id=$1 AND organization_id=$2", [a.transaction_id, s.org, s.userId, cmd.reason]);
           if (a.target === "pot" && a.linked_id) await s.c.query("UPDATE fundraising_movement SET cancelled_at=now(),cancelled_by=$2 WHERE id=$1", [a.linked_id, s.userId]);
           if (a.target === "grant" && a.linked_id) await s.c.query("DELETE FROM grant_payment WHERE id=$1 AND organization_id=$2", [a.linked_id, s.org]);
+          if (a.target === "event") await s.c.query("UPDATE open_registration SET paid_cents=GREATEST(0,paid_cents-$3),paid_at=NULL WHERE id=$1 AND organization_id=$2", [a.target_id, s.org, a.amount_cents]);
           if (a.target === "partner") await s.c.query("UPDATE partner SET paid_on=NULL,payment_transaction_id=NULL WHERE id=$1 AND organization_id=$2 AND payment_transaction_id=$3", [a.target_id, s.org, a.transaction_id]);
           if (a.receivable_id)
             await s.c.query(

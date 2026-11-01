@@ -31,7 +31,8 @@ export type ResourceType =
   | "newsletter"
   | "event_mail"
   | "automation"
-  | "tax";
+  | "tax"
+  | "open_event";
 export type Envelope = {
   email: string;
   url: string;

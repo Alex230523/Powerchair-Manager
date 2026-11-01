@@ -24,8 +24,8 @@ export const columnMap = z.object({
   bankRef: z.number().int().min(-1).max(200),
 });
 const part = z.object({
-  target: z.enum(["receivable", "credit", "pot", "partner", "grant", "other"]),
-  /** Receivable, pot, sponsor or grant; for a credit, the person it is carried for. */
+  target: z.enum(["receivable", "credit", "pot", "partner", "grant", "event", "other"]),
+  /** Receivable, pot, sponsor, grant or (B9) an open event's registration; for a credit, the person it is carried for. */
   targetId: id.nullable().default(null),
   amountCents: z.number().int().min(1).max(100000000),
   /** « other » only: the ledger's category. */

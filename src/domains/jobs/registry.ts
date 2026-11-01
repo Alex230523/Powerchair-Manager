@@ -6,6 +6,7 @@ import { digestTick } from "../digest/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
 import { incidentPurge, incidentTick } from "../incidents/service";
+import { openEventTick } from "../open-events/service";
 import { eventMailTick } from "../communication/service";
 import { fundingTaskTick } from "../funding/service";
 import { affiliationTick } from "../affiliations/service";
@@ -65,7 +66,8 @@ export const jobs = {
     every: 5,
     async run(db) {
       const auto = await runAutomations(db, undefined, ["callNoAnswer"]);
-      return { attendance: auto.sent, attendanceErrors: auto.errors, eventMails: await eventMailTick(db) };
+      // B9: open events (offers that expire, reminders seven days and one day before, the opinion survey).
+      return { attendance: auto.sent, attendanceErrors: auto.errors, eventMails: await eventMailTick(db), openEvents: await openEventTick(db) };
     },
   },
   /** The daily reminders: tasks (A1), the automations' catalogue (B7), affiliations, chair loans. */

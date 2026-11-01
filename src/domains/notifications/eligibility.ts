@@ -72,6 +72,11 @@ async function addressAllowed(db: Db, target: Target, envelope?: Envelope) {
     return newsletterAllowed(db, target, envelope);
   if (target.resource_type === "event_mail")
     return eventMailAllowed(db, target, null, envelope);
+  // B9: a person registered to an open event, at the address given (the registration still exists).
+  if (target.resource_type === "open_event")
+    return !!(
+      await db.query("SELECT 1 FROM open_registration WHERE id::text=$1 AND organization_id=$2 AND lower(email)=lower($3)", [target.resource_id, target.organization_id, envelope.email])
+    ).rowCount;
   // B8: a donor of an approved club, at the address the club keeps (the request still open, the receipt still current).
   if (target.resource_type === "tax")
     return !!(

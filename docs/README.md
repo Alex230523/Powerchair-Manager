@@ -116,6 +116,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [B3 : l'atelier des fauteuils](evolutions/2026-10-22-z-b3-atelier-fauteuils.md) |
 | 22/10/2026 | [B4 : les notifications sur téléphone](evolutions/2026-10-22-za-b4-notifications-push.md) |
 | 22/10/2026 | [B5 : incidents, blessures et déclaration d'assurance](evolutions/2026-10-22-zb-b5-incidents.md) |
+| 22/10/2026 | [B9 : événements ouverts au public](evolutions/2026-10-22-zc-b9-evenements-ouverts.md) |
 
 ## Convention
 
