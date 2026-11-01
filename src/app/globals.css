@@ -9793,3 +9793,113 @@ ul.task-page li {
   justify-self: start;
   min-height: 44px;
 }
+
+/* B1: bank accounts, statement import and reconciliation. */
+.bank {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+.bank-accounts,
+.bank-lines,
+.bank-credits,
+.bank-allocations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.bank-accounts li,
+.bank-credits li,
+.bank-allocations li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.bank-accounts li[data-archived] {
+  color: var(--muted);
+}
+.bank-iban,
+.bank-communication {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.bank-line {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.bank-line[data-status="ignored"] {
+  color: var(--muted);
+}
+.bank-line-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+.bank-in {
+  color: var(--success-ink);
+  font-variant-numeric: tabular-nums;
+}
+.bank-out {
+  color: var(--danger-ink);
+  font-variant-numeric: tabular-nums;
+}
+.bank-suggestions,
+.bank-line .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.bank-suggestions .button,
+.bank-line .button,
+.bank-accounts .button,
+.bank-credits .button,
+.bank-allocations .button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: start;
+}
+.bank-columns,
+.bank-part {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin: 0;
+}
+.bank-preview .bank-communication {
+  font-size: var(--text-sm);
+}
+.bank-qr {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+.bank-qr svg {
+  inline-size: 200px;
+  block-size: 200px;
+}
+.bank-qr dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+.bank-qr dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+@media print {
+  .bank-qr .button {
+    display: none;
+  }
+}

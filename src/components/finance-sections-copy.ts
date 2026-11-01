@@ -44,7 +44,6 @@ type Copy = {
   removeOf: string;
   removed: string;
   uploaded: string;
-  lot09: string;
 };
 
 export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
@@ -79,7 +78,7 @@ export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
     cancel: "Annuler",
     statementsTitle: "Relevés de compte",
     statementsIntro:
-      "Déposez chaque mois le relevé de votre banque (PDF ou CSV) comme justificatif. Le solde de fin de mois est comparé à la trésorerie de la plateforme à la même date. Le rapprochement ligne par ligne viendra avec le lot 09.",
+      "Déposez chaque mois le relevé de votre banque (PDF ou CSV) comme justificatif. Le solde de fin de mois est comparé à la trésorerie de la plateforme à la même date. Plus bas, importez le relevé ligne par ligne pour rapprocher chaque virement.",
     upload: "Déposer un relevé",
     account: "Compte (facultatif)",
     accountHint: "Par exemple « Compte courant » ou les derniers chiffres de l'IBAN.",
@@ -98,7 +97,6 @@ export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Retirer le relevé {month} : {name}",
     removed: "Relevé retiré",
     uploaded: "Relevé déposé",
-    lot09: "Rapprochement automatique : à venir (lot 09).",
   },
   nl: {
     add: "Een verrichting toevoegen",
@@ -131,7 +129,7 @@ export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
     cancel: "Annuleren",
     statementsTitle: "Rekeningafschriften",
     statementsIntro:
-      "Leg elke maand het afschrift van uw bank neer (PDF of CSV) als bewijsstuk. Het eindsaldo van de maand wordt vergeleken met de kas van het platform op dezelfde datum. De afstemming per regel komt met lot 09.",
+      "Leg elke maand het afschrift van uw bank neer (PDF of CSV) als bewijsstuk. Het eindsaldo van de maand wordt vergeleken met de kas van het platform op dezelfde datum. Importeer hieronder het afschrift lijn per lijn om elke overschrijving af te stemmen.",
     upload: "Een afschrift neerleggen",
     account: "Rekening (optioneel)",
     accountHint: "Bijvoorbeeld « Zichtrekening » of de laatste cijfers van de IBAN.",
@@ -150,7 +148,6 @@ export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Het afschrift {month} weghalen: {name}",
     removed: "Afschrift weggehaald",
     uploaded: "Afschrift neergelegd",
-    lot09: "Automatische afstemming: komt later (lot 09).",
   },
   en: {
     add: "Add an operation",
@@ -183,7 +180,7 @@ export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
     cancel: "Cancel",
     statementsTitle: "Bank statements",
     statementsIntro:
-      "File your bank's statement every month (PDF or CSV) as proof. The month's closing balance is compared with the platform's cash on the same day. The line-by-line reconciliation comes with lot 09.",
+      "File your bank's statement every month (PDF or CSV) as proof. The month's closing balance is compared with the platform's cash on the same day. Below, import the statement line by line to reconcile each transfer.",
     upload: "File a statement",
     account: "Account (optional)",
     accountHint: "For example « Current account » or the last digits of the IBAN.",
@@ -202,6 +199,5 @@ export const financeSectionsCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Remove the statement {month}: {name}",
     removed: "Statement removed",
     uploaded: "Statement filed",
-    lot09: "Automatic reconciliation: coming later (lot 09).",
   },
 };

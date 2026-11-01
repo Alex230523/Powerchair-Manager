@@ -38,6 +38,13 @@ import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
 import { peopleExecute } from "../src/domains/people/service";
 import { financeExecute } from "../src/domains/finance/service";
+import { bankExecute } from "../src/domains/bank/service";
+import { bankCommand } from "../src/domains/bank/schema";
+import { detectBank, guessColumns, linesFromGrid, parseCamt, parseCoda, type StatementLine } from "../src/domains/bank/parse";
+import { sampleCamt, sampleCoda, sampleCsv, sampleRows } from "../src/domains/bank/samples";
+import { formatReference } from "../src/domains/bank/reference";
+import { parseCsv, parseXlsx } from "../src/lib/spreadsheet";
+import { xlsx } from "../src/lib/xlsx";
 import {
   seasonOf,
   type categories,
@@ -1105,6 +1112,42 @@ try {
     },
     org,
   );
+  // B1 (lot 09): the dues account and one statement of each format (CSV of
+  // Belfius, Excel of KBC, CODA, camt.053), written as each bank writes it
+  // and read back by the parsers of the « Relevés » page. A transfer with
+  // its structured communication files itself; the others wait for a person.
+  await bankExecute(db, president, bankCommand.parse({ action: "account", label: "Compte courant", iban: "BE68539007547034", bic: "GKCCBEBB", forDues: true }), org);
+  const fees = (
+    await db.query(
+      `SELECT cp.full_name,d.reference,(SELECT json_agg(json_build_object('reference',i.reference,'cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id) AS parts
+         FROM dues_receivable d JOIN club_person cp ON cp.id=d.profile_id WHERE d.organization_id=$1 AND d.status='open' ORDER BY cp.full_name LIMIT 4`,
+      [org],
+    )
+  ).rows as { full_name: string; reference: string; parts: { reference: string; cents: number }[] | null }[];
+  const iban = "BE68539007547034";
+  const move = (offset: number, cents: number, who: string, communication: string, ref: string): StatementLine => ({
+    bookedOn: day(offset),
+    amountCents: cents,
+    counterparty: who.toUpperCase(),
+    counterpartyIban: "BE71096123456769",
+    communication,
+    bankRef: ref,
+  });
+  const second = (f: (typeof fees)[number]) => f.parts?.[1] ?? f.parts?.[0] ?? { reference: f.reference, cents: 5000 };
+  const statements: { format: "csv" | "xlsx" | "coda" | "camt"; bank: "belfius" | "kbc" | "other"; filename: string; lines: StatementLine[] }[] = [];
+  if (fees.length) {
+    const [a, b = fees[0], c = fees[0], d = fees[0]] = fees;
+    const belfius = [move(-9, second(a).cents, a.full_name, formatReference(second(a).reference), "DEMO-BEL-1"), move(-9, -4200, "Sport Shop Wavre", "Chasubles", "DEMO-BEL-2")];
+    const grid = parseCsv(sampleCsv("belfius", iban, belfius));
+    statements.push({ format: "csv", bank: detectBank(grid[0]) as "belfius", filename: "belfius.csv", lines: linesFromGrid(grid, guessColumns(grid[0])).lines });
+    const book = xlsx(sampleRows("kbc", iban, [move(-7, 10000, `Famille ${b.full_name.split(" ").pop()}`, "cotisation", "DEMO-KBC-1")]));
+    const sheet = await parseXlsx(book.buffer.slice(book.byteOffset, book.byteOffset + book.byteLength) as ArrayBuffer);
+    statements.push({ format: "xlsx", bank: detectBank(sheet[0]) as "kbc", filename: "kbc.xlsx", lines: linesFromGrid(sheet, guessColumns(sheet[0])).lines });
+    statements.push({ format: "coda", bank: "other", filename: "releve.cod", lines: parseCoda(sampleCoda(iban, [move(-5, second(c).cents, c.full_name, formatReference(second(c).reference), "DEMO-CODA-1")])).lines });
+    statements.push({ format: "camt", bank: "other", filename: "releve.xml", lines: parseCamt(sampleCamt(iban, [move(-3, 2500, d.full_name, "Souper spaghetti", "DEMO-CAMT-1")])).lines });
+  }
+  for (const st of statements) await bankExecute(db, president, bankCommand.parse({ action: "import", ...st }), org);
+
   // Season budget, compared with actuals on the funding page.
   const season0 = seasonOf(day(0)).label;
   await financeExecute(
