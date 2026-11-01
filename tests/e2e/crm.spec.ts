@@ -67,7 +67,7 @@ test("the contact book as a light CRM", async ({ page }) => {
     await page.getByRole("tab", { name: /^Doublons/ }).click();
     await expect(page.getByText("Même email")).toBeVisible();
     page.once("dialog", (d) => void d.accept());
-    await page.getByRole("button", { name: "Garder Julie Martin et y fusionner julie MARTIN" }).click();
+    await page.getByRole("button", { name: "Garder Julie Martin et y fusionner julie MARTIN", exact: true }).click();
     await expect(page.getByText("Aucun doublon repéré.")).toBeVisible();
     await axe(page, "duplicates");
 

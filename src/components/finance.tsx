@@ -929,6 +929,8 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                 {n.deleteReason}
                 <input id="delete-reason" name="reason" required minLength={3} maxLength={500} />
               </label>
+              {/* The page's message is hidden behind the open dialog: the refusal shows here too. */}
+              {error && <p role="alert">{error}</p>}
               <div className="actions">
                 <button className="button danger" disabled={busy}>
                   {n.deleteConfirm}

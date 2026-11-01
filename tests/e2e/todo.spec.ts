@@ -62,10 +62,10 @@ test("the club's to-do, by category", async ({ page }) => {
     await dialog.getByRole("button", { name: "Fermer" }).click();
 
     // 4. « En retard » keeps only the late one; it is ticked.
-    await page.getByRole("button", { name: "En retard" }).click();
+    await page.getByRole("button", { name: "En retard", exact: true }).click();
     await expect(page.getByText("Assurance en retard")).toBeVisible();
     await expect(page.getByText("Gonfler les pneus")).toHaveCount(0);
-    await page.getByRole("checkbox", { name: "Marquer comme faite : Assurance en retard" }).check();
+    await page.getByRole("checkbox", { name: "Marquer comme faite : Assurance en retard" }).click();
     await expect(page.getByText("Assurance en retard")).toHaveCount(0);
 
     // 5. The yearly model, checked then applied.

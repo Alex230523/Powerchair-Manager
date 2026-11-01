@@ -77,7 +77,7 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await expect(page.getByText("Pour personne")).toHaveCount(0);
     await page.getByRole("combobox", { name: "Catégorie", exact: true }).selectOption("events");
     await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
-    await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).check();
+    await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).click();
     await expect(page.getByText("Aucune tâche ne vous est attribuée.")).toBeVisible();
     await axe(page, "tasks");
 
