@@ -114,6 +114,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [A6 : la page équipe comme tableau de bord](evolutions/2026-10-22-x-a6-equipe-tableau-de-bord.md) |
 | 22/10/2026 | [A5 : un match, un parcours avant / jour J / après](evolutions/2026-10-22-y-a5-parcours-match.md) |
 | 22/10/2026 | [B3 : l'atelier des fauteuils](evolutions/2026-10-22-z-b3-atelier-fauteuils.md) |
+| 22/10/2026 | [B4 : les notifications sur téléphone](evolutions/2026-10-22-za-b4-notifications-push.md) |
 
 ## Convention
 

@@ -9,6 +9,7 @@ import {
   type Principal,
 } from "../access/service";
 import { publish } from "../notifications/queue";
+import { queuePush, urgentChange } from "../notifications/push-queue";
 import { manages as managesAttendance, mayRespond } from "../attendance/access";
 import { docAccess, type Doc } from "../documents/access";
 import {
@@ -141,7 +142,7 @@ async function changeLog(
   );
   await audit(s.c, e.organization_id, s.p.userId, "calendar." + action, e.id);
 }
-async function notify(s: Scope, events: Event[]) {
+async function notify(s: Scope, events: Event[], created = false) {
   const users = (
     await s.c.query(
       "SELECT DISTINCT u.id,u.name,u.email,COALESCE(p.locale,'fr') AS locale FROM \"user\" u JOIN role_assignment r ON r.user_id=u.id JOIN organization_membership m ON m.user_id=u.id AND m.organization_id=r.organization_id LEFT JOIN person p ON p.user_id=u.id WHERE r.organization_id=$1 AND u.active AND m.active AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())",
@@ -166,6 +167,20 @@ async function notify(s: Scope, events: Event[]) {
       if (target) break;
     }
     if (!target) continue;
+    // B4: a change reaches the phone, as urgent within 48 hours (a new event comes with its invitation).
+    if (!created)
+      await queuePush(s.c, {
+        organizationId: s.a.organization_id,
+        userId: u.id,
+        topic: urgentChange(target.starts_at, null) ? "urgent" : "change",
+        kind: "calendar_update",
+        category: "sport",
+        resourceType: "calendar",
+        resourceId: target.id,
+        locale: u.locale,
+        eventKey: "calendar:" + batch,
+        url: `/${u.locale}/calendar`,
+      });
     await publish(s.c, {
       organizationId: s.a.organization_id,
       userId: u.id,
@@ -972,7 +987,7 @@ export async function calendarExecute(
           await changeLog(s, e, null, "created");
           events.push(e);
         }
-        await notify(s, events);
+        await notify(s, events, true);
         return { id: events[0].id };
       }
       if (input.action === "eventType") {
@@ -1348,7 +1363,7 @@ async function copyWeek(
       skipped.push({ title: e.title, local_start: e.local_start, reason: err.code });
     }
   }
-  if (created.length) await notify(s, created);
+  if (created.length) await notify(s, created, true);
   await audit(s.c, org, s.p.userId, "calendar.copyWeek", input.requestId);
   return { created: created.length, skipped };
 }

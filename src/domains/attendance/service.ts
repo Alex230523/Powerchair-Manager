@@ -16,6 +16,7 @@ import {
 } from "../calendar/access";
 import { manages, mayRespond } from "./access";
 import { publish } from "../notifications/queue";
+import { queuePush } from "../notifications/push-queue";
 import type { Command } from "./schema";
 import { offerUndo } from "../undo/service";
 export { commandSchema } from "./schema";
@@ -212,6 +213,35 @@ async function notify(
       if (target) break;
     }
     if (!target) continue;
+    // B4: on the phone, one notification per invitation this person answers (a parent: one per child, with the first name).
+    const mine: string[] = [],
+      answers = new Set<string>();
+    if (!staffOnly)
+      for (const i of invitations)
+        for (const a of actors)
+          if ((await canRead(s.c, a, e)) && (await mayRespond(s.c, a, i.profile_id))) {
+            mine.push(i.id);
+            // « Présent » / « Absent » only for someone allowed to answer (a parent who may only read gets the news).
+            if (await mayRespond(s.c, a, i.profile_id, true)) answers.add(i.id);
+            break;
+          }
+    for (const id of staffOnly ? [target] : mine) {
+      const i = invitations.find((x) => x.id === id)!;
+      const who = (await s.c.query("SELECT c.full_name,p.user_id FROM club_person c LEFT JOIN person p ON p.id=c.person_id WHERE c.id=$1 AND c.organization_id=$2", [i.profile_id, s.a.organization_id])).rows[0];
+      await queuePush(s.c, {
+        organizationId: s.a.organization_id,
+        userId: u.id,
+        topic: staffOnly ? "other" : "invitation",
+        kind: "attendance_update",
+        category: "sport",
+        resourceType: "attendance",
+        resourceId: id,
+        locale: u.locale,
+        eventKey: `attendance:${batch}:${id}`,
+        url: `/${u.locale}/attendance`,
+        ...(staffOnly ? {} : { ...(answers.has(id) ? { invitationId: id } : {}), ...(who && who.user_id !== u.id ? { child: who.full_name as string } : {}) }),
+      });
+    }
     await publish(s.c, {
       organizationId: s.a.organization_id,
       userId: u.id,

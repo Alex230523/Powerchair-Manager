@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { processOne, recoverExpired } from "../notifications/worker";
 import { createTransport } from "../notifications/transport";
+import { createPushSender, processPush, recoverPush } from "../notifications/push";
 import { digestTick } from "../digest/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
@@ -24,7 +25,7 @@ export type Env = Record<string, string | undefined>;
 export type Job = { every: number; run: (db: Pool, env: Env) => Promise<Record<string, number>> };
 
 export const jobs = {
-  /** The mail queue (and the weekly digests), within the day's sending budget. */
+  /** The mail queue (and the weekly digests), within the day's sending budget, then the phone notifications (B4). */
   mail: {
     every: 5,
     async run(db, env) {
@@ -38,7 +39,17 @@ export const jobs = {
         if (!r) break;
         sent++;
       }
-      return { recovered, digests, processed: sent, deferred: budget.allowed === 0 ? budget.pending : 0, sentToday: budget.sentToday + sent };
+      // B4: the phone notifications, grouped per person and club (no budget: the push services are free).
+      const sender = createPushSender(env);
+      let pushed = 0;
+      if (sender) {
+        await recoverPush(db);
+        for (let i = 0; i < 500; i++) {
+          if (!(await processPush(db, sender))) break;
+          pushed++;
+        }
+      }
+      return { recovered, digests, processed: sent, deferred: budget.allowed === 0 ? budget.pending : 0, sentToday: budget.sentToday + sent, pushed };
     },
   },
   /** Documents that expire, and (B8) donors' data ten years after their last gift. */

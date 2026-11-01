@@ -2,6 +2,7 @@ import { Pool, type PoolClient } from "pg";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { seal } from "./crypto";
+import { queuePush, topicOfKind } from "./push-queue";
 import {
   builtin,
   renderTemplate,
@@ -214,6 +215,21 @@ async function insert(client: PoolClient, input: Publication) {
         ],
       );
   }
+  // B4: the phone, for the kinds that go there (attendance and calendar queue their own).
+  const topic = topicOfKind(input.kind);
+  if (topic && input.organizationId && input.userId && input.category !== "security")
+    await queuePush(client, {
+      organizationId: input.organizationId,
+      userId: input.userId,
+      topic,
+      kind: input.kind,
+      category: input.category,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      locale: input.locale,
+      eventKey: input.eventKey,
+      url: url.pathname.startsWith("/api/") ? "/" + input.locale : url.pathname,
+    });
   return jobId;
 }
 export async function publish(db: Db, input: Publication) {
