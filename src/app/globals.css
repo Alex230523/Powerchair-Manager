@@ -10101,3 +10101,25 @@ ul.task-page li {
 .journey-events .button {
   min-height: 44px;
 }
+
+/* B3: the chairs' workshop. */
+.workshop section + section {
+  margin-top: 20px;
+}
+.workshop-event + .workshop-event {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.inline-details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.report-breakdown {
+  margin-top: 12px;
+}

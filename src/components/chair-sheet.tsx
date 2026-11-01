@@ -13,6 +13,8 @@ import { errors } from "./access-copy";
 import { Badge, EmptyState, PageHeader, Tabs } from "./ui";
 import { Icon } from "./icons";
 import { LoanActions, loanTone } from "./fleet";
+import { ChairWorkshop, ReportBreakdown } from "./workshop";
+import { workshopCopy } from "./workshop-copy";
 
 export type View = Awaited<ReturnType<typeof equipmentView>>;
 export type Chair = View["chairs"][number];
@@ -21,7 +23,7 @@ export const brusselsToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: 
 export const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 export const dayOf = (locale: Locale, d: string | null) =>
   d ? new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d.slice(0, 10) + "T12:00:00Z")) : "…";
-const statusTones = { available: "success", in_use: "", maintenance: "warning", retired: "danger" } as const;
+const statusTones = { available: "success", in_use: "", maintenance: "warning", out_of_service: "danger", lent: "info", retired: "neutral" } as const;
 const serviceTones = { ok: "success", soon: "warning", due: "danger", unknown: "" } as const;
 
 /** The model of a chair, with « En attente de validation » while the federation has not decided. */
@@ -61,13 +63,16 @@ export function LoanBadge({ locale, view, chairId }: { locale: Locale; view: Vie
  * page): its model and purchase date first, then Modifier, Prêter,
  * Entretien and Historique for the people who manage the material.
  */
-export function ChairSheet({ locale, view, chair, busy, send }: { locale: Locale; view: View; chair: Chair; busy: boolean; send: Send }) {
+export function ChairSheet({ locale, view, chair, busy, send, reload }: { locale: Locale; view: View; chair: Chair; busy: boolean; send: Send; reload?: () => Promise<void> }) {
   const t = equipmentCopy[locale],
     f = fleetCopy[locale];
-  const [tab, setTab] = useState<"facts" | "edit" | "lend" | "service" | "history">("facts");
+  const [tab, setTab] = useState<"facts" | "edit" | "lend" | "service" | "workshop" | "history">("facts");
   const today = brusselsToday();
   const service = serviceState(chair.next_service_on, today, chair.status);
-  const tabs = (["facts", "edit", "lend", "service", "history"] as const).filter((k) => k === "facts" || (view.manage && (k !== "lend" || chair.status !== "retired")));
+  // B3: « Atelier » (interventions, batteries, speed, funding, cost) for the club's material managers.
+  const tabs = (["facts", "edit", "lend", "service", "workshop", "history"] as const).filter(
+    (k) => k === "facts" || (view.manage && (k !== "lend" || chair.status !== "retired") && (k !== "workshop" || view.kind === "club")),
+  );
   const panel = `chair-panel-${chair.id}`;
   return (
     <div className="chair-sheet">
@@ -90,7 +95,7 @@ export function ChairSheet({ locale, view, chair, busy, send }: { locale: Locale
         </div>
       </dl>
       {tabs.length > 1 && (
-        <Tabs label={chair.name} items={tabs.map((k) => ({ id: k, label: f.sheetTabs[k] }))} value={tab} onChange={(v) => setTab(v as typeof tab)} panelId={panel} idPrefix={`chair-tab-${chair.id}`} />
+        <Tabs label={chair.name} items={tabs.map((k) => ({ id: k, label: k === "workshop" ? workshopCopy[locale].tab : f.sheetTabs[k] }))} value={tab} onChange={(v) => setTab(v as typeof tab)} panelId={panel} idPrefix={`chair-tab-${chair.id}`} />
       )}
       <div id={panel} role={tabs.length > 1 ? "tabpanel" : undefined} aria-labelledby={tabs.length > 1 ? `chair-tab-${chair.id}-${tab}` : undefined}>
         {tab === "facts" && (
@@ -148,6 +153,10 @@ export function ChairSheet({ locale, view, chair, busy, send }: { locale: Locale
             )}
           </dl>
         )}
+        {tab === "facts" && view.kind === "club" && chair.status !== "retired" && (
+          <ReportBreakdown locale={locale} chairId={chair.id} chairName={chair.name} organizationId={view.context.organization_id} done={() => void reload?.()} />
+        )}
+        {tab === "workshop" && <ChairWorkshop locale={locale} chairId={chair.id} />}
         {tab === "edit" && <ChairForm key={chair.id + chair.version} locale={locale} view={view} chair={chair} busy={busy} send={send} />}
         {tab === "lend" && <LendPanel locale={locale} view={view} chair={chair} busy={busy} send={send} />}
         {tab === "service" && (
@@ -531,7 +540,7 @@ export function ChairForm({ locale, view, chair, busy, send, onDone }: { locale:
 }
 
 /** The sheet in a window; « Agrandir » opens the same sheet as a full page (a link one can share). */
-export function ChairDialog({ locale, view, chair, busy, send, close }: { locale: Locale; view: View; chair: Chair; busy: boolean; send: Send; close: () => void }) {
+export function ChairDialog({ locale, view, chair, busy, send, close, reload }: { locale: Locale; view: View; chair: Chair; busy: boolean; send: Send; close: () => void; reload?: () => Promise<void> }) {
   const f = fleetCopy[locale];
   const ref = useRef<HTMLDialogElement>(null);
   const router = useRouter();
@@ -561,7 +570,7 @@ export function ChairDialog({ locale, view, chair, busy, send, close }: { locale
           </button>
         </div>
       </div>
-      <ChairSheet locale={locale} view={view} chair={chair} busy={busy} send={send} />
+      <ChairSheet locale={locale} view={view} chair={chair} busy={busy} send={send} reload={reload} />
     </dialog>
   );
 }
@@ -647,7 +656,7 @@ export function ChairPage({ locale, id }: { locale: Locale; id: string }) {
       {message && <p role="status">{message}</p>}
       {!view && !error && <p role="status">{t.loading}</p>}
       {view && !chair && <EmptyState title={f.notFound} />}
-      {view && chair && <ChairSheet locale={locale} view={view} chair={chair} busy={busy} send={send} />}
+      {view && chair && <ChairSheet locale={locale} view={view} chair={chair} busy={busy} send={send} reload={load} />}
     </main>
   );
 }

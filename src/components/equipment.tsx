@@ -14,12 +14,16 @@ import { Badge, EmptyState, ExportButton, PageHeader, KpiCard, Tabs } from "./ui
 import { setupCopy } from "./setup-copy";
 import { ChairDialog, LoanBadge, ModelCell, NewChairDialog, brusselsToday, dayOf, type View } from "./chair-sheet";
 import { BorrowedChairs, LendingTab, ModelsTab, PlacesTab } from "./fleet";
+import { WorkshopOverview } from "./workshop";
+import { workshopCopy } from "./workshop-copy";
 
 const tones = {
   available: "success",
   in_use: "",
   maintenance: "warning",
-  retired: "danger",
+  out_of_service: "danger",
+  lent: "info",
+  retired: "neutral",
 } as const;
 const serviceTones = {
   ok: "success",
@@ -27,7 +31,7 @@ const serviceTones = {
   due: "danger",
   unknown: "",
 } as const;
-type Tab = "chairs" | "small" | "lending" | "places" | "models";
+type Tab = "chairs" | "workshop" | "small" | "lending" | "places" | "models";
 
 /**
  * Equipment. Wave 17 (Q1): tabs « Fauteuils », « Petit matériel », « Prêts
@@ -118,6 +122,8 @@ export function Equipment({ locale }: { locale: Locale }) {
   const tabs: Tab[] = view
     ? [
         "chairs",
+        // B3: the club's workshop, for the material managers and the coaches (chairs for their events).
+        ...(view.kind === "club" && (view.manage || view.context.role === "coach") ? (["workshop"] as const) : []),
         ...(view.stockCan.seeItems || view.stockCan.propose || view.stockCan.decide ? (["small"] as const) : []),
         ...(view.loans.can ? (["lending"] as const) : []),
         ...(view.storage.can || view.storage.places.length ? (["places"] as const) : []),
@@ -151,7 +157,7 @@ export function Equipment({ locale }: { locale: Locale }) {
       {view && !view.manage && <p className="notice">{t.readOnly}</p>}
       {view && (
         <>
-          {tabs.length > 1 && <Tabs label={f.tabsLabel} items={tabs.map((k) => ({ id: k, label: f.tabs[k] }))} value={tab} onChange={(v) => setTab(v as Tab)} panelId="equipment-panel" idPrefix="equipment-tab" />}
+          {tabs.length > 1 && <Tabs label={f.tabsLabel} items={tabs.map((k) => ({ id: k, label: k === "workshop" ? workshopCopy[locale].tab : f.tabs[k] }))} value={tab} onChange={(v) => setTab(v as Tab)} panelId="equipment-panel" idPrefix="equipment-tab" />}
           <div id="equipment-panel" role={tabs.length > 1 ? "tabpanel" : undefined} aria-labelledby={tabs.length > 1 ? `equipment-tab-${tab}` : undefined}>
             {tab === "chairs" && (
               <>
@@ -228,7 +234,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                       { id: "acquired", label: f.acquired, type: "date", value: (c) => c.acquired_on },
                       { id: "serial", label: t.serial, value: (c) => c.serial_number },
                       { id: "ownership", label: t.ownership, value: (c) => t.ownerships[c.ownership as "club" | "player" | "loan"] ?? c.ownership },
-                      { id: "status", label: t.status, value: (c) => t.statuses[c.status as "available" | "in_use" | "maintenance" | "retired"] ?? c.status },
+                      { id: "status", label: t.status, value: (c) => t.statuses[c.status as keyof typeof t.statuses] ?? c.status },
                       { id: "players", label: t.players, value: (c) => c.links.filter((l) => !l.ends_on).map((l) => l.full_name).join(", ") },
                       { id: "storage", label: t.storage, value: (c) => c.storage_name ?? c.storage },
                       { id: "lastService", label: t.lastService, type: "date", value: (c) => c.last_service_on },
@@ -303,10 +309,11 @@ export function Equipment({ locale }: { locale: Locale }) {
             {tab === "small" && <Stock locale={locale} view={view} busy={busy} send={send} reload={load} />}
             {tab === "lending" && <LendingTab locale={locale} view={view} busy={busy} send={send} />}
             {tab === "places" && <PlacesTab locale={locale} view={view} busy={busy} send={send} />}
+            {tab === "workshop" && <WorkshopOverview locale={locale} />}
             {tab === "models" && <ModelsTab locale={locale} view={view} busy={busy} send={send} />}
           </div>
           {open === "new" && view.manage && <NewChairDialog locale={locale} view={view} busy={busy} send={send} close={() => setOpen("")} opened={(id) => setOpen(id)} />}
-          {current && <ChairDialog key={current.id} locale={locale} view={view} chair={current} busy={busy} send={send} close={() => setOpen("")} />}
+          {current && <ChairDialog key={current.id} locale={locale} view={view} chair={current} busy={busy} send={send} close={() => setOpen("")} reload={load} />}
         </>
       )}
     </main>

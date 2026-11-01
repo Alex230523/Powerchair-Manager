@@ -21,7 +21,7 @@ export function TeamBoard({ locale, data }: { locale: Locale; data: Detail }) {
   const when = (iso: string) => new Intl.DateTimeFormat(tag(locale), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" }).format(new Date(iso));
   const day = (d: string) => new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(d.slice(0, 10) + "T12:00:00Z"));
   const state = (id: string): PlayerState => board.states[id] ?? { licence: "none", chair: null, duesLate: null, care: null };
-  const chairIssue = (s: PlayerState) => (s.chair ? (s.chair.status === "maintenance" ? "maintenance" : s.chair.serviceDue ? "service" : null) : null);
+  const chairIssue = (s: PlayerState) => (s.chair ? (s.chair.status === "maintenance" || s.chair.status === "out_of_service" ? "maintenance" : s.chair.serviceDue ? "service" : null) : null);
   // What blocks, each with the players it names (a link to their line below).
   const blocks = [
     { key: "licence" as const, ids: roster.filter((r) => state(r.profile_id).licence !== "active").map((r) => r.profile_id) },

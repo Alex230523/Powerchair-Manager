@@ -6,7 +6,7 @@ Document « fonctionnalités manquantes » du 22 octobre, point A5. Un seul fil 
 - **Fiche de match** `/matches/[id]` en trois étapes, ouverte depuis la liste des matchs (le nom de l'adversaire) et depuis le tableau de bord de l'équipe (A6).
 - **Avant**
   - **Invitation automatique** à la création d'un match : le rendez-vous du calendrier est créé avec l'invitation de l'équipe (réponse attendue la veille), comme pour les amicaux de la vague 17. Un match plus ancien s'invite d'un bouton.
-  - **Composition** seulement parmi les joueurs qui ont répondu « présent ». **Bloquant** : licence non valide pour la saison, fauteuil en panne (le serveur refuse). **À vérifier** : documents à fournir, révision dépassée, pas de fauteuil attribué. Le contrôle de vitesse viendra avec B3.
+  - **Composition** seulement parmi les joueurs qui ont répondu « présent ». **Bloquant** : licence non valide pour la saison, fauteuil en panne (le serveur refuse). **À vérifier** : documents à fournir, révision dépassée, pas de fauteuil attribué. Le contrôle de vitesse vient de B3.
   - **Publication** de la composition : joueurs et parents ne la voient qu'une fois publiée.
   - **Déplacement** relié (le voyage lié au rendez-vous du match) ou lien pour l'organiser.
   - **Checklist du jour** envoyée dans la to-do (A1) : fauteuils chargés, batteries, ballons, maillots, trousse de secours, transport, chacune avec un responsable et le jour du match comme échéance ; une ligne déjà envoyée ne l'est pas deux fois.
