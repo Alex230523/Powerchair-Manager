@@ -1519,8 +1519,9 @@ try {
   );
 
   // Wave 7: an adapted minibus, care instructions, a hall in the directory and
-  // an away tournament with its participants, vehicle and schedule.
-  const hall = await venueExecute(db, president, {
+  // an away tournament with its participants, vehicle and schedule. Since
+  // wave 17 (C4) the federation writes the halls' directory.
+  const hall = await venueExecute(db, fed, {
     action: "save",
     name: "Hall omnisports de Gand",
     address: "Sportlaan 12",
