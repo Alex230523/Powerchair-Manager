@@ -88,7 +88,7 @@ test("statistics, Club tab: tiles, periods, weeks, ages, rings, storage and Hall
     );
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. /statistics opens the Club tab: header, tabs, tiles, no filter bar.

@@ -45,7 +45,7 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
       await db.query("INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,created_by) VALUES($1,$2,'Opération',$3,$4,$5,$6)", [club, day, direction, category, cents, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. From the finance page to the draft of last year.

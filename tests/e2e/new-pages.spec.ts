@@ -15,7 +15,7 @@ async function switchProfile(page: Page, assignment: string) {
   await page.locator(".profile-menu > summary").click();
   await Promise.all([
     page.waitForEvent("load"),
-    page.getByLabel("Profil actif", { exact: true }).selectOption(assignment),
+    page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(assignment),
   ]);
 }
 async function check(page: Page, path: string) {

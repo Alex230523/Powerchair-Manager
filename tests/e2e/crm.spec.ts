@@ -34,7 +34,7 @@ test("the contact book as a light CRM", async ({ page }) => {
     await db.query("INSERT INTO contact(organization_id,full_name,email,created_by) VALUES($1,'Julie Martin','julie@club.test',$2),($1,'julie MARTIN','julie@club.test',$2)", [club, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. A contact, its organisation typed in.

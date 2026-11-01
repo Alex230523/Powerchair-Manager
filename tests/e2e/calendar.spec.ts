@@ -151,12 +151,12 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         exact: true,
       }),
     });
-    await editor.getByLabel("Équipe", { exact: true }).selectOption(team);
-    await editor.getByLabel("Lieu", { exact: true }).selectOption(place);
+    await editor.getByRole("combobox", { name: "Équipe", exact: true }).selectOption(team);
+    await editor.getByRole("combobox", { name: "Lieu", exact: true }).selectOption(place);
     // Wave 16 (E1): responsible, visibility and attachments live in « Avancé ».
     await editor.locator("summary", { hasText: "Avancé" }).click();
-    await editor.getByLabel("Visibilité", { exact: true }).selectOption("team");
-    await editor.getByLabel("Récurrence", { exact: true }).selectOption("7");
+    await editor.getByRole("combobox", { name: "Visibilité", exact: true }).selectOption("team");
+    await editor.getByRole("combobox", { name: "Récurrence", exact: true }).selectOption("7");
     await editor
       .getByLabel("Nombre d’occurrences (maximum 52)", { exact: true })
       .fill("3");
@@ -327,7 +327,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         exact: true,
       }),
     });
-    await fresh.getByLabel("Lieu", { exact: true }).selectOption(place);
+    await fresh.getByRole("combobox", { name: "Lieu", exact: true }).selectOption(place);
     await fresh
       .getByRole("button", { name: "Enregistrer l’événement", exact: true })
       .click();

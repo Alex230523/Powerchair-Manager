@@ -160,7 +160,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
         exact: true,
       })
       .click();
-    await page.getByLabel("Décision", { exact: true }).selectOption("valid");
+    await page.getByRole("combobox", { name: "Décision", exact: true }).selectOption("valid");
     await page
       .getByLabel("Date d’expiration (facultative)", { exact: true })
       .fill("2026-12-31");

@@ -33,7 +33,7 @@ test("command window: actions, keyboard, rights, recent items", async ({ page })
     const switchTo = async (mandate: string) => {
       await page.goto("/fr");
       await page.locator(".profile-menu > summary").click();
-      await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+      await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     };
     await page.setViewportSize({ width: 1280, height: 900 });
     await switchTo(president);

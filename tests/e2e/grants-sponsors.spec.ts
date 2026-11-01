@@ -36,7 +36,7 @@ test("grants and sponsors in one page, two views", async ({ page }) => {
     );
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The old address lands on the « Subsides » view; one menu entry.
@@ -52,7 +52,7 @@ test("grants and sponsors in one page, two views", async ({ page }) => {
     await form.getByLabel("Appel ou programme", { exact: true }).fill("Sport adapté");
     await form.getByLabel("Montant demandé (€)", { exact: true }).fill("5000");
     await form.getByLabel("Montant accordé (€)", { exact: true }).fill("5000");
-    await form.getByLabel("Statut", { exact: true }).selectOption("granted");
+    await form.getByRole("combobox", { name: "Statut", exact: true }).selectOption("granted");
     await form.getByLabel("Ouverture de l'appel", { exact: true }).fill("2026-09-01");
     await form.getByLabel("Début de la période couverte", { exact: true }).fill("2027-01-01");
     await form.getByLabel("Fin de la période couverte", { exact: true }).fill("2027-12-31");

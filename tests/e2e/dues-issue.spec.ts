@@ -35,7 +35,7 @@ test("issue membership fees from the wizard, without a rate beforehand", async (
     }
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // 1. Nothing issued: the empty state says what to do.
     await page.goto("/fr/dues");
@@ -55,7 +55,7 @@ test("issue membership fees from the wizard, without a rate beforehand", async (
 
     // 3. A whole team, with the preview and an exemption.
     await wizard.getByRole("radio", { name: "Une équipe" }).check();
-    await wizard.getByLabel("Équipe").selectOption({ label: "Aigles" });
+    await wizard.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Aigles" });
     await wizard.getByLabel("Nombre de versements").fill("4");
     await wizard.getByRole("button", { name: "Voir l'aperçu" }).click();
     await expect(wizard.getByRole("row").filter({ hasText: "Ana Martin" })).toContainText("250,00");

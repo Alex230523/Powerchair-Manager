@@ -41,7 +41,7 @@ test("display: very large text and stronger contrast", async ({ page }) => {
     await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role) VALUES($1,$2,$3,'player')", [club, team, player]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The choice in the account menu applies at once.
@@ -50,7 +50,7 @@ test("display: very large text and stronger contrast", async ({ page }) => {
     expect(base).toBe(14);
     await page.locator(".profile-menu > summary").click();
     // Wave 16 (M1): a compact list in the account menu, and a small contrast box.
-    await page.locator(".profile-menu-body").getByLabel("Taille du texte", { exact: true }).selectOption("xlarge");
+    await page.locator(".profile-menu-body").getByRole("combobox", { name: "Taille du texte", exact: true }).selectOption("xlarge");
     await expect(page.locator("html")).toHaveAttribute("data-text-size", "xlarge");
     expect(await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize))).toBe(17.5);
     await page.getByRole("checkbox", { name: "Contraste renforcé" }).check();

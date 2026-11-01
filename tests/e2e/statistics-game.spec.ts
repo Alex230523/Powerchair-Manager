@@ -47,7 +47,7 @@ test("statistics, Game tab: record, form, goals, scorers, minutes, competitions"
     await db.query("INSERT INTO match_player(match_id,organization_id,profile_id,starter,minutes,goals,assists) VALUES($1,$2,$3,true,40,2,1)", [m1, club, ana]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. From the Club tab to the Game tab.

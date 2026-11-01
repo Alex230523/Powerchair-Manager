@@ -33,7 +33,7 @@ test("undo: archive a team, cancel it, too late, hover pause", async ({ page }) 
     const archived = async () => (await db.query("SELECT archived FROM team WHERE id=$1", [team])).rows[0].archived as boolean;
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. One click archives (no confirmation), the message offers "Annuler".

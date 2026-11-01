@@ -60,7 +60,7 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     expect((await coachPage.request.post("/api/workspace", { headers: { origin }, data: { action: "context", mandateId: mandates[1] } })).status()).toBe(200);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandates[0])]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandates[0])]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. A new ADEPS file, deadline in ten days.
@@ -123,7 +123,7 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     await expect(coachPage.locator(".task-page li")).toHaveCount(1);
     await expect(coachPage.locator(".task-page li")).toContainText("Déposer le dossier");
     await axe(coachPage, "coach tasks");
-    await coachPage.getByRole("checkbox", { name: "Déposer le dossier" }).check();
+    await coachPage.getByRole("checkbox", { name: "Déposer le dossier" }).click();
     await expect(coachPage.locator(".task-page li")).toHaveCount(0);
 
     // 5. Next year's file, from the sheet.

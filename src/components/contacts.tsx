@@ -513,7 +513,9 @@ function ContactSheet({
   const c = t.contacts,
     k = crmCopy[locale];
   const [d, setD] = useState<Detail | null>(null),
-    [failed, setFailed] = useState("");
+    [failed, setFailed] = useState(""),
+    /** A task added from the sheet changes neither the contact nor its log: this reloads the links. */
+    [added, setAdded] = useState(0);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/contacts?contact=${id}`, { cache: "no-store" })
@@ -528,7 +530,7 @@ function ContactSheet({
     return () => {
       cancelled = true;
     };
-  }, [id, version, interactionsCount, locale, t.unavailable]);
+  }, [id, version, interactionsCount, added, locale, t.unavailable]);
   const contact = view.contacts.find((x) => x.id === id);
   if (!contact) return null;
   const linked = d?.linked;
@@ -698,7 +700,11 @@ function ContactSheet({
               void send(
                 { action: "nextAction", contactId: contact.id, title: String(f.get("title") ?? ""), dueOn: String(f.get("due") ?? "") || null, responsibleId: String(f.get("who") ?? "") || null },
                 k.nextActionAdded,
-              ).then((ok) => ok && form.reset());
+              ).then((ok) => {
+                if (!ok) return;
+                form.reset();
+                setAdded((n) => n + 1);
+              });
             }}
           >
             <label htmlFor="contact-next-title">

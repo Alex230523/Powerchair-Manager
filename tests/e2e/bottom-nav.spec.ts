@@ -46,7 +46,7 @@ test("bottom bar on a phone for each role", async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto("/fr");
       await page.locator(".profile-menu > summary").click();
-      await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandates[role])]);
+      await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandates[role])]);
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto("/fr");
       const bar = page.getByRole("navigation", { name: "Navigation rapide" });
