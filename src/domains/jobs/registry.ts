@@ -5,6 +5,7 @@ import { createPushSender, processPush, recoverPush } from "../notifications/pus
 import { digestTick } from "../digest/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
+import { incidentPurge, incidentTick } from "../incidents/service";
 import { eventMailTick } from "../communication/service";
 import { fundingTaskTick } from "../funding/service";
 import { affiliationTick } from "../affiliations/service";
@@ -52,11 +53,11 @@ export const jobs = {
       return { recovered, digests, processed: sent, deferred: budget.allowed === 0 ? budget.pending : 0, sentToday: budget.sentToday + sent, pushed };
     },
   },
-  /** Documents that expire, and (B8) donors' data ten years after their last gift. */
+  /** Documents that expire, (B8) donors' data ten years after their last gift, (B5) incidents past their retention. */
   documents: {
     every: 60,
     async run(db) {
-      return { expired: await sweepDocuments(db), taxPurged: await taxPurge(db) };
+      return { expired: await sweepDocuments(db), taxPurged: await taxPurge(db), incidentsPurged: await incidentPurge(db) };
     },
   },
   /** Attendance (the « convocation sans réponse » automation, B7) and the event mails prepared for a given time. */
@@ -81,6 +82,8 @@ export const jobs = {
         automationErrors: auto.errors,
         affiliations: await affiliationTick(db),
         loans: await equipmentLoanTick(db),
+        // B5: claims close to their deadline, first-aid items about to expire.
+        incidents: await incidentTick(db),
       };
     },
   },
