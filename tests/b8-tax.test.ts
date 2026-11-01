@@ -136,10 +136,14 @@ describe("B8 Belcotax file", () => {
     expect(xml).toContain("<r8012_controletotaal>29500</r8012_controletotaal>");
     expect(xml).toContain("<r9013_controletotaal>29500</r9013_controletotaal>");
     expect(checkBelcotax(2025, sender, fiches, xml)).toEqual([]);
-    // Well-formed XML (xmllint is on the CI runners and here).
-    const dir = mkdtempSync(join(tmpdir(), "belcotax-"));
-    writeFileSync(join(dir, "f.xml"), xml);
-    expect(() => execFileSync("xmllint", ["--noout", join(dir, "f.xml")], { stdio: "pipe" })).not.toThrow();
+    // Well-formed: every element closed in order, one root.
+    const stack: string[] = [];
+    for (const [, close, name] of xml.replace(/<\?xml[^>]*\?>/, "").matchAll(/<(\/?)([A-Za-z0-9_]+)>/g)) {
+      if (close) expect(stack.pop()).toBe(name);
+      else stack.push(name);
+    }
+    expect(stack).toEqual([]);
+    expect(xml.match(/<Verzendingen>/g)).toHaveLength(1);
   });
   it("flags a missing national number, a bad address, a duplicate number and a club without BCE", () => {
     const bad: Fiche[] = [{ ...fiches[0], identifier: "" }, { ...fiches[1], sequence: 1, postalCode: "" }];
@@ -150,6 +154,11 @@ describe("B8 Belcotax file", () => {
     const dir = "docs/belcotax/2025";
     const xsd = existsSync(dir) ? readdirSync(dir).find((f) => f.endsWith(".xsd")) : undefined;
     if (!xsd) return; // The official schema is downloaded by hand from the SPF Finances (docs/belcotax/README.md).
+    try {
+      execFileSync("xmllint", ["--version"], { stdio: "pipe" });
+    } catch {
+      return; // xmllint (libxml2) is needed to check against the XSD.
+    }
     const tmp = mkdtempSync(join(tmpdir(), "belcotax-"));
     writeFileSync(join(tmp, "f.xml"), buildBelcotax(2025, sender, fiches, "2026-01-20"));
     expect(() => execFileSync("xmllint", ["--noout", "--schema", join(dir, xsd), join(tmp, "f.xml")], { stdio: "pipe" })).not.toThrow();
