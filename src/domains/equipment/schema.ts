@@ -4,6 +4,9 @@ export const chairStatuses = [
   "available",
   "in_use",
   "maintenance",
+  /** B3: out of service (a breakdown reported, not yet repaired) and lent to another club. */
+  "out_of_service",
+  "lent",
   "retired",
 ] as const;
 /** FIPFA Laws of the Game: a powerchair must not exceed 10 km/h in play. */

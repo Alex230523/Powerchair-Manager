@@ -20,7 +20,7 @@ export type JourneyCopy = {
   lineupSaved: string;
   blocking: string;
   warning: string;
-  problems: Record<"licence" | "chairBroken" | "documents" | "chairService" | "noChair", string>;
+  problems: Record<"licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck", string>;
   notPresent: string;
   publish: string;
   unpublish: string;
@@ -98,7 +98,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Composition enregistrée.",
     blocking: "Bloquant",
     warning: "À vérifier",
-    problems: { licence: "pas de licence valide", chairBroken: "fauteuil en panne", documents: "documents à fournir", chairService: "révision dépassée", noChair: "pas de fauteuil attribué" },
+    problems: { licence: "pas de licence valide", chairBroken: "fauteuil en panne", documents: "documents à fournir", chairService: "révision dépassée", noChair: "pas de fauteuil attribué", speedCheck: "contrôle de vitesse à refaire" },
     notPresent: "n'a pas répondu « présent »",
     publish: "Publier la composition",
     unpublish: "Retirer la publication",
@@ -183,7 +183,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Opstelling opgeslagen.",
     blocking: "Blokkerend",
     warning: "Na te kijken",
-    problems: { licence: "geen geldige licentie", chairBroken: "rolstoel defect", documents: "documenten te bezorgen", chairService: "nazicht verlopen", noChair: "geen rolstoel toegewezen" },
+    problems: { licence: "geen geldige licentie", chairBroken: "rolstoel defect", documents: "documenten te bezorgen", chairService: "nazicht verlopen", noChair: "geen rolstoel toegewezen", speedCheck: "snelheidscontrole opnieuw te doen" },
     notPresent: "antwoordde niet « aanwezig »",
     publish: "Opstelling publiceren",
     unpublish: "Publicatie intrekken",
@@ -268,7 +268,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Line-up saved.",
     blocking: "Blocking",
     warning: "To check",
-    problems: { licence: "no valid licence", chairBroken: "chair broken", documents: "documents to provide", chairService: "service overdue", noChair: "no chair assigned" },
+    problems: { licence: "no valid licence", chairBroken: "chair broken", documents: "documents to provide", chairService: "service overdue", noChair: "no chair assigned", speedCheck: "speed check to redo" },
     notPresent: "did not answer « present »",
     publish: "Publish the line-up",
     unpublish: "Withdraw the publication",

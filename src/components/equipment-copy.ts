@@ -52,7 +52,7 @@ export const equipmentCopy: Record<
     summaryService: string;
     service: Record<"ok" | "soon" | "due" | "unknown", string>;
     statuses: Record<
-      "available" | "in_use" | "maintenance" | "retired",
+      "available" | "in_use" | "maintenance" | "out_of_service" | "lent" | "retired",
       string
     >;
     ownerships: Record<"club" | "player" | "loan", string>;
@@ -119,7 +119,9 @@ export const equipmentCopy: Record<
     statuses: {
       available: "Disponible",
       in_use: "En service",
-      maintenance: "En maintenance",
+      maintenance: "En réparation",
+      out_of_service: "Hors service",
+      lent: "Prêté",
       retired: "Retiré",
     },
     ownerships: { club: "Club", player: "Joueur", loan: "Prêt" },
@@ -192,7 +194,9 @@ export const equipmentCopy: Record<
     statuses: {
       available: "Beschikbaar",
       in_use: "In gebruik",
-      maintenance: "In onderhoud",
+      maintenance: "In herstelling",
+      out_of_service: "Buiten dienst",
+      lent: "Uitgeleend",
       retired: "Buiten gebruik",
     },
     ownerships: { club: "Club", player: "Speler", loan: "Lening" },
@@ -266,7 +270,9 @@ export const equipmentCopy: Record<
     statuses: {
       available: "Available",
       in_use: "In use",
-      maintenance: "In maintenance",
+      maintenance: "Under repair",
+      out_of_service: "Out of service",
+      lent: "Lent",
       retired: "Retired",
     },
     ownerships: { club: "Club", player: "Player", loan: "Loan" },

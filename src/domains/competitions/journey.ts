@@ -6,6 +6,7 @@ import { brusselsToday } from "../people/service";
 import { seasonOf } from "../finance/schema";
 import { manageable } from "./service";
 import { matchEvent, proposeScore } from "./friendly";
+import { speedState } from "../equipment/workshop";
 
 /**
  * A5: one match sheet in three steps (Avant | Jour J | Après), built on the
@@ -38,15 +39,21 @@ export const journeyCommand = z.discriminatedUnion("action", [
 ]);
 export type JourneyCommand = z.infer<typeof journeyCommand>;
 
-export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair";
-/** What stops a player from playing (blocking) or deserves a look (warning). Pure. */
-export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean } | null }) {
+export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck";
+const broken = (status: string) => status === "maintenance" || status === "out_of_service";
+/**
+ * What stops a player from playing (blocking) or deserves a look (warning).
+ * B3: a chair over the speed limit, never checked or checked too long ago
+ * is a warning. Pure.
+ */
+export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null }) {
   const blocking: Problem[] = [],
     warnings: Problem[] = [];
   if (p.licence !== "active") blocking.push("licence");
-  if (p.chair?.status === "maintenance") blocking.push("chairBroken");
+  if (p.chair && broken(p.chair.status)) blocking.push("chairBroken");
   if (p.documentsDue > 0) warnings.push("documents");
-  if (p.chair && p.chair.status !== "maintenance" && p.chair.serviceDue) warnings.push("chairService");
+  if (p.chair && !broken(p.chair.status) && p.chair.serviceDue) warnings.push("chairService");
+  if (p.chair && !broken(p.chair.status) && p.chair.speed && p.chair.speed !== "ok") warnings.push("speedCheck");
   if (!p.chair) warnings.push("noChair");
   return { blocking, warnings };
 }
@@ -99,12 +106,16 @@ async function matchOf(c: PoolClient, org: string, matchId: string, lock = false
 }
 /** Current players of the team, each with the facts the line-up checks. */
 async function squad(c: PoolClient, org: string, m: Row) {
+  const r = (await c.query("SELECT chair_speed_limit_kmh::float AS limit,speed_check_days AS days FROM organization WHERE id=$1", [org])).rows[0];
+  const rules = { limit: Number(r.limit), days: Number(r.days) };
   return (
     await c.query(
       `SELECT DISTINCT ON (cp.id) cp.id AS profile_id,cp.full_name,cp.jersey_number,COALESCE(NULLIF(tm.position,''),cp.playing_position) AS position,COALESCE(sp.classification,'not_classified') AS classification,
               (SELECT l.status FROM license l WHERE l.profile_id=cp.id AND l.organization_id=$1 AND l.season=$3 ORDER BY CASE l.status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 WHEN 'requested' THEN 2 ELSE 3 END LIMIT 1) AS licence,
               (SELECT count(*)::int FROM club_document d WHERE d.profile_id=cp.id AND d.organization_id=$1 AND NOT d.sensitive AND (d.status IN ('missing','requested','refused','expired') OR (d.status='valid' AND d.expires_on<CURRENT_DATE))) AS documents_due,
-              (SELECT json_build_object('name',ch.name,'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false)) FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
+              (SELECT json_build_object('name',ch.name,'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false),
+                        'lastSpeed',(SELECT json_build_object('speed',i.speed_kmh::float,'on',i.occurred_on::text) FROM chair_intervention i WHERE i.chair_id=ch.id AND i.kind='speed_check' AND i.cancelled_at IS NULL ORDER BY i.occurred_on DESC,i.created_at DESC LIMIT 1))
+                 FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
                 WHERE ea.profile_id=cp.id AND ea.ends_on IS NULL AND ch.organization_id=$1 ORDER BY ea.is_primary DESC,ea.starts_on DESC LIMIT 1) AS chair,
               (SELECT i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS answer
          FROM team_membership tm JOIN club_person cp ON cp.id=tm.profile_id LEFT JOIN player_sport_profile sp ON sp.profile_id=cp.id
@@ -112,7 +123,10 @@ async function squad(c: PoolClient, org: string, m: Row) {
         ORDER BY cp.id`,
       [org, m.team_id, seasonOf(brusselsToday()).label, m.calendar_event_id],
     )
-  ).rows.map((r) => ({ ...r, ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair }) })) as {
+  ).rows.map((r) => ({
+    ...r,
+    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) } }),
+  })) as {
     profile_id: string;
     full_name: string;
     jersey_number: number | null;

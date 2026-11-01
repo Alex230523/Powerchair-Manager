@@ -69,7 +69,7 @@ const chairSelect = `${chairColumns},cm.brand AS model_brand,cm.name AS model_na
 const linkColumns =
   "l.id,l.chair_id,l.profile_id,p.full_name,l.is_primary,l.starts_on::text,l.ends_on::text";
 
-async function scope<T>(
+export async function scope<T>(
   db: Pool,
   p: Principal,
   write: boolean,
