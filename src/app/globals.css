@@ -10034,3 +10034,70 @@ ul.task-page li {
   display: inline-flex;
   align-items: center;
 }
+
+/* A5: the match sheet in three steps. */
+.journey-step,
+.journey-member {
+  display: grid;
+  gap: var(--space-4);
+}
+.journey-counts,
+.journey-badges,
+.journey-line,
+.journey-day-tools,
+.journey-day-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.journey-players,
+.journey-checklist,
+.journey-day-players,
+.journey-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.journey-players li,
+.journey-day-players li {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--border);
+}
+.journey-players li[data-blocked] strong {
+  color: var(--muted);
+}
+.journey-players .check,
+.journey-line .check {
+  min-height: 44px;
+}
+.journey-checklist li,
+.journey-events li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.journey-events li[data-cancelled] {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.journey-score {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+.journey-big {
+  min-height: 56px;
+  min-width: 56px;
+  font-size: var(--text-md);
+}
+.journey-events .button {
+  min-height: 44px;
+}

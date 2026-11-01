@@ -31,7 +31,7 @@ import {
 } from "./schema";
 export { clubCommand, federationCommand, refereeCommand };
 import { byTournamentDay, friendlyCommand, type FriendlyCommand } from "./schema";
-import { friendlyContext, friendlyExecute, proposeScore, tournamentMatches, upcomingDetails } from "./friendly";
+import { friendlyContext, friendlyExecute, matchEvent, proposeScore, tournamentMatches, upcomingDetails } from "./friendly";
 export { friendlyCommand };
 /** Wave 17 (C5): friendlies between clubs, scores to confirm, transport to organise. */
 export const friendlyMatchExecute = (db: Pool, p: Principal, command: FriendlyCommand, expected: string) => friendlyExecute(db, p, command, expected, manageable);
@@ -282,6 +282,12 @@ export async function matchExecute(
       await checkEvent(command.teamId, command.calendarEventId);
       const startsAt = await localTime(c, command.startsAt);
       if (command.action === "create") {
+        // A5: a match without an event gets one at once, and with it the call-up of the team (deadline the day before).
+        let eventId = command.calendarEventId;
+        if (!eventId) {
+          const team = (await c.query("SELECT name FROM team WHERE id=$1 AND organization_id=$2", [command.teamId, org])).rows[0]?.name ?? "";
+          eventId = await matchEvent(c, s, { teamId: command.teamId, title: `${team} · ${command.opponent}`.slice(0, 120), startsAt, placeId: null, venue: command.venue });
+        }
         target = (
           await c.query(
             "INSERT INTO match(organization_id,team_id,opponent,home,kind,competition,starts_at,venue,calendar_event_id,notes,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id",
@@ -294,7 +300,7 @@ export async function matchExecute(
               command.competition,
               startsAt,
               command.venue,
-              command.calendarEventId,
+              eventId,
               command.notes,
               p.userId,
             ],

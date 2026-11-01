@@ -285,7 +285,11 @@ export function TournamentMatches({ locale, view }: { locale: Locale; view: View
             <ul className="plain-list">
               {g.matches.map((m) => (
                 <li key={m.id}>
-                  <strong>{m.kickoff}</strong> · {m.home} {t.vs} {m.away}
+                  <strong>{m.kickoff}</strong> ·{" "}
+                  {/* A5: one view of the team's matches, the tournament's own sheet one click away. */}
+                  <Link href={`/${locale}/tournaments/${m.tournament_id}`}>
+                    {m.home} {t.vs} {m.away}
+                  </Link>
                   <span className="muted"> · {t.stage[m.stage] ?? m.stage}</span>
                   {m.home_score !== null && (
                     <strong>
