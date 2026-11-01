@@ -345,7 +345,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
       first.focus();
     }
   }, []);
-  if (path.includes("/registration-widget/") || path.includes("/hall-of-fame-widget/")) return children;
+  // Widgets (B6: a club's /c/<slug>/widget/<kind> too) are embedded bare in other sites.
+  if (path.includes("/registration-widget/") || path.includes("/hall-of-fame-widget/") || /\/c\/[^/]+\/widget\//.test(path)) return children;
   function current(route: string) {
     const href = `/${locale}${route}`;
     if (path === href) return "page" as const;

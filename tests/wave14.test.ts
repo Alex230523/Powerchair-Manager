@@ -31,7 +31,7 @@ describe("president menu (wave 14)", () => {
     expect(routes.communication).toEqual(["/communication", "/documents"]);
     // A2: « Subsides & sponsors » has its own entry.
     expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors"]);
-    expect(routes.clubGroup).toEqual(["/club/manage", "/equipment", "/incidents", "/contacts", "/tasks"]);
+    expect(routes.clubGroup).toEqual(["/club/manage", "/club/public", "/equipment", "/incidents", "/contacts", "/tasks"]);
     // Wave 17 (G3): Relances moved to Settings, the offline book is gone.
     expect(routes.more).toEqual(["/privacy", "/settings"]);
   });

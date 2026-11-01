@@ -1,3 +1,4 @@
+import { emitWebhook } from "../integrations/webhooks";
 import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { account, active, audit, AccessError, validImage, type Principal } from "../access/service";
@@ -76,7 +77,7 @@ async function tournament(s: Scope, id: string, lock = false) {
 }
 const manages = (s: Scope, t: { organization_id: string }) => isPresident(s.a) && s.a.organization_id === t.organization_id;
 
-type MatchRow = {
+export type MatchRow = {
   id: string;
   day_id: string;
   kickoff: string;
@@ -96,7 +97,7 @@ type MatchRow = {
   validated_name: string | null;
   host_organization_id: string | null;
 };
-async function matchRows(c: PoolClient, tournamentIds: string[]) {
+export async function matchRows(c: PoolClient | Pool, tournamentIds: string[]) {
   return (
     await c.query(
       `SELECT m.id,m.tournament_id,m.day_id,to_char(m.kickoff,'HH24:MI') AS kickoff,m.stage,m.group_label,m.home_organization_id,m.away_organization_id,m.referee_user_id,ru.name AS referee_name,
@@ -108,7 +109,7 @@ async function matchRows(c: PoolClient, tournamentIds: string[]) {
     )
   ).rows as (MatchRow & { tournament_id: string; day: string })[];
 }
-async function clubRows(c: PoolClient, tournamentIds: string[]) {
+export async function clubRows(c: PoolClient | Pool, tournamentIds: string[]) {
   return (
     await c.query(
       `SELECT tc.tournament_id,tc.organization_id AS id,COALESCE(NULLIF(tc.team_name,''),o.name) AS name,o.name AS club_name,tc.status,tc.group_label AS "group"
@@ -117,7 +118,14 @@ async function clubRows(c: PoolClient, tournamentIds: string[]) {
     )
   ).rows as { tournament_id: string; id: string; name: string; club_name: string; status: "invited" | "accepted" | "declined"; group: string }[];
 }
-const result = (m: MatchRow): MatchResult => ({
+/** B6: a validated tournament result goes to the webhooks of the organiser and of both clubs. */
+async function announce(c: PoolClient, matchId: string) {
+  const m = (await c.query("SELECT m.id,m.version,m.tournament_id,t.organization_id AS owner,m.home_organization_id,m.away_organization_id,m.home_score,m.away_score FROM tournament_match m JOIN tournament t ON t.id=m.tournament_id WHERE m.id=$1", [matchId])).rows[0];
+  if (!m) return;
+  for (const org of new Set([m.owner, m.home_organization_id, m.away_organization_id]))
+    await emitWebhook(c, org, "match.validated", `tournament_match:${m.id}:${m.version}`, { tournament_id: m.tournament_id, tournament_match_id: m.id, home_score: m.home_score, away_score: m.away_score });
+}
+export const result = (m: MatchRow): MatchResult => ({
   stage: m.stage,
   group: m.group_label,
   home: m.home_organization_id,
@@ -674,6 +682,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
     if (!checker) throw new AccessError("FORBIDDEN");
     if (m.status !== "reported") throw new AccessError("NOTHING_TO_VALIDATE", 409);
     await s.c.query("UPDATE tournament_match SET status='validated',validated_by=$2,validated_at=now(),version=version+1 WHERE id=$1", [m.id, s.p.userId]);
+    await announce(s.c, m.id);
     await audit(s.c, s.a.organization_id, s.p.userId, "tournament.validate", m.id);
     return { id: m.id };
   }
@@ -692,7 +701,8 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
   await s.c.query(
     `UPDATE tournament_match SET home_score=$2,away_score=$3,home_shootout=$4,away_shootout=$5,status=$6,
             reported_by=COALESCE(reported_by,$7),reported_at=COALESCE(reported_at,now()),
-            validated_by=CASE WHEN $6='validated' THEN $7 ELSE NULL END,validated_at=CASE WHEN $6='validated' THEN now() ELSE NULL END,version=version+1 WHERE id=$1`,
+            validated_by=CASE WHEN $6='validated' THEN $7 ELSE NULL END,validated_at=CASE WHEN $6='validated' THEN now() ELSE NULL END,
+            corrected_at=CASE WHEN status='validated' THEN now() ELSE corrected_at END,version=version+1 WHERE id=$1`,
     [m.id, input.homeScore, input.awayScore, input.homeShootout, input.awayShootout, input.validate ? "validated" : "reported", s.p.userId],
   );
   // Figures: replaced for the clubs this person may enter, kept for the other one.
@@ -708,6 +718,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
         x.yellowCards,
         x.redCard,
       ]);
+  if (input.validate) await announce(s.c, m.id);
   await audit(s.c, s.a.organization_id, s.p.userId, input.validate ? "tournament.validate" : "tournament.result", m.id);
   return { id: m.id };
 }

@@ -143,6 +143,8 @@ export const fundingCommand = z.discriminatedUnion("action", [
     description: text(2000),
     places: z.number().int().min(1).max(1000).nullable(),
     featured: z.boolean(),
+    /** B6: its sponsors are named on the club's public page. */
+    publicVisible: z.boolean().optional(),
     conditions: z.array(packageCondition).max(30),
   }),
   z.object({ action: z.literal("archivePackage"), id: z.uuid(), archived: z.boolean() }),

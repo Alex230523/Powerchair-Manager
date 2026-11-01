@@ -1,3 +1,4 @@
+import { emitWebhook } from "../integrations/webhooks";
 import { ensureStorage } from "../storage/service";
 import { storageAdapter } from "../../lib/storage-adapter";
 import { resolveScope, teamMembers } from "../scope/service";
@@ -176,6 +177,8 @@ async function expireOrg(c: PoolClient, org: string) {
     await task(c, d.id, "expired");
     await log(c, d, null, "expired");
     await notify(c, d, "expired:" + d.version);
+    // B6: the club's systems are told (the document's id and kind, never its content or name).
+    await emitWebhook(c, org, "document.expired", `document:${d.id}:${d.version}`, { document_id: d.id, category: d.category, expires_on: d.expires_on });
   }
   return expired.length;
 }

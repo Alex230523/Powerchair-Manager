@@ -63,6 +63,8 @@ export async function revertDecision(c: PoolClient, org: string, userId: string,
       "UPDATE team_membership SET cancelled=true,closed_at=now() WHERE id=$1 AND organization_id=$2",
       [p.membership, org],
     ]);
+  // B6: the webhook announcing the validation has not left yet; it goes.
+  await c.query("DELETE FROM webhook_delivery WHERE organization_id=$1 AND event='registration.validated' AND state='pending' AND event_key LIKE $2", [org, `registration:${application}:%`]);
   await c.query(
     "UPDATE registration_application SET status=$3,decided_at=$4,decided_by=$5,profile_id=$6,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2",
     [application, org, p.before.status, p.before.decided_at, p.before.decided_by, p.before.profile_id],

@@ -144,6 +144,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "club",
               items: [
                 ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
+                // B6: the public page, widgets, API keys and webhooks.
+                ...item("/club/public", "publicPage", "globe"),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 // B5: incidents and their insurance declaration.
                 ...item("/incidents", "incidents", "alert", has("people.manage", "mandates.manage")),

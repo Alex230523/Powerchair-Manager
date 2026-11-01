@@ -1,3 +1,4 @@
+import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { audit, AccessError, type Principal } from "../access/service";
@@ -349,6 +350,8 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
           p.userId,
         ]);
         await proposeScore(c, org, m.id);
+        // B6: the club's systems are told (no personal data).
+        await emitWebhook(c, org, "match.validated", `match:${m.id}:${m.version + 1}`, { match_id: m.id, opponent: m.opponent, ours: cmd.ourScore, theirs: cmd.theirScore });
         // A draft for the club, proposed in Communication (never sent by itself).
         const w = words[locale];
         const scorers = [...t.per.entries()].filter(([, x]) => x.goals > 0).map(([pid, x]) => `${all.profiles.find((pp) => pp.id === pid)?.full_name ?? ""}${x.goals > 1 ? ` (${x.goals})` : ""}`);

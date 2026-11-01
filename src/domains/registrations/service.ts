@@ -1,3 +1,4 @@
+import { emitWebhook } from "../integrations/webhooks";
 import { issueOnAcceptance } from "../dues/issue";
 import { ensureStorage } from "../storage/service";
 import { Pool, type PoolClient } from "pg";
@@ -978,6 +979,9 @@ export async function registrationExecute(
       input.action === "decision" ? input.message : "",
     );
     if (updated.submitted_at) await notify(c, updated);
+    // B6: the club's systems are told, after the undo window (an undone decision deletes the delivery).
+    if (status === "accepted")
+      await emitWebhook(c, org, "registration.validated", `registration:${a.id}:${updated.version}`, { registration_id: a.id, form_id: updated.form_id, decided_at: updated.decided_at }, undo ? undoSeconds : 0);
     if (undo) {
       // The email and the invitation leave once the undo window is over: an undone decision sends nothing.
       undo.mails = (

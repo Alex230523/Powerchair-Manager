@@ -67,6 +67,7 @@ export function PackagesPanel({ locale, data, busy, post }: { locale: Locale; da
         description: String(f.get("description") ?? ""),
         places: String(f.get("places") ?? "") ? Number(f.get("places")) : null,
         featured: f.get("featured") === "on",
+        publicVisible: f.get("publicVisible") === "on",
         conditions: conditions
           .filter((c) => c.title.trim().length >= 2)
           .map((c) => ({
@@ -185,6 +186,10 @@ export function PackagesPanel({ locale, data, busy, post }: { locale: Locale; da
             <label className="check">
               <input type="checkbox" name="featured" defaultChecked={editing !== "new" && editing.featured} />
               {s.featured}
+            </label>
+            <label className="check">
+              <input type="checkbox" name="publicVisible" defaultChecked={editing !== "new" && editing.public_visible} />
+              {s.publicVisible}
             </label>
             <fieldset className="condition-editor">
               <legend>{s.conditions}</legend>

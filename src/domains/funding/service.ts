@@ -184,6 +184,7 @@ export type PackageRow = {
   description: string;
   places: number | null;
   featured: boolean;
+  public_visible: boolean;
   position: number;
   archived: boolean;
   version: number;
@@ -616,16 +617,16 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           let id = cmd.id;
           if (id) {
             const changed = await s.c.query(
-              "UPDATE partner_package SET season_id=$3,name=$4,amount_cents=$5,description=$6,places=$7,featured=$8,version=version+1 WHERE id=$1 AND organization_id=$2",
-              [id, s.org, cmd.seasonId, cmd.name, cmd.amountCents, cmd.description, cmd.places, cmd.featured],
+              "UPDATE partner_package SET season_id=$3,name=$4,amount_cents=$5,description=$6,places=$7,featured=$8,public_visible=COALESCE($9,public_visible),version=version+1 WHERE id=$1 AND organization_id=$2",
+              [id, s.org, cmd.seasonId, cmd.name, cmd.amountCents, cmd.description, cmd.places, cmd.featured, cmd.publicVisible ?? null],
             );
             if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
           } else {
             const position = (await s.c.query("SELECT COALESCE(max(position)+1,0)::int AS n FROM partner_package WHERE organization_id=$1", [s.org])).rows[0].n;
             id = (
               await s.c.query(
-                "INSERT INTO partner_package(organization_id,season_id,name,amount_cents,description,places,featured,position,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
-                [s.org, cmd.seasonId, cmd.name, cmd.amountCents, cmd.description, cmd.places, cmd.featured, position, s.userId],
+                "INSERT INTO partner_package(organization_id,season_id,name,amount_cents,description,places,featured,public_visible,position,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
+                [s.org, cmd.seasonId, cmd.name, cmd.amountCents, cmd.description, cmd.places, cmd.featured, cmd.publicVisible ?? false, position, s.userId],
               )
             ).rows[0].id as string;
           }
@@ -745,7 +746,7 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
 async function packageRows(c: PoolClient, org: string) {
   const packages = (
     await c.query(
-      "SELECT k.id,k.season_id,se.name AS season_name,k.name,k.amount_cents,k.description,k.places,k.featured,k.position,k.archived,k.version,(SELECT count(*)::int FROM partner p WHERE p.package_id=k.id AND p.status<>'ended') AS taken FROM partner_package k LEFT JOIN season se ON se.id=k.season_id WHERE k.organization_id=$1 ORDER BY k.archived,k.position,k.name",
+      "SELECT k.id,k.season_id,se.name AS season_name,k.name,k.amount_cents,k.description,k.places,k.featured,k.public_visible,k.position,k.archived,k.version,(SELECT count(*)::int FROM partner p WHERE p.package_id=k.id AND p.status<>'ended') AS taken FROM partner_package k LEFT JOIN season se ON se.id=k.season_id WHERE k.organization_id=$1 ORDER BY k.archived,k.position,k.name",
       [org],
     )
   ).rows as Omit<PackageRow, "conditions">[];
