@@ -22,11 +22,10 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const when = (l: Locale, d: string) => new Intl.DateTimeFormat(tag(l), { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(d));
 const windowTones = { before: "neutral", open: "success", closed: "warning" } as const;
 const statusTones = { confirmed: "success", waiting: "warning", offered: "info", cancelled: "neutral" } as const;
-/** A date-time field's value (local time) for an instant. */
+/** A date-time field's value for an instant, in the browser's own time (the value is read back with new Date(), in the same time). */
 const local = (d: Date) => {
-  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
-  const v = (k: string) => p.find((x) => x.type === k)?.value ?? "";
-  return `${v("year")}-${v("month")}-${v("day")}T${v("hour")}:${v("minute")}`;
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
 };
 
 export function OpenEvents({ locale }: { locale: Locale }) {
