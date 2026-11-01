@@ -287,13 +287,14 @@ async function teamBoard(s: Scope, team: TeamCard, players: string[], staff: str
         await s.c.query("SELECT id,opponent,starts_at FROM match WHERE organization_id=$1 AND team_id=$2 AND status='scheduled' AND starts_at>now() ORDER BY starts_at LIMIT 1", [s.org, team.id])
       ).rows[0] ?? null) as { id: string; opponent: string; starts_at: string } | null)
     : null;
-  // The team's tasks: about its events or matches, or in the hands of its staff and players.
+  // The team's tasks: its own, about its events or matches, or in the hands of its staff and players.
   const tasks = (
     await s.c.query(
       `SELECT t.id,t.title,t.due_on::text AS due_on,t.status,COALESCE(cp.full_name,'') AS responsible
          FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
         WHERE t.organization_id=$1 AND t.status<>'done'
-          AND (t.event_id IN (SELECT id FROM calendar_event WHERE organization_id=$1 AND team_id=$2)
+          AND (t.team_id=$2
+               OR t.event_id IN (SELECT id FROM calendar_event WHERE organization_id=$1 AND team_id=$2)
                OR t.match_id IN (SELECT id FROM match WHERE organization_id=$1 AND team_id=$2)
                OR t.responsible_id=ANY($3::uuid[]))
         ORDER BY t.due_on NULLS LAST,t.created_at LIMIT 10`,
