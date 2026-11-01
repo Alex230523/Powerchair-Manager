@@ -53,7 +53,7 @@ test("dues, trips and pots follow the team chosen in the top bar", async ({ page
     const lucas = await profile("Lucas Janssens", teamB);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     // A whole-club rate, one line per player.
     const plan = await page.request.post("/api/dues", {
       headers: { origin },

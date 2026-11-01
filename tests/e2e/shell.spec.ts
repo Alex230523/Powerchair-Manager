@@ -42,7 +42,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240)", [club]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // Desktop: brand, club name, regrouped menu, search field and the shortcut.
     await page.goto("/fr");
@@ -106,7 +106,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Thème clair" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     // The language list opens the same page in Dutch.
-    await Promise.all([page.waitForURL(/\/nl$/), menu.getByLabel("Langue", { exact: true }).selectOption("nl")]);
+    await Promise.all([page.waitForURL(/\/nl$/), menu.getByRole("combobox", { name: "Langue", exact: true }).selectOption("nl")]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
     await expect(menu.getByRole("button", { name: "Se déconnecter", exact: true })).toBeVisible();

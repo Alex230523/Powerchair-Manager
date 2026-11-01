@@ -34,7 +34,7 @@ test("the contact book as a light CRM", async ({ page }) => {
     await db.query("INSERT INTO contact(organization_id,full_name,email,created_by) VALUES($1,'Julie Martin','julie@club.test',$2),($1,'julie MARTIN','julie@club.test',$2)", [club, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. A contact, its organisation typed in.
@@ -67,7 +67,7 @@ test("the contact book as a light CRM", async ({ page }) => {
     await page.getByRole("tab", { name: /^Doublons/ }).click();
     await expect(page.getByText("Même email")).toBeVisible();
     page.once("dialog", (d) => void d.accept());
-    await page.getByRole("button", { name: "Garder Julie Martin et y fusionner julie MARTIN" }).click();
+    await page.getByRole("button", { name: "Garder Julie Martin et y fusionner julie MARTIN", exact: true }).click();
     await expect(page.getByText("Aucun doublon repéré.")).toBeVisible();
     await axe(page, "duplicates");
 
@@ -88,7 +88,7 @@ test("the contact book as a light CRM", async ({ page }) => {
     await grant.getByRole("button", { name: "+ Créer un contact" }).click();
     await grant.getByLabel("Nom", { exact: true }).fill("Sophie Échevine");
     await grant.getByRole("button", { name: "Créer et choisir" }).click();
-    await expect(grant.getByLabel("Contact", { exact: true })).toHaveValue(/[0-9a-f-]{36}/);
+    await expect(grant.getByRole("combobox", { name: "Contact", exact: true })).toHaveValue(/[0-9a-f-]{36}/);
     await grant.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(grant).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS n FROM grant_application g JOIN contact c ON c.id=g.contact_id WHERE g.organization_id=$1 AND c.full_name='Sophie Échevine'", [club])).rows[0].n).toBe(1);

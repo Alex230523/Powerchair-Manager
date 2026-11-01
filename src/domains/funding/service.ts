@@ -1032,8 +1032,15 @@ export async function partnerReportProof(db: Pool, token: string, proofId: strin
  * the money managers of the club hear about a partner renewal on its day.
  * Idempotent: one message per task (or renewal) and per day.
  */
-export async function fundingTaskTick(db: Pool) {
+/**
+ * B7: the parts run by the automations engine: the renewals and the grants
+ * are rules of the catalogue (on, paused or stopped per club); the task
+ * reminders stay here. Absent: everything for every club, as before.
+ */
+export type FundingTickParts = { tasks?: boolean; renewals?: string[]; grants?: string[] };
+export async function fundingTaskTick(db: Pool, parts: FundingTickParts = {}) {
   const today = brusselsToday();
+  const all = !("tasks" in parts || "renewals" in parts || "grants" in parts);
   const in7 = new Date(today + "T12:00:00Z");
   in7.setUTCDate(in7.getUTCDate() + 7);
   const week = in7.toISOString().slice(0, 10);
@@ -1043,7 +1050,7 @@ export async function fundingTaskTick(db: Pool) {
   const eve = new Date(today + "T12:00:00Z");
   eve.setUTCDate(eve.getUTCDate() + 1);
   const tomorrow = eve.toISOString().slice(0, 10);
-  const tasks = (
+  const tasks = !(all || parts.tasks) ? [] : (
     await db.query(
       `SELECT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
          FROM funding_task t JOIN organization o ON o.id=t.organization_id
@@ -1059,8 +1066,8 @@ export async function fundingTaskTick(db: Pool) {
       `SELECT p.id,p.organization_id,o.name AS club,p.name AS partner,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
          FROM partner p JOIN organization o ON o.id=p.organization_id JOIN role_assignment r ON r.organization_id=p.organization_id AND r.role='club_president' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now())
          JOIN "user" u ON u.id=r.user_id LEFT JOIN person pe ON pe.user_id=u.id
-        WHERE p.status<>'ended' AND p.renewal_on=$1 AND NOT ('finance'=ANY(o.disabled_modules))`,
-      [today],
+        WHERE p.status<>'ended' AND p.renewal_on=$1 AND NOT ('finance'=ANY(o.disabled_modules)) AND ($2::uuid[] IS NULL OR p.organization_id=ANY($2::uuid[]))`,
+      [today, all ? null : (parts.renewals ?? [])],
     )
   ).rows;
   // The president hears about a grant deadline 30, 7 and 1 days ahead while the file is not filed
@@ -1078,8 +1085,8 @@ export async function fundingTaskTick(db: Pool) {
               u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
          FROM grant_application g JOIN organization o ON o.id=g.organization_id JOIN role_assignment r ON r.organization_id=g.organization_id AND r.role='club_president' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now())
          JOIN "user" u ON u.id=r.user_id LEFT JOIN person pe ON pe.user_id=u.id
-        WHERE g.status='idea' AND (g.deadline_on=ANY($1::date[]) OR g.opens_on=$2::date) AND NOT ('finance'=ANY(o.disabled_modules))`,
-      [marks, today],
+        WHERE g.status='idea' AND (g.deadline_on=ANY($1::date[]) OR g.opens_on=$2::date) AND NOT ('finance'=ANY(o.disabled_modules)) AND ($3::uuid[] IS NULL OR g.organization_id=ANY($3::uuid[]))`,
+      [marks, today, all ? null : (parts.grants ?? [])],
     )
   ).rows;
   for (const x of [

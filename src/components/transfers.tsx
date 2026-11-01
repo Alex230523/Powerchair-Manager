@@ -548,9 +548,23 @@ export function Conversation({ locale, offerId, organizationId, initial }: { loc
     if (!r.ok) throw new Error(v.error);
     setThread(v.threads[0] ?? null);
   }, [offerId]);
+  // The first load inside the effect, its state set in the promise only (React rule: no synchronous setState in an effect).
   useEffect(() => {
-    if (!initial) load().catch((e: Error) => setError(t.errors[e.message] ?? t.unavailable));
-  }, [load, initial, t]);
+    if (initial) return;
+    let cancelled = false;
+    fetch(`/api/transfers/threads?offer=${offerId}`, { cache: "no-store" })
+      .then(async (r) => {
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error);
+        if (!cancelled) setThread(v.threads[0] ?? null);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setError(t.errors[e.message] ?? t.unavailable);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [offerId, initial, t]);
   const title = thread ? fill(t.conversationOf, { from: thread.from_club ?? "", to: thread.to_club }) : t.conversation.replace(" ({n})", "");
   return (
     <section className="transfer-thread" aria-label={title}>

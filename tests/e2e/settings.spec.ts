@@ -44,7 +44,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240)", [club]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(president)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(president)]);
 
     // The home: seven category cards, three per row on a wide screen.
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -137,7 +137,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(coach)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(coach)]);
     await page.goto("/fr/settings");
     await expect(cards).toHaveCount(2);
     await page.getByLabel("Rechercher un réglage", { exact: true }).fill("barème");

@@ -146,6 +146,15 @@ export async function allowed(
     return eventMailAllowed(db, target, user.id, envelope);
   if (target.resource_type === "attendance")
     return attendanceAllowed(db, user.id, target.resource_id);
+  // B7: an automation's message reaches a person still linked to the club (an active account or profile).
+  if (target.resource_type === "automation")
+    return !!(
+      await db.query(
+        `SELECT 1 FROM organization_membership WHERE organization_id=$1 AND user_id=$2 AND active
+         UNION ALL SELECT 1 FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.organization_id=$1 AND p.user_id=$2 AND c.status='active'`,
+        [target.organization_id, user.id],
+      )
+    ).rowCount;
   if (target.resource_type === "calendar")
     return calendarAllowed(db, user.id, target.resource_id);
   if (target.resource_type === "document")

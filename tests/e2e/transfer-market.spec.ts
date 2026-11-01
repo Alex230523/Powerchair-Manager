@@ -15,7 +15,7 @@ async function axe(page: Page, label: string) {
 }
 async function switchTo(page: Page, mandate: string) {
   await page.locator(".profile-menu > summary").click();
-  await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+  await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 }
 
 test("transfer market: consent, sheet, request, conversation, agreement, validation", async ({ page }) => {
@@ -51,7 +51,8 @@ test("transfer market: consent, sheet, request, conversation, agreement, validat
     await page.goto("/fr/transfers");
     const visible = page.getByLabel("Visible par les autres clubs de la fédération : J3 Joueuse");
     await expect(visible).not.toBeChecked();
-    await visible.check();
+    await visible.click();
+    await expect(visible).toBeChecked();
     await expect(page.getByRole("status").filter({ hasText: "Enregistré." })).toBeVisible();
     await axe(page, "market club A");
 

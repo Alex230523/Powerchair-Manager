@@ -691,11 +691,27 @@ export async function attendanceView(
   });
 }
 // Bounded automatic reminders and low-attendance alerts. Same organization lock as all mutations.
-export async function attendanceTick(db: Pool) {
-  const candidates = (
-    await db.query(
-      "SELECT r.id,r.organization_id FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id WHERE r.closed_at IS NULL AND e.status='scheduled' AND e.ends_at>now() AND ((r.reminder_sent_at IS NULL AND r.deadline>now() AND r.deadline<=now()+interval '24 hours') OR (r.alert_sent_at IS NULL AND r.minimum>0 AND LEAST(r.deadline,e.starts_at)<=now())) ORDER BY r.deadline LIMIT 100",
+const dueRegisters =
+  "FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id WHERE r.closed_at IS NULL AND e.status='scheduled' AND e.ends_at>now() AND ((r.reminder_sent_at IS NULL AND r.deadline>now() AND r.deadline<=now()+interval '24 hours') OR (r.alert_sent_at IS NULL AND r.minimum>0 AND LEAST(r.deadline,e.starts_at)<=now()))";
+/**
+ * B7: what the next run would do in one club, without writing: the
+ * registers whose reminder or minimum check is due, and who has not answered.
+ */
+export async function attendancePlan(c: PoolClient, org: string) {
+  return (
+    await c.query(
+      `SELECT r.id,e.title,e.starts_at,(r.reminder_sent_at IS NULL AND r.deadline>now() AND r.deadline<=now()+interval '24 hours') AS reminder,
+              COALESCE((SELECT json_agg(cp.full_name ORDER BY cp.full_name) FROM attendance_invitation i JOIN club_person cp ON cp.id=i.profile_id
+                 WHERE i.register_id=r.id AND i.withdrawn_at IS NULL AND i.response='none'),'[]') AS waiting
+         ${dueRegisters} AND r.organization_id=$1 ORDER BY r.deadline LIMIT 100`,
+      [org],
     )
+  ).rows as { id: string; title: string; starts_at: Date; reminder: boolean; waiting: string[] }[];
+}
+/** `orgs`: only these clubs (B7, the clubs where the rule is on); all when absent. */
+export async function attendanceTick(db: Pool, orgs?: string[]) {
+  const candidates = (
+    await db.query(`SELECT r.id,r.organization_id ${dueRegisters} AND ($1::uuid[] IS NULL OR r.organization_id=ANY($1::uuid[])) ORDER BY r.deadline LIMIT 100`, [orgs ?? null])
   ).rows;
   let changed = 0;
   for (const item of candidates) {

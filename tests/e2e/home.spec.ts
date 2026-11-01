@@ -50,7 +50,7 @@ test("president's home: header, Créer, to-dos, list and week, figures and money
     const team = (await db.query("INSERT INTO team(organization_id,season_id,name,color) VALUES($1,$2,'Équipe A','teal') RETURNING id", [club, season])).rows[0].id;
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // An event two hours from now (today, inside the current week), created through the real API.
     const created = await page.request.post("/api/calendar", {

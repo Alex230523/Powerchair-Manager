@@ -19,7 +19,7 @@ export const editableKinds = [
   "dues_issued",
 ] as const;
 /** Club-written mails: the text comes from the club, not from a template. */
-export const clubWrittenKinds = ["club_newsletter", "event_mail"] as const;
+export const clubWrittenKinds = ["club_newsletter", "event_mail", "automation"] as const;
 /** Built by the platform from the person's own figures (wave 15, C7); not editable by the club. */
 export const builtKinds = ["weekly_digest"] as const;
 export const allKinds = [
@@ -52,6 +52,12 @@ export type Variables = {
 };
 export type Template = { subject: string; body: string };
 export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
+  // B7: an automation's message, written per rule (and per club) with its variables already filled in.
+  automation: {
+    fr: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+    nl: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+    en: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+  },
   club_newsletter: {
     fr: {
       subject: "{title}",
@@ -347,6 +353,7 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
 const allowed: Record<Kind, string[]> = {
   club_newsletter: ["title", "message", "organization", "url"],
   event_mail: ["title", "message", "organization", "url"],
+  automation: ["title", "message", "organization", "url"],
   weekly_digest: ["title", "message", "url"],
   attendance_update: ["name", "organization", "url"],
   dues_issued: ["name", "organization", "url", "person", "amount", "due", "details"],

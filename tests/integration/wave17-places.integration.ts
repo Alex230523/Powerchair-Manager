@@ -108,7 +108,8 @@ it("shares a place once the federation validates it, with its public fields only
   const { venue } = (await venueExecute(db, fedPresident, { action: "decide", placeId: place, approve: true, reason: "" }, federation)) as { venue: string };
   const shared = (await db.query("SELECT * FROM shared_venue WHERE id=$1", [venue])).rows[0];
   expect(shared).toMatchObject({ name: "Salle Alpha", address: "Rue du Stade 4, Namur", category: "training", step_free: true, adapted_toilets: true, charging: true, parking: null, notes: "", phone: "", status: "approved" });
-  expect(JSON.stringify(shared)).not.toMatch(/Concierge|cafétéria|4500/);
+  // « 4500 » as a whole number: a random uuid may hold those digits.
+  expect(JSON.stringify(shared)).not.toMatch(/Concierge|cafétéria|(?<![0-9a-f-])4500(?![0-9a-f-])/);
   expect((await venuesView(db, presidentA)).places.find((p) => p.id === place)).toMatchObject({ share_status: "approved", shared_venue_id: venue });
   // The clubs of the federation see it, in the directory and the calendar; a club outside does not.
   expect(await directory(presidentB)).toContain("Salle Alpha");

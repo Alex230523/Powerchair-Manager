@@ -31,14 +31,14 @@ test("the club's to-do, by category", async ({ page }) => {
     await db.query("INSERT INTO funding_task(organization_id,kind,category,title,due_on,created_by) VALUES($1,'other','admin','Assurance en retard',CURRENT_DATE-3,$2)", [club, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // 1. Every category; the grant's deadline came by itself, with its link.
     await page.goto("/fr/tasks");
     for (const name of ["Affiliation et fédération", "Administratif et légal", "Subsides", "Sponsors", "Collecte de fonds", "Matériel", "Événements", "Autre"])
       await expect(page.locator("summary").filter({ hasText: name })).toBeVisible();
     await expect(page.getByText("Déposer le dossier de subside : Province")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Ouvrir : Province" })).toHaveAttribute("href", /\/fr\/funding\/grants\?grant=/);
+    await expect(page.getByRole("link", { name: "Ouvrir : Province" })).toHaveAttribute("href", /\/fr\/funding\/grants-sponsors\?vue=subsides&grant=/);
     await expect(page.locator("summary").filter({ hasText: "Administratif et légal" })).toContainText("en retard");
     await axe(page, "tasks");
 
@@ -62,10 +62,10 @@ test("the club's to-do, by category", async ({ page }) => {
     await dialog.getByRole("button", { name: "Fermer" }).click();
 
     // 4. « En retard » keeps only the late one; it is ticked.
-    await page.getByRole("button", { name: "En retard" }).click();
+    await page.getByRole("button", { name: "En retard", exact: true }).click();
     await expect(page.getByText("Assurance en retard")).toBeVisible();
     await expect(page.getByText("Gonfler les pneus")).toHaveCount(0);
-    await page.getByRole("checkbox", { name: "Marquer comme faite : Assurance en retard" }).check();
+    await page.getByRole("checkbox", { name: "Marquer comme faite : Assurance en retard" }).click();
     await expect(page.getByText("Assurance en retard")).toHaveCount(0);
 
     // 5. The yearly model, checked then applied.

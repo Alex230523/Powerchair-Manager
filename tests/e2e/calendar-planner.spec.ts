@@ -84,7 +84,7 @@ test("calendar: week grid, views, colours, event sheet and subscription", async 
     await event("Tournoi de printemps", "tournament", `${monday}T00:00`, `${tuesday}T00:00`, null);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandates[0])]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandates[0])]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The views with the keyboard: from Mois, the left arrow selects Semaine.

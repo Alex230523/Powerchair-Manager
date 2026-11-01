@@ -76,7 +76,7 @@ test("the team chosen in the top bar follows the president; teams are created, c
     // The profile menu at the foot of the sidebar replaces the raw select of the top bar.
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // 1. Top bar: current season, "Équipe B" chosen once.
     await page.goto("/fr");

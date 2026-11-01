@@ -4,6 +4,7 @@ import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
 import { TaskTemplates } from "./tasks";
 import { Reminders } from "./reminders";
+import { Automations } from "./automations";
 import { DurationField, readDuration } from "./duration-field";
 import { durationText } from "./duration-copy";
 import { TeamPlacesSettings } from "./team-places-settings";
@@ -373,6 +374,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
           {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}
           {shown && category === "notifications" && ws?.selected?.kind === "club" && <Reminders locale={locale} embedded initial={remindersKind} />}
+          {/* B7: the catalogue of automations (president and notifications.manage; the panel hides itself otherwise). */}
+          {shown && category === "notifications" && ws?.selected?.kind === "club" && <Automations locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && <ClubObligations locale={locale} />}

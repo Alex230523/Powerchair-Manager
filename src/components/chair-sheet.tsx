@@ -602,9 +602,22 @@ export function ChairPage({ locale, id }: { locale: Locale; id: string }) {
     if (!r.ok) throw new Error(v.error);
     setView(v);
   }, []);
+  // The first load inside the effect, its state set in the promise only (React rule: no synchronous setState in an effect).
   useEffect(() => {
-    load().catch((e: Error) => setError(failure(e.message)));
-  }, [load, failure]);
+    let cancelled = false;
+    fetch("/api/equipment", { cache: "no-store" })
+      .then(async (r) => {
+        const v = await r.json();
+        if (!r.ok) throw new Error(v.error);
+        if (!cancelled) setView(v);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setError(failure(e.message));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [failure]);
   const send: Send = async (body) => {
     setBusy(true);
     setError("");

@@ -14,7 +14,7 @@ async function axe(page: Page, label: string) {
 }
 async function switchTo(page: Page, mandate: string) {
   await page.locator(".profile-menu > summary").click();
-  await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+  await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 }
 
 test("coach: first-connection tour, tasks by type, licence, course request; president: check and « Formé »", async ({ page }) => {
@@ -59,7 +59,7 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     }
     await page.locator(".first-steps").getByRole("button", { name: "Terminer" }).click();
     await expect(page.locator(".first-steps")).toHaveCount(0);
-    expect((await db.query("SELECT tutorial_seen_at IS NOT NULL AS seen FROM user_tutorial WHERE user_id=$1 AND audience='coach'", [user])).rows[0].seen).toBe(true);
+    await expect.poll(async () => (await db.query("SELECT tutorial_seen_at IS NOT NULL AS seen FROM user_tutorial WHERE user_id=$1 AND audience='coach'", [user])).rows[0]?.seen).toBe(true);
     await page.reload();
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible();
     await expect(page.locator(".first-steps")).toHaveCount(0);
@@ -75,9 +75,9 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await expect(page.locator("summary").filter({ hasText: "Événements" })).toContainText("1 ouverte(s)");
     await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toContainText("1 ouverte(s)");
     await expect(page.getByText("Pour personne")).toHaveCount(0);
-    await page.getByLabel("Catégorie", { exact: true }).selectOption("events");
+    await page.getByRole("combobox", { name: "Catégorie", exact: true }).selectOption("events");
     await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
-    await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).check();
+    await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).click();
     await expect(page.getByText("Aucune tâche ne vous est attribuée.")).toBeVisible();
     await axe(page, "tasks");
 
@@ -98,7 +98,7 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await expect(licence.getByRole("link", { name: "Voir la copie : permis.pdf" })).toBeVisible();
 
     // 4. Ask the federation to validate a course, with a proof.
-    await page.getByLabel("Formation", { exact: true }).selectOption({ label: "Coach niveau 1 (1) · O1 fédération" });
+    await page.getByRole("combobox", { name: "Formation", exact: true }).selectOption({ label: "Coach niveau 1 (1) · O1 fédération" });
     await page.getByLabel("Justificatif (attestation, photo ou PDF, facultatif)").setInputFiles({ name: "attestation.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\nattestation") });
     await page.getByRole("button", { name: "Envoyer la demande" }).click();
     await expect(page.getByText("En attente de la fédération")).toBeVisible();

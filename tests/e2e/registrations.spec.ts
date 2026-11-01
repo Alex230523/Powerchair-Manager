@@ -381,7 +381,7 @@ test("real registration builder, family application, attachment, complement, adm
         exact: true,
       })
       .click();
-    await page.locator("main").getByLabel("Saison", { exact: true }).selectOption(nextSeason);
+    await page.locator("main").getByRole("combobox", { name: "Saison", exact: true }).selectOption(nextSeason);
     await page
       .getByLabel("Titre du formulaire", { exact: true })
       .fill("Réinscription 2027");

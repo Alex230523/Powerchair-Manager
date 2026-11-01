@@ -31,6 +31,8 @@ import { fundingExecute } from "../src/domains/funding/service";
 import { fundingCommand } from "../src/domains/funding/schema";
 import { contactsExecute } from "../src/domains/crm/service";
 import { contactCommand } from "../src/domains/crm/schema";
+import { automationsExecute } from "../src/domains/automations/service";
+import { automationCommand } from "../src/domains/automations/schema";
 import { taskCommand, yearTemplate, type YearKey } from "../src/domains/tasks/schema";
 import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
@@ -754,6 +756,10 @@ try {
   const garage = await crm({ action: "contact", fullName: "Marc Garage (démo)", organizationName: "Garage démo", role: "Gérant", email: "", phone: "", tags: ["sponsor"], notes: "" });
   await crm({ action: "interaction", contactId: garage.id, kind: "note", summary: "Préfère être appelé le matin" });
 
+  // B7: two automations switched on for the demo club (nothing leaves while mails stay local).
+  for (const rule of ["documentExpiring", "sponsorQuiet"] as const)
+    await automationsExecute(db, president, automationCommand.parse({ action: "rule", rule, enabled: true, paused: false, delayDays: rule === "documentExpiring" ? 30 : 90, actions: ["notify", "email"] }), org);
+
   // 7. Equipment: club chairs (one shared), a player's own chair, a loan chair in repair.
   const chair = async (input: {
     name: string;
@@ -1470,8 +1476,9 @@ try {
   );
 
   // Wave 7: an adapted minibus, care instructions, a hall in the directory and
-  // an away tournament with its participants, vehicle and schedule.
-  const hall = await venueExecute(db, president, {
+  // an away tournament with its participants, vehicle and schedule. Since
+  // wave 17 (C4) the federation writes the halls' directory.
+  const hall = await venueExecute(db, fed, {
     action: "save",
     name: "Hall omnisports de Gand",
     address: "Sportlaan 12",
