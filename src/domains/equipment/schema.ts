@@ -199,3 +199,6 @@ export function returnReminderDue(endsOn: string, today: string, remindedOn: str
 }
 /** « Equalizer » or « Brand · Name ». */
 export const modelLabel = (m: { brand: string; name: string }) => (m.brand ? `${m.brand} · ${m.name}` : m.name);
+
+/** B3: the kinds of a chair's interventions (shared with the client). */
+export const interventionKinds = ["service", "breakdown", "repair", "battery", "adjustment", "speed_check"] as const;

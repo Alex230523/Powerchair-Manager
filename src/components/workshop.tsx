@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { workshopView } from "@/domains/equipment/workshop";
-import { interventionKinds } from "@/domains/equipment/workshop";
+import { interventionKinds } from "@/domains/equipment/schema";
 import { workshopCopy } from "./workshop-copy";
 import { fill } from "./fleet-copy";
 import { errors } from "./access-copy";

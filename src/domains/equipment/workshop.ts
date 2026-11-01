@@ -4,7 +4,8 @@ import { AccessError, audit, type Principal } from "../access/service";
 import { publish } from "../notifications/queue";
 import { brusselsToday } from "../people/service";
 import { scope, readableProfiles, log, type Scope } from "./service";
-import { serviceState } from "./schema";
+import { interventionKinds, serviceState } from "./schema";
+export { interventionKinds };
 
 /**
  * B3: the chairs' workshop. The log of interventions (service, breakdown,
@@ -18,7 +19,6 @@ import { serviceState } from "./schema";
 const id = z.uuid();
 const text = (n: number) => z.string().trim().max(n);
 const day = z.iso.date();
-export const interventionKinds = ["service", "breakdown", "repair", "battery", "adjustment", "speed_check"] as const;
 export const workshopCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("intervention"),
