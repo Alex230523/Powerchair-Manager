@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { openEventsView } from "@/domains/open-events/service";
 import { openEventsCopy } from "./open-events-copy";
-import { parseQuestions, unparseQuestions as unparse, type Question } from "@/domains/open-events/questions";
+import { parseQuestions, unparseQuestions as unparse } from "@/domains/open-events/questions";
 import { fill } from "./fleet-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, EmptyState, PageHeader, Panel, Tabs } from "./ui";
@@ -286,7 +286,7 @@ function OpenDialog({ locale, candidates, now, busy, send, close }: { locale: Lo
 function EventDetail({ locale, detail, busy, send }: { locale: Locale; detail: Detail; busy: boolean; send: Send }) {
   const t = openEventsCopy[locale];
   const [tab, setTab] = useState<"people" | "checkin" | "opinions">("people");
-  const people = detail.registrations as { id: string; full_name: string; email: string; phone: string; needs: Record<string, unknown>; consent_image: boolean; status: keyof typeof statusTones; paid_cents: number; checked_in_at: string | null; payment_reference: string | null }[];
+  const people = detail.registrations;
   const panel = `oe-panel-${detail.id}`;
   return (
     <div className="open-event-detail">
@@ -390,7 +390,7 @@ function EventDetail({ locale, detail, busy, send }: { locale: Locale; detail: D
               </details>
             )}
             <p className="field-help">
-              {t.questions} : {unparse(detail.questions as Question[]).replace(/\n/g, " · ") || "…"}
+              {t.questions} : {unparse(detail.questions).replace(/\n/g, " · ") || "…"}
             </p>
           </>
         )}

@@ -225,8 +225,29 @@ export async function openEventsView(db: Pool, p: Principal, openId?: string) {
       ).rows;
       const feedback = (await s.c.query("SELECT rating,answers FROM open_feedback WHERE open_event_id=$1 AND organization_id=$2", [oe.id, s.org])).rows as { rating: number; answers: Record<string, string | boolean> }[];
       detail = {
-        ...oe,
-        registrations,
+        id: oe.id as string,
+        token: oe.token as string,
+        status: oe.status as "open" | "cancelled",
+        version: oe.version as number,
+        fee_cents: oe.fee_cents as number,
+        capacity: oe.capacity as number | null,
+        questions: oe.questions as z.infer<typeof questionSchema>[],
+        registrations: registrations as {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string;
+          needs: Record<string, unknown>;
+          answers: Record<string, string | boolean>;
+          consent_image: boolean;
+          status: "confirmed" | "waiting" | "offered" | "cancelled";
+          offered_until: string | null;
+          payment_reference: string | null;
+          paid_cents: number;
+          paid_at: string | null;
+          checked_in_at: string | null;
+          created_at: string;
+        }[],
         opinions: {
           count: feedback.length as number,
           // Anonymous: the answers without who gave them, shuffled by their own order.
