@@ -228,10 +228,16 @@ export async function openEventsView(db: Pool, p: Principal, openId?: string) {
         ...oe,
         registrations,
         opinions: {
-          count: feedback.length,
-          average: feedback.length ? Math.round((feedback.reduce((n, f) => n + f.rating, 0) / feedback.length) * 10) / 10 : null,
+          count: feedback.length as number,
           // Anonymous: the answers without who gave them, shuffled by their own order.
-          answers: (oe.survey_questions as z.infer<typeof questionSchema>[]).map((q) => ({ question: q.label, values: feedback.map((f) => f.answers[q.id]).filter((v) => v !== undefined && v !== "").sort((a, b) => String(a).localeCompare(String(b))) })),
+          answers: (oe.survey_questions as z.infer<typeof questionSchema>[]).map((q) => ({
+            question: q.label,
+            values: feedback
+              .map((f) => f.answers[q.id])
+              .filter((v) => v !== undefined && v !== "")
+              .sort((a, b) => String(a).localeCompare(String(b))),
+          })) as { question: string; values: (string | boolean)[] }[],
+          average: (feedback.length ? Math.round((feedback.reduce((n, f) => n + f.rating, 0) / feedback.length) * 10) / 10 : null) as number | null,
         },
       };
     }
