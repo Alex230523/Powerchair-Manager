@@ -26,7 +26,10 @@ const page = 8;
 export function useSeasonAttendance(revision: number) {
   const scope = useScope();
   const today = new Date().toISOString().slice(0, 10);
-  const yearAgo = new Date(Date.now() - 360 * 86400000).toISOString().slice(0, 10);
+  // No Date.now in render (the purity rule): the day 360 days before, from a new Date.
+  const back = new Date();
+  back.setUTCDate(back.getUTCDate() - 360);
+  const yearAgo = back.toISOString().slice(0, 10);
   const from = scope.season?.starts_on ?? yearAgo;
   const to = scope.season?.ends_on ?? today;
   const [state, setState] = useState<{ key: string; data: View | null; error: string }>({ key: "", data: null, error: "" });

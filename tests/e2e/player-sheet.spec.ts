@@ -50,7 +50,7 @@ test("single sheet in a window, former players' situation, in memoriam", async (
     const tom = await file(club, "Tom Souvenir");
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. No « Âge minimum » in the search bars.

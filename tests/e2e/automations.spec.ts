@@ -30,7 +30,7 @@ test("the club's automations", async ({ page }) => {
     await db.query("INSERT INTO club_document(organization_id,season_id,name,category,status,expires_on) VALUES($1,$2,'Assurance du club','insurance','valid',CURRENT_DATE+10)", [club, season]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // 1. The catalogue, built-in reminders on, the others off.
     await page.goto("/fr/settings/notifications");
@@ -56,10 +56,10 @@ test("the club's automations", async ({ page }) => {
 
     // 4. The global stop, then resumed.
     await section.getByRole("button", { name: "Tout arrêter maintenant" }).click();
-    await expect(section.getByText("Tout est à l'arrêt")).toBeVisible();
+    await expect(section.locator(".badge").filter({ hasText: "Tout est à l'arrêt" })).toBeVisible();
     expect((await db.query("SELECT automations_stopped FROM organization WHERE id=$1", [club])).rows[0].automations_stopped).toBe(true);
     await section.getByRole("button", { name: "Reprendre les automatisations" }).click();
-    await expect(section.getByText("Les automatisations actives tournent.")).toBeVisible();
+    await expect(section.locator(".badge").filter({ hasText: "Les automatisations actives tournent." })).toBeVisible();
 
     // 5. At 390 px nothing sticks out.
     await page.setViewportSize({ width: 390, height: 844 });

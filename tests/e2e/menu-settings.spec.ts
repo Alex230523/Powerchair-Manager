@@ -59,7 +59,7 @@ test("menu without Relances nor offline book, reminders in Settings, rights unti
     await db.query("INSERT INTO role_assignment(organization_id,user_id,role,grants) VALUES($1,$2,'coach','{attendance.manage}')", [club, coach.id]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     const post = async (data: Record<string, unknown>) => {
       const r = await page.request.post("/api/dues", { headers: { origin }, data: { organizationId: club, ...data } });
       expect(r.status(), await r.text()).toBe(200);

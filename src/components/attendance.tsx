@@ -705,7 +705,7 @@ export function Attendance({ locale }: { locale: Locale }) {
   return (
     <main id="main" className="access attendance">
       <PageHeader title={t.title} subtitle={t.intro} />
-      <Tabs label={c.tabs} items={items} value={current} onChange={(v) => setTab(v as "call" | "season" | "stats")} idPrefix="attendance-tab" panelId={(v) => `attendance-panel-${v}`} />
+      <Tabs label={c.tabs} items={items} value={current} onChange={(v) => (setTab(v as "call" | "season" | "stats"), setRevision((r) => r + 1))} idPrefix="attendance-tab" panelId={(v) => `attendance-panel-${v}`} />
       <div role="tabpanel" id={`attendance-panel-${current}`} aria-labelledby={`attendance-tab-${current}`} className="attendance-panel">
         {current !== "season" && error && <p role="alert">{error}</p>}
         {current === "season" ? (

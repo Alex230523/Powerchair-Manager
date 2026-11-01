@@ -65,7 +65,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
-      page.getByLabel("Profil actif", { exact: true }).selectOption(admin),
+      page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(admin),
     ]);
     await expect(
       page.getByRole("heading", { name: "Enregistrer un profil", exact: true }),
@@ -121,7 +121,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await issue.getByRole("radio", { name: "Player membership · 2026-27 · €250.00" }).check();
     await issue.getByRole("button", { name: "Next", exact: true }).click();
     await issue.getByRole("radio", { name: "One person" }).check();
-    await issue.getByLabel("Person", { exact: true }).selectOption({ label: "Browser player" });
+    await issue.getByRole("combobox", { name: "Person", exact: true }).selectOption({ label: "Browser player" });
     await issue.getByLabel("Number of payments", { exact: true }).fill("4");
     await issue.getByRole("button", { name: "Show the preview", exact: true }).click();
     await issue.getByRole("button", { name: "Next", exact: true }).click();
@@ -191,7 +191,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
-      page.getByLabel("Active profile", { exact: true }).selectOption(player),
+      page.getByRole("combobox", { name: "Active profile", exact: true }).selectOption(player),
     ]);
     await expect(page).toHaveURL("/en/access");
     await expect(

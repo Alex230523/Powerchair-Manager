@@ -16,7 +16,7 @@ async function axe(page: Page, label: string) {
 }
 async function switchTo(page: Page, mandate: string) {
   await page.locator(".profile-menu > summary").click();
-  await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+  await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 }
 
 test("classification day: texts, invitation, registration, decision, publication, team players", async ({ page }) => {

@@ -21,7 +21,7 @@ async function signIn(page: Page, db: Pool, name: string, email: string, org: st
   const mandate = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,$3) RETURNING id", [org, user, role])).rows[0].id;
   await page.goto("/fr");
   await page.locator(".profile-menu > summary").click();
-  await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+  await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
   return user as string;
 }
 

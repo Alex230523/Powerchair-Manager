@@ -16,7 +16,7 @@ async function axe(page: Page, label: string) {
 }
 async function switchTo(page: Page, mandate: string) {
   await page.locator(".profile-menu > summary").click();
-  await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+  await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 }
 
 test("friendly between clubs: invitation, line, transport, score to confirm, tournament matches", async ({ page }) => {
@@ -65,7 +65,7 @@ test("friendly between clubs: invitation, line, transport, score to confirm, tou
     await win.getByLabel("Notre équipe").selectOption({ label: "Aigles" });
     await win.getByLabel("Adversaire").selectOption({ label: "Ours" });
     await win.getByLabel("Date et heure").fill(`${date}T14:00`);
-    await win.getByLabel("Lieu", { exact: true }).selectOption({ label: "Salle du club" });
+    await win.getByRole("combobox", { name: "Lieu", exact: true }).selectOption({ label: "Salle du club" });
     await win.getByLabel("Message (facultatif)").fill("Match de préparation");
     await axe(page, "friendly window");
     await win.getByRole("button", { name: "Créer le match" }).click();

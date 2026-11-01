@@ -35,7 +35,7 @@ test("finance tabs, add and delete an operation with undo, bank statements", asy
     await db.query("INSERT INTO annual_accounts(organization_id,year_start,year_end,status,approved_on,snapshot,created_by) VALUES($1,'2025-01-01','2025-12-31','approved','2026-03-01','{}',$2)", [club, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The menu says « Finances » with two entries; the page has its tabs, each with an address.
@@ -46,8 +46,8 @@ test("finance tabs, add and delete an operation with undo, bank statements", asy
     await expect(tabs.getByRole("link", { name: "Vue d'ensemble" })).toHaveAttribute("aria-current", "page");
     await axe(page, "overview");
     await tabs.getByRole("link", { name: "Rentrées" }).click();
-    await expect(page).toHaveURL(/\/fr\/funding\/partners$/);
-    await expect(page.getByRole("navigation", { name: "Rentrées" }).getByRole("link", { name: "Sponsors" })).toHaveAttribute("aria-current", "page");
+    await expect(page).toHaveURL(/\/fr\/funding\/grants-sponsors$/);
+    await expect(page.getByRole("navigation", { name: "Rentrées" }).getByRole("link", { name: "Subsides & sponsors" })).toHaveAttribute("aria-current", "page");
 
     // 2. Add an expense with its receipt.
     await page.goto("/fr/funding/operations");

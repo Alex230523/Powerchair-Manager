@@ -61,7 +61,7 @@ test("roll call: answers, keyboard, undo, all present, late, closing, correction
     const today = await session("Entraînement du jour", 0, {}, false, { "Ana Martin": "present", "Bilal Haddad": "absent" });
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. « Appel » first, the latest session, the answers on the lines.

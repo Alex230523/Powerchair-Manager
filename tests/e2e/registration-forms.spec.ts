@@ -64,7 +64,7 @@ test("forms list, templates, sharing, question cards and one-click decisions wit
     const status = async (id: string) => (await db.query("SELECT status FROM registration_application WHERE id=$1", [id])).rows[0].status as string;
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // 1. The list: name, year, season, applications, state, icon actions; one main button.

@@ -37,7 +37,7 @@ test("events: button in the header, a training for Équipe A with answers, a tri
     await db.query("INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,created_by) VALUES($1,'Bus du mardi','other',$3::date,$3::date,$2)", [club, user, start]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // 1. The button sits in the page header, at 1440 and at 390 px.
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -55,7 +55,7 @@ test("events: button in the header, a training for Équipe A with answers, a tri
     await expect(editor.getByLabel("Type", { exact: true })).toHaveValue(/.+/);
     await editor.getByLabel("Début (heure locale)").fill(`${start}T18:00`);
     await editor.getByLabel("Fin (heure locale)").fill(`${start}T20:00`);
-    await editor.getByLabel("Équipe", { exact: true }).selectOption({ label: "Équipe A" });
+    await editor.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe A" });
     await expect(editor.getByLabel("L'équipe de l'événement")).toBeChecked();
     await expect(editor.getByText("1 personne invitée")).toBeVisible();
     await editor.getByLabel("Relier un déplacement existant").selectOption({ label: `Bus du mardi · ${start}` });
