@@ -307,7 +307,9 @@ export async function logSensitiveAccess(
     | "registration_confidential"
     | "sensitive_document"
     | "offline_book"
-    | "trip_care",
+    | "trip_care"
+    | "incident_health"
+    | "incident_care",
   resourceId: string | null = null,
 ) {
   await c.query(
