@@ -341,7 +341,7 @@ const remindLabel = {
   nl: "Wie niet in orde is herinneren",
   en: "Remind those not up to date",
 };
-export function Dues({ locale }: { locale: Locale }) {
+export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettre les cotisations de l'équipe » from a team's page. */ issueTeam?: string }) {
   const t = copy[locale] as (typeof copy)["fr"],
     [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -351,7 +351,7 @@ export function Dues({ locale }: { locale: Locale }) {
     [q, setQ] = useState(""),
     [detailId, setDetailId] = useState(""),
     [payId, setPayId] = useState(""),
-    [issuing, setIssuing] = useState(false);
+    [issuing, setIssuing] = useState(!!issueTeam);
   // The season chosen in the top bar (wave 12) seeds the season filter.
   const scope = useScope();
   const [filter, setFilter] = useSeeded(scope.seasonId ?? "");
@@ -728,7 +728,7 @@ export function Dues({ locale }: { locale: Locale }) {
           </Card>
         </>
       )}
-      {view && issuing && (
+      {view?.manage && issuing && (
         <IssueWizard
           locale={locale}
           organizationId={view.organizationId}
@@ -736,6 +736,7 @@ export function Dues({ locale }: { locale: Locale }) {
           seasons={view.seasons}
           teams={view.teams}
           profiles={view.profiles}
+          team={issueTeam && view.teams.some((x) => x.id === issueTeam) ? issueTeam : undefined}
           close={() => setIssuing(false)}
           done={(m) => {
             setIssuing(false);

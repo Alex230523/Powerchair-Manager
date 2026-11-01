@@ -9959,3 +9959,78 @@ ul.task-page li {
     grid-template-columns: 1fr;
   }
 }
+
+/* A6: the team page as a dashboard. */
+.team-board {
+  display: grid;
+  gap: var(--space-4);
+}
+.team-board-alert h2 {
+  font-size: var(--text-md);
+  margin: 0 0 var(--space-2);
+}
+.team-board-alert ul {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+.team-board-alert a {
+  display: inline-block;
+  min-height: 44px;
+  padding-block: var(--space-2);
+}
+.team-board-ready {
+  margin: 0;
+}
+.team-board-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.team-board-actions .button {
+  min-height: 44px;
+}
+.team-board-squad {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.team-board-squad li {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--border);
+  scroll-margin-block-start: var(--space-8);
+}
+.team-board-squad li:target {
+  outline: 2px solid var(--focus, var(--primary));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.team-board-squad a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.team-board-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+.team-board-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+.team-board-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  overflow-wrap: anywhere;
+}
+.team-board-contacts a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
