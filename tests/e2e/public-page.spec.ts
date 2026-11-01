@@ -39,7 +39,7 @@ test("the club's public page, a widget and an API key", async ({ page, browser }
     await page.goto("/fr/club/public");
     await page.getByRole("checkbox", { name: "Publier la page du club" }).click();
     await page.getByLabel("Adresse de la page").fill(slug);
-    await page.getByLabel("Présentation").fill("Powerchair football à Namur.");
+    await page.getByRole("textbox", { name: "Présentation", exact: true }).fill("Powerchair football à Namur.");
     await page.getByRole("button", { name: "Enregistrer" }).click();
     await expect(page.getByRole("status").first()).toHaveText("Enregistré.");
     await expect(page.getByRole("link", { name: "Voir la page publique" })).toBeVisible();
