@@ -73,7 +73,7 @@ export function TeamBoard({ locale, data }: { locale: Locale; data: Detail }) {
             </Link>
           )}
           {data.can.matches && board.nextMatch && (
-            <Link className="button secondary" href={`/${locale}/matches?match=${board.nextMatch.id}`}>
+            <Link className="button secondary" href={`/${locale}/matches/${board.nextMatch.id}`}>
               {t.prepareMatch}
             </Link>
           )}

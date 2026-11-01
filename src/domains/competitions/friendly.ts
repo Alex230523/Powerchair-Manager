@@ -55,7 +55,7 @@ async function tell(c: PoolClient, org: string, matchId: string, match: string, 
 }
 
 /** The calendar event of a friendly, the team invited with an answer asked, as the calendar does it. */
-async function matchEvent(c: PoolClient, s: PeopleScope, i: { teamId: string; title: string; startsAt: Date; placeId: string | null; venue: string }) {
+export async function matchEvent(c: PoolClient, s: PeopleScope, i: { teamId: string; title: string; startsAt: Date; placeId: string | null; venue: string }) {
   const org = s.context.organization_id;
   const series = (await c.query("INSERT INTO calendar_series(organization_id,interval_days,occurrences,created_by) VALUES($1,0,1,$2) RETURNING id", [org, s.p.userId])).rows[0].id;
   const type = (await c.query("SELECT id FROM event_type WHERE organization_id=$1 AND legacy_kind='friendly' AND NOT archived ORDER BY position LIMIT 1", [org])).rows[0]?.id ?? null;

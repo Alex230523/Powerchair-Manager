@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam, ApplyScope } from "./use-scope";
@@ -283,7 +284,10 @@ export function Matches({ locale }: { locale: Locale }) {
                     <td>{when(m.starts_at)}</td>
                     <td>{m.team}</td>
                     <td>
-                      <strong>{m.opponent}</strong>
+                      {/* A5: the match sheet, before, on the day and after. */}
+                      <Link href={`/${locale}/matches/${m.id}`}>
+                        <strong>{m.opponent}</strong>
+                      </Link>
                       <span className="muted">
                         {" "}
                         · {m.home ? t.home : t.away}
