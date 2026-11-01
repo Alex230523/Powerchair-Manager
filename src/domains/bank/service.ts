@@ -1,3 +1,4 @@
+import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { createHash } from "node:crypto";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
@@ -271,6 +272,8 @@ async function allocate(s: Scope, line: Line, part: { target: string; targetId: 
       "INSERT INTO dues_history(organization_id,plan_id,receivable_id,actor_id,action,before_data,after_data,reason) SELECT organization_id,plan_id,id,$2,'payment','{}'::jsonb,$3,$4 FROM dues_receivable WHERE id=$1",
       [receivable, s.userId, JSON.stringify({ transaction: tx, bank_line: line.id, amount_cents: part.amountCents, automatic }), automatic ? "Rapprochement automatique" : "Rapprochement bancaire"],
     );
+  // B6: the club's systems are told of an incoming payment.
+  if (incoming) await emitWebhook(s.c, s.org, "payment.reconciled", `allocation:${id}`, { allocation_id: id, bank_line_id: line.id, target: part.target, target_id: part.targetId, amount_cents: part.amountCents, booked_on: line.booked_on, automatic });
   await audit(s.c, s.org, s.userId, automatic ? "bank.matched.auto" : "bank.allocated", line.id, { target: part.target, amount: part.amountCents });
   return id;
 }

@@ -10190,3 +10190,37 @@ ul.task-page li {
 .rating-row .check {
   min-height: 44px;
 }
+
+/* B6: public pages and widgets. */
+.public-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 8px 0 16px;
+}
+.public-intro {
+  white-space: pre-line;
+  max-width: 70ch;
+}
+.public-page section {
+  margin-top: 24px;
+}
+.public-sponsors {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-weight: 600;
+}
+.public-widget {
+  padding: 12px;
+}
+.public-widget h1 {
+  font-size: var(--text-lg);
+}
+.secret-value {
+  display: block;
+  overflow-wrap: anywhere;
+  margin: 6px 0;
+}
