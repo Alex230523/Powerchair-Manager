@@ -60,6 +60,7 @@ test("places per team: settings, card, move warning", async ({ page }) => {
 
     // 3. Moving Zoé into the full Tigers: said, not blocked.
     await page.goto(`/fr/teams/${lions}`);
+    await page.getByRole("tab", { name: "Effectif", exact: true }).click();
     await page.getByRole("button", { name: /Déplacer vers/ }).first().click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Équipe de destination").selectOption({ label: "Tigres" });

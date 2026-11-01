@@ -6,6 +6,8 @@ import { offerUndo } from "../undo/service";
 import { permissions } from "../access/policy";
 import { resolveScope, seasonOptions, teamOptions } from "../scope/service";
 import { teamColors, type TeamColor } from "./colors";
+import { seasonOf } from "../finance/schema";
+import { brusselsToday } from "../people/service";
 
 /**
  * Wave 12: the president's view of all teams (one card per team), a team
@@ -57,7 +59,7 @@ export const teamsCommand = z.discriminatedUnion("action", [
 /** Input shape: a caller may leave out the places (no limit). */
 export type TeamsCommand = z.input<typeof teamsCommand>;
 
-type Scope = { c: PoolClient; org: string; userId: string; role: string; teamId: string | null; manage: boolean; mfa: boolean };
+type Scope = { c: PoolClient; org: string; userId: string; role: string; teamId: string | null; manage: boolean; mfa: boolean; rights: string[]; disabled: string[] };
 async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) => Promise<T>, expected?: string) {
   const c = await db.connect();
   try {
@@ -75,7 +77,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
     if (!mfa) throw new AccessError("MFA_REQUIRED");
     const manage = rights.includes("teams.manage");
     if (write && !manage) throw new AccessError("FORBIDDEN");
-    const out = await fn({ c, org: a.organization_id, userId: p.userId, role: a.role, teamId: a.team_id ?? null, manage, mfa });
+    const out = await fn({ c, org: a.organization_id, userId: p.userId, role: a.role, teamId: a.team_id ?? null, manage, mfa, rights, disabled: a.disabled_modules });
     await c.query("COMMIT");
     return out;
   } catch (e) {
@@ -200,8 +202,115 @@ export async function teamDetail(db: Pool, p: Principal, id: string) {
     const people = s.manage
       ? ((await s.c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' ORDER BY full_name", [s.org])).rows as { id: string; full_name: string }[])
       : [];
-    return { organization_id: s.org, can: { manage: s.manage }, team, roster, staff, others: others.filter((t) => allowed.has(t.id)), people };
+    const board = await teamBoard(s, team, roster.map((r) => r.profile_id), staff.map((x) => x.profile_id));
+    return {
+      organization_id: s.org,
+      can: { manage: s.manage, ...board.can },
+      team,
+      roster,
+      staff: staff.map((x) => ({ ...x, ...board.contacts[x.profile_id] })),
+      others: others.filter((t) => allowed.has(t.id)),
+      people,
+      board: board.data,
+    };
   });
+}
+
+/**
+ * A6: the team as a dashboard, read from what the other modules already
+ * keep (no new data): per player the licence of the season, the documents
+ * due, the chair and its state, a late fee (money rights only) and care
+ * instructions (sensitive right only); the next events with their answers,
+ * the last results and the season's record, the team's tasks.
+ */
+export type PlayerState = {
+  licence: "active" | "requested" | "suspended" | "refused" | "none";
+  chair: { name: string; status: string; serviceDue: boolean } | null;
+  /** null: not shown to this profile. */
+  duesLate: boolean | null;
+  care: boolean | null;
+};
+async function teamBoard(s: Scope, team: TeamCard, players: string[], staff: string[]) {
+  const money = s.rights.includes("dues.manage") || s.rights.includes("dues.read");
+  const sensitive = s.rights.includes("people.sensitive");
+  const dues = money && !s.disabled.includes("dues");
+  const season = seasonOf(brusselsToday()).label;
+  const states: Record<string, PlayerState> = {};
+  for (const r of (
+    await s.c.query(
+      `SELECT cp.id,
+              (SELECT l.status FROM license l WHERE l.profile_id=cp.id AND l.organization_id=$1 AND l.season=$3 ORDER BY CASE l.status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 WHEN 'requested' THEN 2 ELSE 3 END LIMIT 1) AS licence,
+              (SELECT json_build_object('name',ch.name,'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false)) FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
+                WHERE ea.profile_id=cp.id AND ea.ends_on IS NULL AND ch.organization_id=$1 ORDER BY ea.is_primary DESC,ea.starts_on DESC LIMIT 1) AS chair,
+              CASE WHEN $4::boolean THEN EXISTS (
+                SELECT 1 FROM dues_receivable d WHERE d.organization_id=$1 AND d.profile_id=cp.id AND d.status='open'
+                   AND (SELECT COALESCE(sum(i.amount_cents),0) FROM dues_installment i WHERE i.receivable_id=d.id AND i.due_on<CURRENT_DATE)
+                     > (SELECT COALESCE(sum(t.amount_cents),0) FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in')) END AS dues_late,
+              CASE WHEN $5::boolean THEN EXISTS (SELECT 1 FROM care_instruction ci WHERE ci.profile_id=cp.id AND ci.organization_id=$1 AND ci.active) END AS care
+         FROM club_person cp WHERE cp.organization_id=$1 AND cp.id=ANY($2::uuid[])`,
+      [s.org, players, season, dues, sensitive],
+    )
+  ).rows)
+    states[r.id] = { licence: r.licence ?? "none", chair: r.chair, duesLate: r.dues_late, care: r.care };
+  const events = (
+    await s.c.query(
+      `SELECT e.id,e.title,e.kind,e.starts_at,
+              (SELECT count(*)::int FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL) AS invited,
+              (SELECT count(*)::int FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL AND i.response<>'none') AS answered,
+              (SELECT count(*)::int FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL AND i.response='present') AS present
+         FROM calendar_event e WHERE e.organization_id=$1 AND e.team_id=$2 AND e.status='scheduled' AND e.ends_at>now() ORDER BY e.starts_at LIMIT 5`,
+      [s.org, team.id],
+    )
+  ).rows as { id: string; title: string; kind: string; starts_at: string; invited: number; answered: number; present: number }[];
+  const matchesOn = !s.disabled.includes("matches");
+  const results = matchesOn
+    ? ((
+        await s.c.query(
+          "SELECT id,opponent,home,kind,starts_at,our_score,their_score FROM match WHERE organization_id=$1 AND team_id=$2 AND status='played' ORDER BY starts_at DESC LIMIT 5",
+          [s.org, team.id],
+        )
+      ).rows as { id: string; opponent: string; home: boolean; kind: string; starts_at: string; our_score: number; their_score: number }[])
+    : [];
+  // The season's record in the championship: 3 points a win, 1 a draw.
+  const record = matchesOn
+    ? ((
+        await s.c.query(
+          `SELECT count(*)::int AS played,count(*) FILTER (WHERE our_score>their_score)::int AS won,count(*) FILTER (WHERE our_score=their_score)::int AS drawn,
+                  count(*) FILTER (WHERE our_score<their_score)::int AS lost,COALESCE(sum(our_score),0)::int AS scored,COALESCE(sum(their_score),0)::int AS conceded
+             FROM match WHERE organization_id=$1 AND team_id=$2 AND status='played' AND kind='league'`,
+          [s.org, team.id],
+        )
+      ).rows[0] as { played: number; won: number; drawn: number; lost: number; scored: number; conceded: number })
+    : null;
+  const nextMatch = matchesOn
+    ? (((
+        await s.c.query("SELECT id,opponent,starts_at FROM match WHERE organization_id=$1 AND team_id=$2 AND status='scheduled' AND starts_at>now() ORDER BY starts_at LIMIT 1", [s.org, team.id])
+      ).rows[0] ?? null) as { id: string; opponent: string; starts_at: string } | null)
+    : null;
+  // The team's tasks: about its events or matches, or in the hands of its staff and players.
+  const tasks = (
+    await s.c.query(
+      `SELECT t.id,t.title,t.due_on::text AS due_on,t.status,COALESCE(cp.full_name,'') AS responsible
+         FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
+        WHERE t.organization_id=$1 AND t.status<>'done'
+          AND (t.event_id IN (SELECT id FROM calendar_event WHERE organization_id=$1 AND team_id=$2)
+               OR t.match_id IN (SELECT id FROM match WHERE organization_id=$1 AND team_id=$2)
+               OR t.responsible_id=ANY($3::uuid[]))
+        ORDER BY t.due_on NULLS LAST,t.created_at LIMIT 10`,
+      [s.org, team.id, [...staff, ...players]],
+    )
+  ).rows as { id: string; title: string; due_on: string | null; status: string; responsible: string }[];
+  const contacts = Object.fromEntries(
+    (await s.c.query("SELECT id,COALESCE(email,'') AS email,COALESCE(phone,'') AS phone FROM club_person WHERE organization_id=$1 AND id=ANY($2::uuid[])", [s.org, staff])).rows.map((r) => [
+      r.id,
+      { email: r.email as string, phone: r.phone as string },
+    ]),
+  ) as Record<string, { email: string; phone: string }>;
+  return {
+    can: { money: dues, sensitive, issueDues: dues && s.rights.includes("dues.manage"), convene: s.rights.includes("calendar.manage"), write: !s.disabled.includes("messages") && (s.rights.includes("notifications.manage") || s.rights.includes("calendar.manage")), matches: matchesOn },
+    contacts,
+    data: { season, states, events, results, record, nextMatch, tasks },
+  };
 }
 
 export async function teamsExecute(db: Pool, p: Principal, cmd: TeamsCommand, expected: string) {

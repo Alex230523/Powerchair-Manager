@@ -10,6 +10,8 @@ import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
 import { useScope, scopedHref } from "./use-scope";
 import { teamsCopy } from "./teams-copy";
+import { TeamBoard } from "./team-board";
+import { teamBoardCopy } from "./team-board-copy";
 import { shellCopy } from "./shell-copy";
 import { kindLabels } from "./calendar-copy";
 import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
@@ -280,7 +282,7 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
   const { data, error, setError, reload } = useData<Detail>(`/api/teams?id=${id}`, failure);
   const { busy, message, post, postFor } = usePost("/api/teams", reload, setError, failure);
-  const [tab, setTab] = useState<"roster" | "staff" | "settings">("roster"),
+  const [tab, setTab] = useState<"overview" | "roster" | "staff" | "settings">("overview"),
     [moving, setMoving] = useState<RosterRow | null>(null);
   if (!data)
     return (
@@ -291,7 +293,9 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
     );
   const team = data.team;
   const day = (d: string) => new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
-  const tabs = (["roster", "staff", "settings"] as const).filter((k) => k !== "settings" || data.can.manage);
+  // A6: the dashboard first.
+  const tabs = (["overview", "roster", "staff", "settings"] as const).filter((k) => k !== "settings" || data.can.manage);
+  const tabLabel = (k: (typeof tabs)[number]) => (k === "overview" ? teamBoardCopy[locale].tab : sh.tabs[k]);
   return (
     <main id="main" className="access team-sheet" data-color={team.color ?? "none"}>
       <p>
@@ -313,7 +317,12 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
       />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      <Tabs label={team.name} items={tabs.map((k) => ({ id: k, label: sh.tabs[k] }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="team-tab" panelId={(id) => `team-panel-${id}`} />
+      <Tabs label={team.name} items={tabs.map((k) => ({ id: k, label: tabLabel(k) }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="team-tab" panelId={(id) => `team-panel-${id}`} />
+      {tab === "overview" && (
+        <div role="tabpanel" id="team-panel-overview" aria-labelledby="team-tab-overview">
+          <TeamBoard locale={locale} data={data} />
+        </div>
+      )}
       {tab === "roster" && (
         <div role="tabpanel" id="team-panel-roster" aria-labelledby="team-tab-roster"><Card id="team-panel-roster-card" className="flush" title={sh.tabs.roster}>
           {data.roster.length ? (
