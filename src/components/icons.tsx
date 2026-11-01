@@ -1,5 +1,15 @@
 import {
   Accessibility,
+  Archive,
+  Ban,
+  CheckCheck,
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  Eye,
+  GripVertical,
+  Share2,
+  Trash2,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
@@ -15,6 +25,13 @@ import {
   ChevronUp,
   Handshake,
   ClipboardCheck,
+  ClipboardList,
+  Download,
+  Ellipsis,
+  HardDrive,
+  Image as ImageGlyph,
+  Medal,
+  Star,
   Clock,
   FileText,
   Flag,
@@ -56,6 +73,9 @@ import {
  * earlier hand-drawn set are kept so existing calls keep working.
  */
 const icons = {
+  /** Wave 17 (J2): « Tout présent » and « Non pointé ». */
+  checkAll: CheckCheck,
+  ban: Ban,
   home: House,
   user: User,
   userRound: UserRound,
@@ -103,6 +123,21 @@ const icons = {
   globe: Globe,
   logOut: LogOut,
   plus: Plus,
+  clipboardList: ClipboardList,
+  ellipsis: Ellipsis,
+  download: Download,
+  image: ImageGlyph,
+  medal: Medal,
+  star: Star,
+  storage: HardDrive,
+  archive: Archive,
+  arrowDown: ArrowDown,
+  arrowUp: ArrowUp,
+  copy: Copy,
+  eye: Eye,
+  grip: GripVertical,
+  share: Share2,
+  trash: Trash2,
 } satisfies Record<string, LucideIcon>;
 export type IconName = keyof typeof icons;
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

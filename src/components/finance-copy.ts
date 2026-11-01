@@ -45,7 +45,7 @@ type Copy = {
 };
 export const financeCopy: Record<Locale, Copy> = {
   fr: {
-    title: "Finance du club",
+    title: "Finances",
     intro:
       "Trésorerie du club : recettes, dépenses et historique des opérations.",
     balance: "Trésorerie",
@@ -99,6 +99,7 @@ export const financeCopy: Record<Locale, Copy> = {
       travel: "Déplacements",
       competition: "Compétitions",
       insurance: "Assurances",
+      affiliation: "Affiliations",
       other: "Autre",
     },
     methods: {
@@ -109,7 +110,7 @@ export const financeCopy: Record<Locale, Copy> = {
     },
   },
   nl: {
-    title: "Clubfinanciën",
+    title: "Financiën",
     intro: "Kas van de club: inkomsten, uitgaven en verrichtingen.",
     balance: "Kas",
     balanceHint: "Saldo van alle geregistreerde verrichtingen",
@@ -162,6 +163,7 @@ export const financeCopy: Record<Locale, Copy> = {
       travel: "Verplaatsingen",
       competition: "Competities",
       insurance: "Verzekeringen",
+      affiliation: "Aansluitingen",
       other: "Andere",
     },
     methods: {
@@ -172,7 +174,7 @@ export const financeCopy: Record<Locale, Copy> = {
     },
   },
   en: {
-    title: "Club finances",
+    title: "Finances",
     intro: "Club treasury: income, expenses and transaction history.",
     balance: "Treasury",
     balanceHint: "Balance of all recorded transactions",
@@ -225,6 +227,7 @@ export const financeCopy: Record<Locale, Copy> = {
       travel: "Travel",
       competition: "Competitions",
       insurance: "Insurance",
+      affiliation: "Affiliations",
       other: "Other",
     },
     methods: {
@@ -268,6 +271,8 @@ export const financeExtras = {
     progress: "Avancement",
     ofBudget: "{actual} sur {planned}",
     ledgerFilters: "Filtres du grand livre",
+    operationsWord: "Opérations",
+    teamWord: "Équipe",
     editBudget: "Modifier le budget",
     saveBudget: "Enregistrer le budget",
     budgetSaved: "Budget enregistré.",
@@ -316,6 +321,8 @@ export const financeExtras = {
     progress: "Voortgang",
     ofBudget: "{actual} van {planned}",
     ledgerFilters: "Filters van het grootboek",
+    operationsWord: "Verrichtingen",
+    teamWord: "Team",
     editBudget: "Budget wijzigen",
     saveBudget: "Budget opslaan",
     budgetSaved: "Budget opgeslagen.",
@@ -363,6 +370,8 @@ export const financeExtras = {
     progress: "Progress",
     ofBudget: "{actual} of {planned}",
     ledgerFilters: "Ledger filters",
+    operationsWord: "Operations",
+    teamWord: "Team",
     editBudget: "Edit budget",
     saveBudget: "Save budget",
     budgetSaved: "Budget saved.",

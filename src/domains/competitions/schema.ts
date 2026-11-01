@@ -65,6 +65,56 @@ export const clubCommand = z.discriminatedUnion("action", [
 ]);
 export type ClubCommand = z.infer<typeof clubCommand>;
 
+/**
+ * Wave 17 (C5): a friendly between clubs, its invitation, the score proposed
+ * by one club and confirmed by the other, and the transport to organise.
+ */
+export const friendlyCommand = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("friendly"),
+    teamId: id,
+    /** A team of a club of the federation, or none for an opponent outside the platform. */
+    opponentTeamId: id.nullable(),
+    opponentName: text(120),
+    home: z.boolean(),
+    startsAt: localDateTime,
+    placeId: id.nullable(),
+    venue: text(200),
+    message: text(500).default(""),
+  }),
+  z.object({ action: z.literal("answerInvitation"), id, accept: z.boolean(), answer: text(500).default("") }),
+  z.object({ action: z.literal("cancelInvitation"), id }),
+  z.object({ action: z.literal("confirmScore"), id }),
+  z.object({ action: z.literal("organizeTransport"), id }),
+]);
+export type FriendlyCommand = z.infer<typeof friendlyCommand>;
+
+export type TransportState = "home" | "ready" | "todo";
+/** « En ordre » at our home hall, or with a linked trip that has a vehicle and a driver; else to organise. */
+export function transportState(m: { atHome: boolean; tripReady: boolean }): TransportState {
+  if (m.atHome) return "home";
+  return m.tripReady ? "ready" : "todo";
+}
+
+export type Answer = { name: string; response: string };
+/** « Joueurs 7/9 »: those who said they come, out of those invited; names present first, then without answer. */
+export function presenceLine(people: Answer[]) {
+  const coming = people.filter((p) => p.response === "present");
+  const waiting = people.filter((p) => p.response === "none");
+  return { coming: coming.length, invited: people.length, names: [...coming.map((p) => p.name)], waiting: waiting.map((p) => p.name) };
+}
+
+/** Tournament matches grouped by match day, in date order then kick-off. */
+export function byTournamentDay<M extends { day_id: string; day: string; label: string; tournament: string; kickoff: string }>(matches: M[]) {
+  const days = new Map<string, { id: string; day: string; label: string; tournament: string; matches: M[] }>();
+  for (const m of [...matches].sort((a, b) => a.day.localeCompare(b.day) || a.kickoff.localeCompare(b.kickoff))) {
+    const g = days.get(m.day_id) ?? { id: m.day_id, day: m.day, label: m.label, tournament: m.tournament, matches: [] };
+    g.matches.push(m);
+    days.set(m.day_id, g);
+  }
+  return [...days.values()];
+}
+
 export const refereeCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("availability"),

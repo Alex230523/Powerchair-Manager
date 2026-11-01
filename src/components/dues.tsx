@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
 import { ApplyScope, useScope, useScopedTeam, useSeeded } from "./use-scope";
-import { Button, Badge, Card, EmptyState, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
+import { Button, Badge, Card, EmptyState, ExportButton, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
 import { Icon } from "./icons";
 import { CollectionBar } from "./collection-bar";
@@ -14,6 +14,8 @@ import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
+import { IssueWizard } from "./dues-issue";
+import { duesIssueCopy } from "./dues-issue-copy";
 const copy = {
   fr: {
     collected: "Encaissé",
@@ -49,8 +51,6 @@ const copy = {
     overpaid: "Le montant dépasse ce qui reste dû sur cette cotisation.",
     title: "Cotisations",
     intro: "Barèmes par saison, créances individuelles et échéanciers.",
-    limits:
-      "Les encaissements, virements, QR et rapprochements seront disponibles au lot 09. Aucun paiement n’est enregistré ici.",
     plans: "Barèmes",
     season: "Saison",
     team: "Équipe",
@@ -131,8 +131,6 @@ const copy = {
     overpaid: "Het bedrag is hoger dan wat nog verschuldigd is.",
     title: "Bijdragen",
     intro: "Seizoenstarieven, individuele vorderingen en termijnen.",
-    limits:
-      "Betalingen, overschrijvingen, QR en afstemming volgen in fase 09. Hier worden geen betalingen geboekt.",
     plans: "Tarieven",
     season: "Seizoen",
     team: "Team",
@@ -213,8 +211,6 @@ const copy = {
     overpaid: "The amount exceeds what is still due on this receivable.",
     title: "Dues",
     intro: "Season rates, individual receivables and instalments.",
-    limits:
-      "Payments, bank transfers, QR codes and reconciliation will follow in lot 09. No payments are recorded here.",
     plans: "Rates",
     season: "Season",
     team: "Team",
@@ -345,19 +341,17 @@ const remindLabel = {
   nl: "Wie niet in orde is herinneren",
   en: "Remind those not up to date",
 };
-export function Dues({ locale }: { locale: Locale }) {
+export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettre les cotisations de l'équipe » from a team's page. */ issueTeam?: string }) {
   const t = copy[locale] as (typeof copy)["fr"],
     [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [planId, setPlanId] = useState(""),
-    [applicationId, setApplicationId] = useState(""),
     [confirmation, setConfirmation] = useState(""),
     [q, setQ] = useState(""),
     [detailId, setDetailId] = useState(""),
     [payId, setPayId] = useState(""),
-    [issuing, setIssuing] = useState(false);
+    [issuing, setIssuing] = useState(!!issueTeam);
   // The season chosen in the top bar (wave 12) seeds the season filter.
   const scope = useScope();
   const [filter, setFilter] = useSeeded(scope.seasonId ?? "");
@@ -437,8 +431,6 @@ export function Dues({ locale }: { locale: Locale }) {
     e.preventDefault();
     return command(fn(new FormData(e.currentTarget)));
   }
-  const plan = view?.plans.find((p) => p.id === planId),
-    admission = view?.followups.find((a) => a.id === applicationId);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
   const day = (d: string) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
@@ -478,14 +470,15 @@ export function Dues({ locale }: { locale: Locale }) {
             </Link>
             {view?.manage && (
               <>
-                <Link className="button secondary" href={`/${locale}/reminders?kind=dues`}>
+                <Link className="button secondary" href={`/${locale}/settings/notifications?kind=dues#settings-reminders`}>
                   {remindLabel[locale]}
                 </Link>
                 <Link className="button secondary" href={`/${locale}/settings/money#settings-dues-title`}>
                   {settingsLabel[locale]}
                 </Link>
-                <button type="button" className="button" onClick={() => setIssuing(true)} disabled={!view.plans.some((p) => !p.archived)}>
-                  {t.issue}
+                {/* A3: always there for dues.manage; without a rate the wizard starts by creating one. */}
+                <button type="button" className="button" onClick={() => setIssuing(true)}>
+                  {duesIssueCopy[locale].open}
                 </button>
               </>
             )}
@@ -555,11 +548,41 @@ export function Dues({ locale }: { locale: Locale }) {
                     ))}
                   </select>
                 </label>
+                {/* Wave 17 (G2): the dues shown, with their season, team and state filters. */}
+                <ExportButton
+                  locale={locale}
+                  organizationId={view.organizationId}
+                  dataset="dues"
+                  subject={t.title}
+                  period={view.debts.find((d) => d.season_id === filter)?.season_name ?? ""}
+                  rows={rows}
+                  columns={[
+                    { id: "person", label: t.person, value: (d) => d.full_name },
+                    { id: "team", label: t.team, value: (d) => (d.team_ids ?? []).map((id) => teams.find((v) => v.id === id)?.name ?? "").filter(Boolean).join(", ") },
+                    { id: "plan", label: t.plan, value: (d) => d.category },
+                    { id: "season", label: t.season, value: (d) => d.season_name },
+                    { id: "net", label: t.net, type: "money", value: (d) => d.net_cents / 100 },
+                    { id: "collected", label: t.collected, type: "money", value: (d) => Math.min(d.paid_cents, d.net_cents) / 100 },
+                    { id: "remaining", label: t.remaining, type: "money", value: (d) => Math.max(0, d.net_cents - d.paid_cents) / 100 },
+                    { id: "next", label: t.nextDue, type: "date", value: (d) => (d.status === "open" ? (nextOpen(d)?.due_on ?? null) : null) },
+                    { id: "state", label: t.state, value: (d) => t.states[d.state] },
+                  ]}
+                />
               </Toolbar>
             }
           >
             {!rows.length ? (
-              <EmptyState title={t.empty} icon="dues" />
+              <EmptyState
+                title={seasonRows.length || q || stateFilter ? t.empty : duesIssueCopy[locale].emptySeason}
+                icon="dues"
+                action={
+                  view.manage && !seasonRows.length ? (
+                    <button type="button" className="button" onClick={() => setIssuing(true)}>
+                      {duesIssueCopy[locale].open}
+                    </button>
+                  ) : undefined
+                }
+              />
             ) : (
               <DataGrid
                 locale={locale}
@@ -705,74 +728,21 @@ export function Dues({ locale }: { locale: Locale }) {
           </Card>
         </>
       )}
-      {view && issuing && (
-        <Modal title={t.issue} close={() => setIssuing(false)}>
-          <form
-            onSubmit={(e) =>
-              submit(e, (d) => ({
-                action: "issue",
-                planId,
-                profileId: d.get("person"),
-                discountCents: Math.round(Number(d.get("discount")) * 100),
-                reason: d.get("reason"),
-                installments: Number(d.get("count")),
-                firstDue: d.get("due"),
-                ...(applicationId ? { applicationId } : {}),
-              })).then((ok) => ok && setIssuing(false))
-            }
-          >
-            <label>
-              {t.followups}
-              <select value={applicationId} onChange={(e) => { setApplicationId(e.target.value); setPlanId(""); }}>
-                <option value="">{t.manual}</option>
-                {view.followups.map((a) => (
-                  <option key={a.id} value={a.id}>{a.subject_name} · {view.seasons.find((s) => s.id === a.season_id)?.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t.plan}
-              <select value={planId} required onChange={(e) => setPlanId(e.target.value)}>
-                <option value="" disabled>{t.plan}</option>
-                {view.plans.filter((p) => !p.archived && (!admission || p.season_id === admission.season_id)).map((p) => (
-                  <option key={p.id} value={p.id}>{p.category} · {view.seasons.find((s) => s.id === p.season_id)?.name} · {money(p.amount_cents)}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t.person}
-              <select name="person" key={applicationId} defaultValue={admission?.profile_id} required>
-                {view.profiles.filter((p) => !admission || p.id === admission.profile_id).map((p) => (
-                  <option key={p.id} value={p.id}>{p.full_name}</option>
-                ))}
-              </select>
-            </label>
-            <div className="form-pair">
-              <label>
-                {t.discount}
-                <input name="discount" type="number" min="0" max={(plan?.amount_cents ?? 0) / 100} step="0.01" defaultValue="0" required />
-              </label>
-              <label>
-                {t.reason}
-                <input name="reason" maxLength={500} />
-              </label>
-            </div>
-            <div className="form-pair">
-              <label>
-                {t.count}
-                <input name="count" key={planId + applicationId + "count"} type="number" min="1" max={plan?.max_installments ?? 1} defaultValue={Math.min(admission?.installments ?? 1, plan?.max_installments ?? 1)} required />
-              </label>
-              <label>
-                {t.due}
-                <input name="due" key={planId} type="date" defaultValue={plan?.first_due} required />
-              </label>
-            </div>
-            <div className="actions">
-              <Button disabled={busy || !planId || !view.profiles.length}>{t.issueShort}</Button>
-              <button type="button" className="button secondary" onClick={() => setIssuing(false)}>{t.close}</button>
-            </div>
-          </form>
-        </Modal>
+      {view?.manage && issuing && (
+        <IssueWizard
+          locale={locale}
+          organizationId={view.organizationId}
+          plans={view.plans}
+          seasons={view.seasons}
+          teams={view.teams}
+          profiles={view.profiles}
+          team={issueTeam && view.teams.some((x) => x.id === issueTeam) ? issueTeam : undefined}
+          close={() => setIssuing(false)}
+          done={(m) => {
+            setIssuing(false);
+            void load().then(() => setMessage(m));
+          }}
+        />
       )}
       {paying && (
         <Modal title={`${t.payTitle} · ${paying.full_name}`} close={closePay}>

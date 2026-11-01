@@ -8,6 +8,7 @@ export const todoKeys = [
   "myAttendance",
   "myDocuments",
   "myApplications",
+  "myTasks",
   "registrationsReview",
   "duesLate",
   "sponsorTasks",
@@ -19,6 +20,7 @@ export const todoKeys = [
   "coursesExpiring",
   "documentsMissing",
   "documentsExpiring",
+  "teamsOverCapacity",
 ] as const;
 export type TodoKey = (typeof todoKeys)[number];
 export type Todo = { key: TodoKey; count: number; href: string; tone: Tone };
@@ -28,6 +30,7 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   myAttendance: { href: "/attendance", tone: "warning" },
   myDocuments: { href: "/documents", tone: "warning" },
   myApplications: { href: "/registrations/mine", tone: "warning" },
+  myTasks: { href: "/tasks", tone: "warning" },
   registrationsReview: { href: "/registrations", tone: "warning" },
   duesLate: { href: "/dues?state=late", tone: "danger" },
   sponsorTasks: { href: "/tasks", tone: "warning" },
@@ -39,6 +42,7 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   coursesExpiring: { href: "/coaches", tone: "info" },
   documentsMissing: { href: "/documents", tone: "info" },
   documentsExpiring: { href: "/documents", tone: "info" },
+  teamsOverCapacity: { href: "/teams", tone: "warning" },
 };
 /**
  * Keeps only actionable items (count > 0) that the caller computed under the
@@ -50,6 +54,62 @@ export function buildTodos(counts: Partial<Record<TodoKey, number>>): Todo[] {
     .filter((key) => Number.isInteger(counts[key]) && (counts[key] ?? 0) > 0)
     .map((key) => ({ key, count: counts[key] as number, ...todoMeta[key] }));
 }
+/* ------------------------------------------------------- Board (wave 16, A) */
+/** The squares of « À faire »: a fixed set that turns green when up to date, instead of disappearing. */
+export type BoardKey = TodoKey | "documents" | "moneyTasks" | "clubStatus";
+export type ClubStatusSquare = { done: number; total: number; late: number; next: { title: string; due: string | null }[] };
+export type Square = {
+  key: BoardKey;
+  count: number;
+  href: string;
+  tone: Tone;
+  /** Documents: expiring within 30 days, said but not counted as a problem. */
+  expiring?: number;
+  status?: ClubStatusSquare;
+};
+export type Board = { squares: Square[]; also: Square[] };
+const boardMeta: Record<"documents" | "moneyTasks" | "clubStatus", { href: string; tone: Tone }> = {
+  documents: { href: "/documents", tone: "danger" },
+  moneyTasks: { href: "/tasks", tone: "warning" },
+  clubStatus: { href: "/settings/club#settings-obligations", tone: "warning" },
+};
+/** The president's six squares, always in this order when available. */
+export const presidentSquares: BoardKey[] = ["documents", "registersToClose", "registrationsReview", "duesLate", "moneyTasks", "clubStatus"];
+/** What takes the place of a square whose module is off or out of reach. */
+const replacements: BoardKey[] = ["equipmentService", "registrationFollowups", "documentsReview", "teamsOverCapacity", "coursesExpiring", "courseRequests"];
+/** Coaches, players and parents: their own squares first. */
+const memberSquares: BoardKey[] = ["myAttendance", "myDocuments", "myApplications", "myTasks", "registersToClose", "documents", "registrationsReview", "duesLate", "moneyTasks"];
+/** Counted inside a merged square, never shown on their own. */
+const merged = new Set<BoardKey>(["documentsExpired", "documentsMissing", "documentsExpiring", "sponsorTasks", "grantTasks"]);
+const defined = (n: number | undefined): n is number => Number.isInteger(n);
+
+/**
+ * The board of « À faire ». A square exists when its figure was computed for
+ * this actor (module on, right held); at 0 it stays, green. Up to six squares;
+ * the other non-zero figures go on the discreet « Aussi : » line.
+ */
+export function buildBoard(counts: Partial<Record<TodoKey, number>>, opts: { president: boolean; status?: ClubStatusSquare | null }): Board {
+  const sum = (...keys: TodoKey[]) => (keys.some((k) => defined(counts[k])) ? keys.reduce((n, k) => n + (counts[k] ?? 0), 0) : undefined);
+  const value: Partial<Record<BoardKey, number>> = { ...counts };
+  value.documents = sum("documentsExpired", "documentsMissing");
+  value.moneyTasks = sum("sponsorTasks", "grantTasks");
+  value.clubStatus = opts.status ? opts.status.total - opts.status.done : undefined;
+  const square = (key: BoardKey): Square => ({
+    key,
+    count: value[key] as number,
+    ...(key in boardMeta ? boardMeta[key as keyof typeof boardMeta] : todoMeta[key as TodoKey]),
+    // Only grant steps to do: the tasks page opens on them.
+    ...(key === "moneyTasks" && !counts.sponsorTasks && counts.grantTasks ? { href: todoMeta.grantTasks.href } : {}),
+    ...(key === "documents" && defined(counts.documentsExpiring) ? { expiring: counts.documentsExpiring } : {}),
+    ...(key === "clubStatus" && opts.status ? { status: opts.status } : {}),
+  });
+  const order = [...(opts.president ? presidentSquares : memberSquares), ...replacements];
+  const squares = order.filter((k) => defined(value[k])).slice(0, 6);
+  const shown = new Set(squares);
+  const also = ([...todoKeys, "documents", "moneyTasks"] as BoardKey[]).filter((k) => !shown.has(k) && !merged.has(k) && defined(value[k]) && (value[k] as number) > 0);
+  return { squares: squares.map(square), also: also.map(square) };
+}
+
 export const metricKeys = [
   "activeMembers",
   "activePlayers",
@@ -61,6 +121,13 @@ export const metricKeys = [
   "duesNext30",
   "treasury",
   "myNextDue",
+  // The president's key figures (wave 16, A), for the season in view.
+  "seasonPlayers",
+  "seasonTeams",
+  "seasonCoaches",
+  "chairs",
+  "trainingsDone",
+  "matchesPlayed",
 ] as const;
 export type MetricKey = (typeof metricKeys)[number];
 export type Metric = {
@@ -69,6 +136,8 @@ export type Metric = {
   format: "count" | "cents";
   href?: string;
   date?: string;
+  /** A second figure said in the hint (chairs in service, say). */
+  extra?: number;
 };
 export function metric(
   key: MetricKey,
@@ -141,6 +210,8 @@ export type Dashboard = {
   /** What the "Créer" menu may offer this actor. */
   can?: { event: boolean; player: boolean; operation: boolean; mail: boolean };
   todos: Todo[];
+  /** « À faire » in fixed squares (wave 16, A). */
+  board?: Board;
   metrics: Metric[];
   agenda: AgendaItem[];
   deadlines: Deadline[];

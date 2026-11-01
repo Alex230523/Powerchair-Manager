@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C12): the annual accounts from the finance page: the draft from
@@ -18,14 +19,10 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `accounts-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Accounts president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Accounts president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -48,12 +45,12 @@ test("annual accounts: draft, manual line, verified, approved, printed; financia
       await db.query("INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,created_by) VALUES($1,$2,'Opération',$3,$4,$5,$6)", [club, day, direction, category, cents, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. From the finance page to the draft of last year.
     await page.goto("/fr/funding");
-    await page.getByRole("link", { name: "Comptes annuels", exact: true }).click();
+    await page.getByRole("navigation", { name: "Sections des finances" }).getByRole("link", { name: "Comptes annuels et rapports", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/funding\/annual-accounts$/);
     await expect(page.locator(".accounts-banner")).toContainText("Projet généré depuis la plateforme");
     const statement = page.locator("#accounts-statement");

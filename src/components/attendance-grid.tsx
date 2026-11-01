@@ -9,9 +9,9 @@ export { gridCopy };
 type View = Awaited<ReturnType<typeof attendanceView>>;
 type Ev = View["events"][number];
 
-const cycle = ["present", "absent", "late", "early", "unchecked"] as const;
+const cycle = ["present", "absent", "excused", "late", "early", "unchecked"] as const;
 const tone = (v: string) =>
-  v === "present" ? "ok" : v === "absent" ? "low" : v === "late" || v === "early" || v === "uncertain" ? "warn" : "";
+  v === "present" ? "ok" : v === "absent" ? "low" : v === "late" || v === "early" || v === "uncertain" || v === "excused" ? "warn" : "";
 
 /**
  * People x sessions grid (wave 10, after PRÊT). Clicking a cell of a started

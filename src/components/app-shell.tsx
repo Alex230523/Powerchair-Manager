@@ -1,16 +1,17 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { FirstSteps } from "./first-steps";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
-import { shellCopy } from "./shell-copy";
+import { languageNames, shellCopy } from "./shell-copy";
 import { CommandPalette, scopeFocusEvent } from "./command-palette";
 import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
-import { ScopeProvider, useScope } from "./use-scope";
+import { defaultSeasonId, ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
 import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
@@ -62,19 +63,38 @@ function setTheme(next: "light" | "dark") {
   }
   window.dispatchEvent(new Event("pfm-theme"));
 }
-/** Light or dark, as a segmented pair in the account menu. */
+/** Light or dark: two round icon buttons (wave 16, M1), each named for screen readers and in a tooltip. */
 export function ThemeChoice({ t }: { t: Copy }) {
   const dark = useSyncExternalStore(subscribeTheme, isDark, () => null);
   if (dark === null) return null;
   return (
-    <div className="segmented account-theme" role="group" aria-label={t.theme}>
-      <button type="button" aria-pressed={!dark} onClick={() => setTheme("light")}>
-        <Icon name="sun" size={16} /> {t.themeLight}
+    <div className="theme-icons" role="group" aria-label={t.theme}>
+      <button type="button" className="theme-icon" aria-pressed={!dark} aria-label={t.themeLightName} title={t.themeLightName} onClick={() => setTheme("light")}>
+        <Icon name="sun" size={16} />
       </button>
-      <button type="button" aria-pressed={dark} onClick={() => setTheme("dark")}>
-        <Icon name="moon" size={16} /> {t.themeDark}
+      <button type="button" className="theme-icon" aria-pressed={dark} aria-label={t.themeDarkName} title={t.themeDarkName} onClick={() => setTheme("dark")}>
+        <Icon name="moon" size={16} />
       </button>
     </div>
+  );
+}
+/** The language as a compact list (wave 16, M1): choosing one opens the same page in that language. */
+export function LanguageChoice({ t, locale, id }: { t: Copy; locale: Locale; id: string }) {
+  const path = usePathname(),
+    router = useRouter();
+  return (
+    <select
+      id={id}
+      className="compact-select"
+      value={locale}
+      onChange={(e) => router.push(path.replace(/^\/(fr|nl|en)(?=\/|$)/, `/${e.target.value}`))}
+    >
+      {(["fr", "nl", "en"] as const).map((l) => (
+        <option key={l} value={l} lang={l}>
+          {languageNames[l]}
+        </option>
+      ))}
+    </select>
   );
 }
 /* Text size and contrast (wave 15, C4): kept on this device, applied before paint by themeScript. */
@@ -107,25 +127,45 @@ function setDisplay(key: "textSize" | "contrast", value: string) {
   }
   window.dispatchEvent(new Event("pfm-display"));
 }
-/** Text size and stronger contrast, in the account menu and in Settings > My account. */
-export function DisplayChoice({ t }: { t: Copy }) {
+/** Text size as a compact list (wave 16, M1). */
+export function TextSizeChoice({ t, id }: { t: Copy; id: string }) {
   const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
   if (state === null) return null;
-  const [size, contrast] = state.split("|");
+  const size = state.split("|")[0];
   const label: Record<TextSize, string> = { normal: t.textNormal, large: t.textLarge, xlarge: t.textXLarge };
   return (
+    <select id={id} className="compact-select" data-nodirty="" value={size} onChange={(e) => setDisplay("textSize", e.target.value)}>
+      {textSizes.map((s) => (
+        <option key={s} value={s}>
+          {label[s]}
+        </option>
+      ))}
+    </select>
+  );
+}
+/** Stronger contrast: an 18 px box; the whole label is the 44 px target (wave 16, M1). */
+export function ContrastChoice({ t }: { t: Copy }) {
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
+  if (state === null) return null;
+  return (
+    <label className="check small-check">
+      <input type="checkbox" data-nodirty="" checked={state.split("|")[1] === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
+      {t.contrast}
+    </label>
+  );
+}
+/** Text size and stronger contrast together, in Settings > My account. */
+export function DisplayChoice({ t }: { t: Copy }) {
+  const id = useId();
+  return (
     <div className="display-choice">
-      <div className="segmented text-size" role="group" aria-label={t.textSize}>
-        {textSizes.map((s) => (
-          <button key={s} type="button" aria-pressed={size === s} onClick={() => setDisplay("textSize", s)}>
-            {label[s]}
-          </button>
-        ))}
+      <div className="menu-row">
+        <label className="menu-heading" htmlFor={id}>
+          {t.textSize}
+        </label>
+        <TextSizeChoice t={t} id={id} />
       </div>
-      <label className="check">
-        <input type="checkbox" data-nodirty="" checked={contrast === "more"} onChange={(e) => setDisplay("contrast", e.target.checked ? "more" : "normal")} />
-        {t.contrast}
-      </label>
+      <ContrastChoice t={t} />
     </div>
   );
 }
@@ -137,7 +177,37 @@ const counterRoutes: Record<string, Todo["key"]> = {
 };
 type Brief = { unread: number; latest: { id: string; title: string; body: string | null; href: string | null; read_at: string | null; created_at: string }[] };
 
-export function AppShell({ locale, children }: { locale: Locale; children: ReactNode }) {
+/** A visitor (wave 16, I1): no menu, no season or team, no bell; the brand, the language and « Se connecter ». */
+function GuestShell({ locale, children }: { locale: Locale; children: ReactNode }) {
+  const t = shellCopy[locale];
+  const path = usePathname();
+  const onAccess = /\/access\/?$/.test(path);
+  return (
+    <div className="guest-shell">
+      <header className="guest-bar">
+        <Link className="brand" href={`/${locale}/access`}>
+          <BrandMark size={28} />
+          <span className="brand-name">{t.brandName}</span>
+        </Link>
+        <div className="guest-tools">
+          <label className="sr-only" htmlFor="guest-language">
+            {t.language}
+          </label>
+          <LanguageChoice t={t} locale={locale} id="guest-language" />
+          {!onAccess && (
+            <Link className="button sm" href={`/${locale}/access`}>
+              {t.signIn}
+            </Link>
+          )}
+        </div>
+      </header>
+      {children}
+      <ToastHost locale={locale} />
+    </div>
+  );
+}
+
+export function AppShell({ locale, signedIn = true, children }: { locale: Locale; signedIn?: boolean; children: ReactNode }) {
   const path = usePathname(),
     t = shellCopy[locale];
   const [state, setState] = useState<Workspace | null>(null),
@@ -275,7 +345,8 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       first.focus();
     }
   }, []);
-  if (path.includes("/registration-widget/")) return children;
+  // Widgets (B6: a club's /c/<slug>/widget/<kind> too) are embedded bare in other sites.
+  if (path.includes("/registration-widget/") || path.includes("/hall-of-fame-widget/") || /\/c\/[^/]+\/widget\//.test(path)) return children;
   function current(route: string) {
     const href = `/${locale}${route}`;
     if (path === href) return "page" as const;
@@ -330,7 +401,6 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       window.location.assign(`/${locale}/access`);
     }
   }
-  const localePath = (l: Locale) => path.replace(/^\/(fr|nl|en)(?=\/|$)/, `/${l}`);
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
@@ -347,9 +417,11 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
       .map((e) => ({ route: `/settings/${e.category}#${e.anchor}`, label: `${h.entries[e.id].title} · ${t.settings}` })),
   ];
   const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
+  if (!signedIn) return <GuestShell locale={locale}>{children}</GuestShell>;
   return (
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}
+      taxApproved={state?.selected?.kind === "club" && !!state.selected.tax_approved}
       seasons={state?.seasons ?? []}
       teams={state?.teams ?? []}
     >
@@ -436,38 +508,37 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
                   <Icon name="userRound" size={16} /> {t.myAccount}
                 </Link>
               )}
-              <Link className="menu-link" href={`/${locale}/access`}>
-                <Icon name="lock" size={16} /> {t.access}
-              </Link>
               {state && (
                 <Link className="menu-link" href={`/${locale}/settings`}>
                   <Icon name="settings" size={16} /> {t.settings}
                 </Link>
               )}
+              {/* Wave 16 (M1): one line per setting, label left, compact control right. */}
+              <hr className="menu-separator" />
               <div className="menu-row">
-                <span className="menu-heading">
+                <label className="menu-heading" htmlFor="account-language">
                   <Icon name="globe" size={16} /> {t.language}
-                </span>
-                <span className="menu-langs">
-                  {(["fr", "nl", "en"] as const).map((l) => (
-                    <Link key={l} href={localePath(l)} aria-current={l === locale ? "true" : undefined} lang={l}>
-                      {l.toUpperCase()}
-                    </Link>
-                  ))}
-                </span>
+                </label>
+                <LanguageChoice t={t} locale={locale} id="account-language" />
               </div>
               <div className="menu-row">
                 <span className="menu-heading">{t.theme}</span>
                 <ThemeChoice t={t} />
               </div>
               <div className="menu-row">
-                <span className="menu-heading">{t.textSize}</span>
-                <DisplayChoice t={t} />
+                <label className="menu-heading" htmlFor="account-text-size">
+                  {t.textSize}
+                </label>
+                <TextSizeChoice t={t} id="account-text-size" />
               </div>
+              <ContrastChoice t={t} />
               {state && (
-                <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
-                  <Icon name="logOut" size={16} /> {t.signOut}
-                </button>
+                <>
+                  <hr className="menu-separator" />
+                  <button type="button" className="menu-link" disabled={busy} onClick={() => void signOut()}>
+                    <Icon name="logOut" size={16} /> {t.signOut}
+                  </button>
+                </>
               )}
               {error && <p role="alert">{error}</p>}
             </div>
@@ -567,10 +638,10 @@ export function AppShell({ locale, children }: { locale: Locale; children: React
               )}
             </div>
           </header>
-          <ScopeChip t={t} />
           {children}
           <ToastHost locale={locale} />
         </div>
+        {signedIn && <FirstSteps locale={locale} role={role} />}
         {bottom.length > 0 && (
           <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
             {bottom.map((i) => {
@@ -627,7 +698,8 @@ function ScopeBar({ t }: { t: Copy }) {
     archived = scope.seasons.filter((s) => s.archived);
   return (
     <div className="scope-bar">
-      <label className="capsule">
+      {/* Wave 16 (B1): a capsule whose choice narrows the view is tinted; no chip under the bar any more. */}
+      <label className="capsule" data-active={scope.seasonId && scope.seasonId !== defaultSeasonId(scope.seasons) ? "" : undefined}>
         <span className="capsule-label">{t.season}</span>
         <select ref={season} aria-label={t.season} value={scope.seasonId ?? ""} onChange={(e) => scope.setSeason(e.target.value || null)}>
           {open.map((s) => (
@@ -647,7 +719,7 @@ function ScopeBar({ t }: { t: Copy }) {
         </select>
       </label>
       {scope.seasonTeams.length > 1 && (
-        <label className="capsule">
+        <label className="capsule" data-active={scope.teamId ? "" : undefined}>
           <span className="team-dot" data-color={scope.team?.color ?? "none"} aria-hidden="true" />
           <span className="capsule-label">{t.team}</span>
           <select ref={team} aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
@@ -660,23 +732,6 @@ function ScopeBar({ t }: { t: Copy }) {
           </select>
         </label>
       )}
-    </div>
-  );
-}
-/** Under the top bar when one team is chosen: "Équipe A · 2026-2027", with a cross. */
-function ScopeChip({ t }: { t: Copy }) {
-  const scope = useScope();
-  if (!scope.team) return null;
-  return (
-    <div className="scope-chip-row">
-      <span className="scope-chip">
-        <span className="team-dot" data-color={scope.team.color ?? "none"} aria-hidden="true" />
-        {scope.team.name}
-        {scope.season && <span className="muted"> · {scope.season.name}</span>}
-        <button type="button" className="scope-clear" aria-label={t.scopeClear} onClick={() => scope.setTeam(null)}>
-          ×
-        </button>
-      </span>
     </div>
   );
 }

@@ -342,13 +342,17 @@ it("runs the course workflow: federation creates, club asks, federation confirms
       federation,
     ),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // Wave 17 (O1): a coach may ask for their own course, never for a colleague's.
+  const colleague = (
+    await db.query("WITH p AS (INSERT INTO person DEFAULT VALUES RETURNING id) INSERT INTO club_person(organization_id,person_id,full_name,directory_roles) SELECT $1,id,'Alex Collègue','{coach}' FROM p RETURNING id", [club])
+  ).rows[0].id as string;
   await expect(
     coachExecute(
       db,
       coach,
       {
         action: "requestCourse",
-        profileId: coachProfile,
+        profileId: colleague,
         courseId: course.id,
         note: "",
       },

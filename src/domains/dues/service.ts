@@ -12,14 +12,10 @@ import { offerUndo } from "../undo/service";
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { ownProfiles, today, type Actor } from "../calendar/access";
-import {
-  commandSchema,
-  schedule,
-  siblingDiscount,
-  siblingRanks,
-  type Command,
-} from "./schema";
+import { commandSchema, type Command } from "./schema";
+import { activePlan, issueMany, preview, tellFamilies } from "./issue";
 import { receivableTeamsSql } from "./teams";
+import { log as logCore, recomputeSiblings as recomputeCore, writeSchedule as scheduleCore, type DuesCtx } from "./core";
 export { commandSchema };
 type Scope = {
   c: PoolClient;
@@ -81,107 +77,16 @@ async function scope<T>(
     c.release();
   }
 }
-async function log(
-  s: Scope,
-  action: string,
-  planId: string,
-  receivableId: string | null,
-  before: unknown,
-  after: unknown,
-  reason = "",
-) {
-  await s.c.query(
-    "INSERT INTO dues_history(organization_id,plan_id,receivable_id,actor_id,action,before_data,after_data,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
-    [
-      s.a.organization_id,
-      planId,
-      receivableId,
-      s.p.userId,
-      action,
-      JSON.stringify(before),
-      JSON.stringify(after),
-      reason,
-    ],
-  );
-  await audit(
-    s.c,
-    s.a.organization_id,
-    s.p.userId,
-    "dues." + action,
-    receivableId ?? planId,
-  );
+/* The writing helpers live in core.ts, shared with the issue wizard and the registrations (A3). */
+const ctx = (s: Scope): DuesCtx => ({ c: s.c, org: s.a.organization_id, userId: s.p.userId });
+function log(s: Scope, action: string, planId: string, receivableId: string | null, before: unknown, after: unknown, reason = "") {
+  return logCore(ctx(s), action, planId, receivableId, before, after, reason);
 }
-/**
- * Applies the sibling rule of a plan to its open dues. Dues with a payment, or
- * with a discount set by hand, are left as they are.
- */
-async function recomputeSiblings(s: Scope, planId: string) {
-  const plan = (await s.c.query("SELECT *,first_due::text AS first_due FROM dues_plan WHERE id=$1", [planId])).rows[0];
-  if (!plan) return;
-  const open = (
-    await s.c.query(
-      `SELECT d.id,d.profile_id,d.discount_cents,d.sibling_rank,d.gross_cents,cp.birth_date::text AS birth_date,cp.full_name,
-              (SELECT count(*) FROM dues_installment i WHERE i.receivable_id=d.id)::int AS n,
-              (SELECT min(due_on)::text FROM dues_installment i WHERE i.receivable_id=d.id) AS first_due,
-              EXISTS(SELECT 1 FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL) AS paid
-         FROM dues_receivable d JOIN club_person cp ON cp.id=d.profile_id
-        WHERE d.plan_id=$1 AND d.status='open'`,
-      [planId],
-    )
-  ).rows;
-  if (!open.length) return;
-  const links = (
-    await s.c.query(
-      "SELECT subject_profile_id,guardian_profile_id FROM guardian_relationship WHERE organization_id=$1 AND revoked_at IS NULL AND subject_profile_id=ANY($2::uuid[])",
-      [plan.organization_id, open.map((r) => r.profile_id)],
-    )
-  ).rows;
-  const guardiansOf = new Map<string, Set<string>>();
-  for (const l of links)
-    guardiansOf.set(
-      l.subject_profile_id,
-      new Set([...(guardiansOf.get(l.subject_profile_id) ?? []), l.guardian_profile_id]),
-    );
-  const ranks = siblingRanks(
-    open.map((r) => ({ id: r.profile_id, birth_date: r.birth_date, full_name: r.full_name })),
-    guardiansOf,
-  );
-  for (const r of open) {
-    if (r.paid || (r.sibling_rank === null && r.discount_cents > 0)) continue;
-    const rank = ranks.get(r.profile_id) ?? 1;
-    const discount = siblingDiscount(
-      r.gross_cents,
-      rank,
-      plan.sibling_second_percent,
-      plan.sibling_next_percent,
-    );
-    const newRank = discount > 0 ? rank : null;
-    if (discount === r.discount_cents && newRank === r.sibling_rank) continue;
-    const after = (
-      await s.c.query(
-        "UPDATE dues_receivable SET discount_cents=$2,sibling_rank=$3,reason=$4,version=version+1 WHERE id=$1 RETURNING *",
-        [r.id, discount, newRank, discount > 0 ? `Réduction fratrie (${rank}e enfant)` : ""],
-      )
-    ).rows[0];
-    await writeSchedule(s, r.id, after.net_cents, Math.max(1, r.n), r.first_due ?? plan.first_due);
-    await log(s, "sibling", planId, r.id, { discount_cents: r.discount_cents }, { discount_cents: discount, sibling_rank: newRank });
-  }
+function recomputeSiblings(s: Scope, planId: string) {
+  return recomputeCore(ctx(s), planId);
 }
-async function writeSchedule(
-  s: Scope,
-  id: string,
-  cents: number,
-  count: number,
-  first: string,
-) {
-  const rows = schedule(cents, count, first);
-  await s.c.query("DELETE FROM dues_installment WHERE receivable_id=$1", [id]);
-  for (const r of rows)
-    await s.c.query(
-      "INSERT INTO dues_installment(receivable_id,ordinal,due_on,amount_cents) VALUES($1,$2,$3,$4)",
-      [id, r.ordinal, r.due_on, r.amount_cents],
-    );
-  return rows;
+function writeSchedule(s: Scope, id: string, cents: number, count: number, first: string) {
+  return scheduleCore(ctx(s), id, cents, count, first);
 }
 /**
  * Receivables of a season with their instalments, payments and teams, for the
@@ -246,6 +151,8 @@ export async function duesView(db: Pool, p: Principal) {
     }
     return {
       organizationId: o,
+      // A3: the rate issued by itself when a registration is accepted.
+      autoPlanId: s.manage ? (((await s.c.query("SELECT dues_auto_plan_id FROM organization WHERE id=$1", [o])).rows[0]?.dues_auto_plan_id ?? null) as string | null) : null,
       manage: s.manage,
       readOnly: s.readAll && !s.manage,
       debts,
@@ -366,6 +273,23 @@ export async function duesExecute(
         // Wave 15, C10: the payment (and its ledger line) can be undone for two minutes.
         const undo = await offerUndo(s.c, o, p.userId, "payment", row.id, { receivable: d.id, plan: d.plan_id });
         return { id: row.id as string, undo };
+      }
+      // A3: the issue wizard and the automatic issue on acceptance.
+      if (cmd.action === "preview") {
+        const plan = await activePlan(s.c, o, cmd.planId);
+        return { lines: await preview(s.c, o, plan, cmd.target) };
+      }
+      if (cmd.action === "issueMany") {
+        const plan = await activePlan(s.c, o, cmd.planId);
+        const done = await issueMany(ctx(s), plan, cmd);
+        const told = cmd.notify && done.ids.length ? await tellFamilies(s.c, o, done.ids) : 0;
+        return { issued: done.ids.length, skipped: done.skipped, told };
+      }
+      if (cmd.action === "autoIssue") {
+        if (cmd.planId) await activePlan(s.c, o, cmd.planId);
+        await s.c.query("UPDATE organization SET dues_auto_plan_id=$2 WHERE id=$1", [o, cmd.planId]);
+        await audit(s.c, o, p.userId, "dues.autoIssue", cmd.planId ?? o);
+        return { id: cmd.planId };
       }
       if (cmd.action === "plan") {
         if (

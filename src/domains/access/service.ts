@@ -1,6 +1,7 @@
 import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
+import { acceptInvitation, liveInvitation, resendInvitation } from "./invite";
 import { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import {
@@ -46,6 +47,7 @@ export const commandSchema = z.discriminatedUnion("action", [
     token: z.string().regex(/^[a-f0-9]{64}$/),
   }),
   z.object({ action: z.literal("cancelInvitation"), id: uuid }),
+  z.object({ action: z.literal("resendInvitation"), id: uuid }),
   z.object({ action: z.literal("revoke"), id: uuid }),
   z.object({
     action: z.literal("grants"),
@@ -100,7 +102,7 @@ async function account(db: Db, p: Principal) {
 }
 async function active(db: Db, p: Principal) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules,o.tax_approved FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
     [p.sessionId, p.userId],
   );
   if (!result.rowCount) throw new AccessError("CONTEXT_REQUIRED");
@@ -108,12 +110,14 @@ async function active(db: Db, p: Principal) {
     organization_name: string;
     kind: "club" | "federation";
     disabled_modules: string[];
+    /** B8: the club is approved for tax receipts (the module shows only then). */
+    tax_approved: boolean;
   };
 }
 /** A mandate's context without a session (wave 15, C7: the weekly digest), with the same validity checks as active(). */
 async function mandateContext(db: Db, mandateId: string) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules,o.tax_approved FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
     [mandateId],
   );
   return (result.rows[0] ?? null) as Awaited<ReturnType<typeof active>> | null;
@@ -251,7 +255,7 @@ async function readWorkspace(db: Db, p: Principal) {
     if (result.permissions.includes("invitations.create"))
       result.invitations = (
         await db.query(
-          "SELECT id,email,role,expires_at,accepted_at,revoked_at FROM invitation WHERE organization_id=$1 ORDER BY created_at DESC LIMIT 50",
+          "SELECT id,email,role,expires_at,accepted_at,revoked_at,disputed_at,disputed_note FROM invitation WHERE organization_id=$1 ORDER BY created_at DESC LIMIT 50",
           [selected.organization_id],
         )
       ).rows;
@@ -388,64 +392,10 @@ export async function execute(
       await client.query("SELECT id FROM organization WHERE id=$1 FOR UPDATE", [
         preliminary.rows[0].organization_id,
       ]);
-      const query = await client.query(
-        "SELECT i.*,o.kind FROM invitation i JOIN organization o ON o.id=i.organization_id WHERE i.token_hash=$1 AND i.expires_at>now() AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND (i.valid_until IS NULL OR i.valid_until>now()) FOR UPDATE OF i",
-        [hash],
-      );
-      const invite = query.rows[0];
-      if (!invite || invite.email.toLowerCase() !== user.email.toLowerCase())
-        throw new AccessError("INVITATION_INVALID", 404);
-      // A revoked or demoted issuer cannot leave usable privileged invitations behind.
-      const issuers = await client.query(
-        `SELECT r.role,r.grants FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=$1 AND r.user_id=$2 AND ${current}`,
-        [invite.organization_id, invite.created_by],
-      );
-      if (
-        !issuers.rows.some(
-          (r) =>
-            permissions(r.role, r.grants).includes("invitations.create") &&
-            (!isAdmin(invite.role) || isAdmin(r.role)) &&
-            invite.grants.every((g: Permission) =>
-              permissions(r.role, r.grants).includes(g),
-            ),
-        )
-      )
-        throw new AccessError("INVITATION_INVALID", 404);
-      if (!roleAllowed(invite.role, invite.kind))
-        throw new AccessError("INVALID_ROLE", 400);
-      const membership = await client.query(
-        "SELECT active FROM organization_membership WHERE organization_id=$1 AND user_id=$2",
-        [invite.organization_id, p.userId],
-      );
-      if (membership.rowCount && !membership.rows[0].active)
-        throw new AccessError("MEMBERSHIP_DISABLED");
-      await client.query(
-        "INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
-        [invite.organization_id, p.userId],
-      );
-      const added = await client.query(
-        "INSERT INTO role_assignment(organization_id,user_id,role,grants,valid_until,created_by,valid_from) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
-        [
-          invite.organization_id,
-          p.userId,
-          invite.role,
-          invite.grants,
-          invite.valid_until,
-          invite.created_by,
-          invite.valid_from,
-        ],
-      );
-      await client.query(
-        "UPDATE invitation SET accepted_at=now() WHERE id=$1",
-        [invite.id],
-      );
-      await audit(
-        client,
-        invite.organization_id,
-        p.userId,
-        "invitation.accepted",
-        added.rows[0].id,
-      );
+      // Wave 16 (I2): shared with the guided account creation (invite.ts).
+      const invite = await liveInvitation(client, command.token, true);
+      if (!invite) throw new AccessError("INVITATION_INVALID", 404);
+      await acceptInvitation(client, invite, { id: p.userId, email: user.email });
     } else {
       let context = await active(client, p);
       await client.query("SELECT id FROM organization WHERE id=$1 FOR UPDATE", [
@@ -453,7 +403,7 @@ export async function execute(
       ]);
       context = await active(client, p); // Re-evaluate after the lock: revocation takes effect immediately.
       const permission =
-        command.action === "invite" ? "invitations.create" : "mandates.manage";
+        command.action === "invite" || command.action === "resendInvitation" ? "invitations.create" : "mandates.manage";
       requirePermission(
         context.role,
         context.grants,
@@ -515,9 +465,21 @@ export async function execute(
         );
         await client.query("COMMIT");
         return { token };
+      } else if (command.action === "resendInvitation") {
+        // « Renvoyer »: a fresh link for the same person, the old one stops working.
+        const old = (await client.query("SELECT role,grants,issued_by_federation FROM invitation WHERE id=$1 AND organization_id=$2", [command.id, context.organization_id])).rows[0] as
+          | { role: Role; grants: Permission[]; issued_by_federation: string | null }
+          | undefined;
+        if (!old) throw new AccessError("NOT_FOUND", 404);
+        // The federation's own invitations (a club's president) stay the federation's to handle.
+        if (old.issued_by_federation) throw new AccessError("FORBIDDEN");
+        // Never hand out again what this profile could not hand out itself.
+        const mine = permissions(context.role, context.grants);
+        if ((isAdmin(old.role) && !isAdmin(context.role)) || !old.grants.every((g) => mine.includes(g))) throw new AccessError("FORBIDDEN");
+        await resendInvitation(client, context.organization_id, p.userId, command.id);
       } else if (command.action === "cancelInvitation") {
         const changed = await client.query(
-          "UPDATE invitation SET revoked_at=now() WHERE id=$1 AND organization_id=$2 AND accepted_at IS NULL AND revoked_at IS NULL RETURNING id",
+          "UPDATE invitation SET revoked_at=now() WHERE id=$1 AND organization_id=$2 AND accepted_at IS NULL AND revoked_at IS NULL AND issued_by_federation IS NULL RETURNING id",
           [command.id, context.organization_id],
         );
         if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
@@ -543,9 +505,12 @@ export async function execute(
         const own = permissions(context.role, context.grants);
         if (command.grants.some((g) => !own.includes(g)))
           throw new AccessError("FORBIDDEN");
+        // B8: tax.identity is given from the tax receipts page, never shown here: the
+        // rights screen keeps it as it was unless it names it.
+        const kept = target.grants.includes("tax.identity") && !command.grants.includes("tax.identity") ? ["tax.identity"] : [];
         await client.query(
           "UPDATE role_assignment SET grants=$3 WHERE id=$1 AND organization_id=$2",
-          [command.id, context.organization_id, [...new Set(command.grants)]],
+          [command.id, context.organization_id, [...new Set([...command.grants, ...kept])]],
         );
         // The rights journal shows what changed, not only that something did.
         await audit(
@@ -600,6 +565,8 @@ export async function execute(
           p.userId,
           "mandate." + command.action,
           command.id,
+          // The new end, for the rights journal (« jusqu'à nouvel ordre » when null).
+          command.action === "renew" ? { validUntil: command.validUntil ?? null } : undefined,
         );
       }
     }

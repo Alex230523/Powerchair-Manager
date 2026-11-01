@@ -61,6 +61,15 @@ jobs:
         run: scripts/ci-annotate.sh "Integration tests" npm run test:integration
       - name: Demo data
         run: npm run demo:seed && npm run demo:seed
+      - name: Backup and restore on a throwaway database (B2)
+        run: |
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client-18 >/dev/null
+          export PATH=/usr/lib/postgresql/18/bin:$PATH BACKUP_PASSPHRASE=$(openssl rand -hex 24)
+          psql "$DATABASE_URL" -c "CREATE DATABASE pfm_restore"
+          scripts/backup.sh ci-backup.dump.enc
+          RESTORE_URL=postgresql://pfm:pfm_ci@localhost:5432/pfm_restore SOURCE_URL="$DATABASE_URL" scripts/restore-check.sh ci-backup.dump.enc
       - name: Build
         run: scripts/ci-annotate.sh "Build" npm run build
 

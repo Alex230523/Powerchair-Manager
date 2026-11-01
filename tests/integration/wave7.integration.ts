@@ -6,7 +6,6 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import {
   tripDetail,
   tripExecute,
-  tripOfflinePack,
   tripsView,
 } from "../../src/domains/trips/service";
 import { playerProfileExecute } from "../../src/domains/player-profile/service";
@@ -242,23 +241,11 @@ it("prepares a trip with participants, an adapted vehicle and care, each role se
   expect(declined).toMatchObject({ status: "declined", chair: "powerchair", needs: "Chargeur" });
   expect((await tripsView(db, player)).trips).toHaveLength(1);
 
-  // Offline book: care instructions, no confidential health for a coach.
-  await tripExecute(
-    db,
-    player,
-    { action: "participant", participantId: leaRow.id, status: "confirmed", chair: "none", needs: "" },
-    club,
-  );
-  const pack = await tripOfflinePack(db, coach, id);
-  const leaPack = pack.people.find((p) => p.name === "Léa Joueuse")!;
-  expect(leaPack.care[0].title).toBe("Transfert au lève-personne");
-  expect("health" in leaPack).toBe(false);
-  await expect(tripOfflinePack(db, player, id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // The care instructions read for the trip are logged (the offline book was removed in wave 17).
   const kinds = (
     await db.query("SELECT kind FROM sensitive_access_log WHERE resource_id=$1", [id])
   ).rows.map((r) => r.kind);
   expect(kinds).toContain("trip_care");
-  expect(kinds).toContain("offline_book");
 });
 
 it("keeps a trip with ledger lines: cancel, not delete", async () => {
@@ -294,8 +281,7 @@ it("keeps a trip with ledger lines: cancel, not delete", async () => {
 });
 
 it("shares halls with their accessibility, with history and stale-version protection", async () => {
-  const { id } = await venueExecute(db, president, {
-    action: "save",
+  const fields = {
     name: "Sporthal Gent",
     address: "Rue du Sport 1",
     city: "Gent",
@@ -314,7 +300,14 @@ it("shares halls with their accessibility, with history and stale-version protec
     court: "",
     notes: "",
     checkedOn: today(),
-  });
+  };
+  // Wave 17 (C4): a club proposes its halls, it no longer writes the directory directly.
+  await expect(venueExecute(db, president, { action: "save", ...fields })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // A hall the club proposed and the federation validated: the club still completes it.
+  const id = (
+    await db.query("INSERT INTO shared_venue(name,address,created_by,organization_id) VALUES('Sporthal Gent','Rue du Sport 1',$1,$2) RETURNING id", [president.userId, club])
+  ).rows[0].id as string;
+  await venueExecute(db, president, { action: "save", id, version: 1, ...fields });
   const view = await venuesView(db, coach);
   const hall = view.venues.find((v) => v.id === id)!;
   expect(hall).toMatchObject({ step_free: true, adapted_toilets: null, charging: true, added_by: "Club vague 7" });
@@ -323,29 +316,7 @@ it("shares halls with their accessibility, with history and stale-version protec
     venueExecute(db, coach, { action: "shareFromPlace", placeId: randomUUID() }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(
-    venueExecute(db, president, {
-      action: "save",
-      id,
-      version: hall.version + 1,
-      name: "Sporthal Gent",
-      address: "Rue du Sport 1",
-      city: "Gent",
-      phone: "",
-      website: "",
-      stepFree: true,
-      adaptedToilets: true,
-      changingRooms: false,
-      showers: null,
-      lift: null,
-      hoist: null,
-      parking: true,
-      charging: true,
-      doorWidthCm: 90,
-      floor: "Parquet",
-      court: "",
-      notes: "",
-      checkedOn: null,
-    }),
+    venueExecute(db, president, { action: "save", id, version: hall.version + 1, ...fields, adaptedToilets: true, checkedOn: null }),
   ).rejects.toMatchObject({ code: "STALE_VERSION" });
   expect(
     (await db.query("SELECT count(*)::int AS n FROM shared_venue_history WHERE venue_id=$1", [id]))

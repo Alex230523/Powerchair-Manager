@@ -1,21 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/lib/locale";
-import { Reminders } from "@/components/reminders";
-export const metadata = { title: "Relances · Powerchair Football Manager" };
-export default async function Page({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ kind?: string }>;
-}) {
+
+/** Wave 17 (G3): the reminders live in Settings > Notifications; the former address leads there. */
+export default async function Page({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ kind?: string }> }) {
   const { locale } = await params;
   const { kind } = await searchParams;
   if (!isLocale(locale)) notFound();
-  return (
-    <Reminders
-      locale={locale}
-      initial={kind === "documents" ? "documents" : "dues"}
-    />
-  );
+  redirect(`/${locale}/settings/notifications${kind === "documents" || kind === "dues" ? `?kind=${kind}` : ""}#settings-reminders`);
 }

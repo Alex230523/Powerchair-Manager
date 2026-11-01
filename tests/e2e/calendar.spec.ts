@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { localAt, shiftLocal } from "../../src/domains/calendar/time";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
   expect(
@@ -33,7 +34,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     await db.query('DELETE FROM "rateLimit"');
     const password = "Calendar-fixture-only-2026!";
     async function signup(target: Page, name: string) {
-      const r = await target.request.post("/api/auth/sign-up/email", {
+      const r = await signUpVia(target, db, {
         headers: { origin },
         data: {
           name,
@@ -103,21 +104,21 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       await accessible(page);
     }
     await page.goto("/fr/calendar");
-    await page
-      .locator("summary")
-      .filter({ hasText: /^Lieux$/ })
-      .click();
-    await page.getByLabel("Nom du lieu", { exact: true }).fill("Salle pilote");
-    await page.getByLabel("Adresse", { exact: true }).fill("Rue du sport 1");
-    await page.getByLabel("Capacité (facultative)", { exact: true }).fill("10");
-    await page.getByLabel("Accès PMR", { exact: true }).check();
-    await page.getByLabel("Recharge", { exact: true }).check();
-    await page
+    // Wave 17 (C4): « Ajouter un lieu » in the header opens the place window.
+    await page.getByRole("button", { name: "Ajouter un lieu", exact: true }).click();
+    const placeWindow = page.getByRole("dialog", { name: "Ajouter un lieu" });
+    await placeWindow.getByLabel("Nom du lieu", { exact: true }).fill("Salle pilote");
+    await placeWindow.getByLabel("Adresse", { exact: true }).fill("Rue du sport 1");
+    await placeWindow.getByLabel("Capacité (facultative)", { exact: true }).fill("10");
+    await placeWindow.getByLabel("Accès PMR", { exact: true }).check();
+    await placeWindow.getByLabel("Recharge", { exact: true }).check();
+    await placeWindow
       .getByRole("button", { name: "Enregistrer le lieu", exact: true })
       .click();
-    await expect(
-      page.getByRole("heading", { name: "Salle pilote", exact: true }),
-    ).toBeVisible();
+    await expect(placeWindow).toHaveCount(0);
+    await expect
+      .poll(async () => (await db.query("SELECT count(*)::int AS n FROM calendar_place WHERE organization_id=$1 AND name='Salle pilote'", [org])).rows[0].n)
+      .toBe(1);
     const place = (
         await db.query(
           "SELECT id FROM calendar_place WHERE organization_id=$1",
@@ -150,10 +151,12 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         exact: true,
       }),
     });
-    await editor.getByLabel("Équipe", { exact: true }).selectOption(team);
-    await editor.getByLabel("Lieu", { exact: true }).selectOption(place);
-    await editor.getByLabel("Visibilité", { exact: true }).selectOption("team");
-    await editor.getByLabel("Récurrence", { exact: true }).selectOption("7");
+    await editor.getByRole("combobox", { name: "Équipe", exact: true }).selectOption(team);
+    await editor.getByRole("combobox", { name: "Lieu", exact: true }).selectOption(place);
+    // Wave 16 (E1): responsible, visibility and attachments live in « Avancé ».
+    await editor.locator("summary", { hasText: "Avancé" }).click();
+    await editor.getByRole("combobox", { name: "Visibilité", exact: true }).selectOption("team");
+    await editor.getByRole("combobox", { name: "Récurrence", exact: true }).selectOption("7");
     await editor
       .getByLabel("Nombre d’occurrences (maximum 52)", { exact: true })
       .fill("3");
@@ -262,10 +265,6 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         )
       ).rows[0].local_start,
     ).toBe(shiftLocal(date + "T10:00", 7));
-    await page
-      .locator("summary")
-      .filter({ hasText: /^Lieux$/ })
-      .click();
     for (const mode of ["Mois", "Semaine", "Liste"]) {
       await page.getByRole("group", { name: "Vue", exact: true }).getByRole("button", { name: mode, exact: true }).click();
       if (mode !== "Liste")
@@ -328,7 +327,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         exact: true,
       }),
     });
-    await fresh.getByLabel("Lieu", { exact: true }).selectOption(place);
+    await fresh.getByRole("combobox", { name: "Lieu", exact: true }).selectOption(place);
     await fresh
       .getByRole("button", { name: "Enregistrer l’événement", exact: true })
       .click();

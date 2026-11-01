@@ -52,10 +52,10 @@ export async function digestData(c: PoolClient, mandateId: string, now = new Dat
     financeOn && (all || own.length)
       ? (
           await c.query(
-            `SELECT t.due_on::text AS date,COALESCE(pa.name,g.funder)||' · '||t.title AS title,cp.full_name AS responsible,t.due_on<$2::date AS late
+            `SELECT t.due_on::text AS date,COALESCE(COALESCE(pa.name,g.funder)||' · ','')||t.title AS title,cp.full_name AS responsible,t.due_on<$2::date AS late
                FROM funding_task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
                LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id
-              WHERE t.organization_id=$1 AND t.status='todo' AND t.due_on<=$2::date+7 AND ($3 OR t.responsible_id=ANY($4::uuid[]))
+              WHERE t.organization_id=$1 AND t.status<>'done' AND t.due_on<=$2::date+7 AND ($3 OR t.responsible_id=ANY($4::uuid[]))
               ORDER BY t.due_on,t.title LIMIT 30`,
             [org, clock.date, all, own],
           )

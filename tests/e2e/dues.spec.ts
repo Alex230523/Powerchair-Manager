@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 // Menu groups unfold on click; open the one holding the link if it is closed.
 async function openMenuGroup(page: Page, name: string) {
   const group = page
@@ -17,19 +18,9 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `dues-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
+    await prepareSignIn(page, db, "Dues test president", email, "Browser-test-passphrase-2026!");
     await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
-    await page
-      .getByLabel("Nom complet", { exact: true })
-      .fill("Dues test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page
-      .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
-      .fill("Browser-test-passphrase-2026!");
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
+      .getByRole("button", { name: "Se connecter", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Se déconnecter" }),
@@ -74,7 +65,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
-      page.getByLabel("Profil actif", { exact: true }).selectOption(admin),
+      page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(admin),
     ]);
     await expect(
       page.getByRole("heading", { name: "Enregistrer un profil", exact: true }),
@@ -89,7 +80,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await profileForm
       .getByRole("button", { name: "Enregistrer", exact: true })
       .click();
-    await expect(page.locator(".profile-menu option:checked")).toHaveText(
+    await expect(page.getByLabel("Profil actif", { exact: true }).locator("option:checked")).toHaveText(
       "Club — Président",
     );
     // Language and photo live in Settings > My account since wave 15.
@@ -115,8 +106,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
     await expect(rate).toHaveCount(0);
     // Changing a rate once dues exist asks the president to confirm (checked below).
-    // The president's menu groups money matters under "Money" (wave 14).
-    await openMenuGroup(page, "Money");
+    // The president's menu groups money matters under "Finances" (wave 14, renamed in wave 17).
+    await openMenuGroup(page, "Finances");
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })
@@ -124,16 +115,18 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(
       page.getByRole("heading", { name: "Dues", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Issue dues", exact: true }).click();
-    const issue = page.getByRole("dialog", { name: "Issue dues" });
-    await issue
-      .getByRole("combobox", { name: "Rate", exact: true })
-      .selectOption({ label: "Player membership · 2026-27 · €250.00" });
-    await issue.getByLabel("Number of instalments", { exact: true }).fill("4");
-    await issue
-      .getByRole("button", { name: "Issue", exact: true })
-      .click();
-    await expect(page.getByRole("status")).toHaveText("Saved.");
+    // A3: the issue wizard (rate, who, confirm).
+    await page.getByRole("button", { name: "Issue membership fees", exact: true }).first().click();
+    const issue = page.getByRole("dialog", { name: "Issue membership fees" });
+    await issue.getByRole("radio", { name: "Player membership · 2026-27 · €250.00" }).check();
+    await issue.getByRole("button", { name: "Next", exact: true }).click();
+    await issue.getByRole("radio", { name: "One person" }).check();
+    await issue.getByRole("combobox", { name: "Person", exact: true }).selectOption({ label: "Browser player" });
+    await issue.getByLabel("Number of payments", { exact: true }).fill("4");
+    await issue.getByRole("button", { name: "Show the preview", exact: true }).click();
+    await issue.getByRole("button", { name: "Next", exact: true }).click();
+    await issue.getByRole("button", { name: "Issue", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("1 fee(s) issued.");
     // One line per player in the table, with the amount due and the next instalment.
     const row = page
       .locator("main .dues-table tbody tr")
@@ -198,7 +191,7 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await page.locator(".profile-menu > summary").click();
     await Promise.all([
       page.waitForEvent("load"),
-      page.getByLabel("Active profile", { exact: true }).selectOption(player),
+      page.getByRole("combobox", { name: "Active profile", exact: true }).selectOption(player),
     ]);
     await expect(page).toHaveURL("/en/access");
     await expect(

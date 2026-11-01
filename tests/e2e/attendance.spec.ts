@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
   expect(
@@ -39,7 +40,7 @@ test("invitation response, offline refusal, independent pointage, closure and tr
     await db.query('DELETE FROM "rateLimit"');
     const password = "Attendance-fixture-only-2026!";
     async function signup(target: Page, name: string) {
-      const r = await target.request.post("/api/auth/sign-up/email", {
+      const r = await signUpVia(target, db, {
         headers: { origin },
         data: {
           name,
@@ -149,21 +150,24 @@ test("invitation response, offline refusal, independent pointage, closure and tr
     });
     expect(created.status()).toBe(200);
     const event = (await created.json()).id;
+    // Wave 17 (J2): « Appel » opens first for whoever takes the roll; the grid is in « Saison ».
     for (const locale of ["fr", "nl"]) {
       await page.goto("/" + locale + "/attendance");
+      await page.getByRole("tab", { name: locale === "fr" ? "Saison" : "Seizoen" }).click();
       await expect(
         page.getByRole("button", { name: /Training presence/ }),
       ).toBeVisible();
       await accessible(page);
     }
     await page.goto("/fr/attendance");
+    await page.getByRole("tab", { name: "Saison" }).click();
     await page.getByRole("button", { name: /Training presence/ }).click();
     await page
       .getByLabel("Effectif confirmé minimum", { exact: true })
       .fill("1");
     await page
       .getByRole("button", {
-        name: "Envoyer / modifier les convocations",
+        name: "Envoyer / modifier les invitations",
         exact: true,
       })
       .click();
@@ -273,9 +277,11 @@ test("invitation response, offline refusal, independent pointage, closure and tr
         )
       ).rows[0],
     ).toMatchObject({ response: "present", comment: "Transport confirmé" });
-    await expect(
-      page.getByText("Assiduité : 100 %", { exact: false }).first(),
-    ).toBeVisible();
+    // Wave 17 (J2): the figures per player live in « Statistiques ».
+    await page.getByRole("tab", { name: "Statistiques" }).click();
+    const card = page.locator(".stat-card").filter({ hasText: "Attendance Player" });
+    await expect(card).toContainText("Entraînements : 1 / 1");
+    await expect(card.locator(".stat-card-rate")).toContainText("100 %");
     await accessible(page);
     await page.screenshot({
       path: "test-results/attendance.png",
@@ -309,24 +315,18 @@ test("invitation response, offline refusal, independent pointage, closure and tr
         })
       ).status(),
     ).toBe(403);
+    // Wave 16 (S1): the statistics open on the Club tab; the closed register feeds the attendance curve.
     await page.goto("/fr/statistics");
     await expect(
       page.getByRole("heading", { name: "Statistiques", exact: true }),
     ).toBeVisible();
-    const statRow = page
-      .getByRole("row")
-      .filter({
-        has: page.getByRole("rowheader", {
-          name: "Attendance Player",
-          exact: true,
-        }),
-      });
-    await expect(statRow).toContainText("100 %");
-    await expect(statRow).toContainText("1 / 1");
+    await expect(
+      page.locator("#stats-attendance").getByRole("group", { name: /^Taux de présence/ }),
+    ).toBeVisible();
     await accessible(page);
     const download = page.waitForEvent("download");
     await page
-      .getByRole("button", { name: "Exporter CSV", exact: true })
+      .getByRole("button", { name: "Export CSV", exact: true })
       .click();
     expect((await download).suggestedFilename()).toMatch(
       /^statistics-.*\.csv$/,
@@ -335,14 +335,13 @@ test("invitation response, offline refusal, independent pointage, closure and tr
       path: "test-results/statistics.png",
       fullPage: true,
     });
-    await page
-      .getByLabel("Type d’événement", { exact: true })
-      .selectOption("friendly");
-    await expect(statRow).toHaveCount(0);
-    for (const locale of ["en", "nl"]) {
+    for (const [locale, title] of [
+      ["en", "Statistics"],
+      ["nl", "Statistieken"],
+    ]) {
       await page.goto("/" + locale + "/statistics");
       await expect(
-        page.getByRole("rowheader", { name: "Attendance Player", exact: true }),
+        page.getByRole("heading", { name: title, exact: true }),
       ).toBeVisible();
       await accessible(page);
     }

@@ -4,6 +4,8 @@ import {
   matchDetail,
   matchExecute,
   clubCommand,
+  friendlyCommand,
+  friendlyMatchExecute,
 } from "@/domains/competitions/service";
 import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
@@ -29,6 +31,9 @@ export async function POST(request: Request) {
       body = JSON.parse(
         new TextDecoder().decode(await bounded(request, 30000)),
       );
+    // Wave 17 (C5): friendlies between clubs, invitations, scores and transport.
+    if (["friendly", "answerInvitation", "cancelInvitation", "confirmScore", "organizeTransport"].includes(body?.action))
+      return Response.json(await friendlyMatchExecute(getDb(), p, friendlyCommand.parse(body), z.uuid().parse(body.organizationId)), { headers: noStore });
     return Response.json(
       await matchExecute(
         getDb(),

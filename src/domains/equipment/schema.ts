@@ -4,12 +4,16 @@ export const chairStatuses = [
   "available",
   "in_use",
   "maintenance",
+  /** B3: out of service (a breakdown reported, not yet repaired) and lent to another club. */
+  "out_of_service",
+  "lent",
   "retired",
 ] as const;
 /** FIPFA Laws of the Game: a powerchair must not exceed 10 km/h in play. */
 export const MAX_MATCH_SPEED_KMH = 10;
 export const itemCategories = [
   "ball",
+  "cone",
   "first_aid",
   "battery",
   "charger",
@@ -48,6 +52,13 @@ export const commandSchema = z.discriminatedUnion("action", [
     notes: text(2000),
     /** Where the chair is kept (club room, a coach's garage). */
     storage: text(120).optional(),
+    /** Wave 17 (Q1): a model of the list, or a new one proposed to the federation. */
+    modelId: id.nullable().optional(),
+    newModel: z.object({ brand: text(80), name: text(80).min(2) }).nullable().optional(),
+    storageLocationId: id.nullable().optional(),
+    lendable: z.boolean().optional(),
+    /** A4: the supplier, a contact of the club's book. Absent keeps it. */
+    supplierContactId: id.nullable().optional(),
   }),
   z.object({
     action: z.literal("assign"),
@@ -72,6 +83,7 @@ export const commandSchema = z.discriminatedUnion("action", [
     expiresOn: day,
     notes: text(1000),
     archived: z.boolean().default(false),
+    storageLocationId: id.nullable().optional(),
   }),
   z.object({
     action: z.literal("wish"),
@@ -98,6 +110,35 @@ export const commandSchema = z.discriminatedUnion("action", [
     boughtOn: z.iso.date(),
   }),
   z.object({ action: z.literal("cancelWish"), id }),
+  /* Wave 17 (Q1): maintenance, storage places, models, loans. */
+  z.object({ action: z.literal("service"), chairId: id, expectedVersion: z.number().int().positive(), doneOn: z.iso.date(), nextOn: day, note: text(500) }),
+  z.object({
+    action: z.literal("storage"),
+    id: id.optional(),
+    expectedVersion: z.number().int().positive().optional(),
+    name: text(120).min(2),
+    placeId: id.nullable(),
+    address: text(300),
+    contact: text(200),
+    access: text(500),
+    notes: text(1000),
+    archived: z.boolean().default(false),
+  }),
+  z.object({ action: z.literal("decideModel"), id, decision: z.enum(["validated", "refused"]), note: text(500) }),
+  z.object({
+    action: z.literal("lend"),
+    chairId: id,
+    borrowerId: id,
+    startsOn: z.iso.date(),
+    endsOn: z.iso.date(),
+    conditions: text(1000),
+    depositCents: z.number().int().min(0).max(10000000).nullable(),
+  }),
+  z.object({ action: z.literal("requestLoan"), chairId: id, startsOn: z.iso.date(), endsOn: z.iso.date(), message: text(1000) }),
+  z.object({ action: z.literal("decideLoan"), id, decision: z.enum(["accepted", "refused"]), note: text(1000), conditions: text(1000).optional(), depositCents: z.number().int().min(0).max(10000000).nullable().optional() }),
+  z.object({ action: z.literal("handOver"), id, condition: text(1000) }),
+  z.object({ action: z.literal("returnLoan"), id, condition: text(1000) }),
+  z.object({ action: z.literal("cancelLoan"), id }),
 ]);
 /** Material other than chairs. */
 export type ExpiryState = "expired" | "soon" | "ok" | "none";
@@ -129,3 +170,35 @@ export function serviceState(
 export function overMatchSpeed(speed: number | string | null) {
   return speed !== null && Number(speed) > MAX_MATCH_SPEED_KMH;
 }
+
+/* ------------------------------------------------------------ Wave 17 (Q1) */
+export const modelStatuses = ["validated", "proposed", "refused"] as const;
+export const loanStatuses = ["requested", "accepted", "ongoing", "returned", "refused", "cancelled"] as const;
+export type LoanStatus = (typeof loanStatuses)[number];
+/** Loans that hold the chair for their dates. */
+export const holdingLoan = (status: string) => status === "requested" || status === "accepted" || status === "ongoing";
+/** Two date ranges (YYYY-MM-DD, ends included) share at least a day. */
+export function overlaps(a: { starts_on: string; ends_on: string }, b: { starts_on: string; ends_on: string }) {
+  return a.starts_on <= b.ends_on && b.starts_on <= a.ends_on;
+}
+/** A chair is free for the dates when no accepted or ongoing loan covers them. */
+export function freeFor(loans: { status: string; starts_on: string; ends_on: string }[], range: { starts_on: string; ends_on: string }) {
+  return !loans.some((l) => (l.status === "accepted" || l.status === "ongoing") && overlaps(l, range));
+}
+/** What can happen next to a loan, for the lender and for the borrower. */
+export function loanMoves(status: string, side: "lender" | "borrower") {
+  if (side === "lender") return status === "requested" ? ["accept", "refuse"] : status === "accepted" ? ["handOver", "cancel"] : status === "ongoing" ? ["return"] : [];
+  return status === "requested" || status === "accepted" ? ["cancel"] : [];
+}
+/** The return reminder: from seven days before the end, once. */
+export function returnReminderDue(endsOn: string, today: string, remindedOn: string | null) {
+  if (remindedOn) return false;
+  const from = new Date(endsOn + "T12:00:00Z");
+  from.setUTCDate(from.getUTCDate() - 7);
+  return today >= from.toISOString().slice(0, 10) && today <= endsOn;
+}
+/** « Equalizer » or « Brand · Name ». */
+export const modelLabel = (m: { brand: string; name: string }) => (m.brand ? `${m.brand} · ${m.name}` : m.name);
+
+/** B3: the kinds of a chair's interventions (shared with the client). */
+export const interventionKinds = ["service", "breakdown", "repair", "battery", "adjustment", "speed_check"] as const;

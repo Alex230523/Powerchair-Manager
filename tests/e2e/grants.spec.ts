@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn, signUpVia } from "../support/session";
 
 /**
  * Wave 15 (C2): an ADEPS grant, the standard check-list, a step given to the
@@ -21,14 +22,10 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     coachPage = await coachContext.newPage();
   const email = `grants-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Grants president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Grants president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -38,7 +35,7 @@ test("grant file: standard check-list, a step for the coach, his home, next year
       }
     }
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
-    const r = await coachPage.request.post("/api/auth/sign-up/email", {
+    const r = await signUpVia(coachPage, db, {
       headers: { origin },
       data: { name: "Sam Coach", email: `grants-coach-${Date.now()}@example.test`, password: "Browser-test-passphrase-2026!" },
     });
@@ -63,7 +60,7 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     expect((await coachPage.request.post("/api/workspace", { headers: { origin }, data: { action: "context", mandateId: mandates[1] } })).status()).toBe(200);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandates[0])]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandates[0])]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. A new ADEPS file, deadline in ten days.
@@ -86,7 +83,8 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     await expect(form).toHaveCount(0);
     const row = page.locator(".grants-table tbody tr").filter({ hasText: "ADEPS · Équipement sportif" });
     await expect(row).toContainText("Dans moins de 14 jours");
-    await expect(row).toContainText("Pas de check-list");
+    // A2: the « Tâches (n) » button of the row.
+    await expect(row.getByRole("link", { name: "Tâches de ADEPS · Équipement sportif (0)" })).toBeVisible();
     await axe(page, "grants list");
 
     // 2. The sheet: the standard check-list.
@@ -117,14 +115,15 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     // 4. The coach sees his step on his home and ticks it on the tasks page.
     await coachPage.setViewportSize({ width: 1280, height: 900 });
     await coachPage.goto("/fr");
-    const todo = coachPage.locator(".todo-card").filter({ hasText: "Tâches de subsides" });
+    // Wave 16 (A): sponsors and grants share one square.
+    const todo = coachPage.locator(".todo-card").filter({ hasText: "Sponsors et subsides" });
     await expect(todo).toBeVisible();
     await todo.click();
     await expect(coachPage).toHaveURL("/fr/tasks?kind=grant");
     await expect(coachPage.locator(".task-page li")).toHaveCount(1);
     await expect(coachPage.locator(".task-page li")).toContainText("Déposer le dossier");
     await axe(coachPage, "coach tasks");
-    await coachPage.getByRole("checkbox", { name: "Déposer le dossier" }).check();
+    await coachPage.getByRole("checkbox", { name: "Déposer le dossier" }).click();
     await expect(coachPage.locator(".task-page li")).toHaveCount(0);
 
     // 5. Next year's file, from the sheet.

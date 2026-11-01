@@ -1,5 +1,3 @@
-import { clearBooks } from "./offline-book";
-
 /**
  * Attendance taken without network: marks wait on the device and are sent when
  * the connection comes back. Only identifiers and the recorded presence are
@@ -58,6 +56,42 @@ export async function flushMarks(send: (body: Record<string, unknown>) => Promis
   }
   return { sent, refused, left: pendingMarks().length };
 }
+/**
+ * A5: the same waiting line for the match day (goals, cards, substitutions).
+ * Each event carries its own id, so one sent twice is written once by the
+ * server; only ids and the event are kept, never names.
+ */
+const MATCH_QUEUE = "pfm-match-live-queue";
+export type QueuedLive = { key: string; body: Record<string, unknown>; queuedAt: number };
+export function pendingLive(matchId?: string): QueuedLive[] {
+  const all = read<QueuedLive[]>(MATCH_QUEUE, []);
+  return matchId ? all.filter((m) => m.body.id === matchId) : all;
+}
+export function queueLive(clientId: string, body: Record<string, unknown>) {
+  const next = pendingLive().filter((m) => m.key !== clientId);
+  next.push({ key: clientId, body, queuedAt: Date.now() });
+  write(MATCH_QUEUE, next);
+  return next.length;
+}
+export function dropLive(clientId: string) {
+  write(MATCH_QUEUE, pendingLive().filter((m) => m.key !== clientId));
+}
+/** Sends the match day's waiting events in order; a network failure keeps the rest. */
+export async function flushLive(send: (body: Record<string, unknown>) => Promise<Response>) {
+  let sent = 0,
+    refused = 0;
+  for (const m of pendingLive()) {
+    try {
+      const r = await send(m.body);
+      dropLive(m.key);
+      if (r.ok) sent++;
+      else refused++;
+    } catch {
+      break;
+    }
+  }
+  return { sent, refused, left: pendingLive().length };
+}
 export function saveSnapshot(filter: string, data: unknown) {
   write(SNAPSHOT, { savedAt: Date.now(), filter, data });
 }
@@ -71,8 +105,14 @@ export function clearOfflineData() {
   try {
     window.localStorage.removeItem(QUEUE);
     window.localStorage.removeItem(SNAPSHOT);
+    window.localStorage.removeItem(MATCH_QUEUE);
   } catch {
     /* Nothing to clear. */
   }
-  clearBooks();
+  // The former offline trip books (removed in wave 17): whatever a device still holds goes too.
+  try {
+    indexedDB.deleteDatabase("pcm-offline-books");
+  } catch {
+    /* No storage: nothing to clear. */
+  }
 }

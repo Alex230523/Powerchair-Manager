@@ -151,7 +151,8 @@ export async function absenceExecute(
       await c.query("UPDATE absence_period SET cancelled_at=now() WHERE id=$1", [cmd.id]);
       // Answers given by the announcement reopen for sessions still to come.
       await c.query(
-        `UPDATE attendance_invitation i SET response='none',absence_reason='',absence_period_id=NULL,comment='',responded_at=NULL,responded_by=NULL,version=i.version+1
+        `UPDATE attendance_invitation i SET response='none',absence_reason='',absence_period_id=NULL,comment='',responded_at=NULL,responded_by=NULL,
+               actual=CASE WHEN i.actual='excused' THEN 'unchecked' ELSE i.actual END,version=i.version+1
            FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id
           WHERE i.register_id=r.id AND i.absence_period_id=$1 AND r.closed_at IS NULL AND e.starts_at>now()`,
         [cmd.id],

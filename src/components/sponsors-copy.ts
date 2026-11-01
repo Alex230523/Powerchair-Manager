@@ -20,6 +20,7 @@ const fr = {
   packageDescription: "Description",
   places: "Places (vide : illimité)",
   featured: "Mettre en avant (« notre conseil »)",
+  publicVisible: "Nommer ces sponsors sur la page publique du club",
   advice: "Notre conseil",
   season: "Saison",
   noSeason: "Toutes les saisons",
@@ -158,7 +159,7 @@ const fr = {
   // Calendar layer
   layer: "Échéances",
   layerHint: "Conditions de sponsors, paiements, relances et dates des subsides.",
-  layerKinds: { condition: "Condition", payment: "Paiement", renewal: "Relance", grant: "Date limite", grantReport: "Justificatif", grantEnd: "Fin de la période", grantRecheck: "À revérifier", task: "Tâche", accountsAssembly: "Comptes annuels : assemblée générale", accountsFiling: "Comptes annuels : dépôt au greffe", tournamentDay: "Journée de tournoi" } as Record<string, string>,
+  layerKinds: { condition: "Condition", payment: "Paiement", renewal: "Relance", grant: "Date limite", grantReport: "Justificatif", grantEnd: "Fin de la période", grantRecheck: "À revérifier", task: "Tâche", accountsAssembly: "Comptes annuels : assemblée générale", accountsFiling: "Comptes annuels : dépôt au greffe", tournamentDay: "Journée de tournoi", obligation: "Statut du club" } as Record<string, string>,
   icsMoney: "Inclure les échéances d’argent dans ce lien",
   // Fundraising link
   followAsPartner: "Suivre comme partenaire",
@@ -183,6 +184,7 @@ const nl: Copy = {
   packageDescription: "Beschrijving",
   places: "Plaatsen (leeg: onbeperkt)",
   featured: "In de kijker zetten (« onze aanrader »)",
+  publicVisible: "Deze sponsors vermelden op de openbare clubpagina",
   advice: "Onze aanrader",
   season: "Seizoen",
   noSeason: "Alle seizoenen",
@@ -314,7 +316,7 @@ const nl: Copy = {
   tasksSource: "Dossier",
   layer: "Vervaldagen",
   layerHint: "Sponsorvoorwaarden, betalingen, opvolgingen en subsidiedatums.",
-  layerKinds: { condition: "Voorwaarde", payment: "Betaling", renewal: "Opvolging", grant: "Uiterste datum", grantReport: "Verantwoording", grantEnd: "Einde van de periode", grantRecheck: "Opnieuw na te kijken", task: "Taak", accountsAssembly: "Jaarrekening: algemene vergadering", accountsFiling: "Jaarrekening: neerlegging ter griffie", tournamentDay: "Toernooispeeldag" } as Record<string, string>,
+  layerKinds: { condition: "Voorwaarde", payment: "Betaling", renewal: "Opvolging", grant: "Uiterste datum", grantReport: "Verantwoording", grantEnd: "Einde van de periode", grantRecheck: "Opnieuw na te kijken", task: "Taak", accountsAssembly: "Jaarrekening: algemene vergadering", accountsFiling: "Jaarrekening: neerlegging ter griffie", tournamentDay: "Toernooispeeldag", obligation: "Statuut van de club" } as Record<string, string>,
   icsMoney: "De geldvervaldagen in deze link opnemen",
   followAsPartner: "Als partner opvolgen",
 };
@@ -337,6 +339,7 @@ const en: Copy = {
   packageDescription: "Description",
   places: "Places (empty: unlimited)",
   featured: "Highlight (« our advice »)",
+  publicVisible: "Name these sponsors on the club's public page",
   advice: "Our advice",
   season: "Season",
   noSeason: "All seasons",
@@ -468,7 +471,7 @@ const en: Copy = {
   tasksSource: "File",
   layer: "Deadlines",
   layerHint: "Sponsor conditions, payments, renewals and grant dates.",
-  layerKinds: { condition: "Condition", payment: "Payment", renewal: "Renewal", grant: "Deadline", grantReport: "Report due", grantEnd: "End of the period", grantRecheck: "Check again", task: "Task", accountsAssembly: "Annual accounts: general assembly", accountsFiling: "Annual accounts: filing with the registry", tournamentDay: "Tournament match day" } as Record<string, string>,
+  layerKinds: { condition: "Condition", payment: "Payment", renewal: "Renewal", grant: "Deadline", grantReport: "Report due", grantEnd: "End of the period", grantRecheck: "Check again", task: "Task", accountsAssembly: "Annual accounts: general assembly", accountsFiling: "Annual accounts: filing with the registry", tournamentDay: "Tournament match day", obligation: "Club status" } as Record<string, string>,
   icsMoney: "Include the money deadlines in this link",
   followAsPartner: "Follow as a partner",
 };

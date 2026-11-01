@@ -1,3 +1,5 @@
+import { formOpenSql } from "../registrations/open";
+import { ensureStorage } from "../storage/service";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { validIban } from "../../lib/iban";
@@ -12,6 +14,8 @@ import {
 } from "../access/service";
 import { permissions } from "../access/policy";
 import { palettes, tints } from "./appearance";
+import { proposeObligations } from "./obligations";
+import { today } from "../calendar/access";
 
 export const identitySchema = z.object({
   action: z.literal("identity"),
@@ -29,6 +33,8 @@ export const identitySchema = z.object({
     .optional(),
   /** Club affiliation (in Belgium the BPCF). Omitted: unchanged. */
   federationId: z.uuid().nullable().optional(),
+  /** Wave 16 (A): the club's legal form; the club status proposes its obligations from it. Omitted: unchanged. */
+  legalForm: z.enum(["asbl", "de_facto", "other"]).nullable().optional(),
 });
 export const logoSchema = z.object({
   action: z.literal("logo"),
@@ -69,7 +75,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,o.federation_id,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,o.legal_form,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -141,6 +147,17 @@ export async function clubExecute(
           input.iban ?? null,
         ],
       );
+      if (input.legalForm !== undefined && a.kind === "club") {
+        const before = (await c.query("SELECT legal_form FROM organization WHERE id=$1", [a.organization_id])).rows[0]?.legal_form ?? null;
+        if (before !== input.legalForm) {
+          await c.query("UPDATE organization SET legal_form=$2 WHERE id=$1", [a.organization_id, input.legalForm]);
+          // A new form: its obligations are proposed for this year (nothing removed, all editable).
+          if (input.legalForm) {
+            const locale = ((await c.query("SELECT locale FROM person WHERE user_id=$1", [p.userId])).rows[0]?.locale ?? "fr") as "fr" | "nl" | "en";
+            await proposeObligations(c, a.organization_id, p.userId, Number(today().slice(0, 4)), locale);
+          }
+        }
+      }
       if (input.federationId !== undefined) {
         if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
         if (
@@ -165,6 +182,8 @@ export async function clubExecute(
       const bytes = Buffer.from(input.data, "base64");
       if (!validLogo(input.mediaType, bytes))
         throw new AccessError("INVALID_FILE", 400);
+      const previous = Number((await c.query("SELECT size_bytes FROM organization_logo WHERE organization_id=$1", [a.organization_id])).rows[0]?.size_bytes ?? 0);
+      await ensureStorage(c, a.organization_id, bytes.length, previous);
       await c.query(
         "INSERT INTO organization_logo(organization_id,media_type,content,updated_by) VALUES($1,$2,$3,$4) ON CONFLICT(organization_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,updated_by=EXCLUDED.updated_by,updated_at=now()",
         [a.organization_id, input.mediaType, bytes, p.userId],
@@ -206,7 +225,7 @@ export async function clubLogoForForm(db: Pool, formId: string) {
   z.uuid().parse(formId);
   return (
     await db.query(
-      "SELECT l.media_type,l.content FROM registration_form f JOIN organization_logo l ON l.organization_id=f.organization_id WHERE f.id=$1 AND f.published",
+      `SELECT l.media_type,l.content FROM registration_form f JOIN organization_logo l ON l.organization_id=f.organization_id WHERE f.id=$1 AND ${formOpenSql("f")}`,
       [formId],
     )
   ).rows[0] as { media_type: string; content: Buffer } | undefined;

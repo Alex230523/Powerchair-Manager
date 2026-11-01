@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam, ApplyScope } from "./use-scope";
@@ -9,9 +10,11 @@ import {
   fromOurSide,
 } from "@/domains/competitions/schema";
 import { matchesCopy } from "./matches-copy";
+import { matchLineCopy } from "./match-line-copy";
+import { FriendlyDialog, Invitations, MatchLine, ScoreToConfirm, TournamentMatches } from "./match-line";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
-import { Badge, EmptyState, PageHeader } from "./ui";
+import { Badge, EmptyState, ExportButton, PageHeader } from "./ui";
 
 type View = Awaited<ReturnType<typeof matchesView>>;
 type Match = View["matches"][number];
@@ -21,6 +24,7 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 /** Club matches: fixtures, line-ups, results and player statistics. */
 export function Matches({ locale }: { locale: Locale }) {
   const t = matchesCopy[locale];
+  const lc = matchLineCopy[locale];
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -28,6 +32,7 @@ export function Matches({ locale }: { locale: Locale }) {
     [busy, setBusy] = useState(false),
     [show, setShow] = useState<"upcoming" | "played" | "all">("upcoming"),
     [editing, setEditing] = useState<Match | "new" | null>(null),
+    [friendly, setFriendly] = useState(false),
     [dialog, setDialog] = useState<{
       kind: "lineup" | "result";
       match: Match;
@@ -59,7 +64,7 @@ export function Matches({ locale }: { locale: Locale }) {
     };
   }, [failure]);
 
-  async function send(body: Record<string, unknown>) {
+  async function send(body: Record<string, unknown>, done?: string) {
     setBusy(true);
     setError("");
     setMessage("");
@@ -75,7 +80,7 @@ export function Matches({ locale }: { locale: Locale }) {
       const v = await r.json();
       if (!r.ok) throw new Error(v.error);
       await load();
-      setMessage(t.saved);
+      setMessage(done ?? (typeof v.tasks === "number" ? lc.organized.replace("{n}", String(v.tasks)) : t.saved));
       return true;
     } catch (e) {
       setError(failure(e instanceof Error ? e.message : ""));
@@ -152,6 +157,11 @@ export function Matches({ locale }: { locale: Locale }) {
     <main id="main" className="access matches">
       <PageHeader title={t.title} subtitle={t.intro} actions={manageable.length > 0 && (
           <div className="directory-actions">
+            {view.can.friendly && (
+              <button type="button" className="button secondary" onClick={() => setFriendly(true)}>
+                {lc.newFriendly}
+              </button>
+            )}
             <button
               type="button"
               className="button"
@@ -163,6 +173,7 @@ export function Matches({ locale }: { locale: Locale }) {
         )} />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
+      <Invitations locale={locale} view={view} busy={busy} send={send} />
 
       {view.teams.length > 0 && (
         <ul className="team-cards">
@@ -208,6 +219,29 @@ export function Matches({ locale }: { locale: Locale }) {
             <option value="all">{t.all}</option>
           </select>
         </label>
+        {/* Wave 17 (G2): the matches shown, with the filters chosen. */}
+        <ExportButton
+          locale={locale}
+          organizationId={view.organization_id}
+          dataset="matches"
+          subject={t.title}
+          period={show === "all" ? "" : show === "played" ? t.played : t.upcoming}
+          rows={list}
+          columns={[
+            { id: "date", label: t.date2, type: "date", value: (m) => m.local_start.slice(0, 10) },
+            { id: "time", label: t.date.split(" ").pop() ?? "", value: (m) => m.local_start.slice(11, 16) },
+            { id: "team", label: t.team, value: (m) => m.team },
+            { id: "opponent", label: t.opponent, value: (m) => m.opponent },
+            { id: "where", label: t.where, value: (m) => (m.home ? t.home : t.away) },
+            { id: "kind", label: t.kind, value: (m) => t.kinds[m.kind] },
+            { id: "competition", label: t.competition.split(" (")[0], value: (m) => m.competition },
+            { id: "venue", label: t.venue, value: (m) => m.venue },
+            { id: "status", label: t.status, value: (m) => t.statuses[m.status] },
+            { id: "ours", label: t.ourScore, type: "number", value: (m) => m.our_score },
+            { id: "theirs", label: t.theirScore, type: "number", value: (m) => m.their_score },
+            { id: "referees", label: t.referees, value: (m) => (m.referees as { name: string }[]).map((r) => r.name).join(", ") },
+          ]}
+        />
       </form>
 
       {list.length ? (
@@ -250,12 +284,16 @@ export function Matches({ locale }: { locale: Locale }) {
                     <td>{when(m.starts_at)}</td>
                     <td>{m.team}</td>
                     <td>
-                      <strong>{m.opponent}</strong>
+                      {/* A5: the match sheet, before, on the day and after. */}
+                      <Link href={`/${locale}/matches/${m.id}`}>
+                        <strong>{m.opponent}</strong>
+                      </Link>
                       <span className="muted">
                         {" "}
                         · {m.home ? t.home : t.away}
                       </span>
                       {m.venue && <span className="muted"> · {m.venue}</span>}
+                      <MatchLine locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />
                     </td>
                     <td>
                       {t.kinds[m.kind]}
@@ -287,6 +325,7 @@ export function Matches({ locale }: { locale: Locale }) {
                           {t.statuses[m.status]}
                         </Badge>
                       )}
+                      <ScoreToConfirm locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />
                       {report && (
                         <details className="report-details">
                           <summary>
@@ -343,6 +382,8 @@ export function Matches({ locale }: { locale: Locale }) {
         <EmptyState title={t.empty} />
       )}
 
+      <TournamentMatches locale={locale} view={view} />
+      {friendly && <FriendlyDialog locale={locale} view={view} busy={busy} close={() => setFriendly(false)} send={send} />}
       {editing && (
         <Modal
           title={current ? `${t.edit} : ${current.opponent}` : t.add}

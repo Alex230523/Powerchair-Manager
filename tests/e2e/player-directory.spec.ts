@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 test("player listing, personal then sporting profile, former players and dedicated management screens", async ({
   page,
 }) => {
@@ -10,7 +11,7 @@ test("player listing, personal then sporting profile, former players and dedicat
     origin = "http://127.0.0.1:3100";
   try {
     await db.query('DELETE FROM "rateLimit"');
-    const signup = await page.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(page, db, {
       headers: { origin },
       data: {
         email: `player-list-${Date.now()}@example.test`,
@@ -59,15 +60,16 @@ test("player listing, personal then sporting profile, former players and dedicat
     await expect(
       page.getByRole("dialog", { name: "Camille Test", exact: true }),
     ).toBeVisible();
+    // Wave 17 (J1): one sheet, in a window: the sporting tab edits position and number.
     modal = page.getByRole("dialog");
     await expect(
       modal.getByRole("heading", { name: "Informations personnelles" }),
     ).toBeVisible();
-    await modal.getByLabel("Poste", { exact: true }).first().fill("Gardien");
-    await modal.getByLabel("Numéro de maillot", { exact: true }).fill("7");
-    await modal
-      .getByRole("button", { name: "Enregistrer les informations de jeu" })
-      .click();
+    await modal.getByRole("tab", { name: "Vue sportive" }).click();
+    await modal.getByRole("button", { name: "Modifier : Poste et numéro" }).click();
+    await modal.getByLabel("Poste", { exact: true }).fill("Gardien");
+    await modal.getByLabel("Numéro", { exact: true }).fill("7");
+    await modal.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(modal.getByRole("status")).toContainText(/enregistr/i);
     expect(
       (
@@ -96,8 +98,10 @@ test("player listing, personal then sporting profile, former players and dedicat
     await page
       .getByRole("button", { name: "Vers les anciens joueurs", exact: true })
       .click();
+    // The departure window asks why.
+    await page.getByRole("dialog").getByRole("radio", { name: "A déménagé" }).check();
     await page
-      .getByRole("button", { name: "Confirmer le départ", exact: true })
+      .getByRole("button", { name: "Enregistrer le départ", exact: true })
       .click();
     await expect(
       page.getByRole("row").filter({ hasText: "Camille Test" }),
@@ -107,7 +111,7 @@ test("player listing, personal then sporting profile, former players and dedicat
       .click();
     await expect(
       page.getByRole("row").filter({ hasText: "Camille Test" }),
-    ).toBeVisible();
+    ).toContainText("A déménagé");
     await page.getByRole("button", { name: "Réintégrer", exact: true }).click();
     await page
       .getByRole("button", { name: "Confirmer la réintégration", exact: true })
@@ -128,7 +132,7 @@ test("player listing, personal then sporting profile, former players and dedicat
     for (const [url, title] of [
       ["/en/coaches", "Coach management"],
       ["/fr/club/manage", "Gestion du club"],
-      ["/nl/funding", "Clubfinanciën"],
+      ["/nl/funding", "Financiën"],
       ["/fr/settings", "Réglages"],
     ]) {
       await page.goto(url);

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (2.8): budget lines with their percentage and colour, the ledger
@@ -19,14 +20,10 @@ test("finance and dues: budget progress, ledger, collection bar, overdue icon, r
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `finance-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Finance president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Finance president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -74,7 +71,7 @@ test("finance and dues: budget progress, ledger, collection bar, overdue icon, r
     expect(lucasDebt).toBeTruthy();
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The budget: 95 % warning, 15 % over danger, 20 % success, the percentage written each time.
@@ -84,7 +81,8 @@ test("finance and dues: budget progress, ledger, collection bar, overdue icon, r
     await expect(budget.locator('.budget-progress[data-tone="warning"]')).toContainText("95 %");
     await expect(budget.locator('.budget-progress[data-tone="danger"]')).toContainText("150 %");
     await expect(budget.locator('.budget-progress[data-tone="success"]')).toContainText("20 %");
-    // 2. The ledger: income in success ink with +, spending in plain text with −, categories as badges.
+    // 2. The ledger (its own tab since wave 17, N1): income in success ink with +, spending in plain text with −, categories as badges.
+    await page.goto("/fr/funding/operations");
     await expect(page.locator("td.amount-in").filter({ hasText: "+" }).first()).toBeVisible();
     await expect(page.locator("td.amount-spent").filter({ hasText: "−" }).first()).toBeVisible();
     await expect(page.locator(".ledger .badge").filter({ hasText: "Matériel" }).first()).toBeVisible();

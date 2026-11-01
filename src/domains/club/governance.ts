@@ -234,7 +234,9 @@ export async function journalView(
       const rows = (
         await c.query(
           `SELECT a.id,a.action,a.created_at,a.details,actor.name AS actor,a.actor_id,
-                  COALESCE(target.name,subject.name) AS subject,COALESCE(ra.user_id,a.details->>'userId') AS subject_id
+                  COALESCE(target.name,subject.name) AS subject,COALESCE(ra.user_id,a.details->>'userId') AS subject_id,
+                  (ra.id IS NOT NULL) AS mandate,
+                  CASE WHEN a.action='mandate.renew' AND a.details ? 'validUntil' THEN a.details->>'validUntil' ELSE ra.valid_until::text END AS valid_until
              FROM audit_log a JOIN "user" actor ON actor.id=a.actor_id
              LEFT JOIN role_assignment ra ON ra.id::text=a.target_id
              LEFT JOIN "user" target ON target.id=ra.user_id
@@ -305,7 +307,9 @@ export async function logSensitiveAccess(
     | "registration_confidential"
     | "sensitive_document"
     | "offline_book"
-    | "trip_care",
+    | "trip_care"
+    | "incident_health"
+    | "incident_care",
   resourceId: string | null = null,
 ) {
   await c.query(

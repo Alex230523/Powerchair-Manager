@@ -1,3 +1,6 @@
+import { emitWebhook } from "../integrations/webhooks";
+import { ensureStorage } from "../storage/service";
+import { storageAdapter } from "../../lib/storage-adapter";
 import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { Pool, type PoolClient } from "pg";
@@ -174,6 +177,8 @@ async function expireOrg(c: PoolClient, org: string) {
     await task(c, d.id, "expired");
     await log(c, d, null, "expired");
     await notify(c, d, "expired:" + d.version);
+    // B6: the club's systems are told (the document's id and kind, never its content or name).
+    await emitWebhook(c, org, "document.expired", `document:${d.id}:${d.version}`, { document_id: d.id, category: d.category, expires_on: d.expires_on });
   }
   return expired.length;
 }
@@ -418,7 +423,8 @@ async function addVersion(
       sequence,
       file.name.replace(/[^\p{L}\p{N}._ -]/gu, "_").slice(0, 120),
       file.type,
-      seal({ data: file.bytes.toString("base64") }, "document:" + versionId),
+      // B2: the store chosen by STORAGE_DRIVER (PostgreSQL by default) keeps the sealed content.
+      await storageAdapter().put("document:" + versionId, seal({ data: file.bytes.toString("base64") }, "document:" + versionId)),
       sha,
       s.p.userId,
       source.templateId ?? null,
@@ -762,6 +768,7 @@ export async function documentExecute(
         )
       ).rows[0];
       if (!f) throw new AccessError("NOT_FOUND", 404);
+      await ensureStorage(s.c, s.a.organization_id, Math.ceil((f.content.length * 4) / 3));
       return addVersion(
         s,
         d,
@@ -790,6 +797,8 @@ export async function documentUpload(
       const d = await record(s, id, true);
       if (d.version !== expectedVersion)
         throw new AccessError("STALE_VERSION", 409);
+      // Stored encrypted in base64: about four thirds of the file.
+      await ensureStorage(s.c, s.a.organization_id, Math.ceil((file.bytes.length * 4) / 3));
       return addVersion(s, d, file);
     },
     org,
@@ -830,7 +839,7 @@ export async function documentDownload(
           versionId,
         );
       const body = unseal<{ data: string }>(
-        f.content_ciphertext,
+        await storageAdapter().get("document:" + versionId, f.content_ciphertext),
         "document:" + versionId,
       );
       return { bytes: Buffer.from(body.data, "base64"), filename: f.filename };
@@ -915,7 +924,7 @@ export async function documentSign(
       ).rows[0];
       const text = Buffer.from(
         unseal<{ data: string }>(
-          source.content_ciphertext,
+          await storageAdapter().get("document:" + source.id, source.content_ciphertext),
           "document:" + source.id,
         ).data,
         "base64",

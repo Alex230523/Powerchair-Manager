@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C1): a package with three conditions, a partner on it, a condition
@@ -19,14 +20,10 @@ test("sponsor packages, conditions, partner sheet, calendar layer, home and agre
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `sponsors-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Sponsors president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Sponsors president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -43,7 +40,7 @@ test("sponsor packages, conditions, partner sheet, calendar layer, home and agre
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240)", [club]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. A package with three conditions.
@@ -107,12 +104,13 @@ test("sponsor packages, conditions, partner sheet, calendar layer, home and agre
 
     // 5. The home: a to-do and the date in the coming events.
     await page.goto("/fr");
-    await expect(page.locator(".todo-card").filter({ hasText: "Conditions de sponsor à livrer" })).toBeVisible();
+    await expect(page.locator(".todo-card").filter({ hasText: "Sponsors et subsides" })).toBeVisible();
     await expect(page.locator(".agenda").getByText(/Garage Dupont/).first()).toBeVisible();
-    await page.locator(".todo-card").filter({ hasText: "Conditions de sponsor à livrer" }).click();
+    await page.locator(".todo-card").filter({ hasText: "Sponsors et subsides" }).click();
     await expect(page).toHaveURL("/fr/tasks");
     // Two conditions are still open: one due today, one without a date.
-    await expect(page.locator(".task-page li")).toHaveCount(2);
+    // A1: the sponsors' category of the central to-do.
+    await expect(page.locator("#tasks-sponsors .task-page li")).toHaveCount(2);
     await axe(page, "tasks page");
 
     // 6. The agreement.

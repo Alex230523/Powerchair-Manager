@@ -145,9 +145,12 @@ const copy = {
 export function Reminders({
   locale,
   initial,
+  embedded,
 }: {
   locale: Locale;
   initial?: Kind;
+  /** Inside Settings > Notifications (wave 17, G3): a section, hidden when the profile may not remind. */
+  embedded?: boolean;
 }) {
   const t = copy[locale];
   const [view, setView] = useState<View | null>(null),
@@ -204,7 +207,7 @@ export function Reminders({
       })
       .catch((e: Error) => {
         if (cancelled) return;
-        if (["FORBIDDEN", "MFA_REQUIRED", "CLUB_ONLY"].includes(e.message))
+        if (["FORBIDDEN", "MFA_REQUIRED", "CLUB_ONLY", "MODULE_OFF", "CONTEXT_REQUIRED"].includes(e.message))
           setDenied(true);
         else setError(failure(e.message));
       });
@@ -283,9 +286,18 @@ export function Reminders({
     }
   }
 
+  if (embedded && denied) return null;
+  const Shell = embedded ? "section" : "main";
   return (
-    <main id="main" className="access reminders">
-      <PageHeader title={t.title} subtitle={t.intro} />
+    <Shell {...(embedded ? { "aria-labelledby": "settings-reminders" } : { id: "main" })} className="access reminders">
+      {embedded ? (
+        <header className="reminders-head">
+          <h2 id="settings-reminders">{t.title}</h2>
+          <p className="muted">{t.intro}</p>
+        </header>
+      ) : (
+        <PageHeader title={t.title} subtitle={t.intro} />
+      )}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
@@ -548,6 +560,6 @@ export function Reminders({
           </div>
         </>
       )}
-    </main>
+    </Shell>
   );
 }

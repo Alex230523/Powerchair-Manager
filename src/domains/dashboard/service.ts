@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { myTasksCount } from "../tasks/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -20,6 +21,7 @@ import {
   type Doc,
 } from "../documents/access";
 import {
+  buildBoard,
   buildTodos,
   metric,
   type AgendaItem,
@@ -33,11 +35,13 @@ import {
 import { presenceRules, readiness } from "./presence";
 import { fundingDeadlines, moneyDeadlinesIn, openTasksCount } from "../funding/service";
 import { resolveScope, seasonOptions, teamMembers } from "../scope/service";
+import { seasonKeyFigures } from "../statistics/key-figures";
 import { duesSeasonRows } from "../dues/service";
 import { today } from "../calendar/access";
 import { duesTotals } from "../dues/schema";
 import { setupState } from "../setup/service";
 import { setupShown } from "../setup/schema";
+import { clubStatus } from "../club/obligations";
 
 /**
  * Read-only operational summary for the active context.
@@ -121,6 +125,8 @@ export async function computeFor(
   // Modules the club switched off add nothing to the dashboard.
   const on = (m: string) => !club || !context.disabled_modules?.includes(m);
   const own = [...(await ownProfiles(c, a))];
+  // A1: one's own open tasks due within 14 days, the late ones included.
+  if (mfa) counts.myTasks = await myTasksCount(c, org, user.id, own);
   // The team chosen in the top bar (wave 12): validated here, never trusted from the URL.
   const scope = club
     ? await resolveScope(c, { organization_id: org, role: a.role, user_id: user.id, team_id: a.team_id }, raw)
@@ -236,6 +242,15 @@ export async function computeFor(
     );
   }
 
+  // Teams over their places (wave 16, R1): only for those who manage teams.
+  if (club && has("teams.manage"))
+    counts.teamsOverCapacity = await count(
+      c,
+      `SELECT count(*) FROM team t JOIN season s ON s.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT s.archived AND s.starts_on<=CURRENT_DATE AND s.ends_on>=CURRENT_DATE AND t.capacity IS NOT NULL
+         AND t.capacity<(SELECT count(DISTINCT m.profile_id) FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=t.id AND m.role='player' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND cp.status='active')`,
+      [org],
+    );
+
   // Equipment: chairs in maintenance or due for service within 14 days.
   if (club && on("equipment") && has("equipment.manage")) {
     scopes.push("equipment");
@@ -281,8 +296,8 @@ export async function computeFor(
     );
   }
 
-  // Dues: scheduled instalments only. Payments and reconciliation arrive with lot 09,
-  // so nothing here claims that an amount is paid or late.
+  // Dues: the instalments scheduled in the next 30 days (the payments
+  // reconciled from the bank, B1, show on the dues page and in the reminders).
   if (club && on("dues") && has("dues.manage")) {
     scopes.push("dues");
     const next = await count(
@@ -467,6 +482,23 @@ export async function computeFor(
     };
     scopes.push("money");
   }
+  // The president's key figures (wave 16, A), for the season in view: distinct people, done sessions, played matches.
+  const president = club && (a.role === "club_president" || has("mandates.manage"));
+  if (president && seasonRow) {
+    const k = await seasonKeyFigures(c, org, seasonRow, teamId ? [teamId] : null);
+    const season = `?season=${seasonRow.id}`;
+    metrics.push(
+      metric("seasonPlayers", k.players, { href: `/players${season}` }),
+      metric("seasonTeams", k.teams, { href: `/teams${season}` }),
+      metric("seasonCoaches", k.coaches, { href: `/coaches${season}` }),
+      ...(on("equipment") ? [metric("chairs", k.chairs, { href: "/equipment", extra: k.chairs_service })] : []),
+      metric("trainingsDone", k.trainings, { href: `/attendance${season}` }),
+      ...(on("matches") ? [metric("matchesPlayed", k.matches, { href: `/matches${season}` })] : []),
+    );
+  }
+  // « Statut du club » (wave 16, A): the obligations of the year, for the president.
+  const status = president ? await clubStatus(c, org) : null;
+
   // The week asked for: events the actor may read, filtered like the calendar and the team in view.
   let week: Dashboard["week"];
   if (raw.week && /^\d{4}-\d{2}-\d{2}$/.test(raw.week) && !Number.isNaN(Date.parse(raw.week + "T00:00:00Z"))) {
@@ -525,6 +557,7 @@ export async function computeFor(
       mail: club && (has("notifications.manage") || has("calendar.manage")),
     },
     todos: buildTodos(counts),
+    board: buildBoard(counts, { president, status }),
     metrics,
     agenda,
     deadlines: deadlines.slice(0, limits.deadlines),

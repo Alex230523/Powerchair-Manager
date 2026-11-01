@@ -1,3 +1,4 @@
+import { visibleVenue } from "../venues/schema";
 import type { Pool, PoolClient } from "pg";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -179,7 +180,9 @@ export async function tripsView(db: Pool, p: Principal) {
       venues: x.manage
         ? (
             await x.c.query(
-              "SELECT id,name,city FROM shared_venue ORDER BY name LIMIT 500",
+              // Wave 17 (C4): the federation's validated halls only.
+              `SELECT v.id,v.name,v.city FROM shared_venue v WHERE ${visibleVenue()} ORDER BY v.name LIMIT 500`,
+              [x.org],
             )
           ).rows
         : [],
@@ -798,85 +801,6 @@ export async function tripExecute(
     },
     expected,
   );
-}
-
-/**
- * Everything the travelling staff need without network: who travels, how to
- * reach them, their support needs and care instructions, the vehicles and the
- * schedule. Health details (impairment, medical notes) only for people.sensitive.
- * The browser encrypts it with a code before storing it; each download is logged.
- */
-export async function tripOfflinePack(db: Pool, p: Principal, id: string) {
-  const detail = await tripDetail(db, p, id);
-  if (!detail.can.full) throw new AccessError("FORBIDDEN");
-  return scope(db, p, false, async (x) => {
-    if (!x.manage && !(await travellingStaff(x, id)))
-      throw new AccessError("FORBIDDEN");
-    const sensitive = x.mfa && x.grants.includes("people.sensitive");
-    const travelling = detail.participants.filter((r) => r.status !== "declined");
-    const confidential = new Map<string, { impairment: string; medical_notes: string }>();
-    if (sensitive)
-      for (const r of (
-        await x.c.query(
-          "SELECT profile_id,confidential_ciphertext FROM player_support_profile WHERE organization_id=$1 AND profile_id=ANY($2::uuid[]) AND confidential_ciphertext IS NOT NULL",
-          [x.org, travelling.map((r) => r.profile_id)],
-        )
-      ).rows)
-        confidential.set(
-          r.profile_id,
-          unseal(r.confidential_ciphertext, "player-health:" + r.profile_id),
-        );
-    await logSensitiveAccess(x.c, x.org, x.userId, null, "offline_book", id);
-    const t = detail.trip;
-    return {
-      version: 1,
-      generatedAt: new Date().toISOString(),
-      expiresOn: t.ends_on,
-      trip: {
-        id: t.id,
-        title: t.title,
-        starts_on: t.starts_on,
-        ends_on: t.ends_on,
-        destination: t.venue_name ?? t.place_name ?? t.destination,
-        address: t.venue_address || t.place_address || "",
-        meeting_point: t.meeting_point,
-        departure_at: t.departure_at,
-        return_at: t.return_at,
-        return_point: t.return_point,
-        accommodation: t.accommodation,
-        emergency: t.emergency,
-        contact: t.contact,
-      },
-      schedule: detail.schedule,
-      vehicles: detail.vehicles.map((v) => ({
-        name: v.name,
-        legs: v.legs,
-        driver_name: v.driver_name,
-        phone: v.phone,
-        passengers: v.passengers,
-      })),
-      people: travelling.map((r) => {
-        const s = detail.support.find((q) => q.profile_id === r.profile_id);
-        return {
-          id: r.id,
-          name: r.full_name,
-          role: r.role,
-          phone: r.phone,
-          chair: r.chair,
-          needs: r.needs,
-          support_needs: s?.support_needs ?? "",
-          safety_notes: s?.safety_notes ?? "",
-          emergency_contact: s?.emergency_contact ?? "",
-          care: (detail.care?.instructions ?? [])
-            .filter((c) => c.profile_id === r.profile_id)
-            .map((c) => ({ moment: c.moment, time: c.time, title: c.title, details: c.details })),
-          ...(confidential.has(r.profile_id)
-            ? { health: confidential.get(r.profile_id) }
-            : {}),
-        };
-      }),
-    };
-  });
 }
 
 /** Care instructions of one player, for their profile page. */

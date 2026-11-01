@@ -26,10 +26,25 @@ import {
   documentUpload,
 } from "../src/domains/documents/service";
 import { duesExecute } from "../src/domains/dues/service";
+import { tasksExecute } from "../src/domains/tasks/service";
+import { fundingExecute } from "../src/domains/funding/service";
+import { fundingCommand } from "../src/domains/funding/schema";
+import { contactsExecute } from "../src/domains/crm/service";
+import { contactCommand } from "../src/domains/crm/schema";
+import { automationsExecute } from "../src/domains/automations/service";
+import { automationCommand } from "../src/domains/automations/schema";
+import { taskCommand, yearTemplate, type YearKey } from "../src/domains/tasks/schema";
 import { equipmentExecute } from "../src/domains/equipment/service";
 import { playerProfileExecute } from "../src/domains/player-profile/service";
 import { peopleExecute } from "../src/domains/people/service";
 import { financeExecute } from "../src/domains/finance/service";
+import { bankExecute } from "../src/domains/bank/service";
+import { bankCommand } from "../src/domains/bank/schema";
+import { detectBank, guessColumns, linesFromGrid, parseCamt, parseCoda, type StatementLine } from "../src/domains/bank/parse";
+import { sampleCamt, sampleCoda, sampleCsv, sampleRows } from "../src/domains/bank/samples";
+import { formatReference } from "../src/domains/bank/reference";
+import { parseCsv, parseXlsx } from "../src/lib/spreadsheet";
+import { xlsx } from "../src/lib/xlsx";
 import {
   seasonOf,
   type categories,
@@ -45,7 +60,7 @@ import {
   clubLicensesExecute,
   federationLicensesExecute,
 } from "../src/domains/federation/service";
-import { tigerstormTemplate } from "../src/domains/registrations/templates";
+import { platformTemplate } from "../src/domains/registrations/templates";
 import { seal } from "../src/domains/notifications/crypto";
 
 const CLUB = "Club démo Powerchair";
@@ -109,6 +124,14 @@ if (process.env.VERCEL_ENV === "production")
 if (process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force"))
   throw new Error("Refusing to create public demo accounts in production.");
 
+const yearTitles: Record<YearKey, string> = {
+  assembly: "Assemblée générale et approbation des comptes",
+  filing: "Dépôt des comptes annuels",
+  ubo: "Confirmation annuelle du registre UBO",
+  tax: "Déclaration à l'impôt des personnes morales",
+  insurance: "Renouvellement des assurances",
+  affiliation: "Renouvellement de l'affiliation fédérale",
+};
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth(db);
 const sessions: string[] = [];
@@ -150,6 +173,8 @@ try {
     console.log(`« ${CLUB} » existe déjà.`);
     // Tournaments came later (21/10/2026): added to an existing demo once.
     await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
+    // Wave 16 (E1): the demo events take the club's type matching their kind.
+    await db.query("UPDATE calendar_event e SET event_type_id=(SELECT t.id FROM event_type t WHERE t.organization_id=e.organization_id AND t.legacy_kind=e.kind ORDER BY t.position LIMIT 1) WHERE e.event_type_id IS NULL");
     printAccounts();
     await db.end();
     process.exit(0);
@@ -655,6 +680,8 @@ try {
     },
     org,
   );
+  // A3: the rate is issued by itself when a registration is accepted.
+  await duesExecute(db, president, { action: "autoIssue", planId: plan.id as string }, org);
   for (const profileId of [people.camille, people.lucas])
     await duesExecute(
       db,
@@ -670,6 +697,75 @@ try {
       },
       org,
     );
+
+  // A1: the central to-do. The yearly duties of the ASBL, a few tasks of the club, one for the coach.
+  const thisYear = Number(day(0).slice(0, 4));
+  await tasksExecute(
+    db,
+    president,
+    taskCommand.parse({
+      action: "applyYear",
+      year: thisYear,
+      items: yearTemplate("01-01", thisYear).map((i) => ({ key: i.key, title: yearTitles[i.key], dueOn: i.dueOn, responsibleId: i.key === "affiliation" ? people.president : null })),
+    }),
+    org,
+  );
+  for (const task of [
+    { category: "sport", title: "Inscrire l'équipe au tournoi de printemps", dueOn: day(12), responsibleId: people.coach, priority: "high", checklist: ["Choisir les joueurs", "Payer l'inscription"] },
+    { category: "events", title: "Réserver la salle pour la fête du club", dueOn: day(25), responsibleId: people.president, checklist: [] },
+    { category: "fundraising", title: "Préparer la vente de gaufres", dueOn: day(5), responsibleId: null, recurrence: "yearly", checklist: ["Commander la pâte", "Trouver deux bénévoles"] },
+    { category: "admin", title: "Mettre à jour le registre des membres", dueOn: day(-2), responsibleId: people.president, checklist: [] },
+  ])
+    await tasksExecute(db, president, taskCommand.parse({ action: "create", ...task }), org);
+
+  // A2: « Subsides & sponsors »: a grant paid in two instalments, a call that opens soon, a sponsor to call back.
+  const fund = (cmd: Record<string, unknown>) => fundingExecute(db, president, fundingCommand.parse(cmd), org) as Promise<{ id: string }>;
+  const region = await fund({
+    action: "grant",
+    funder: "Région (démo)",
+    program: "Sport adapté",
+    purpose: "Deux fauteuils de sport",
+    requestedCents: 800000,
+    grantedCents: 600000,
+    status: "granted",
+    notes: "",
+    opensOn: day(-120),
+    deadlineOn: day(-60),
+    startsOn: day(-30),
+    endsOn: day(335),
+    reportDueOn: day(300),
+  });
+  await fund({ action: "grantPayment", grantId: region.id, receivedOn: day(-20), amountCents: 360000, note: "Première tranche" });
+  await fund({ action: "grant", funder: "Commune (démo)", program: "Clubs inclusifs", purpose: "Transport vers les tournois", requestedCents: 150000, status: "idea", notes: "", opensOn: day(10), deadlineOn: day(45) });
+  await fund({
+    action: "partner",
+    name: "Garage démo",
+    kind: "sponsor",
+    status: "active",
+    amountCents: 150000,
+    inKind: "",
+    counterpart: "Logo sur les maillots",
+    startsOn: day(-200),
+    endsOn: day(40),
+    nextAction: "Proposer le renouvellement",
+    notes: "",
+    signedOn: day(-200),
+    responsibleId: people.president,
+    lastContactOn: day(-95),
+  });
+
+  // A4: the contact book as a CRM: an organisation, a log, a next action, a sponsor's contact.
+  const crm = (cmd: Record<string, unknown>) => contactsExecute(db, president, contactCommand.parse(cmd), org) as Promise<{ id: string }>;
+  const alderman = await crm({ action: "contact", fullName: "Claire Échevine (démo)", organizationName: "Commune (démo)", role: "Échevine des sports", email: "", phone: "", tags: ["public"], notes: "" });
+  await crm({ action: "interaction", contactId: alderman.id, kind: "meeting", summary: "Présentation du projet de fauteuils", happenedOn: day(-40) });
+  await crm({ action: "interaction", contactId: alderman.id, kind: "call", summary: "L'appel à projets ouvre bientôt", happenedOn: day(-5) });
+  await crm({ action: "nextAction", contactId: alderman.id, title: "Envoyer le budget prévisionnel", dueOn: day(8), responsibleId: people.president });
+  const garage = await crm({ action: "contact", fullName: "Marc Garage (démo)", organizationName: "Garage démo", role: "Gérant", email: "", phone: "", tags: ["sponsor"], notes: "" });
+  await crm({ action: "interaction", contactId: garage.id, kind: "note", summary: "Préfère être appelé le matin" });
+
+  // B7: two automations switched on for the demo club (nothing leaves while mails stay local).
+  for (const rule of ["documentExpiring", "sponsorQuiet"] as const)
+    await automationsExecute(db, president, automationCommand.parse({ action: "rule", rule, enabled: true, paused: false, delayDays: rule === "documentExpiring" ? 30 : 90, actions: ["notify", "email"] }), org);
 
   // 7. Equipment: club chairs (one shared), a player's own chair, a loan chair in repair.
   const chair = async (input: {
@@ -690,6 +786,9 @@ try {
           name: input.name,
           brand: "Démo Sport",
           model: "Pivot 10",
+          // Wave 17 (Q1): a model is required; this one waits for the federation.
+          modelId: null,
+          newModel: { brand: "Démo Sport", name: "Pivot 10" },
           serialNumber:
             "DEMO-" + input.name.replace(/\D/g, "").padStart(3, "0"),
           ownership: input.ownership,
@@ -873,7 +972,7 @@ try {
   }
 
   // 9. A submitted application waiting for the club's decision.
-  const template = tigerstormTemplate("fr");
+  const template = platformTemplate("player", "fr");
   const form = (
     await db.query(
       "INSERT INTO registration_form(organization_id,season_id,title,description,fields,published) VALUES($1,$2,$3,$4,$5,true) RETURNING id",
@@ -1013,6 +1112,42 @@ try {
     },
     org,
   );
+  // B1 (lot 09): the dues account and one statement of each format (CSV of
+  // Belfius, Excel of KBC, CODA, camt.053), written as each bank writes it
+  // and read back by the parsers of the « Relevés » page. A transfer with
+  // its structured communication files itself; the others wait for a person.
+  await bankExecute(db, president, bankCommand.parse({ action: "account", label: "Compte courant", iban: "BE68539007547034", bic: "GKCCBEBB", forDues: true }), org);
+  const fees = (
+    await db.query(
+      `SELECT cp.full_name,d.reference,(SELECT json_agg(json_build_object('reference',i.reference,'cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id) AS parts
+         FROM dues_receivable d JOIN club_person cp ON cp.id=d.profile_id WHERE d.organization_id=$1 AND d.status='open' ORDER BY cp.full_name LIMIT 4`,
+      [org],
+    )
+  ).rows as { full_name: string; reference: string; parts: { reference: string; cents: number }[] | null }[];
+  const iban = "BE68539007547034";
+  const move = (offset: number, cents: number, who: string, communication: string, ref: string): StatementLine => ({
+    bookedOn: day(offset),
+    amountCents: cents,
+    counterparty: who.toUpperCase(),
+    counterpartyIban: "BE71096123456769",
+    communication,
+    bankRef: ref,
+  });
+  const second = (f: (typeof fees)[number]) => f.parts?.[1] ?? f.parts?.[0] ?? { reference: f.reference, cents: 5000 };
+  const statements: { format: "csv" | "xlsx" | "coda" | "camt"; bank: "belfius" | "kbc" | "other"; filename: string; lines: StatementLine[] }[] = [];
+  if (fees.length) {
+    const [a, b = fees[0], c = fees[0], d = fees[0]] = fees;
+    const belfius = [move(-9, second(a).cents, a.full_name, formatReference(second(a).reference), "DEMO-BEL-1"), move(-9, -4200, "Sport Shop Wavre", "Chasubles", "DEMO-BEL-2")];
+    const grid = parseCsv(sampleCsv("belfius", iban, belfius));
+    statements.push({ format: "csv", bank: detectBank(grid[0]) as "belfius", filename: "belfius.csv", lines: linesFromGrid(grid, guessColumns(grid[0])).lines });
+    const book = xlsx(sampleRows("kbc", iban, [move(-7, 10000, `Famille ${b.full_name.split(" ").pop()}`, "cotisation", "DEMO-KBC-1")]));
+    const sheet = await parseXlsx(book.buffer.slice(book.byteOffset, book.byteOffset + book.byteLength) as ArrayBuffer);
+    statements.push({ format: "xlsx", bank: detectBank(sheet[0]) as "kbc", filename: "kbc.xlsx", lines: linesFromGrid(sheet, guessColumns(sheet[0])).lines });
+    statements.push({ format: "coda", bank: "other", filename: "releve.cod", lines: parseCoda(sampleCoda(iban, [move(-5, second(c).cents, c.full_name, formatReference(second(c).reference), "DEMO-CODA-1")])).lines });
+    statements.push({ format: "camt", bank: "other", filename: "releve.xml", lines: parseCamt(sampleCamt(iban, [move(-3, 2500, d.full_name, "Souper spaghetti", "DEMO-CAMT-1")])).lines });
+  }
+  for (const st of statements) await bankExecute(db, president, bankCommand.parse({ action: "import", ...st }), org);
+
   // Season budget, compared with actuals on the funding page.
   const season0 = seasonOf(day(0)).label;
   await financeExecute(
@@ -1071,7 +1206,8 @@ try {
     [federation, fedUser],
   );
   // The demo club is affiliated with the BPCF: its coaches see the federation's courses.
-  await db.query("UPDATE organization SET federation_id=$1 WHERE id=$2", [
+  // Wave 16 (I3): its affiliation number, shown in « Clubs et présidents ».
+  await db.query("UPDATE organization SET federation_id=$1,affiliation_number='BPCF-001',legal_form='asbl' WHERE id=$2", [
     federation,
     org,
   ]);
@@ -1383,8 +1519,9 @@ try {
   );
 
   // Wave 7: an adapted minibus, care instructions, a hall in the directory and
-  // an away tournament with its participants, vehicle and schedule.
-  const hall = await venueExecute(db, president, {
+  // an away tournament with its participants, vehicle and schedule. Since
+  // wave 17 (C4) the federation writes the halls' directory.
+  const hall = await venueExecute(db, fed, {
     action: "save",
     name: "Hall omnisports de Gand",
     address: "Sportlaan 12",
@@ -1591,6 +1728,8 @@ try {
   );
 
   await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
+  // Wave 16 (E1): the demo events take the club's type matching their kind.
+  await db.query("UPDATE calendar_event e SET event_type_id=(SELECT t.id FROM event_type t WHERE t.organization_id=e.organization_id AND t.legacy_kind=e.kind ORDER BY t.position LIMIT 1) WHERE e.event_type_id IS NULL");
   console.log(`« ${CLUB} » est prêt.`);
   printAccounts();
 } finally {

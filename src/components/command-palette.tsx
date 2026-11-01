@@ -12,6 +12,8 @@ type Found = {
   people: { id: string; name: string; kind: "player" | "coach"; former: boolean }[];
   teams: { id: string; name: string }[];
   events: { id: string; title: string; starts_at: string }[];
+  /** A4: the contact book (staff only). */
+  contacts?: { id: string; name: string; organization: string }[];
 };
 type Result = { key: string; group: string; label: string; detail?: string; icon: IconName; href?: string; scope?: "season" | "team" };
 
@@ -150,6 +152,14 @@ export function CommandPalette({
             detail: when(e.starts_at),
             icon: "calendar" as IconName,
             href: `/${locale}/calendar`,
+          })),
+          ...(found?.contacts ?? []).map((x) => ({
+            key: "contact" + x.id,
+            group: t.contacts,
+            label: x.name,
+            ...(x.organization ? { detail: x.organization } : {}),
+            icon: "message" as IconName,
+            href: `/${locale}/contacts?contact=${x.id}`,
           })),
           ...pages
             .filter((p) => fold(p.label).includes(needle))

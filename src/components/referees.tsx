@@ -1,4 +1,5 @@
 "use client";
+import { ClassificationDays } from "./classification-days";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type {
@@ -9,6 +10,7 @@ import { refereesCopy, weekendDays } from "./referees-copy";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
 import { Badge, PageHeader, Card, EmptyState } from "./ui";
+import { RefereeRoster } from "./federation-referees";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const when = (l: Locale, d: string) =>
@@ -266,6 +268,7 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
           </Card>
         </div>
       )}
+      {data && <ClassificationDays locale={locale} />}
     </main>
   );
 }
@@ -310,6 +313,7 @@ export function Designations({ locale }: { locale: Locale }) {
   return (
     <main id="main" className="access referees">
       <PageHeader title={t.designTitle} subtitle={t.designIntro} />
+      {!denied && <RefereeRoster locale={locale} />}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.denied}</p>}

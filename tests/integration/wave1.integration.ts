@@ -7,7 +7,7 @@ import {
   registrationExecute,
   registrationView,
 } from "../../src/domains/registrations/service";
-import { tigerstormTemplate } from "../../src/domains/registrations/templates";
+import { platformTemplate } from "../../src/domains/registrations/templates";
 import { duesExecute, duesView } from "../../src/domains/dues/service";
 import {
   remindersExecute,
@@ -64,7 +64,7 @@ beforeAll(async () => {
     await db.query(await readFile("db/migrations/" + f, "utf8"));
   club = (
     await db.query(
-      "INSERT INTO organization(name,kind) VALUES('Tigerstorm test','club') RETURNING id",
+      "INSERT INTO organization(name,kind) VALUES('Club test','club') RETURNING id",
     )
   ).rows[0].id;
   season = (
@@ -89,7 +89,7 @@ afterAll(async () => {
 });
 
 it("encrypts confidential answers, hides them without the grant and fills the profile on admission", async () => {
-  const template = tigerstormTemplate("fr");
+  const template = platformTemplate("player", "fr");
   const form = await registrationExecute(
     db,
     president,
@@ -206,7 +206,7 @@ it("encrypts confidential answers, hides them without the grant and fills the pr
       expectedVersion: visible.version,
       status: "accepted",
       message: "",
-      confirmDuplicate: false,
+      confirmDuplicate: false, acceptOverCapacity: false,
     },
     club,
   );

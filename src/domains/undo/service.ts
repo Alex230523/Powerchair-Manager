@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
+import { revertDecision, type DecisionUndo } from "../registrations/undo";
 import { isAdmin, permissions, type Permission } from "../access/policy";
 
 /**
@@ -11,7 +12,7 @@ import { isAdmin, permissions, type Permission } from "../access/policy";
  * server, with the rights of the action checked again, once, and leaves a
  * line in the audit log. Definitive deletions and sent emails offer none.
  */
-export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment"] as const;
+export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision", "affiliationPaid", "operationDelete", "attendanceMark"] as const;
 export type UndoKind = (typeof undoKinds)[number];
 /** Server window; the message on screen lasts 8 seconds (longer while hovered). */
 export const undoSeconds = 120;
@@ -24,6 +25,16 @@ type Payloads = {
   chairRetire: { status: string; links: string[] };
   messageHide: { hidden_at: string | null; hidden_by: string | null; reports: string[] };
   payment: { receivable: string | null; plan: string | null };
+  /** Wave 16 (E1): the events a cancellation touched. */
+  eventCancel: { ids: string[] };
+  /** Wave 17 (F1): everything a decision on an application changed. */
+  registrationDecision: DecisionUndo;
+  /** Wave 17 (N2): an affiliation marked « en ordre », and the expense it created. */
+  affiliationPaid: { transaction: string | null };
+  /** Wave 17 (N1): a deleted operation, and whether it was already cancelled before. */
+  operationDelete: { wasCancelled: boolean };
+  /** Wave 17 (J2): the marks of a roll call as they were before the click (or « Tout présent »). */
+  attendanceMark: { marks: { id: string; actual: string }[] };
 };
 
 export async function offerUndo<K extends UndoKind>(c: PoolClient, org: string, userId: string, kind: K, target: string, payload: Payloads[K]) {
@@ -53,6 +64,17 @@ function allowed(kind: UndoKind, role: Parameters<typeof permissions>[0], grants
       return mfa && (isAdmin(role) || rights.includes("members.read"));
     case "payment":
       return has("dues.manage");
+    case "eventCancel":
+      // The coach who cancelled a team event may put it back too.
+      return has("calendar.manage") || (mfa && role === "coach");
+    case "registrationDecision":
+      return has("registrations.manage");
+    case "affiliationPaid":
+    case "operationDelete":
+      return has("dues.manage");
+    case "attendanceMark":
+      // Whoever takes the roll call: the coach included.
+      return mfa && (isAdmin(role) || role === "coach" || rights.includes("attendance.manage"));
   }
 }
 
@@ -77,7 +99,7 @@ export async function undoExecute(db: Pool, p: Principal, input: z.infer<typeof 
     if (row.expired) throw new AccessError("UNDO_EXPIRED", 410);
     if (!allowed(row.kind, a.role, a.grants, mfaSatisfied(!!user.twoFactorEnabled))) throw new AccessError("FORBIDDEN");
     // A module switched off since: nothing comes back through it.
-    const owner = ({ payment: "dues", chairRetire: "equipment", messageHide: "messages" } as Record<string, string>)[row.kind];
+    const owner = ({ payment: "dues", chairRetire: "equipment", messageHide: "messages", affiliationPaid: "finance", operationDelete: "finance" } as Record<string, string>)[row.kind];
     if (owner && (a.disabled_modules ?? []).includes(owner)) throw new AccessError("MODULE_OFF");
     await revert(c, a.organization_id, p.userId, row.kind, row.target_id, row.payload as never);
     await c.query("UPDATE undo_action SET used_at=now() WHERE id=$1", [row.id]);
@@ -97,6 +119,45 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
     if (!(await c.query(sql, values)).rowCount) throw new AccessError("NOT_FOUND", 404);
   };
   switch (kind) {
+    case "attendanceMark": {
+      const p = payload as Payloads["attendanceMark"];
+      for (const m of p.marks) {
+        const row = (
+          await c.query(
+            "UPDATE attendance_invitation SET actual=$4,marked_at=now(),marked_by=$3,version=version+1 WHERE id=$1 AND organization_id=$2 AND register_id=$5 AND withdrawn_at IS NULL RETURNING id",
+            [m.id, org, userId, m.actual, target],
+          )
+        ).rows[0];
+        if (!row) throw new AccessError("NOT_FOUND", 404);
+      }
+      await c.query("INSERT INTO attendance_history(register_id,actor_id,action,before_data,after_data,reason) VALUES($1,$2,'undo',NULL,$3,'')", [
+        target,
+        userId,
+        JSON.stringify({ marks: p.marks }),
+      ]);
+      return;
+    }
+    case "registrationDecision":
+      await revertDecision(c, org, userId, target, payload as Payloads["registrationDecision"]);
+      return;
+    case "operationDelete": {
+      const p = payload as Payloads["operationDelete"];
+      await one(
+        `UPDATE finance_transaction SET deleted_at=NULL,deleted_by=NULL,delete_reason=''${p.wasCancelled ? "" : ",cancelled_at=NULL,cancelled_by=NULL,cancel_reason=''"} WHERE id=$1 AND organization_id=$2 AND deleted_at IS NOT NULL`,
+        [target, org],
+      );
+      return;
+    }
+    case "affiliationPaid": {
+      const p = payload as Payloads["affiliationPaid"];
+      await one("UPDATE affiliation_due SET paid_on=NULL,marked_by=NULL,transaction_id=NULL WHERE id=$1 AND organization_id=$2 AND paid_on IS NOT NULL", [target, org]);
+      if (p.transaction)
+        await c.query(
+          "UPDATE finance_transaction SET cancelled_at=now(),cancelled_by=$3,cancel_reason='Annulé juste après le marquage en ordre' WHERE id=$1 AND organization_id=$2 AND cancelled_at IS NULL",
+          [p.transaction, org, userId],
+        );
+      return;
+    }
     case "teamArchive":
     case "seasonArchive": {
       const p = payload as Payloads["teamArchive"];
@@ -135,6 +196,22 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
       const p = payload as Payloads["messageHide"];
       await one("UPDATE internal_message SET hidden_at=$3,hidden_by=$4 WHERE id=$1 AND organization_id=$2", [target, org, p.hidden_at, p.hidden_by]);
       if (p.reports.length) await c.query("UPDATE message_report SET resolved_at=NULL,resolved_by=NULL,outcome=NULL WHERE id=ANY($1::uuid[]) AND message_id=$2", [p.reports, target]);
+      return;
+    }
+    case "eventCancel": {
+      const p = payload as Payloads["eventCancel"];
+      const back = await c.query(
+        "UPDATE calendar_event SET status='scheduled',version=version+1,updated_at=now() WHERE id=ANY($1::uuid[]) AND organization_id=$2 AND status='cancelled' RETURNING id",
+        [p.ids, org],
+      );
+      if (!back.rowCount) throw new AccessError("NOT_FOUND", 404);
+      for (const r of back.rows)
+        await c.query("INSERT INTO calendar_history(event_id,actor_id,action,before_data,after_data) VALUES($1,$2,'restored',$3,$4)", [
+          r.id,
+          userId,
+          JSON.stringify({ status: "cancelled" }),
+          JSON.stringify({ status: "scheduled" }),
+        ]);
       return;
     }
     case "payment": {

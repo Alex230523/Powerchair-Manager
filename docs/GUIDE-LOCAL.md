@@ -86,7 +86,7 @@ Ouvrir http://127.0.0.1:3000/fr/calendar après choix du mandat.
 Créer un lieu, puis un événement ou une série. Un coach habilité peut planifier
 pour son équipe autorisée. Les flux ICS privés se créent et se révoquent depuis
 cette page ; ils sont testés localement, sans connexion à un calendrier cloud.
-Les convocations et réponses sont disponibles dans le lot 07.
+Les invitations et réponses sont disponibles dans le lot 07.
 
 ## Créer la première organisation
 
@@ -167,9 +167,9 @@ remplacée par le lot 05.
 
 Le lot 07 a été validé.
 
-## Lot 07 — Convocations et présences
+## Lot 07 — Invitations et présences
 
-Ouvrir http://127.0.0.1:3000/fr/attendance. Choisir un événement futur, les participants à convoquer, une échéance et éventuellement un seuil minimum. Les personnes répondent dans ce même espace ; le coach pointe à partir du début de l’événement puis clôture le registre. Réponse et présence constatée restent distinctes.
+Ouvrir http://127.0.0.1:3000/fr/attendance. Choisir un événement futur, les participants à inviter, une échéance et éventuellement un seuil minimum. Les personnes répondent dans ce même espace ; le coach pointe à partir du début de l’événement puis clôture le registre. Réponse et présence constatée restent distinctes.
 
 Démarrer les relances automatiques dans un terminal supplémentaire :
 

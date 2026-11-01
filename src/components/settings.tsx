@@ -1,4 +1,16 @@
 "use client";
+import { TutorialSettings } from "./first-steps";
+import { PresidencyHandover } from "./presidency";
+import { tutorialAudience } from "@/domains/tutorial/schema";
+import { TaskTemplates } from "./tasks";
+import { Reminders } from "./reminders";
+import { Automations } from "./automations";
+import { DurationField, readDuration } from "./duration-field";
+import { durationText } from "./duration-copy";
+import { TeamPlacesSettings } from "./team-places-settings";
+import { ClubObligations } from "./club-obligations";
+import { HallOfFameSettings } from "./hall-of-fame";
+import { EventTypesSettings } from "./event-types-settings";
 import { FiscalYearPanel } from "./fiscal-year";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,10 +35,12 @@ import { Notifications } from "./notifications";
 import { SetupSettings } from "./setup-card";
 import { ClubAppearance } from "./club-appearance";
 import { DuesSettingsPanel } from "./dues-settings";
-import { Badge, Button, Card, PageHeader, EmptyState } from "./ui";
+import { Badge, Button, Card, PageHeader, EmptyState, ExportButton } from "./ui";
+import { exportCopy } from "./export-copy";
 import { Icon } from "./icons";
 import { AccountPanels } from "./account-settings";
 import { ClubIdentity } from "./club-identity";
+import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
 
@@ -74,7 +88,7 @@ type PeopleState = {
  * then one sub-page per category. The panels are the ones of the former single
  * page, moved as they were; visibility follows the same rights.
  */
-export function Settings({ locale, category }: { locale: Locale; category?: SettingsCategory }) {
+export function Settings({ locale, category, remindersKind }: { locale: Locale; category?: SettingsCategory; remindersKind?: "dues" | "documents" }) {
   const t = settingsCopy[locale],
     g = governanceCopy[locale],
     h = settingsHubCopy[locale];
@@ -355,12 +369,23 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
         <div className="settings-content" onChange={markDirty} onInput={markDirty} onClickCapture={markClean} onSubmitCapture={markClean}>
           {!shown && <EmptyState icon="lock" title={h.notAvailable} action={<Link href={`/${locale}/settings`}>{h.back}</Link>} />}
           {shown && category === "account" && <AccountPanels locale={locale} />}
+          {/* Wave 17 (O1): the first-connection tour, started again on demand. */}
+          {shown && category === "account" && tutorialAudience(ws?.selected?.role) && <TutorialSettings locale={locale} />}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
+          {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}
+          {shown && category === "notifications" && ws?.selected?.kind === "club" && <Reminders locale={locale} embedded initial={remindersKind} />}
+          {/* B7: the catalogue of automations (president and notifications.manage; the panel hides itself otherwise). */}
+          {shown && category === "notifications" && ws?.selected?.kind === "club" && <Automations locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
+          {shown && category === "club" && <ClubObligations locale={locale} />}
+          {shown && category === "club" && <TaxApproval locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
+          {shown && category === "club" && <HallOfFameSettings locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
+          {/* Wave 17 (G1): the president hands over the presidency. */}
+          {shown && category === "members" && ws?.selected?.role === "club_president" && <PresidencyHandover locale={locale} />}
           {shown && category === "members" && !manage && !(gov && (gov.can.profiles || gov.profiles.length > 0)) && <EmptyState title={t.noMember} />}
 
           {shown && category === "account" && manage && ws.selected?.role === "club_president" && people && (
@@ -406,7 +431,30 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
             </Card>
           )}
           {shown && category === "members" && manage && (
-            <Card title={t.accessTitle} subtitle={t.accessIntro} id="settings-access">
+            <Card
+              title={t.accessTitle}
+              subtitle={t.accessIntro}
+              id="settings-access"
+              actions={
+                // Wave 17 (G2): the members and their rights, as listed here.
+                ws.selected && (
+                  <ExportButton
+                    locale={locale}
+                    organizationId={ws.selected.organization_id}
+                    dataset="members"
+                    subject={h.categories.members.title}
+                    rows={members}
+                    columns={[
+                      { id: "name", label: exportCopy[locale].name, value: (m) => m.name },
+                      { id: "role", label: exportCopy[locale].role, value: (m) => t.roles[m.role] ?? m.role },
+                      { id: "team", label: exportCopy[locale].team, value: (m) => teams.find((x) => x.id === m.team_id)?.name ?? "" },
+                      { id: "rights", label: exportCopy[locale].rights, value: (m) => rightsSummary(locale, m.grants) },
+                      { id: "until", label: exportCopy[locale].until, type: "date", value: (m) => m.valid_until?.slice(0, 10) ?? null },
+                    ]}
+                  />
+                )
+              }
+            >
               <p className="muted small">{t.whatTheySee}</p>
               {coaches.length ? (
                 <div className="table-scroll">
@@ -424,6 +472,7 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
                                   {" "}· {teams.find((x) => x.id === m.team_id)?.name ?? ""}
                                 </span>
                               )}
+                              <span className="muted small"> · {durationText(locale, m.valid_until)}</span>
                             </th>
                             <td className="rights-summary">
                               {summary ? (
@@ -529,23 +578,25 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
                   own={own}
                   onChange={(next: Grant[]) => setDraft({ ...draft, [m.id]: next })}
                 />
-                <div className="actions">
-                  <button
-                    type="button"
-                    className="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void post(
-                        "/api/workspace",
-                        { action: "grants", id: m.id, grants: [...chosen].filter((x) => own.has(x)) },
-                        t.grantsSaved,
-                      ).then((ok) => ok && setEditingMember(""))
-                    }
-                  >
-                    {t.saveGrants}
-                    <span className="sr-only"> : {m.name}</span>
-                  </button>
-                </div>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    // « Jusqu'à nouvel ordre » unless an end date is chosen (wave 17, G3).
+                    const until = readDuration(new FormData(e.currentTarget), "until");
+                    const same = (until ?? "").slice(0, 10) === (m.valid_until ?? "").slice(0, 10);
+                    void post("/api/workspace", { action: "grants", id: m.id, grants: [...chosen].filter((x) => own.has(x)) }, t.grantsSaved)
+                      .then((ok) => (ok && !same ? post("/api/workspace", { action: "renew", id: m.id, validUntil: until }, t.grantsSaved) : ok))
+                      .then((ok) => ok && setEditingMember(""));
+                  }}
+                >
+                  <DurationField locale={locale} name="until" initial={m.valid_until} />
+                  <div className="actions">
+                    <button className="button" disabled={busy}>
+                      {t.saveGrants}
+                      <span className="sr-only"> : {m.name}</span>
+                    </button>
+                  </div>
+                </form>
               </Modal>
             );
           })()}
@@ -561,6 +612,10 @@ export function Settings({ locale, category }: { locale: Locale; category?: Sett
           {shown && category === "activities" && gov?.can.presence && (
             <PresencePanel locale={locale} gov={gov} busy={busy} post={post} />
           )}
+          {shown && category === "activities" && gov?.can.presence && <TeamPlacesSettings locale={locale} />}
+          {shown && category === "activities" && <EventTypesSettings locale={locale} />}
+          {/* Wave 17 (O1): the task templates (transport, training…), for those who plan. */}
+          {shown && category === "activities" && <TaskTemplates locale={locale} />}
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}

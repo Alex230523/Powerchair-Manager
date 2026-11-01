@@ -330,22 +330,6 @@ export function People({
                     </Field>
                     {data.capabilities.peopleRead && (
                       <>
-                        <Field label={t.minAge}>
-                          <input
-                            name="minAge"
-                            type="number"
-                            min={0}
-                            max={120}
-                          />
-                        </Field>
-                        <Field label={t.maxAge}>
-                          <input
-                            name="maxAge"
-                            type="number"
-                            min={0}
-                            max={120}
-                          />
-                        </Field>
                         <Field label={t.joinedBefore}>
                           <input name="joinedBefore" type="date" />
                         </Field>

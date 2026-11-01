@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { readFile } from "node:fs/promises";
 import JSZip from "jszip";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C11): the activity report from the statistics page: the preview,
@@ -20,14 +21,10 @@ test("activity report: preview, sections, PowerPoint file and print", async ({ p
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `report-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Report president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Report president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -49,7 +46,7 @@ test("activity report: preview, sections, PowerPoint file and print", async ({ p
     );
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. From the statistics page to the preview.
@@ -88,6 +85,8 @@ test("activity report: preview, sections, PowerPoint file and print", async ({ p
 
     // 5. The event editor offers the "highlight" box.
     await page.goto("/fr/calendar?create=1");
+    // Wave 16 (E1): in the « Avancé » section of the form.
+    await page.locator("#event-editor summary", { hasText: "Avancé" }).click();
     await expect(page.getByRole("checkbox", { name: /^Fait marquant de la saison/ })).toBeVisible();
 
     // 6. 390 px.

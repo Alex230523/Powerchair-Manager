@@ -11,6 +11,7 @@ import {
   type ImportIssue,
 } from "@/lib/spreadsheet";
 import { Modal } from "./modal";
+import { inviteCopy, isMinor } from "./invite-copy";
 
 const copy = {
   fr: {
@@ -157,8 +158,11 @@ export function PlayerImport({
   done,
   role = "player",
   initiallyOpen = false,
+  canInvite = false,
 }: {
   locale: Locale;
+  /** Wave 16 (I2): this profile may send invitations with the import. */
+  canInvite?: boolean;
   role?: "player" | "coach";
   initiallyOpen?: boolean;
   organizationId: string;
@@ -172,7 +176,9 @@ export function PlayerImport({
     [recognised, setRecognised] = useState<string[]>([]),
     [team, setTeam] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [invite, setInvite] = useState(true);
+  const i = inviteCopy[locale];
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
     year: "numeric",
@@ -180,6 +186,10 @@ export function PlayerImport({
     day: "2-digit",
   }).format(new Date());
 
+  // The lines that will get an invitation: the adult's own address, the parent's for a minor player.
+  const invitations = rows.filter((r) =>
+    isMinor(r.birthDate ?? "", today) ? role === "player" && (r.guardianName ?? "").trim().length >= 2 && !!r.guardianEmail : !!r.email,
+  ).length;
   function downloadTemplate() {
     const sample = [
       "Camille Exemple",
@@ -236,6 +246,7 @@ export function PlayerImport({
           teamId: team || null,
           rows,
           organizationId,
+          invite: canInvite && invite,
         }),
       });
       const v = await r.json();
@@ -250,7 +261,8 @@ export function PlayerImport({
           (v.guardians ? fill(t.extra, { guardians: v.guardians }) : "") +
           (v.unknownTeams
             ? fill(t.unknownTeams, { unknown: v.unknownTeams })
-            : ""),
+            : "") +
+          (v.invited ? " " + i.sent(v.invited) : ""),
       );
     } catch {
       setError(t.failed);
@@ -380,6 +392,17 @@ export function PlayerImport({
                     ))}
                   </ul>
                 </details>
+              )}
+              {canInvite && rows.length > 0 && (
+                <fieldset className="invite-fields">
+                  <label className="invite-toggle">
+                    <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} aria-describedby="import-invite-help" />
+                    {i.send}
+                  </label>
+                  <p className="muted" id="import-invite-help">
+                    {invite ? i.batch(invitations) : i.batchHelp}
+                  </p>
+                </fieldset>
               )}
               <button
                 type="button"

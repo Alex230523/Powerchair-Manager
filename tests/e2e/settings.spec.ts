@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C13): the settings home with one card per category and a search,
@@ -21,14 +22,10 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `settings-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Settings test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Settings test president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -47,7 +44,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240)", [club]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(president)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(president)]);
 
     // The home: seven category cards, three per row on a wide screen.
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -55,7 +52,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
     const cards = page.locator(".settings-grid > li");
     await expect(cards).toHaveCount(7);
-    for (const name of ["Mon compte", "Notifications et résumé", "Club", "Membres et droits", "Activités", "Argent", "Journaux et confidentialité"])
+    for (const name of ["Mon compte", "Notifications et résumé", "Club", "Membres et droits", "Activités", "Finances", "Journaux et confidentialité"])
       await expect(page.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
     await axe(page, "settings home");
 
@@ -77,13 +74,13 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     // Unsaved changes: leaving asks first; staying keeps the page, leaving drops the change.
     const ok = page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true });
     await ok.fill("4");
-    await nav.getByRole("link", { name: "Argent" }).click();
+    await nav.getByRole("link", { name: "Finances" }).click();
     const warn = page.getByRole("dialog", { name: "Changements non enregistrés" });
     await expect(warn).toBeVisible();
     await warn.getByRole("button", { name: "Rester sur la page", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/settings\/activities/);
     await expect(ok).toHaveValue("4");
-    await nav.getByRole("link", { name: "Argent" }).click();
+    await nav.getByRole("link", { name: "Finances" }).click();
     await page.getByRole("dialog", { name: "Changements non enregistrés" }).getByRole("button", { name: "Quitter sans enregistrer", exact: true }).click();
     await expect(page).toHaveURL("/fr/settings/money");
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
@@ -126,7 +123,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.goto("/fr/settings");
     await expect(cards).toHaveCount(7);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
-    await page.getByRole("link", { name: /^Argent/ }).click();
+    await page.locator("main").getByRole("link", { name: /^Finances/ }).click();
     await expect(page).toHaveURL("/fr/settings/money");
     await expect(page.getByRole("navigation", { name: "Catégories de réglages" })).toBeHidden();
     const back = page.locator("main").getByRole("link", { name: "Tous les réglages", exact: true });
@@ -140,7 +137,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(coach)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(coach)]);
     await page.goto("/fr/settings");
     await expect(cards).toHaveCount(2);
     await page.getByLabel("Rechercher un réglage", { exact: true }).fill("barème");

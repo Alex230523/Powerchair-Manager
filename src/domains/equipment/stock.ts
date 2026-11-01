@@ -3,6 +3,7 @@ import { AccessError, audit } from "../access/service";
 import { permissions } from "../access/policy";
 import { brusselsToday } from "../people/service";
 import type { Scope } from "./service";
+import { storageIn } from "./storage";
 import { expiryState, type Command } from "./schema";
 
 /**
@@ -30,7 +31,7 @@ export async function stockView(s: Scope) {
   const items = can.see
     ? (
         await s.c.query(
-          "SELECT id,name,category,quantity,storage,expires_on::text AS expires_on,notes,archived,version FROM equipment_item WHERE organization_id=$1 ORDER BY archived,category,name",
+          "SELECT id,name,category,quantity,storage,storage_location_id,expires_on::text AS expires_on,notes,archived,version FROM equipment_item WHERE organization_id=$1 ORDER BY archived,category,name",
           [org],
         )
       ).rows.map((i) => ({ ...i, expiry: expiryState(i.expires_on, today) }))
@@ -55,6 +56,7 @@ export async function stockView(s: Scope) {
       category: string;
       quantity: number;
       storage: string;
+      storage_location_id: string | null;
       expires_on: string | null;
       notes: string;
       archived: boolean;
@@ -107,26 +109,30 @@ export async function stockExecute(s: Scope, input: StockCommand) {
   };
   if (input.action === "item") {
     if (!can.items) deny();
+    // Wave 17 (Q1): a storage place of the club; the text follows its name.
+    const place = input.storageLocationId ? await storageIn(s, input.storageLocationId) : null;
     const values = [
       input.name,
       input.category,
       input.quantity,
-      input.storage,
+      place ? place.name.slice(0, 120) : input.storage,
       input.expiresOn,
       input.notes,
       input.archived,
+      place?.id ?? null,
     ];
     let id = input.id;
     if (id) {
       const r = await s.c.query(
-        "UPDATE equipment_item SET name=$3,category=$4,quantity=$5,storage=$6,expires_on=$7,notes=$8,archived=$9,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 AND version=$10 RETURNING id",
-        [id, org, ...values, input.expectedVersion ?? 0],
+        "UPDATE equipment_item SET name=$3,category=$4,quantity=$5,storage=CASE WHEN $12 THEN storage ELSE $6 END,expires_on=$7,notes=$8,archived=$9,storage_location_id=CASE WHEN $12 THEN storage_location_id ELSE $10 END,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2 AND version=$11 RETURNING id",
+        // Without a place in the command (an older screen), the place stays.
+        [id, org, ...values, input.expectedVersion ?? 0, input.storageLocationId === undefined],
       );
       if (!r.rowCount) throw new AccessError("STALE_VERSION", 409);
     } else
       id = (
         await s.c.query(
-          "INSERT INTO equipment_item(organization_id,name,category,quantity,storage,expires_on,notes,archived) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+          "INSERT INTO equipment_item(organization_id,name,category,quantity,storage,expires_on,notes,archived,storage_location_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
           [org, ...values],
         )
       ).rows[0].id as string;

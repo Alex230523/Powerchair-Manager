@@ -16,7 +16,9 @@ import {
 } from "../calendar/access";
 import { manages, mayRespond } from "./access";
 import { publish } from "../notifications/queue";
+import { queuePush } from "../notifications/push-queue";
 import type { Command } from "./schema";
+import { offerUndo } from "../undo/service";
 export { commandSchema } from "./schema";
 type Register = {
   id: string;
@@ -62,6 +64,7 @@ type EventView = {
   team_id: string | null;
   team_name: string | null;
   season_id: string | null;
+  place_name: string | null;
   manage: boolean;
   register: Register | null;
   invitations: Invitation[];
@@ -210,6 +213,35 @@ async function notify(
       if (target) break;
     }
     if (!target) continue;
+    // B4: on the phone, one notification per invitation this person answers (a parent: one per child, with the first name).
+    const mine: string[] = [],
+      answers = new Set<string>();
+    if (!staffOnly)
+      for (const i of invitations)
+        for (const a of actors)
+          if ((await canRead(s.c, a, e)) && (await mayRespond(s.c, a, i.profile_id))) {
+            mine.push(i.id);
+            // « Présent » / « Absent » only for someone allowed to answer (a parent who may only read gets the news).
+            if (await mayRespond(s.c, a, i.profile_id, true)) answers.add(i.id);
+            break;
+          }
+    for (const id of staffOnly ? [target] : mine) {
+      const i = invitations.find((x) => x.id === id)!;
+      const who = (await s.c.query("SELECT c.full_name,p.user_id FROM club_person c LEFT JOIN person p ON p.id=c.person_id WHERE c.id=$1 AND c.organization_id=$2", [i.profile_id, s.a.organization_id])).rows[0];
+      await queuePush(s.c, {
+        organizationId: s.a.organization_id,
+        userId: u.id,
+        topic: staffOnly ? "other" : "invitation",
+        kind: "attendance_update",
+        category: "sport",
+        resourceType: "attendance",
+        resourceId: id,
+        locale: u.locale,
+        eventKey: `attendance:${batch}:${id}`,
+        url: `/${u.locale}/attendance`,
+        ...(staffOnly ? {} : { ...(answers.has(id) ? { invitationId: id } : {}), ...(who && who.user_id !== u.id ? { child: who.full_name as string } : {}) }),
+      });
+    }
     await publish(s.c, {
       organizationId: s.a.organization_id,
       userId: u.id,
@@ -231,6 +263,7 @@ async function notify(
 /**
  * Answers "absent" for every open invitation of a register whose event falls
  * in an announced absence period, unless the person already answered.
+ * Wave 17 (J2): the roll call is prefilled with « Excusé ».
  */
 export async function applyAbsences(
   c: Scope["c"],
@@ -239,7 +272,8 @@ export async function applyAbsences(
   profileId: string | null = null,
 ) {
   await c.query(
-    `UPDATE attendance_invitation i SET response='absent',absence_reason=a.reason,absence_period_id=a.id,comment=a.comment,responded_at=now(),responded_by=a.declared_by,version=i.version+1
+    `UPDATE attendance_invitation i SET response='absent',absence_reason=a.reason,absence_period_id=a.id,comment=a.comment,responded_at=now(),responded_by=a.declared_by,
+            actual=CASE WHEN i.actual='unchecked' THEN 'excused' ELSE i.actual END,version=i.version+1
        FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id, absence_period a
       WHERE i.register_id=r.id AND i.organization_id=$1 AND a.organization_id=$1
         AND ($2::uuid IS NULL OR r.id=$2) AND ($3::uuid IS NULL OR i.profile_id=$3)
@@ -250,6 +284,34 @@ export async function applyAbsences(
     [org, registerId, profileId],
   );
 }
+/**
+ * Wave 16 (E1): the invitations of an event chosen in the calendar form
+ * (groups and people), written as « Inviter » writes them: one register,
+ * one invitation per person, earlier answers kept, people no longer invited
+ * withdrawn, absences announced in advance applied, invited people told.
+ * The caller has checked that the actor may plan this event.
+ */
+export async function inviteForEvent(c: PoolClient, p: Principal, a: Actor, e: Event, profiles: string[], deadline: Date) {
+  const s: Scope = { c, p, a };
+  if (e.status !== "scheduled" || e.starts_at <= new Date() || deadline <= new Date() || deadline > e.starts_at) return null;
+  let r = (await c.query("SELECT * FROM attendance_register WHERE event_id=$1", [e.id])).rows[0];
+  if (r?.closed_at) return r.id as string;
+  if (r) await c.query("UPDATE attendance_register SET deadline=$2,version=version+1 WHERE id=$1", [r.id, deadline]);
+  else r = (await c.query("INSERT INTO attendance_register(organization_id,event_id,deadline,minimum) VALUES($1,$2,$3,0) RETURNING *", [e.organization_id, e.id, deadline])).rows[0];
+  await c.query("UPDATE attendance_invitation SET withdrawn_at=now(),version=version+1 WHERE register_id=$1 AND withdrawn_at IS NULL AND NOT(profile_id=ANY($2::uuid[]))", [r.id, profiles]);
+  const before = new Set((await c.query("SELECT id FROM attendance_invitation WHERE register_id=$1 AND withdrawn_at IS NULL", [r.id])).rows.map((x) => x.id as string));
+  for (const id of new Set(profiles))
+    await c.query(
+      "INSERT INTO attendance_invitation(organization_id,register_id,profile_id) VALUES($1,$2,$3) ON CONFLICT(register_id,profile_id) DO UPDATE SET withdrawn_at=NULL,version=attendance_invitation.version+1,response='none',comment='',responded_at=NULL,responded_by=NULL WHERE attendance_invitation.withdrawn_at IS NOT NULL",
+      [e.organization_id, r.id, id],
+    );
+  await applyAbsences(c, e.organization_id, r.id);
+  const fresh = (await c.query("SELECT id FROM attendance_invitation WHERE register_id=$1 AND withdrawn_at IS NULL", [r.id])).rows.map((x) => x.id as string).filter((id) => !before.has(id));
+  await history(s, r.id, null, "invite", null, { profiles, deadline: deadline.toISOString(), from: "calendar" });
+  if (fresh.length) await notify(s, e, fresh);
+  return r.id as string;
+}
+
 export async function attendanceExecute(
   db: Pool,
   p: Principal,
@@ -402,6 +464,11 @@ export async function attendanceExecute(
             { actual: cmd.actual },
             cmd.reason,
           );
+          // Wave 17 (J2): each click is saved at once and can be put back.
+          return {
+            id: i.id,
+            undo: await offerUndo(s.c, org, p.userId, "attendanceMark", r.id, { marks: [{ id: i.id, actual: i.actual }] }),
+          };
         }
         return { id: i.id };
       }
@@ -411,6 +478,28 @@ export async function attendanceExecute(
       scheduled(e);
       version(cmd.expectedVersion, r.version);
       if (r.closed_at) throw new AccessError("REGISTER_CLOSED", 409);
+      if (cmd.action === "markAll") {
+        if (e.starts_at > new Date())
+          throw new AccessError("EVENT_NOT_STARTED", 409);
+        const marked = (
+          await s.c.query(
+            "UPDATE attendance_invitation SET actual='present',marked_at=now(),marked_by=$2,version=version+1 WHERE register_id=$1 AND withdrawn_at IS NULL AND actual='unchecked' RETURNING id",
+            [r.id, p.userId],
+          )
+        ).rows.map((x) => x.id as string);
+        await s.c.query(
+          "UPDATE attendance_register SET version=version+1 WHERE id=$1",
+          [r.id],
+        );
+        await history(s, r.id, null, "mark_all", null, { count: marked.length });
+        return {
+          id: r.id,
+          count: marked.length,
+          undo: marked.length
+            ? await offerUndo(s.c, org, p.userId, "attendanceMark", r.id, { marks: marked.map((id) => ({ id, actual: "unchecked" })) })
+            : undefined,
+        };
+      }
       if (cmd.action === "close") {
         if (e.starts_at > new Date())
           throw new AccessError("EVENT_NOT_STARTED", 409);
@@ -464,10 +553,10 @@ export async function attendanceView(
   return scope(db, p, async (s) => {
     const all = (
       await s.c.query(
-        "SELECT e.*,t.name AS team_name,t.season_id FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id WHERE e.organization_id=$1 AND e.starts_at>=$2::date AND e.starts_at<($3::date+1) AND ($4='' OR e.team_id::text=$4) ORDER BY e.starts_at,e.id LIMIT 500",
+        "SELECT e.*,t.name AS team_name,t.season_id,pl.name AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id AND pl.organization_id=e.organization_id WHERE e.organization_id=$1 AND e.starts_at>=$2::date AND e.starts_at<($3::date+1) AND ($4='' OR e.team_id::text=$4) ORDER BY e.starts_at,e.id LIMIT 500",
         [s.a.organization_id, from, to, team],
       )
-    ).rows as (Event & { team_name: string; season_id: string })[];
+    ).rows as (Event & { team_name: string; season_id: string; place_name: string | null })[];
     const events: EventView[] = [];
     for (const e of all) {
       const manage = await manages(s.c, s.a, e);
@@ -521,6 +610,7 @@ export async function attendanceView(
         team_id: e.team_id,
         team_name: e.team_name,
         season_id: e.season_id,
+        place_name: e.place_name,
         manage,
         register: r,
         invitations,
@@ -549,6 +639,7 @@ export async function attendanceView(
         closed: number;
         attended: number;
         absent: number;
+        excused: number;
       }
     >();
     for (const e of events)
@@ -567,6 +658,7 @@ export async function attendanceView(
           closed: 0,
           attended: 0,
           absent: 0,
+          excused: 0,
         };
         v.invited++;
         if (i.response !== "none") v.answered++;
@@ -574,6 +666,7 @@ export async function attendanceView(
           v.closed++;
           if (["present", "late", "early"].includes(i.actual)) v.attended++;
           else if (i.actual === "absent") v.absent++;
+          else if (i.actual === "excused") v.excused++;
         }
         stats.set(key, v);
       }
@@ -628,11 +721,27 @@ export async function attendanceView(
   });
 }
 // Bounded automatic reminders and low-attendance alerts. Same organization lock as all mutations.
-export async function attendanceTick(db: Pool) {
-  const candidates = (
-    await db.query(
-      "SELECT r.id,r.organization_id FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id WHERE r.closed_at IS NULL AND e.status='scheduled' AND e.ends_at>now() AND ((r.reminder_sent_at IS NULL AND r.deadline>now() AND r.deadline<=now()+interval '24 hours') OR (r.alert_sent_at IS NULL AND r.minimum>0 AND LEAST(r.deadline,e.starts_at)<=now())) ORDER BY r.deadline LIMIT 100",
+const dueRegisters =
+  "FROM attendance_register r JOIN calendar_event e ON e.id=r.event_id WHERE r.closed_at IS NULL AND e.status='scheduled' AND e.ends_at>now() AND ((r.reminder_sent_at IS NULL AND r.deadline>now() AND r.deadline<=now()+interval '24 hours') OR (r.alert_sent_at IS NULL AND r.minimum>0 AND LEAST(r.deadline,e.starts_at)<=now()))";
+/**
+ * B7: what the next run would do in one club, without writing: the
+ * registers whose reminder or minimum check is due, and who has not answered.
+ */
+export async function attendancePlan(c: PoolClient, org: string) {
+  return (
+    await c.query(
+      `SELECT r.id,e.title,e.starts_at,(r.reminder_sent_at IS NULL AND r.deadline>now() AND r.deadline<=now()+interval '24 hours') AS reminder,
+              COALESCE((SELECT json_agg(cp.full_name ORDER BY cp.full_name) FROM attendance_invitation i JOIN club_person cp ON cp.id=i.profile_id
+                 WHERE i.register_id=r.id AND i.withdrawn_at IS NULL AND i.response='none'),'[]') AS waiting
+         ${dueRegisters} AND r.organization_id=$1 ORDER BY r.deadline LIMIT 100`,
+      [org],
     )
+  ).rows as { id: string; title: string; starts_at: Date; reminder: boolean; waiting: string[] }[];
+}
+/** `orgs`: only these clubs (B7, the clubs where the rule is on); all when absent. */
+export async function attendanceTick(db: Pool, orgs?: string[]) {
+  const candidates = (
+    await db.query(`SELECT r.id,r.organization_id ${dueRegisters} AND ($1::uuid[] IS NULL OR r.organization_id=ANY($1::uuid[])) ORDER BY r.deadline LIMIT 100`, [orgs ?? null])
   ).rows;
   let changed = 0;
   for (const item of candidates) {

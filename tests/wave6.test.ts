@@ -49,7 +49,8 @@ describe("rights by module", () => {
       ...new Set([...(m.read ?? []), ...(m.edit ?? []), ...(m.extras ?? [])]),
     ]);
     expect(new Set(listed).size).toBe(listed.length);
-    expect([...listed].sort()).toEqual([...delegable].sort());
+    // B8: tax.identity is given from the tax receipts page, shown only to an approved club.
+    expect([...listed].sort()).toEqual(delegable.filter((d) => d !== "tax.identity").sort());
   });
 
   it("builds ready-made profiles from real permissions only", () => {

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 14: the white sidebar and its account menu, the quiet top bar with the
@@ -21,14 +22,10 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `shell-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Shell test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Shell test president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -45,7 +42,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240)", [club]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // Desktop: brand, club name, regrouped menu, search field and the shortcut.
     await page.goto("/fr");
@@ -56,7 +53,7 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     // Wide screen: the drawer buttons stay hidden.
     await expect(page.getByRole("button", { name: "Ouvrir le menu", exact: true })).toBeHidden();
     await expect(sidebar.getByRole("button", { name: "Fermer le menu", exact: true })).toBeHidden();
-    for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"]) await expect(sidebar.locator("nav summary").filter({ hasText: name })).toBeVisible();
+    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club", "Plus"]) await expect(sidebar.locator("nav summary").filter({ hasText: name })).toBeVisible();
     await expect(sidebar.locator("nav").getByRole("link", { name: "Mon espace", exact: true, includeHidden: true })).toHaveCount(0);
     await expect(page.locator("header select")).toHaveCount(1);
     await expect(page.getByRole("banner").getByLabel("Saison", { exact: true })).toBeVisible();
@@ -92,20 +89,26 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await expect(panel).toBeHidden();
     await expect(bellButton).toBeFocused();
 
-    // The account menu: profile switch, Mon espace, language, theme.
+    // The account menu (wave 16, M1): profile switch, Mon compte, Réglages, then compact settings.
     await page.locator(".profile-menu > summary").click();
     const menu = page.locator(".profile-menu-body");
     await expect(menu.getByText("Changer de profil")).toBeVisible();
     await expect(menu.getByLabel("Profil actif", { exact: true })).toBeVisible();
-    await expect(menu.getByRole("link", { name: "Mon espace", exact: true })).toHaveAttribute("href", "/fr/access");
+    await expect(menu.getByRole("link", { name: "Mon espace", exact: true })).toHaveCount(0);
     await expect(menu.getByRole("link", { name: "Mon compte", exact: true })).toHaveAttribute("href", "/fr/settings/account");
     await expect(menu.getByRole("link", { name: "Réglages", exact: true })).toHaveAttribute("href", "/fr/settings");
-    await expect(menu.getByRole("link", { name: "NL", exact: true })).toHaveAttribute("href", "/nl");
-    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Sombre" }).click();
+    // Never wider than the sidebar.
+    expect((await menu.boundingBox())!.width).toBeLessThanOrEqual(240);
+    await expect(menu.getByLabel("Langue", { exact: true })).toHaveValue("fr");
+    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Thème sombre" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await axe(page, "account menu, dark");
-    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Clair" }).click();
+    await menu.getByRole("group", { name: "Thème" }).getByRole("button", { name: "Thème clair" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    // The language list opens the same page in Dutch.
+    await Promise.all([page.waitForURL(/\/nl$/), menu.getByRole("combobox", { name: "Langue", exact: true }).selectOption("nl")]);
+    await page.goto("/fr");
+    await page.locator(".profile-menu > summary").click();
     await expect(menu.getByRole("button", { name: "Se déconnecter", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
 

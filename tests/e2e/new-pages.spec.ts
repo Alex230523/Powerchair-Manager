@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Smoke test of the pages added by waves 1 to 5: each one opens for the right
@@ -14,7 +15,7 @@ async function switchProfile(page: Page, assignment: string) {
   await page.locator(".profile-menu > summary").click();
   await Promise.all([
     page.waitForEvent("load"),
-    page.getByLabel("Profil actif", { exact: true }).selectOption(assignment),
+    page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(assignment),
   ]);
 }
 async function check(page: Page, path: string) {
@@ -46,23 +47,13 @@ test("new club, federation and referee pages load and pass axe", async ({
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `pages-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
-    await page
-      .getByLabel("Nom complet", { exact: true })
-      .fill("Pages test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page
-      .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
-      .fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Pages test president", email, "Browser-test-passphrase-2026!");
     // Sign-up is rate limited (3 per 10 s per address) and the previous spec
     // has just created accounts: wait for the window once if refused.
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
       await page
-        .getByRole("button", { name: "Créer mon compte", exact: true })
+        .getByRole("button", { name: "Se connecter", exact: true })
         .click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
@@ -121,7 +112,7 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/funding/report",
       "/fr/players",
       "/fr/coaches",
-      "/fr/reminders",
+      "/fr/settings/notifications",
       "/fr/matches",
       "/fr/licenses",
       "/fr/federal-calendar",
@@ -130,7 +121,6 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/statistics",
       "/fr/trips",
       "/fr/venues",
-      "/fr/offline-book",
       "/fr/fundraising",
       "/fr/dues/attestations",
       "/fr/club/rollover",
@@ -225,21 +215,23 @@ test("new club, federation and referee pages load and pass axe", async ({
     // Wave 11: contact book, grants and partners pages; trips and halls reached
     // from the calendar; notifications inside settings; the photo corner opens Mon espace.
     for (const path of ["/fr/contacts", "/fr/funding/grants", "/fr/funding/partners"]) await check(page, path);
-    for (const name of ["Annuaire des salles", "Notifications", "Licences", "Mon espace", "Messagerie"])
+    for (const name of ["Annuaire des salles", "Notifications", "Mon espace", "Messagerie"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
     // Menu groups are folded until opened: the entries exist, visible or not. Wave 14 regroups the
     // president's menu: Équipes, Activités (trips and halls are back), Communication, Argent, Club, Plus.
-    for (const name of ["Transferts", "Finances", "Déplacements", "Salles", "Mes équipes", "Réglages"])
+    // Wave 17 (J3): « Transferts » became « Licences », next to « Bourse aux transferts ».
+    for (const name of ["Licences", "Bourse aux transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
-    for (const name of ["Équipes", "Activités", "Communication", "Argent", "Club", "Plus"])
+    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club", "Plus"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
     await page.goto("/fr/calendar");
     await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
-    await expect(page.locator("main").getByRole("link", { name: "Annuaire des salles", exact: true })).toBeVisible();
+    // Wave 17 (C4): « Lieux » is managed on its page, a place is added from the calendar.
+    await expect(page.locator("main").getByRole("link", { name: "Gérer les lieux", exact: true })).toBeVisible();
     // Wave 15: notifications and dues rates sit in their own settings sub-pages; the photo is in My account.
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Notifications et résumé", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Argent", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Finances", exact: true })).toBeVisible();
     await page.goto("/fr/settings/money");
     await expect(page.getByRole("heading", { name: "Cotisations", exact: true }).first()).toBeVisible();
     await page.locator(".profile-menu > summary").click();
@@ -264,7 +256,8 @@ test("new club, federation and referee pages load and pass axe", async ({
     await grant.getByLabel("Contact").selectOption({ label: "Marc Dupont · Commune" });
     await grant.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(page.locator("main table")).toContainText("Commune de Schaerbeek");
-    await expect(page.locator("main table")).toContainText("Déposer le dossier");
+    // A2: the deadline has its own column.
+    await expect(page.locator("main table")).toContainText(/1 déc/);
     await check(page, "/fr/funding/grants");
 
     await switchProfile(page, roles.federation_president);

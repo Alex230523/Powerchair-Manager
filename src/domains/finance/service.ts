@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { resolveScope } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -9,10 +10,14 @@ import {
   type Principal,
 } from "../access/service";
 import { permissions } from "../access/policy";
+import { offerUndo } from "../undo/service";
 import { brusselsToday } from "../people/service";
 import {
   budgetComparison,
   commandSchema,
+  csvClosingBalance,
+  statementMaxBytes,
+  statementType,
   ledgerSummary,
   receiptMaxBytes,
   receiptType,
@@ -74,6 +79,11 @@ async function scope<T>(
   }
 }
 
+/** Where an operation comes from when another page made it. */
+const originSql = `CASE WHEN t.receivable_id IS NOT NULL THEN 'dues'
+  WHEN EXISTS(SELECT 1 FROM partner pa WHERE pa.payment_transaction_id=t.id) THEN 'sponsor'
+  WHEN EXISTS(SELECT 1 FROM affiliation_due ad WHERE ad.transaction_id=t.id) THEN 'affiliation' END`;
+
 export async function financeView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
   return scope(db, p, false, async (c, org, _user, edit, actor) => {
     const today = brusselsToday(),
@@ -83,9 +93,10 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
     const entries = (
       await c.query(
         `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,t.trip_id,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,tm.color AS team_color,u.name AS author,
-                COALESCE((SELECT json_agg(json_build_object('id',r.id,'filename',r.filename) ORDER BY r.uploaded_at) FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL),'[]') AS receipts
+                COALESCE((SELECT json_agg(json_build_object('id',r.id,'filename',r.filename) ORDER BY r.uploaded_at) FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL),'[]') AS receipts,
+                ${originSql} AS origin
            FROM finance_transaction t JOIN "user" u ON u.id=t.created_by LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id)
-          WHERE t.organization_id=$1 AND ($2::uuid IS NULL OR COALESCE(t.team_id,tr.team_id)=$2) ORDER BY t.occurred_on DESC,t.created_at DESC LIMIT 2000`,
+          WHERE t.organization_id=$1 AND t.deleted_at IS NULL AND ($2::uuid IS NULL OR COALESCE(t.team_id,tr.team_id)=$2) ORDER BY t.occurred_on DESC,t.created_at DESC LIMIT 2000`,
         [org, teamId],
       )
     ).rows as (Entry & {
@@ -103,8 +114,10 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       team_color: string | null;
       author: string;
       receipts: { id: string; filename: string }[];
+      /** Wave 17 (N1): an operation made elsewhere (dues, sponsor, affiliation) is deleted from there. */
+      origin: "dues" | "sponsor" | "affiliation" | null;
     })[];
-    // Dues are scheduled amounts: payments are only reconciled with lot 09.
+    // Dues are scheduled amounts; what is paid comes from the ledger (by hand or from the bank, B1).
     const dues = (
       await c.query(
         "SELECT COALESCE(sum(i.amount_cents),0)::int AS total,COALESCE(sum(i.amount_cents) FILTER (WHERE i.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30),0)::int AS next30 FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND i.due_on BETWEEN $2 AND $3",
@@ -267,8 +280,35 @@ export async function financeExecute(
         await audit(c, organization, userId, "finance.record", row.id);
         return { id: row.id as string };
       }
+      if (input.action === "delete") {
+        const t = (
+          await c.query(`SELECT t.id,t.occurred_on::text AS occurred_on,t.amount_cents,t.direction,t.label,t.cancelled_at,${originSql} AS origin FROM finance_transaction t WHERE t.id=$1 AND t.organization_id=$2 AND t.deleted_at IS NULL FOR UPDATE`, [
+            input.id,
+            organization,
+          ])
+        ).rows[0];
+        if (!t) throw new AccessError("NOT_FOUND", 404);
+        // A dues payment, a sponsor payment or an affiliation is deleted from where it was made.
+        if (t.origin) throw new AccessError("LINKED_OPERATION", 409);
+        // The accounts approved by the assembly (wave 15, C12) do not change any more.
+        if (
+          (
+            await c.query(
+              "SELECT 1 FROM annual_accounts WHERE organization_id=$1 AND superseded_at IS NULL AND status IN ('approved','filed') AND $2::date BETWEEN year_start AND year_end",
+              [organization, t.occurred_on],
+            )
+          ).rowCount
+        )
+          throw new AccessError("YEAR_APPROVED", 409);
+        await c.query(
+          "UPDATE finance_transaction SET deleted_at=now(),deleted_by=$3,delete_reason=$4,cancelled_at=COALESCE(cancelled_at,now()),cancelled_by=COALESCE(cancelled_by,$3),cancel_reason=CASE WHEN cancelled_at IS NULL THEN left('Supprimée : '||$4,500) ELSE cancel_reason END WHERE id=$1 AND organization_id=$2",
+          [t.id, organization, userId, input.reason],
+        );
+        await audit(c, organization, userId, "finance.delete", t.id, { amountCents: t.amount_cents, direction: t.direction, label: t.label, occurredOn: t.occurred_on, reason: input.reason });
+        return { id: t.id, undo: await offerUndo(c, organization, userId, "operationDelete", t.id, { wasCancelled: !!t.cancelled_at }) };
+      }
       const changed = await c.query(
-        "UPDATE finance_transaction SET cancelled_at=now(),cancelled_by=$3,cancel_reason=$4 WHERE id=$1 AND organization_id=$2 AND cancelled_at IS NULL RETURNING id",
+        "UPDATE finance_transaction SET cancelled_at=now(),cancelled_by=$3,cancel_reason=$4 WHERE id=$1 AND organization_id=$2 AND cancelled_at IS NULL AND deleted_at IS NULL RETURNING id",
         [input.id, organization, userId, input.reason],
       );
       if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
@@ -323,6 +363,7 @@ export async function financeReceiptUpload(
         [transactionId, organization],
       );
       if (!line.rowCount) throw new AccessError("NOT_FOUND", 404);
+      await ensureStorage(c, organization, file.bytes.length);
       const name =
         file.name
           .replace(/[\\/\u0000-\u001f]/g, "_")
@@ -373,7 +414,7 @@ export async function financeReport(db: Pool, p: Principal, label: string, raw: 
     const teamId = (await resolveScope(c, { organization_id: org, role: actor.role, user_id: p.userId, team_id: actor.team_id }, raw)).teamId;
     const everything = (
       await c.query(
-        "SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.cancelled_at,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,(SELECT count(*)::int FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL) AS receipts FROM finance_transaction t LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id) WHERE t.organization_id=$1 AND t.occurred_on<=$2 ORDER BY t.occurred_on,t.created_at",
+        "SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.cancelled_at,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,(SELECT count(*)::int FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL) AS receipts FROM finance_transaction t LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id) WHERE t.organization_id=$1 AND t.deleted_at IS NULL AND t.occurred_on<=$2 ORDER BY t.occurred_on,t.created_at",
         [org, season.to],
       )
     ).rows as (Entry & {
@@ -428,5 +469,97 @@ export async function financeReport(db: Pool, p: Principal, label: string, raw: 
         (e) => !e.cancelled_at && e.occurred_on >= season.from,
       ),
     };
+  });
+}
+
+/**
+ * Wave 17 (N1): bank statements, filed as proof month by month, with their
+ * closing balance (entered, or read from a CSV) beside the platform's cash
+ * at the same date. The line-by-line reconciliation is in domains/bank (B1).
+ */
+export async function statementsView(db: Pool, p: Principal) {
+  return scope(db, p, false, async (c, org, _user, edit) => {
+    const rows = (
+      await c.query(
+        `SELECT s.id,s.account,s.month,s.filename,s.media_type,s.closing_balance_cents::int AS closing_balance_cents,s.balance_source,s.uploaded_at,u.name AS author,
+                (SELECT COALESCE(sum(CASE WHEN t.direction='in' THEN t.amount_cents ELSE -t.amount_cents END),0)::int FROM finance_transaction t
+                  WHERE t.organization_id=s.organization_id AND t.cancelled_at IS NULL AND t.occurred_on<=(to_date(s.month,'YYYY-MM')+interval '1 month'-interval '1 day')::date) AS platform_cents
+           FROM bank_statement s JOIN "user" u ON u.id=s.uploaded_by
+          WHERE s.organization_id=$1 AND s.removed_at IS NULL ORDER BY s.month DESC,s.uploaded_at DESC`,
+        [org],
+      )
+    ).rows as {
+      id: string;
+      account: string;
+      month: string;
+      filename: string;
+      media_type: string;
+      closing_balance_cents: number | null;
+      balance_source: "none" | "entered" | "csv";
+      uploaded_at: string;
+      author: string;
+      platform_cents: number;
+    }[];
+    return {
+      organization_id: org,
+      can_edit: edit,
+      today: brusselsToday(),
+      statements: rows.map((r) => ({ ...r, gap_cents: r.closing_balance_cents === null ? null : r.closing_balance_cents - r.platform_cents })),
+    };
+  });
+}
+
+export async function statementUpload(
+  db: Pool,
+  p: Principal,
+  input: { account: string; month: string; balanceCents: number | null; file: { name: string; bytes: Uint8Array } },
+  org: string,
+) {
+  return scope(
+    db,
+    p,
+    true,
+    async (c, organization, userId) => {
+      const type = statementType(input.file.bytes, input.file.name);
+      if (!type || input.file.bytes.length > statementMaxBytes || !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.month)) throw new AccessError("INVALID_FILE", 400);
+      if (input.month > brusselsToday().slice(0, 7)) throw new AccessError("INVALID_DATE", 400);
+      await ensureStorage(c, organization, input.file.bytes.length);
+      // The balance entered wins; otherwise the CSV's own.
+      const read = type === "text/csv" ? csvClosingBalance(new TextDecoder().decode(input.file.bytes)) : null;
+      const balance = input.balanceCents ?? read;
+      const name = input.file.name.replace(/[\\/\u0000-\u001f]/g, "_").trim().slice(0, 200) || "releve";
+      const id = (
+        await c.query(
+          "INSERT INTO bank_statement(organization_id,account,month,filename,media_type,content,closing_balance_cents,balance_source,uploaded_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+          [organization, input.account.trim().slice(0, 80), input.month, name, type, Buffer.from(input.file.bytes), balance, input.balanceCents !== null ? "entered" : read !== null ? "csv" : "none", userId],
+        )
+      ).rows[0].id as string;
+      await audit(c, organization, userId, "finance.statement", id, { month: input.month });
+      return { id, balanceCents: balance };
+    },
+    org,
+  );
+}
+
+export async function statementRemove(db: Pool, p: Principal, id: string, org: string) {
+  return scope(
+    db,
+    p,
+    true,
+    async (c, organization, userId) => {
+      if (!(await c.query("UPDATE bank_statement SET removed_at=now() WHERE id=$1 AND organization_id=$2 AND removed_at IS NULL", [id, organization])).rowCount)
+        throw new AccessError("NOT_FOUND", 404);
+      await audit(c, organization, userId, "finance.statement.remove", id);
+      return { id };
+    },
+    org,
+  );
+}
+
+export async function statementFile(db: Pool, p: Principal, id: string) {
+  return scope(db, p, false, async (c, org) => {
+    const row = (await c.query("SELECT filename,media_type,content FROM bank_statement WHERE id=$1 AND organization_id=$2 AND removed_at IS NULL", [id, org])).rows[0];
+    if (!row) throw new AccessError("NOT_FOUND", 404);
+    return row as { filename: string; media_type: string; content: Buffer };
   });
 }

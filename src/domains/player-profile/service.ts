@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { duesAccount } from "../bank/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { audit, AccessError, type Principal } from "../access/service";
 import {
@@ -83,6 +84,8 @@ function rightsFor(s: PeopleScope, all: Records, v: Visibility, id: string) {
           s.rights.includes("people.manage"))) ||
       coachOf,
     editPosition: mfa && s.rights.includes("teams.manage"),
+    /** Wave 17 (J1): the identity is edited in the single sheet too. */
+    managePeople: peopleManage,
     viewMoney:
       own ||
       !!relation ||
@@ -232,14 +235,20 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
     const dues = can.viewMoney
       ? (
           await c.query(
-            "SELECT d.id,d.category,d.net_cents,d.status,COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments FROM dues_receivable d WHERE d.organization_id=$1 AND d.profile_id=$2 AND d.status='open' ORDER BY d.created_at DESC",
+            `SELECT d.id,d.category,d.net_cents,d.status,d.reference,
+                    (SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents,
+                    COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents,'reference',i.reference) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments
+               FROM dues_receivable d WHERE d.organization_id=$1 AND d.profile_id=$2 AND d.status='open' ORDER BY d.created_at DESC`,
             [org, id],
           )
         ).rows
       : [];
 
+    // B1: the club's dues account, for the transfer QR (never a proof of payment).
+    const payment = dues.length ? await duesAccount(c, org) : null;
     return {
       today: day,
+      payment: payment && { iban: payment.iban, bic: payment.bic, holder: payment.holder || s.context.organization_name },
       context: {
         id: org,
         name: s.context.organization_name,
@@ -255,6 +264,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         jersey_number: profile.jersey_number,
         has_account: !!profile.user_id,
         version: profile.version,
+        departure_status: (profile as { departure_status?: string | null }).departure_status ?? null,
         ...(can.details
           ? {
               birth_date: profile.birth_date,
@@ -273,6 +283,7 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         editConfidential: can.editConfidential,
         editSport: can.editSport,
         editPosition: can.editPosition,
+        managePeople: can.managePeople,
         viewMoney: can.viewMoney,
       },
       teams,
@@ -280,7 +291,10 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
       otherTeams: can.editPosition
         ? all.teams
             .filter((t) => !t.archived && !t.season_archived)
-            .map((t) => ({ id: t.id, name: t.name, season_id: t.season_id, color: (t as { color?: string | null }).color ?? null }))
+            .map((t) => {
+              const x = t as { color?: string | null; capacity?: number | null; players?: number };
+              return { id: t.id, name: t.name, season_id: t.season_id, color: x.color ?? null, capacity: x.capacity ?? null, players: x.players ?? 0 };
+            })
         : [],
       guardians,
       matches: await playerMatchStats(c, org, id),

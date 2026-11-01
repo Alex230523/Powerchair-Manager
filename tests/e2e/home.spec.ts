@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 14: the president's home. Header with the season and the "Créer" menu,
@@ -28,14 +29,10 @@ test("president's home: header, Créer, to-dos, list and week, figures and money
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `home-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Alexandre Accueil");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Alexandre Accueil", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -53,7 +50,7 @@ test("president's home: header, Créer, to-dos, list and week, figures and money
     const team = (await db.query("INSERT INTO team(organization_id,season_id,name,color) VALUES($1,$2,'Équipe A','teal') RETURNING id", [club, season])).rows[0].id;
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // An event two hours from now (today, inside the current week), created through the real API.
     const created = await page.request.post("/api/calendar", {
@@ -120,9 +117,11 @@ test("president's home: header, Créer, to-dos, list and week, figures and money
     // Figures and the money card.
     await page.goto("/fr");
     const figures = page.getByRole("region", { name: "Chiffres clés" });
-    await expect(figures.locator(".stat-card")).toHaveCount(4);
+    // Wave 16 (A): the president's seven key figures, the treasury first.
+    await expect(figures.locator(".stat-card")).toHaveCount(7);
+    await expect(figures.locator(".stat-card").first()).toContainText("Trésorerie");
     await figures.getByRole("button", { name: "Tous les chiffres", exact: true }).click();
-    expect(await figures.locator(".stat-card").count()).toBeGreaterThan(4);
+    expect(await figures.locator(".stat-card").count()).toBeGreaterThan(7);
     const money = page.getByRole("region", { name: "Situation financière" });
     await expect(money).toContainText("Trésorerie");
     await expect(money).toContainText("Aucune cotisation émise cette saison.");

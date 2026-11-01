@@ -7,6 +7,7 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md)                                           | Développeurs           | Couches, autorisations, données, ajout d'un module                           |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md)                                     | Développeurs           | Conventions, tests, définition de « terminé »                                |
 | [GUIDE-LOCAL.md](GUIDE-LOCAL.md)                                             | Développeurs, testeurs | Installation locale complète, usage de chaque module, workers                |
+| [PRODUCTION.md](PRODUCTION.md)                                               | Responsable technique  | Mise en ligne à coût zéro : services gratuits, quotas, tâches de fond, sauvegardes, incident |
 | [cahier-des-charges/](cahier-des-charges/Powerchair_Football_Manager_v2.pdf) | Tous                   | Cahier des charges v2.0 : 20 modules, 7 profils, feuille de route en 21 lots |
 
 ## Notes de lots (`lots/`)
@@ -75,6 +76,48 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 21/10/2026 | [Aperçus en ligne sur Vercel](evolutions/2026-10-21-zn-apercus-vercel.md) |
 | 21/10/2026 | [Connexion vers l’accueil, sans double authentification, président avec tous les droits](evolutions/2026-10-21-zo-accueil-sans-mfa-droits-president.md) |
 | 21/10/2026 | [Tournois : le calendrier fédéral devient « Tournois »](evolutions/2026-10-21-zp-tournois.md) |
+| 21/10/2026 | [Vague 16, B1 : plus de puce sous la barre du haut](evolutions/2026-10-21-zq-vague-16-b1-puce-barre-haut.md) |
+| 21/10/2026 | [Vague 16, M1 : menu du compte compact](evolutions/2026-10-21-zr-vague-16-m1-menu-compte.md) |
+| 21/10/2026 | [Vague 16, R1 : places disponibles par équipe](evolutions/2026-10-21-zs-vague-16-r1-places-equipe.md) |
+| 21/10/2026 | [Vague 16, I1 : visiteur sans menu, inscription sur invitation](evolutions/2026-10-21-zt-vague-16-i1-visiteur-rejoindre.md) |
+| 21/10/2026 | [Vague 16, I2 : invitations et création de compte guidée](evolutions/2026-10-21-zu-vague-16-i2-invitations-creation-guidee.md) |
+| 21/10/2026 | [Vague 16, I3 : espace fédération](evolutions/2026-10-21-zv-vague-16-i3-espace-federation.md) |
+| 21/10/2026 | [Vague 16, A : accueil du président](evolutions/2026-10-21-zw-vague-16-a-accueil-president.md) |
+| 21/10/2026 | [Vague 16, E1 : créer et gérer un événement](evolutions/2026-10-21-zx-vague-16-e1-evenements.md) |
+| 21/10/2026 | [Vague 16, E2 : bibliothèque de fiches exercices](evolutions/2026-10-21-zy-vague-16-e2-fiches-exercices.md) |
+| 21/10/2026 | [Vague 16, E3 : tournois du club sur la page Tournois](evolutions/2026-10-21-zz-vague-16-e3-tournois-club.md) |
+| 21/10/2026 | [Vague 16, S1 : statistiques du club](evolutions/2026-10-21-zza-vague-16-s1-statistiques-club.md) |
+| 21/10/2026 | [Vague 16, S2 : statistiques de jeu](evolutions/2026-10-21-zzb-vague-16-s2-statistiques-jeu.md) |
+| 22/10/2026 | [Vague 17, C6 : « invité » à la place de « convoqué »](evolutions/2026-10-22-a-vague-17-c6-invite.md) |
+| 22/10/2026 | [Vague 17, G3 : menu et réglages](evolutions/2026-10-22-b-vague-17-g3-menu-reglages.md) |
+| 22/10/2026 | [Vague 17, F1 : formulaires et décisions d'inscription](evolutions/2026-10-22-c-vague-17-f1-inscriptions.md) |
+| 22/10/2026 | [Vague 17, J1 : anciens joueurs et fiche en fenêtre](evolutions/2026-10-22-d-vague-17-j1-anciens-joueurs.md) |
+| 22/10/2026 | [Vague 17, N2 : affiliations et cotisations fédérales](evolutions/2026-10-22-e-vague-17-n2-affiliations.md) |
+| 22/10/2026 | [Vague 17, N1 : finances restructurées](evolutions/2026-10-22-f-vague-17-n1-finances.md) |
+| 22/10/2026 | [Vague 17, O1 : coachs, tâches, formation, permis et première connexion](evolutions/2026-10-22-g-vague-17-o1-coachs.md) |
+| 22/10/2026 | [Vague 17, J2 : présences, une séance à la fois](evolutions/2026-10-22-h-vague-17-j2-presences.md) |
+| 22/10/2026 | [Vague 17, C4 : lieux, catégories et partage validé](evolutions/2026-10-22-i-vague-17-c4-lieux.md) |
+| 22/10/2026 | [Vague 17, C5 : matchs, amicaux entre clubs et ligne complète](evolutions/2026-10-22-j-vague-17-c5-matchs.md) |
+| 22/10/2026 | [Vague 17, G1 : transmission de la présidence](evolutions/2026-10-22-k-vague-17-g1-presidence.md) |
+| 22/10/2026 | [Vague 17, G2 : export Excel partout](evolutions/2026-10-22-l-vague-17-g2-exports.md) |
+| 22/10/2026 | [Vague 17, J4 : journées de classification](evolutions/2026-10-22-m-vague-17-j4-classification.md) |
+| 22/10/2026 | [Vague 17, Q1 : matériel, modèles, prêts, stockage](evolutions/2026-10-22-n-vague-17-q1-materiel.md) |
+| 22/10/2026 | [Vague 17, J3 : bourse aux transferts](evolutions/2026-10-22-o-vague-17-j3-bourse.md) |
+| 22/10/2026 | [A3 : émettre des cotisations](evolutions/2026-10-22-p-a3-emettre-cotisations.md) |
+| 22/10/2026 | [A1 : to-do centrale du club et de la fédération](evolutions/2026-10-22-q-a1-todo-centrale.md) |
+| 22/10/2026 | [A2 : Subsides & sponsors](evolutions/2026-10-22-r-a2-subsides-sponsors.md) |
+| 22/10/2026 | [A4 : CRM simple relié à tout](evolutions/2026-10-22-s-a4-crm.md) |
+| 22/10/2026 | [B2 : mise en production à coût zéro (prête, non activée)](evolutions/2026-10-22-t-b2-production.md) |
+| 22/10/2026 | [B7 : automatisation des emails et des rappels](evolutions/2026-10-22-u-b7-automatisations.md) |
+| 22/10/2026 | [B1 : paiements par QR de virement et rapprochement bancaire](evolutions/2026-10-22-v-b1-paiements.md) |
+| 22/10/2026 | [B8 : attestations fiscales, activées par un réglage oui/non](evolutions/2026-10-22-w-b8-attestations-fiscales.md) |
+| 22/10/2026 | [A6 : la page équipe comme tableau de bord](evolutions/2026-10-22-x-a6-equipe-tableau-de-bord.md) |
+| 22/10/2026 | [A5 : un match, un parcours avant / jour J / après](evolutions/2026-10-22-y-a5-parcours-match.md) |
+| 22/10/2026 | [B3 : l'atelier des fauteuils](evolutions/2026-10-22-z-b3-atelier-fauteuils.md) |
+| 22/10/2026 | [B4 : les notifications sur téléphone](evolutions/2026-10-22-za-b4-notifications-push.md) |
+| 22/10/2026 | [B5 : incidents, blessures et déclaration d'assurance](evolutions/2026-10-22-zb-b5-incidents.md) |
+| 22/10/2026 | [B9 : événements ouverts au public](evolutions/2026-10-22-zc-b9-evenements-ouverts.md) |
+| 22/10/2026 | [B6 : pages publiques, widgets, API et webhooks](evolutions/2026-10-22-zd-b6-pages-publiques-api.md) |
 
 ## Convention
 

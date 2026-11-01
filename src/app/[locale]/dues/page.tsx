@@ -3,12 +3,16 @@ import { isLocale } from "@/lib/locale";
 import { Dues } from "@/components/dues";
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ team?: string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <Dues locale={locale} />;
+  // A6: « ?team= » opens the issue wizard on that team.
+  const { team } = await searchParams;
+  return <Dues locale={locale} issueTeam={team && /^[0-9a-f-]{36}$/i.test(team) ? team : undefined} />;
 }
 
 export async function generateMetadata({

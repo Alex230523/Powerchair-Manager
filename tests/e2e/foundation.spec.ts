@@ -26,12 +26,11 @@ for (const locale of ["fr", "nl", "en"])
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    await expect(page.locator("header select")).toHaveCount(0);
-    await expect(
-      page.locator("nav").getByRole("link", { name: "English", exact: true }),
-    ).toHaveCount(0);
+    // Wave 16 (I1): a visitor has no menu, only the brand, the language and « Se connecter ».
+    await expect(page.locator("header select")).toHaveCount(1);
+    await expect(page.locator(".sidebar, .bottom-nav")).toHaveCount(0);
     await page.goto(`/${locale}/access`);
-    await page.locator("main select").selectOption("en");
+    await page.locator("header select").selectOption("en");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
   });
 test("root redirects and unsupported locale is rejected", async ({ page }) => {
@@ -44,9 +43,12 @@ test("root redirects and unsupported locale is rejected", async ({ page }) => {
 test("database outage is explicit and redacted", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.status()).toBe(process.env.PFM_E2E_DATABASE_URL ? 200 : 503);
-  expect(await response.json()).toEqual(
-    process.env.PFM_E2E_DATABASE_URL
-      ? { status: "ok", database: "reachable" }
-      : { status: "unavailable" },
-  );
+  // B2: with a database, the health also reports the jobs and the e-mail budget.
+  const body = await response.json();
+  if (process.env.PFM_E2E_DATABASE_URL) {
+    expect(body).toMatchObject({ database: "reachable" });
+    expect(["ok", "degraded"]).toContain(body.status);
+    expect(body).toHaveProperty("jobs");
+    expect(body).toHaveProperty("mail");
+  } else expect(body).toEqual({ status: "unavailable" });
 });

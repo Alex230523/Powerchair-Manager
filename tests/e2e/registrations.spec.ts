@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
   expect(
@@ -31,7 +32,7 @@ test("real registration builder, family application, attachment, complement, adm
     await db.query('DELETE FROM "rateLimit"');
     const password = "Registration-fixture-2026!";
     async function signup(target: Page, name: string) {
-      const r = await target.request.post("/api/auth/sign-up/email", {
+      const r = await signUpVia(target, db, {
         headers: { origin },
         data: {
           name,
@@ -80,6 +81,16 @@ test("real registration builder, family application, attachment, complement, adm
         [org, season],
       )
     ).rows[0].id;
+    async function openToPublic(title: string) {
+      await page.getByRole("button", { name: "Partager " + title, exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("switch", { name: "Ouvert au public", exact: true }).check();
+      await dialog.getByRole("button", { name: "Enregistrer", exact: true }).click();
+      await expect
+        .poll(async () => (await db.query("SELECT published FROM registration_form WHERE organization_id=$1 AND title=$2", [org, title])).rows[0]?.published)
+        .toBe(true);
+      await dialog.getByRole("button", { name: "Fermer / Sluiten / Close" }).click();
+    }
     for (const locale of ["fr", "nl"]) {
       await page.goto("/" + locale + "/registrations");
       await expect(
@@ -97,7 +108,6 @@ test("real registration builder, family application, attachment, complement, adm
     await page
       .getByLabel("Présentation", { exact: true })
       .fill("Bienvenue au club pilote");
-    await page.getByLabel("Ouvrir les candidatures", { exact: true }).check();
     await page
       .getByRole("button", { name: "Ajouter une question", exact: true })
       .click();
@@ -152,6 +162,8 @@ test("real registration builder, family application, attachment, complement, adm
         [org],
       )
     ).rows[0].id;
+    // Wave 17 (F1): a new form stays closed until it is opened from « Partager ».
+    await openToPublic("Admission pilote");
     const anon = await browser.newContext({ baseURL: origin }),
       anonPage = await anon.newPage();
     for (const locale of ["fr", "nl"]) {
@@ -269,14 +281,19 @@ test("real registration builder, family application, attachment, complement, adm
     await expect(
       page.getByText("Note confidentielle du club", { exact: true }),
     ).toBeVisible();
+    // Wave 17 (F1): V, X and « … » in the application's sheet.
     async function decision(status: string, message: string) {
-      await page.getByLabel("État", { exact: true }).selectOption(status);
-      await page
-        .getByLabel("Réponse au candidat", { exact: true })
-        .fill(message);
-      await page
-        .getByRole("button", { name: "Enregistrer la décision", exact: true })
-        .click();
+      const panel = page.locator(".decision-panel");
+      if (status === "accepted")
+        await panel.getByRole("button", { name: "Accepter le dossier de Enfant Pilote", exact: true }).click();
+      else {
+        await panel.getByRole("button", { name: "Autres décisions pour le dossier de Enfant Pilote", exact: true }).click();
+        await panel.getByRole("button", { name: status === "waiting" ? "Liste d'attente" : "Demander un complément", exact: true }).click();
+        if (status === "incomplete") {
+          await page.getByRole("dialog").getByLabel("Ce qui manque au dossier", { exact: true }).fill(message);
+          await page.getByRole("dialog").getByRole("button", { name: "Envoyer la demande", exact: true }).click();
+        }
+      }
       await expect
         .poll(
           async () =>
@@ -322,10 +339,11 @@ test("real registration builder, family application, attachment, complement, adm
         exact: true,
       }),
     ).toBeVisible();
-    await page
-      .getByLabel("Affecter à une équipe (facultatif)", { exact: true })
-      .selectOption(team);
-    await decision("accepted", "Bienvenue dans notre club");
+    // A single team for the season: the accepted player joins it.
+    await decision("accepted", "");
+    await expect
+      .poll(async () => (await db.query("SELECT count(*)::int AS n FROM team_membership WHERE team_id=$1", [team])).rows[0].n)
+      .toBe(1);
     await page
       .getByLabel("Afficher les dossiers", { exact: true })
       .selectOption("recent");
@@ -344,7 +362,8 @@ test("real registration builder, family application, attachment, complement, adm
     await expect(candidatePage.getByText(/Après admission/)).toBeVisible();
     expect(
       (
-        await db.query("SELECT id FROM club_person WHERE organization_id=$1", [
+        // One player file (since wave 16, I2 the parent invited at admission has their own file).
+        await db.query("SELECT id FROM club_person WHERE organization_id=$1 AND 'player'=ANY(directory_roles)", [
           org,
         ])
       ).rowCount,
@@ -358,15 +377,14 @@ test("real registration builder, family application, attachment, complement, adm
     await page.reload();
     await page
       .getByRole("button", {
-        name: "Dupliquer pour une nouvelle saison",
+        name: "Réutiliser Admission pilote pour une nouvelle saison",
         exact: true,
       })
       .click();
-    await page.locator("main").getByLabel("Saison", { exact: true }).selectOption(nextSeason);
+    await page.locator("main").getByRole("combobox", { name: "Saison", exact: true }).selectOption(nextSeason);
     await page
       .getByLabel("Titre du formulaire", { exact: true })
       .fill("Réinscription 2027");
-    await page.getByLabel("Ouvrir les candidatures", { exact: true }).check();
     await expect(
       page.getByLabel("Libellé français", { exact: true }).first(),
     ).toHaveValue("Je confirme les coordonnées");
@@ -384,6 +402,7 @@ test("real registration builder, family application, attachment, complement, adm
           ).rowCount,
       )
       .toBe(2);
+    await openToPublic("Réinscription 2027");
     const nextForm = (
       await db.query(
         "SELECT id FROM registration_form WHERE organization_id=$1 AND season_id=$2",

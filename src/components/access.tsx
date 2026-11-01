@@ -1,10 +1,12 @@
 "use client";
+import { DurationField, readDuration } from "./duration-field";
+import { durationText } from "./duration-copy";
 import { shellCopy } from "./app-shell";
 import { clearOfflineData } from "@/lib/offline-queue";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { invitationHeader } from "@/domains/access/signup-header";
 import {
   labels,
   roles,
@@ -62,13 +64,14 @@ type State = {
     expires_at: string;
     accepted_at: string | null;
     revoked_at: string | null;
+    disputed_at?: string | null;
+    disputed_note?: string | null;
   }[];
   audit: { id: string; action: string; name: string; created_at: string }[];
   preferences: { locale: Locale; notifications_enabled: boolean };
   avatarVersion?: string | null;
 };
 export function Access({ locale }: { locale: Locale }) {
-  const router = useRouter();
   const t = accessCopy[locale],
     st = shellCopy[locale];
   const [state, setState] = useState<State | null>(null),
@@ -203,22 +206,31 @@ export function Access({ locale }: { locale: Locale }) {
     }
     const result =
       mode === "signup"
-        ? await authClient.signUp.email({
-            email,
-            password,
-            name: String(data.get("name")),
-            callbackURL: `/${locale}/access`,
-          })
+        ? // Only with the invitation of that email address (wave 16, I1).
+          await authClient.signUp.email(
+            {
+              email,
+              password,
+              name: String(data.get("name")),
+              callbackURL: `/${locale}/access`,
+            },
+            { headers: { [invitationHeader]: invitationToken } },
+          )
         : await authClient.signIn.email({ email, password });
     if (result.error) throw new Error(result.error.code);
     // Signed in: straight to the home page. A new account, or someone opening an
     // invitation link, stays here to join the club.
     if (mode === "login" && !invitationToken) {
-      router.push(`/${locale}`);
+      // A full load: the layout shows the menus of a signed-in person. A page that
+      // sent the visitor here (?next=/fr/...) gets them back, inside this site only.
+      const next = new URLSearchParams(window.location.search).get("next") ?? "";
+      window.location.assign(/^\/(fr|nl|en)(\/[A-Za-z0-9_\-/]*)?$/.test(next) && !next.includes("//") ? next : `/${locale}`);
       return;
     }
-    await load();
-    if (mode === "signup") setMessage(t.verifyHint);
+    // With an invitation link: a full reload too, so the layout shows the signed-in
+    // menus; the link (#invitation=…) is put back in the address and the card offers to accept.
+    history.replaceState(null, "", `${window.location.pathname}#invitation=${invitationToken}`);
+    window.location.reload();
   }
   async function confirm(id: string, body: Record<string, unknown>) {
     if (confirmation !== id) {
@@ -254,8 +266,8 @@ export function Access({ locale }: { locale: Locale }) {
       locale === "en"
         ? "Manage invitations and attendance"
         : locale === "fr"
-          ? "Gérer convocations et présences"
-          : "Oproepen en aanwezigheid beheren",
+          ? "Gérer invitations et présences"
+          : "Uitnodigingen en aanwezigheid beheren",
     "calendar.read":
       locale === "en"
         ? "Read the entire organisation calendar"
@@ -329,36 +341,12 @@ export function Access({ locale }: { locale: Locale }) {
   return (
     <>
       <main id="main" className="access">
-        {!state && (
-          <label>
-            {locale === "en"
-              ? "Language"
-              : locale === "fr"
-                ? "Langue"
-                : locale === "nl"
-                  ? "Taal"
-                  : "Language"}
-            <select
-              aria-label={
-                locale === "en"
-                  ? "Language"
-                  : locale === "fr"
-                    ? "Langue"
-                    : locale === "nl"
-                      ? "Taal"
-                      : "Language"
-              }
-              value={locale}
-              onChange={(e) => router.push(`/${e.target.value}/access`)}
-            >
-              <option value="fr">Français</option>
-              <option value="nl">Nederlands</option>
-              <option value="en">English</option>
-            </select>
-          </label>
+        {state && (
+          <>
+            <h1>{t.title}</h1>
+            <p className="intro">{t.intro}</p>
+          </>
         )}
-        <h1>{t.title}</h1>
-        <p className="intro">{t.intro}</p>
         <div aria-live="polite" role="status">
           {loading ? t.loading : message}
         </div>
@@ -368,66 +356,63 @@ export function Access({ locale }: { locale: Locale }) {
           </p>
         )}
         {!loading && !state && (
-          <Panel key={mode} title={t[mode]}>
-            <form onSubmit={(e) => submit(e, authenticate)}>
-              {mode === "signup" && (
-                <label>
-                  {t.name}
-                  <input
-                    name="name"
-                    required
-                    maxLength={120}
-                    autoComplete="name"
-                  />
-                </label>
+          // Wave 16 (I1): a centred card; an account is created only with an invitation.
+          <section className="access-card card" aria-labelledby="access-card-title">
+            <div className="card-body">
+              <h1 id="access-card-title">{t[mode]}</h1>
+              {mode === "signup" && <p className="muted">{t.invitedHint}</p>}
+              <form onSubmit={(e) => submit(e, authenticate)}>
+                {mode === "signup" && (
+                  <label>
+                    {t.name}
+                    <input name="name" required maxLength={120} autoComplete="name" />
+                  </label>
+                )}
+                {mode !== "reset" && (
+                  <label>
+                    {t.email}
+                    <input name="email" type="email" required autoComplete="email" maxLength={254} />
+                  </label>
+                )}
+                {mode !== "forgot" && (
+                  <label>
+                    {t.password}
+                    <input
+                      name="password"
+                      type="password"
+                      required
+                      minLength={mode === "login" ? 1 : 12}
+                      maxLength={128}
+                      autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    />
+                  </label>
+                )}
+                <Button disabled={busy}>{t[mode]}</Button>
+              </form>
+              <div className="actions">
+                {(invitationToken ? (["login", "signup", "forgot"] as const) : (["login", "forgot"] as const))
+                  .filter((m) => m !== mode)
+                  .map((m) => (
+                    <button
+                      type="button"
+                      className="text-button"
+                      key={m}
+                      onClick={() => {
+                        setMode(m);
+                        setFailure("");
+                      }}
+                    >
+                      {t[m]}
+                    </button>
+                  ))}
+              </div>
+              {!invitationToken && (
+                <p className="access-join">
+                  <Link href={`/${locale}/join`}>{t.noAccount}</Link>
+                </p>
               )}
-              {mode !== "reset" && (
-                <label>
-                  {t.email}
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    maxLength={254}
-                  />
-                </label>
-              )}
-              {mode !== "forgot" && (
-                <label>
-                  {t.password}
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    minLength={mode === "login" ? 1 : 12}
-                    maxLength={128}
-                    autoComplete={
-                      mode === "login" ? "current-password" : "new-password"
-                    }
-                  />
-                </label>
-              )}
-              <Button disabled={busy}>{t[mode]}</Button>
-            </form>
-            <div className="actions">
-              {(["login", "signup", "forgot"] as const)
-                .filter((m) => m !== mode)
-                .map((m) => (
-                  <button
-                    className="text-button"
-                    key={m}
-                    onClick={() => {
-                      setMode(m);
-                      setFailure("");
-                    }}
-                  >
-                    {t[m]}
-                  </button>
-                ))}
             </div>
-            <p className="muted">{t.verifyHint}</p>
-          </Panel>
+          </section>
         )}
         {state && (
           <>
@@ -576,7 +561,6 @@ export function Access({ locale }: { locale: Locale }) {
                   <form
                     onSubmit={(e) =>
                       submit(e, async (data) => {
-                        const until = String(data.get("until") ?? "");
                         const result = await command({
                           action: "invite",
                           email: data.get("email"),
@@ -589,9 +573,7 @@ export function Access({ locale }: { locale: Locale }) {
                                 ).toISOString(),
                               }
                             : {}),
-                          validUntil: until
-                            ? new Date(until + "T23:59:59Z").toISOString()
-                            : null,
+                          validUntil: readDuration(data, "until"),
                         });
                         setInvitationLink(
                           `${window.location.origin}/${locale}/access#invitation=${result.token}`,
@@ -657,10 +639,7 @@ export function Access({ locale }: { locale: Locale }) {
                       {t.from}
                       <input name="from" type="date" />
                     </label>
-                    <label>
-                      {t.until}
-                      <input name="until" type="date" />
-                    </label>
+                    <DurationField locale={locale} name="until" />
                     <Button disabled={busy}>{t.create}</Button>
                   </form>
                   {invitationLink && (
@@ -685,8 +664,7 @@ export function Access({ locale }: { locale: Locale }) {
                               new Date(m.valid_until) <= new Date()
                             ? t.expired
                             : t.active}
-                        {m.valid_until &&
-                          ` · ${new Date(m.valid_until).toLocaleDateString(locale)}`}
+                        {` · ${durationText(locale, m.valid_until)}`}
                       </p>
                       {state.permissions.includes("mandates.manage") && (
                         <div className="actions">
@@ -754,10 +732,26 @@ export function Access({ locale }: { locale: Locale }) {
                           ? t.used
                           : i.revoked_at
                             ? t.revoked
-                            : new Date(i.expires_at) < new Date()
-                              ? t.expired
-                              : t.pending}
+                            : i.disputed_at
+                              ? t.disputed
+                              : new Date(i.expires_at) < new Date()
+                                ? t.expired
+                                : t.pending}
                       </p>
+                      {i.disputed_at && !i.revoked_at && i.disputed_note && <p className="muted">« {i.disputed_note} »</p>}
+                      {!i.accepted_at && !i.revoked_at && (
+                        <Button
+                          variant="secondary"
+                          disabled={busy}
+                          onClick={() =>
+                            void task(async () => {
+                              await command({ action: "resendInvitation", id: i.id });
+                            })
+                          }
+                        >
+                          {t.resend}
+                        </Button>
+                      )}
                       {!i.accepted_at &&
                         !i.revoked_at &&
                         state.permissions.includes("mandates.manage") && (

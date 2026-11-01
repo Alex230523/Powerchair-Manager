@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 test("notification inbox, FR/NL models, preferences and local delivery queue", async ({
   page,
@@ -13,7 +14,7 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
     await db.query('DELETE FROM "rateLimit"');
     const email = `notifications-${Date.now()}@example.test`,
       password = "Notifications-fixture-2026!";
-    const signup = await page.request.post("/api/auth/sign-up/email", {
+    const signup = await signUpVia(page, db, {
       headers: { origin },
       data: { email, name: "Notifications Admin", password },
     });
@@ -72,13 +73,15 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
         exact: true,
       })
       .click();
-    await page
+    // Since wave 17 (G3) the reminders share the page: the email models are their own region.
+    const models = page.getByRole("region", { name: "Modèles d’emails" });
+    await models
       .getByLabel("Objet", { exact: true })
       .fill("Message test · {organization}");
-    await page
+    await models
       .getByLabel("Texte du message", { exact: true })
       .fill("Bonjour {name}, votre test est prêt.\n{url}");
-    await page
+    await models
       .getByRole("button", { name: "Prévisualiser", exact: true })
       .click();
     await expect(
@@ -87,7 +90,7 @@ test("notification inbox, FR/NL models, preferences and local delivery queue", a
         exact: true,
       }),
     ).toBeVisible();
-    const editor = page
+    const editor = models
       .locator("form")
       .filter({ has: page.getByLabel("Objet", { exact: true }) });
     await editor

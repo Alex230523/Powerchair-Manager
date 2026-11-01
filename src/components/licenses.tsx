@@ -11,8 +11,11 @@ import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, PageHeader, Card, EmptyState } from "./ui";
+import { ClassificationBadge } from "./classification-badge";
+import { ClassificationDays } from "./classification-days";
 
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
+const fillCount = (s: string, n: number) => s.replace("{n}", String(n));
 export function ClubLicenses({ locale }: { locale: Locale }) {
   const t = licensesCopy[locale];
   const failure = useCallback(
@@ -159,7 +162,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
                             )}
                         </td>
                         <td>
-                          {t.classes[x.classification] ?? x.classification}
+                          <ClassificationBadge locale={locale} value={x.classification} />
                           {x.classification_valid_until && (
                             <span className="muted">
                               {" "}
@@ -243,6 +246,7 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
               </button>
             </p>
           )}
+          {data.federation && <ClassificationDays locale={locale} />}
         </>
       )}
     </main>
@@ -453,9 +457,9 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
                     <span className="muted">
                       {" "}
                       · {x.birth_year ?? ""} · {x.club} ·{" "}
-                      {t.classes[x.classification] ?? x.classification}
-                      {x.valid_until ? ` · ${t.until} ${x.valid_until}` : ""}
-                    </span>{" "}
+                    </span>
+                    <ClassificationBadge locale={locale} value={x.classification} />
+                    {x.valid_until && <span className="muted"> · {t.until} {x.valid_until}</span>}{" "}
                     <Badge tone={
                         x.status === "validated"
                           ? "success"
@@ -543,7 +547,13 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
             )}
           </Card>
 
+          <ClassificationDays locale={locale} />
+
           <Card title={t.transfers} labelledBy="fed-transfers" headingId="fed-transfers">
+            {/* Wave 17 (J3): the offers of the transfer market are validated in the market. */}
+            <p>
+              <Link href={`/${locale}/transfers`}>{fillCount(t.toValidate, data.toValidate)} →</Link>
+            </p>
             {data.transfers.length ? (
               <div className="table-scroll">
                 <table className="ledger">

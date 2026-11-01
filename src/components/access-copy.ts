@@ -9,6 +9,8 @@ export const accessCopy = {
     password: "Mot de passe (12 caractères minimum)",
     name: "Nom complet",
     login: "Se connecter",
+    noAccount: "Pas encore de compte ?",
+    invitedHint: "Vous avez été invité : créez votre compte avec l’adresse email qui a reçu l’invitation.",
     signup: "Créer mon compte",
     forgot: "Récupérer mon accès",
     reset: "Définir le mot de passe",
@@ -25,7 +27,6 @@ export const accessCopy = {
     role: "Rôle",
     grants: "Délégations complémentaires",
     from: "Début de l’accès (facultatif)",
-    until: "Fin de l’accès (facultative)",
     create: "Créer l’invitation",
     link: "Lien d’invitation à transmettre à la personne concernée (valable 7 jours)",
     invites: "Invitations",
@@ -58,6 +59,8 @@ export const accessCopy = {
     inviteCreate: "Créer des invitations",
     auditRead: "Consulter le journal",
     pending: "En attente",
+    disputed: "Signalée : ce n’est pas le bon rôle",
+    resend: "Renvoyer l’invitation",
     used: "Acceptée",
     revoked: "Révoqué",
     expired: "Expiré",
@@ -75,6 +78,8 @@ export const accessCopy = {
     password: "Wachtwoord (minimaal 12 tekens)",
     name: "Volledige naam",
     login: "Aanmelden",
+    noAccount: "Nog geen account?",
+    invitedHint: "U bent uitgenodigd: maak uw account aan met het e-mailadres dat de uitnodiging ontving.",
     signup: "Account aanmaken",
     forgot: "Toegang herstellen",
     reset: "Wachtwoord instellen",
@@ -92,7 +97,6 @@ export const accessCopy = {
     role: "Rol",
     grants: "Aanvullende bevoegdheden",
     from: "Begin van het profiel (optioneel)",
-    until: "Einde van het profiel (optioneel)",
     create: "Uitnodiging aanmaken",
     link: "Uitnodigingslink voor de betrokken persoon (7 dagen geldig)",
     invites: "Uitnodigingen",
@@ -125,6 +129,8 @@ export const accessCopy = {
     inviteCreate: "Uitnodigingen aanmaken",
     auditRead: "Logboek bekijken",
     pending: "In afwachting",
+    disputed: "Gemeld: dit is niet de juiste rol",
+    resend: "Uitnodiging opnieuw sturen",
     used: "Geaccepteerd",
     revoked: "Ingetrokken",
     expired: "Verlopen",
@@ -137,6 +143,46 @@ export const accessCopy = {
   en: english.accessCopy,
 };
 export const errors: Record<string, { fr: string; nl: string; en: string }> = {
+  YEAR_APPROVED: {
+    fr: "L'exercice de cette opération est approuvé par l'assemblée générale : elle ne peut plus être supprimée.",
+    nl: "Het boekjaar van deze verrichting is goedgekeurd door de algemene vergadering: ze kan niet meer verwijderd worden.",
+    en: "The financial year of this operation is approved by the general assembly: it can no longer be deleted.",
+  },
+  LINKED_OPERATION: {
+    fr: "Cette opération a été créée ailleurs (cotisation, sponsor, affiliation) : supprimez-la depuis son origine.",
+    nl: "Deze verrichting werd elders aangemaakt (lidgeld, sponsor, aansluiting): verwijder ze via haar oorsprong.",
+    en: "This operation was created elsewhere (dues, sponsor, affiliation): delete it from where it came from.",
+  },
+  GRANT_NOT_GRANTED: {
+    fr: "Une tranche s'enregistre une fois le subside accordé.",
+    nl: "Een schijf wordt geregistreerd zodra de subsidie toegekend is.",
+    en: "An instalment is recorded once the grant is awarded.",
+  },
+  OVERPAID: {
+    fr: "Ce montant dépasse ce qui reste dû : mettez le surplus en crédit pour la famille.",
+    nl: "Dit bedrag is hoger dan wat nog openstaat: zet het overschot als tegoed voor het gezin.",
+    en: "This amount is more than what is left: put the surplus as a credit for the family.",
+  },
+  INVALID_IBAN: {
+    fr: "Cet IBAN n'est pas valide : vérifiez les chiffres.",
+    nl: "Dit IBAN is niet geldig: controleer de cijfers.",
+    en: "This IBAN is not valid: check the digits.",
+  },
+  CREDIT_TOO_LOW: {
+    fr: "Le crédit de cette personne ne couvre pas ce montant.",
+    nl: "Het tegoed van deze persoon dekt dit bedrag niet.",
+    en: "This person's credit does not cover this amount.",
+  },
+  ALREADY_PAID: {
+    fr: "Cette affiliation est déjà en ordre.",
+    nl: "Deze aansluiting is al in orde.",
+    en: "This affiliation is already settled.",
+  },
+  STORAGE_FULL: {
+    fr: "L'espace de stockage du club est plein : le fichier n'a pas été envoyé. Le président voit ce qui prend de la place dans Statistiques, carte Stockage.",
+    nl: "De opslagruimte van de club is vol: het bestand werd niet verstuurd. De voorzitter ziet wat ruimte inneemt in Statistieken, kaart Opslag.",
+    en: "The club's storage is full: the file was not sent. The president sees what takes up space in Statistics, Storage card.",
+  },
   SEASON_STARTED: {
     fr: "La saison est lancée : des cotisations ont déjà été émises sur ce barème. Confirmez le changement pour continuer.",
     nl: "Het seizoen is gestart: er is al lidgeld uitgegeven op dit tarief. Bevestig de wijziging om verder te gaan.",
@@ -157,6 +203,11 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "De laatste actieve voorzitter zonder einddatum kan niet worden verwijderd of beperkt. Voeg eerst een opvolger toe.",
     en: englishErrors["LAST_ADMIN"] ?? "Action unavailable.",
   },
+  INVITATION_REQUIRED: {
+    fr: "Il faut une invitation pour créer un compte. Demandez-la à la personne responsable de votre club ou de votre fédération.",
+    nl: "Er is een uitnodiging nodig om een account aan te maken. Vraag ze aan de verantwoordelijke van uw club of federatie.",
+    en: englishErrors["INVITATION_REQUIRED"] ?? "Action unavailable.",
+  },
   FORBIDDEN: {
     fr: "Ce profil ne permet pas cette action.",
     nl: "Dit profiel staat deze actie niet toe.",
@@ -176,6 +227,16 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     fr: "Vérifiez d’abord votre adresse email.",
     nl: "Verifieer eerst uw e-mailadres.",
     en: englishErrors["VERIFY_EMAIL"] ?? "Action unavailable.",
+  },
+  AFFILIATION_TAKEN: {
+    fr: "Un autre club de la fédération a déjà ce numéro d'affiliation.",
+    nl: "Een andere club van de federatie heeft dit aansluitingsnummer al.",
+    en: englishErrors["AFFILIATION_TAKEN"] ?? "Action unavailable.",
+  },
+  ACCOUNT_EXISTS: {
+    fr: "Un compte existe déjà avec cette adresse. Connectez-vous pour accepter l'invitation.",
+    nl: "Er bestaat al een account met dit adres. Meld u aan om de uitnodiging te aanvaarden.",
+    en: englishErrors["ACCOUNT_EXISTS"] ?? "Action unavailable.",
   },
   INVITATION_INVALID: {
     fr: "Invitation invalide, expirée, révoquée ou destinée à une autre adresse email.",
@@ -257,13 +318,13 @@ export const auditLabels: Record<
   },
 
   "attendance.invite": {
-    fr: "Convocations modifiées",
-    nl: "Oproepen gewijzigd",
+    fr: "Invitations modifiées",
+    nl: "Uitnodigingen gewijzigd",
     en: "Invitations updated",
   },
   "attendance.respond": {
-    fr: "Réponse à une convocation",
-    nl: "Antwoord op oproep",
+    fr: "Réponse à une invitation",
+    nl: "Antwoord op uitnodiging",
     en: "Availability updated",
   },
   "attendance.mark": {
@@ -277,13 +338,13 @@ export const auditLabels: Record<
     en: "Register closed",
   },
   "attendance.remind": {
-    fr: "Relance de convocation",
-    nl: "Oproepherinnering",
+    fr: "Relance d'invitation",
+    nl: "Herinnering voor een uitnodiging",
     en: "Reminder sent",
   },
   "attendance.automatic_reminder": {
-    fr: "Relance automatique de convocation",
-    nl: "Automatische oproepherinnering",
+    fr: "Relance automatique d'invitation",
+    nl: "Automatische herinnering voor een uitnodiging",
     en: "Automatic reminder",
   },
   "attendance.threshold_check": {

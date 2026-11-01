@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/locale";
 import { Designations } from "@/components/referees";
 export const metadata = {
-  title: "Désignations des arbitres · Powerchair Football Manager",
+  title: "Arbitres et désignations · Powerchair Football Manager",
 };
 export default async function Page({
   params,

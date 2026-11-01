@@ -166,8 +166,9 @@ export async function rolloverExecute(
         if (!old) throw new AccessError("NOT_FOUND", 404);
         const copy = (
           await c.query(
-            "INSERT INTO team(organization_id,season_id,name,category,level,home_location) VALUES($1,$2,$3,$4,$5,$6) RETURNING id",
-            [org, season, old.name, old.category, old.level, old.home_location],
+            // The places per team (wave 16, R1) and the colour follow the team into the new season.
+            "INSERT INTO team(organization_id,season_id,name,category,level,home_location,capacity,color) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+            [org, season, old.name, old.category, old.level, old.home_location, old.capacity ?? null, old.color ?? null],
           )
         ).rows[0].id as string;
         // The chosen people keep the role they had in the team.

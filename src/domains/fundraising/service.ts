@@ -54,6 +54,8 @@ export const fundraisingCommand = z.discriminatedUnion("action", [
     anonymous: z.boolean(),
     /** The player who collected it, when the pot is run with the players. */
     profileId: z.uuid().nullable().optional(),
+    /** A4: the donor, a contact of the club's book. */
+    contactId: z.uuid().nullable().optional(),
   }),
   /** A player (or a parent for a child) notes what they collected themselves. */
   z.object({
@@ -349,10 +351,15 @@ export async function fundraisingExecute(
           // On a team pot, the collector is one of the team's players.
           if (cmd.profileId && row.team_id && !(await c.query(currentMemberSql, [row.team_id, cmd.profileId])).rowCount)
             throw new AccessError("FORBIDDEN");
+          // A4: a donor chosen in the contact book gives the name when none is typed.
+          const donor = cmd.contactId
+            ? ((await c.query("SELECT full_name FROM contact WHERE id=$1 AND organization_id=$2", [cmd.contactId, org])).rows[0]?.full_name as string | undefined)
+            : undefined;
+          if (cmd.contactId && !donor) throw new AccessError("NOT_FOUND", 404);
           const id = (
             await c.query(
-              "INSERT INTO fundraising_movement(pot_id,occurred_on,kind,label,amount_cents,donor,anonymous,created_by,profile_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
-              [cmd.potId, cmd.occurredOn, cmd.kind, cmd.label, cmd.amountCents, cmd.donor, cmd.anonymous, userId, cmd.profileId ?? null],
+              "INSERT INTO fundraising_movement(pot_id,occurred_on,kind,label,amount_cents,donor,anonymous,created_by,profile_id,contact_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
+              [cmd.potId, cmd.occurredOn, cmd.kind, cmd.label, cmd.amountCents, cmd.donor || (donor ?? "").slice(0, 160), cmd.anonymous, userId, cmd.profileId ?? null, cmd.contactId ?? null],
             )
           ).rows[0].id as string;
           return { id };

@@ -41,7 +41,7 @@ export const calendarCopy = {
     instructions: "Consignes",
     participants: "Participants supplémentaires prévus",
     participantHint:
-      "Les membres actuellement affectés à l’équipe sont inclus. Ce choix ne vaut ni convocation ni réponse de présence.",
+      "Les membres actuellement affectés à l’équipe sont inclus. Ce choix ne vaut ni invitation ni réponse de présence.",
     documentsHint:
       "Les documents associés restent soumis à leurs propres droits ; aucun accès n’est accordé par ce lien.",
     repeat: "Récurrence",
@@ -141,7 +141,7 @@ export const calendarCopy = {
     instructions: "Instructies",
     participants: "Extra geplande deelnemers",
     participantHint:
-      "Huidige teamleden zijn inbegrepen. Dit is geen oproep of aanwezigheidsantwoord.",
+      "Huidige teamleden zijn inbegrepen. Dit is geen uitnodiging of aanwezigheidsantwoord.",
     documentsHint:
       "Gekoppelde documenten behouden hun eigen toegangsrechten; deze koppeling verleent geen toegang.",
     repeat: "Herhaling",
@@ -224,6 +224,13 @@ export const kindLabels = {
   en: english.kindLabels,
 };
 export const calendarErrors: Record<string, [string, string, string]> = {
+  EVENT_IN_USE: [
+    "Des réponses, des présences ou un match existent : annulez l'événement à la place.",
+    "Er zijn antwoorden, aanwezigheden of een wedstrijd: annuleer het evenement in de plaats.",
+    "Answers, attendance or a match exist: cancel the event instead.",
+  ],
+  TYPE_EXISTS: ["Un type porte déjà ce nom.", "Er bestaat al een soort met deze naam.", "A type already has this name."],
+  MODULE_OFF: ["Ce module est désactivé pour votre club.", "Deze module is uitgeschakeld voor uw club.", "This module is switched off for your club."],
   NOTHING_TO_COPY: [
     "Aucun événement programmé dans cette semaine.",
     "Geen gepland evenement in deze week.",

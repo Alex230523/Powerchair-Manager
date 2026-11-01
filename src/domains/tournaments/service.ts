@@ -1,5 +1,8 @@
+import { emitWebhook } from "../integrations/webhooks";
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { account, active, audit, AccessError, validImage, type Principal } from "../access/service";
+import { permissions } from "../access/policy";
 import {
   podium,
   readRules,
@@ -74,7 +77,7 @@ async function tournament(s: Scope, id: string, lock = false) {
 }
 const manages = (s: Scope, t: { organization_id: string }) => isPresident(s.a) && s.a.organization_id === t.organization_id;
 
-type MatchRow = {
+export type MatchRow = {
   id: string;
   day_id: string;
   kickoff: string;
@@ -94,7 +97,7 @@ type MatchRow = {
   validated_name: string | null;
   host_organization_id: string | null;
 };
-async function matchRows(c: PoolClient, tournamentIds: string[]) {
+export async function matchRows(c: PoolClient | Pool, tournamentIds: string[]) {
   return (
     await c.query(
       `SELECT m.id,m.tournament_id,m.day_id,to_char(m.kickoff,'HH24:MI') AS kickoff,m.stage,m.group_label,m.home_organization_id,m.away_organization_id,m.referee_user_id,ru.name AS referee_name,
@@ -106,7 +109,7 @@ async function matchRows(c: PoolClient, tournamentIds: string[]) {
     )
   ).rows as (MatchRow & { tournament_id: string; day: string })[];
 }
-async function clubRows(c: PoolClient, tournamentIds: string[]) {
+export async function clubRows(c: PoolClient | Pool, tournamentIds: string[]) {
   return (
     await c.query(
       `SELECT tc.tournament_id,tc.organization_id AS id,COALESCE(NULLIF(tc.team_name,''),o.name) AS name,o.name AS club_name,tc.status,tc.group_label AS "group"
@@ -115,7 +118,14 @@ async function clubRows(c: PoolClient, tournamentIds: string[]) {
     )
   ).rows as { tournament_id: string; id: string; name: string; club_name: string; status: "invited" | "accepted" | "declined"; group: string }[];
 }
-const result = (m: MatchRow): MatchResult => ({
+/** B6: a validated tournament result goes to the webhooks of the organiser and of both clubs. */
+async function announce(c: PoolClient, matchId: string) {
+  const m = (await c.query("SELECT m.id,m.version,m.tournament_id,t.organization_id AS owner,m.home_organization_id,m.away_organization_id,m.home_score,m.away_score FROM tournament_match m JOIN tournament t ON t.id=m.tournament_id WHERE m.id=$1", [matchId])).rows[0];
+  if (!m) return;
+  for (const org of new Set([m.owner, m.home_organization_id, m.away_organization_id]))
+    await emitWebhook(c, org, "match.validated", `tournament_match:${m.id}:${m.version}`, { tournament_id: m.tournament_id, tournament_match_id: m.id, home_score: m.home_score, away_score: m.away_score });
+}
+export const result = (m: MatchRow): MatchResult => ({
   stage: m.stage,
   group: m.group_label,
   home: m.home_organization_id,
@@ -182,7 +192,9 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
       )
     ).rows;
     const canCreate = isPresident(s.a);
+    const club = await clubTrips(s, year);
     return {
+      ...club,
       organization_id: s.a.organization_id,
       kind: s.a.kind,
       year,
@@ -193,6 +205,76 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
       clubOptions: canCreate ? await clubOptions(s) : [],
     };
   });
+}
+
+/**
+ * Wave 16 (E3): the club's own tournaments, from its trips of type
+ * tournament: coming ones with their transport, past ones with the final
+ * place and the matches played on those days. For the club's staff, when
+ * the trips module is on; no new table.
+ */
+async function clubTrips(s: Scope, year: number) {
+  const rights = permissions(s.a.role, s.a.grants);
+  const staff = s.a.kind === "club" && (s.a.role === "club_president" || s.a.role === "coach" || rights.includes("calendar.manage") || rights.includes("teams.manage"));
+  const off = ((await s.c.query("SELECT disabled_modules FROM organization WHERE id=$1", [s.a.organization_id])).rows[0]?.disabled_modules ?? []) as string[];
+  if (!staff || off.includes("trips")) return { clubTrips: null };
+  const rows = (
+    await s.c.query(
+      `SELECT tr.id,tr.title,tr.status,tr.starts_on::text AS starts_on,tr.ends_on::text AS ends_on,COALESCE(sv.name,pl.name,NULLIF(tr.destination,'')) AS place,
+              tr.final_rank,tr.teams_count,tr.result_note,tr.calendar_event_id AS event_id,tm.name AS team,EXISTS(SELECT 1 FROM award w WHERE w.trip_id=tr.id) AS awarded,
+              (SELECT count(*)::int FROM trip_vehicle v WHERE v.trip_id=tr.id) AS vehicles,
+              (SELECT COALESCE(sum(v.wheelchair_places),0)::int FROM trip_vehicle v WHERE v.trip_id=tr.id) AS wheelchair_places,
+              COALESCE((SELECT json_agg(json_build_object('id',m.id,'opponent',m.opponent,'our',m.our_score,'their',m.their_score) ORDER BY m.starts_at)
+                 FROM match m WHERE m.organization_id=tr.organization_id AND m.kind='tournament' AND m.status='played'
+                  AND (m.starts_at AT TIME ZONE 'Europe/Brussels')::date BETWEEN tr.starts_on AND tr.ends_on AND (e.team_id IS NULL OR m.team_id=e.team_id)),'[]') AS matches
+         FROM trip tr LEFT JOIN calendar_event e ON e.id=tr.calendar_event_id AND e.organization_id=tr.organization_id LEFT JOIN team tm ON tm.id=e.team_id
+         LEFT JOIN shared_venue sv ON sv.id=tr.shared_venue_id LEFT JOIN calendar_place pl ON pl.id=tr.place_id
+        WHERE tr.organization_id=$1 AND tr.kind='tournament' AND tr.status<>'cancelled' AND extract(year FROM tr.starts_on)=$2
+        ORDER BY tr.starts_on,tr.title`,
+      [s.a.organization_id, year],
+    )
+  ).rows as {
+    id: string;
+    title: string;
+    status: string;
+    starts_on: string;
+    ends_on: string;
+    place: string | null;
+    final_rank: number | null;
+    teams_count: number | null;
+    result_note: string;
+    event_id: string | null;
+    team: string | null;
+    vehicles: number;
+    wheelchair_places: number;
+    matches: { id: string; opponent: string; our: number; their: number }[];
+    awarded: boolean;
+  }[];
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
+  const plan = s.a.role === "club_president" || rights.includes("calendar.manage") || s.a.role === "coach";
+  const teams = plan
+    ? ((
+        await s.c.query(
+          `SELECT t.id,t.name FROM team t JOIN season se ON se.id=t.season_id WHERE t.organization_id=$1 AND NOT t.archived AND NOT se.archived AND CURRENT_DATE BETWEEN se.starts_on AND se.ends_on
+              AND ($2 OR EXISTS(SELECT 1 FROM team_membership m JOIN club_person c ON c.id=m.profile_id JOIN person p ON p.id=c.person_id WHERE m.team_id=t.id AND p.user_id=$3 AND m.role='coach' AND NOT m.cancelled AND m.closed_at IS NULL))
+            ORDER BY t.name`,
+          [s.a.organization_id, s.a.role === "club_president" || rights.includes("calendar.manage"), s.p.userId],
+        )
+      ).rows as { id: string; name: string }[])
+    : [];
+  const type = ((await s.c.query("SELECT id FROM event_type WHERE organization_id=$1 AND legacy_kind='tournament' AND NOT archived ORDER BY position LIMIT 1", [s.a.organization_id])).rows[0]?.id ?? null) as
+    | string
+    | null;
+  return {
+    clubTrips: {
+      upcoming: rows.filter((r) => r.ends_on >= today),
+      past: rows.filter((r) => r.ends_on < today).reverse(),
+      // « Préparer un tournoi »: the teams this person plans for, the club's tournament type, who is in charge.
+      prepare: plan && teams.length ? { teams, typeId: type, userId: s.p.userId } : null,
+      // « Ajouter au Hall of fame » (wave 16, S1): for those who write the prizes, Statistics on.
+      award: (s.a.role === "club_president" || rights.includes("mandates.manage") || rights.includes("teams.manage")) && !off.includes("statistics"),
+    },
+  };
 }
 
 /** Clubs that may be invited: the federation's clubs first, then the others; names only. */
@@ -398,6 +480,8 @@ export async function trophyPhotoSave(db: Pool, p: Principal, trophyId: string, 
       if (!isPresident(s.a) || (r.organization_id !== s.a.organization_id && r.owner_id !== s.a.organization_id)) throw new AccessError("FORBIDDEN");
       const bytes = Buffer.from(data, "base64");
       if (!validImage(mediaType, bytes, 1_572_864)) throw new AccessError("INVALID_FILE", 400);
+      const previous = Number((await s.c.query("SELECT size_bytes FROM tournament_trophy WHERE id=$1", [r.id])).rows[0]?.size_bytes ?? 0);
+      await ensureStorage(s.c, r.organization_id, bytes.length, previous);
       await s.c.query("UPDATE tournament_trophy SET photo=$2,photo_type=$3,photo_updated_at=now() WHERE id=$1", [r.id, bytes, mediaType]);
       await audit(s.c, s.a.organization_id, s.p.userId, "tournament.trophyPhoto", r.id);
       return { ok: true as const };
@@ -598,6 +682,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
     if (!checker) throw new AccessError("FORBIDDEN");
     if (m.status !== "reported") throw new AccessError("NOTHING_TO_VALIDATE", 409);
     await s.c.query("UPDATE tournament_match SET status='validated',validated_by=$2,validated_at=now(),version=version+1 WHERE id=$1", [m.id, s.p.userId]);
+    await announce(s.c, m.id);
     await audit(s.c, s.a.organization_id, s.p.userId, "tournament.validate", m.id);
     return { id: m.id };
   }
@@ -616,7 +701,8 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
   await s.c.query(
     `UPDATE tournament_match SET home_score=$2,away_score=$3,home_shootout=$4,away_shootout=$5,status=$6,
             reported_by=COALESCE(reported_by,$7),reported_at=COALESCE(reported_at,now()),
-            validated_by=CASE WHEN $6='validated' THEN $7 ELSE NULL END,validated_at=CASE WHEN $6='validated' THEN now() ELSE NULL END,version=version+1 WHERE id=$1`,
+            validated_by=CASE WHEN $6='validated' THEN $7 ELSE NULL END,validated_at=CASE WHEN $6='validated' THEN now() ELSE NULL END,
+            corrected_at=CASE WHEN status='validated' THEN now() ELSE corrected_at END,version=version+1 WHERE id=$1`,
     [m.id, input.homeScore, input.awayScore, input.homeShootout, input.awayShootout, input.validate ? "validated" : "reported", s.p.userId],
   );
   // Figures: replaced for the clubs this person may enter, kept for the other one.
@@ -632,6 +718,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
         x.yellowCards,
         x.redCard,
       ]);
+  if (input.validate) await announce(s.c, m.id);
   await audit(s.c, s.a.organization_id, s.p.userId, input.validate ? "tournament.validate" : "tournament.result", m.id);
   return { id: m.id };
 }

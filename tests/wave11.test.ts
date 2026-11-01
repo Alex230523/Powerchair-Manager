@@ -76,8 +76,9 @@ describe("wave 11 texts", () => {
   });
   it("uses no long dashes and names the renamed pages", () => {
     expect(JSON.stringify([fundingCopy, duesSettingsCopy])).not.toMatch(/[–—]/);
-    expect(shellCopy.fr.funding).toBe("Finance du club");
-    expect(shellCopy.fr.licenses).toBe("Transferts");
+    expect(shellCopy.fr.funding).toBe("Finances");
+    // Wave 17 (J3): the page is « Licences »; « Bourse aux transferts » is its own page.
+    expect(shellCopy.fr.licenses).toBe("Licences");
     expect(shellCopy.fr.contacts).toBe("Carnet de contacts");
   });
 });

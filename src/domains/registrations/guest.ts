@@ -1,3 +1,4 @@
+import { formOpenSql } from "./open";
 import type { Pool } from "pg";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -29,7 +30,7 @@ export async function requestGuestLink(
     await c.query("BEGIN");
     const form = (
       await c.query(
-        "SELECT f.id,f.organization_id,o.name AS organization FROM registration_form f JOIN season s ON s.id=f.season_id JOIN organization o ON o.id=f.organization_id WHERE f.id=$1 AND f.published AND NOT s.archived",
+        `SELECT f.id,f.organization_id,o.name AS organization FROM registration_form f JOIN season s ON s.id=f.season_id JOIN organization o ON o.id=f.organization_id WHERE f.id=$1 AND ${formOpenSql("f")} AND NOT s.archived`,
         [input.formId],
       )
     ).rows[0];

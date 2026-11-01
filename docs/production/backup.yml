@@ -1,0 +1,54 @@
+# B2 TEMPLATE, NOT ACTIVE. Copy to .github/workflows/backup.yml to switch it on.
+# Every night: an encrypted copy of the production database, kept 30 days as
+# a workflow artifact (free: 500 MB of artifact storage on a private
+# repository), then restored into a throwaway database to prove it works.
+# Secrets: PROD_DATABASE_URL (a read-only role is enough) and BACKUP_PASSPHRASE
+# (at least 24 characters, also kept OUTSIDE GitHub: without it the copies
+# cannot be read). See docs/PRODUCTION.md, « Sauvegardes ».
+name: Backup
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: pfm_restore
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U restore -d pfm_restore"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: PostgreSQL 18 client
+        run: |
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client-18 >/dev/null
+          echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
+      - name: Encrypted copy
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: scripts/backup.sh "pfm-$(date -u +%Y%m%d).dump.enc"
+      - name: Restore into a throwaway database
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          RESTORE_URL: postgresql://restore:restore_only@localhost:5432/pfm_restore
+          SOURCE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: scripts/restore-check.sh pfm-*.dump.enc
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pfm-backup-${{ github.run_id }}
+          path: pfm-*.dump.enc*
+          retention-days: 30
+          if-no-files-found: error

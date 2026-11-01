@@ -2,6 +2,7 @@ import { Pool, type PoolClient } from "pg";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { seal } from "./crypto";
+import { queuePush, topicOfKind } from "./push-queue";
 import {
   builtin,
   renderTemplate,
@@ -28,7 +29,10 @@ export type ResourceType =
   | "match"
   | "license"
   | "newsletter"
-  | "event_mail";
+  | "event_mail"
+  | "automation"
+  | "tax"
+  | "open_event";
 export type Envelope = {
   email: string;
   url: string;
@@ -53,6 +57,8 @@ export type Publication = {
   inApp?: boolean;
   /** Ready HTML for club-written mails (already escaped by its builder). */
   html?: string;
+  /** B7: an automation that only notifies in the application, without an email. */
+  skipEmail?: boolean;
 };
 /** Display name and reply address chosen by the club (wave 9). */
 export async function senderOf(db: Db, org: string | null) {
@@ -111,6 +117,8 @@ export async function templateFor(
 }
 async function insert(client: PoolClient, input: Publication) {
   z.email().parse(input.email);
+  // Wave 17 (J1): nothing more for a person who has died (only account recovery stays possible).
+  if (input.userId && input.resourceType !== "auth" && (await deceasedUser(client, input.userId))) return undefined;
   const base = new URL(process.env.BETTER_AUTH_URL!),
     url = new URL(input.variables.url, base);
   if (url.origin !== base.origin) throw new Error("INVALID_MAIL_URL");
@@ -149,7 +157,7 @@ async function insert(client: PoolClient, input: Publication) {
         )
       : { email: true, inApp: false };
   let jobId: string | undefined;
-  if (pref.email)
+  if (pref.email && !input.skipEmail)
     jobId = (
       await client.query(
         "INSERT INTO mail_job(dispatch_id,organization_id,recipient_user_id,kind,category,resource_type,resource_id,locale,template_id,template_version,payload_ciphertext,dedupe_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id",
@@ -208,6 +216,21 @@ async function insert(client: PoolClient, input: Publication) {
         ],
       );
   }
+  // B4: the phone, for the kinds that go there (attendance and calendar queue their own).
+  const topic = topicOfKind(input.kind);
+  if (topic && input.organizationId && input.userId && input.category !== "security")
+    await queuePush(client, {
+      organizationId: input.organizationId,
+      userId: input.userId,
+      topic,
+      kind: input.kind,
+      category: input.category,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      locale: input.locale,
+      eventKey: input.eventKey,
+      url: url.pathname.startsWith("/api/") ? "/" + input.locale : url.pathname,
+    });
   return jobId;
 }
 export async function publish(db: Db, input: Publication) {
@@ -253,4 +276,11 @@ export async function publishAuth(
     inApp: false,
     variables: { name: user.name, organization: "", url },
   });
+}
+
+/** Wave 17 (J1): the account belongs to a person whose file says « Décédé ». */
+export async function deceasedUser(client: Pick<PoolClient, "query">, userId: string) {
+  return !!(
+    await client.query("SELECT 1 FROM club_person c JOIN person p ON p.id=c.person_id WHERE p.user_id=$1 AND c.departure_status='deceased' LIMIT 1", [userId])
+  ).rowCount;
 }

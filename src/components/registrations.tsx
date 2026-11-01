@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
-import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone, EmptyState } from "./ui";
+import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone, EmptyState, ExportButton } from "./ui";
+import { exportCopy } from "./export-copy";
 import {
   fieldVisible,
   mappings,
@@ -19,9 +20,26 @@ import {
   registrationExtras,
   fieldExtras,
 } from "./registrations-copy";
-import { tigerstormTemplate } from "@/domains/registrations/templates";
+import { platformTemplate } from "@/domains/registrations/templates";
+import { moveField, removeField, restoreField } from "@/domains/registrations/editor";
+import {
+  DecisionButtons,
+  FormsList,
+  FullDialog,
+  MessageDialog,
+  NewFormDialog,
+  PreviewDialog,
+  SaveTemplateDialog,
+  ShareDialog,
+  TeamDialog,
+  type ClubTemplate,
+  type FormRow,
+} from "./registration-forms";
+import { fill, formsCopy } from "./registration-forms-copy";
+import { Icon } from "./icons";
+import { showToast, undoToast } from "./toast";
+import { toastCopy } from "./toast-copy";
 import { ageOn } from "@/domains/people/schema";
-import { Modal } from "./modal";
 import { DataGrid } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
@@ -35,20 +53,7 @@ const statusTone: Record<string, Tone> = {
   refused: "danger",
   withdrawn: "neutral",
 };
-type Form = {
-  id: string;
-  organization_id: string;
-  season_id: string;
-  title: string;
-  description: string;
-  fields: Field[];
-  published: boolean;
-  capacity: number | null;
-  version: number;
-  organization_name?: string;
-  season_name?: string;
-  logo_version?: string | null;
-};
+type Form = FormRow;
 type Application = {
   id: string;
   organization_id: string;
@@ -81,8 +86,9 @@ type Application = {
 type View = {
   context?: { organization_id: string; organization_name: string };
   forms?: Form[];
+  templates?: ClubTemplate[];
   seasons?: { id: string; name: string }[];
-  teams?: { id: string; name: string; season_id: string }[];
+  teams?: { id: string; name: string; season_id: string; capacity: number | null; players: number }[];
   profiles?: { id: string; full_name: string; birth_date: string | null }[];
   applications: Application[];
 };
@@ -324,80 +330,13 @@ function Questions({
     </>
   );
 }
-/** Popup for one form: preview, public link and copy-ready embed codes. */
-function ShareDialog({
-  locale,
-  form,
-  close,
-}: {
-  locale: Locale;
-  form: Form;
-  close: () => void;
-}) {
-  const x = registrationExtras[locale];
+/** The public form as it will be seen, with answers that go nowhere. */
+function FormPreview({ locale, form, close }: { locale: Locale; form: Form; close: () => void }) {
   const [answers, setAnswers] = useState<Answers>({});
-  const [copied, setCopied] = useState("");
-  const site = typeof window === "undefined" ? "" : window.location.origin;
-  const url = `${site}/${locale}/inscription/${form.id}`;
-  const codes = [
-    { key: "link", label: x.publicLink, code: url },
-    {
-      key: "iframe",
-      label: x.iframe,
-      code: `<iframe title="${form.title.replace(/"/g, "&quot;")}" src="${site}/${locale}/registration-widget/${form.id}" width="100%" height="260" style="border:0"></iframe>`,
-    },
-    {
-      key: "popup",
-      label: x.popup,
-      code: `<button type="button" onclick="window.open('${url}','inscription','width=720,height=860')">${x.button}</button>`,
-    },
-  ];
   return (
-    <Modal title={`${x.shareTitle} : ${form.title}`} close={close}>
-      {form.description && <p className="message-text">{form.description}</p>}
-      <section aria-labelledby="share-codes">
-        <h3 id="share-codes">{x.share}</h3>
-        <p>
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            {x.open} ↗
-          </a>
-        </p>
-        {codes.map((c) => (
-          <div key={c.key} className="embed-block">
-            <label htmlFor={"code-" + c.key}>{c.label}</label>
-            <textarea
-              id={"code-" + c.key}
-              readOnly
-              value={c.code}
-              rows={c.key === "link" ? 1 : 3}
-            />
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() =>
-                void navigator.clipboard
-                  ?.writeText(c.code)
-                  .then(() => setCopied(c.key))
-                  .catch(() => setCopied(""))
-              }
-            >
-              {x.copy}
-              <span className="sr-only"> : {c.label}</span>
-            </button>
-            {copied === c.key && <span role="status">{x.copied}</span>}
-          </div>
-        ))}
-      </section>
-      <section aria-labelledby="share-questions">
-        <h3 id="share-questions">{x.questions}</h3>
-        <Questions
-          fields={form.fields}
-          locale={locale}
-          answers={answers}
-          setAnswers={setAnswers}
-        />
-      </section>
-    </Modal>
+    <PreviewDialog locale={locale} form={form} close={close}>
+      <Questions fields={form.fields} locale={locale} answers={answers} setAnswers={setAnswers} />
+    </PreviewDialog>
   );
 }
 /** Help text, confidentiality, multiple-choice limit and profile mapping of a question. */
@@ -498,6 +437,8 @@ function FormEditor({
   locale,
   form,
   template,
+  heading,
+  notice,
   seasons,
   save,
   busy,
@@ -505,19 +446,55 @@ function FormEditor({
   locale: Locale;
   form?: Form;
   template?: Pick<Form, "title" | "description" | "capacity" | "fields">;
+  heading: string;
+  notice?: string;
   seasons: { id: string; name: string }[];
   save: (body: Record<string, unknown>) => Promise<void>;
   busy: boolean;
 }) {
-  const t = registrationCopy[locale];
-  const [fields, setFields] = useState<Field[]>(
-      form?.fields ?? template?.fields ?? [],
-    ),
+  const t = registrationCopy[locale],
+    q = formsCopy[locale];
+  const [fields, setFields] = useState<Field[]>(form?.fields ?? template?.fields ?? []),
     [preview, setPreview] = useState(false),
     [mobile, setMobile] = useState(false),
-    [answers, setAnswers] = useState<Answers>({});
+    [answers, setAnswers] = useState<Answers>({}),
+    [dragging, setDragging] = useState<number | null>(null),
+    [moved, setMoved] = useState("");
+  const list = useRef<HTMLDivElement>(null);
+  const change = (i: number, next: Field) => setFields((cur) => cur.map((v, n) => (n === i ? next : v)));
+  /** Moves a question and keeps the focus on the control that moved it. */
+  function move(from: number, to: number, focus?: string) {
+    if (to < 0 || to >= fields.length || from === to) return;
+    const key = fields[from].key;
+    setFields((cur) => moveField(cur, from, to));
+    setMoved(fill(q.moved, { n: to + 1 }));
+    if (focus) requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-key="${key}"] [data-focus="${focus}"]`)?.focus());
+  }
+  function remove(i: number) {
+    const { removed } = removeField(fields, i);
+    setFields((cur) => removeField(cur, cur.findIndex((f) => f.key === removed.field.key)).fields);
+    // Removing a question can be undone for a few seconds (C10); nothing is saved before « Enregistrer ».
+    showToast({
+      message: q.questionRemoved,
+      icon: "trash",
+      action: {
+        label: toastCopy[locale].undo,
+        run: async () => {
+          setFields((cur) => restoreField(cur, removed));
+          showToast({ message: toastCopy[locale].undone, icon: "back" });
+        },
+      },
+    });
+    // The focus goes to the next question's bin, or to « Ajouter une question » when none is left.
+    requestAnimationFrame(() => {
+      const bins = list.current?.querySelectorAll<HTMLElement>(".question-remove");
+      (bins?.[Math.min(i, bins.length - 1)] ?? list.current?.parentElement?.querySelector<HTMLElement>(".actions button"))?.focus();
+    });
+  }
+  const label = (f: Field) => f.label[locale] || f.label.fr || q.untitled;
   return (
-    <Panel title={form?.title ?? t.newForm}>
+    <Panel title={heading}>
+      {notice && <p className="notice">{notice}</p>}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -530,19 +507,12 @@ function FormEditor({
             title: d.get("title"),
             description: d.get("description"),
             capacity: d.get("capacity") ? Number(d.get("capacity")) : null,
-            published: d.has("published"),
             fields,
           });
         }}
       >
         <FieldLabel id="form-season" label={t.season}>
-          <select
-            id="form-season"
-            name="season"
-            required
-            disabled={!!form}
-            defaultValue={form?.season_id}
-          >
+          <select id="form-season" name="season" required disabled={!!form} defaultValue={form?.season_id}>
             {seasons.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -552,292 +522,188 @@ function FormEditor({
           {form && <input type="hidden" name="season" value={form.season_id} />}
         </FieldLabel>
         <FieldLabel id="form-title" label={t.formTitle}>
-          <input
-            id="form-title"
-            name="title"
-            required
-            minLength={2}
-            maxLength={120}
-            defaultValue={form?.title ?? template?.title}
-          />
+          <input id="form-title" name="title" required minLength={2} maxLength={120} defaultValue={form?.title ?? template?.title} />
         </FieldLabel>
         <FieldLabel id="form-description" label={t.description}>
-          <textarea
-            id="form-description"
-            name="description"
-            maxLength={2000}
-            defaultValue={form?.description ?? template?.description}
-          />
+          <textarea id="form-description" name="description" maxLength={2000} defaultValue={form?.description ?? template?.description} />
         </FieldLabel>
         <FieldLabel id="form-capacity" label={t.capacity}>
-          <input
-            id="form-capacity"
-            name="capacity"
-            type="number"
-            min={1}
-            max={10000}
-            defaultValue={form?.capacity ?? template?.capacity ?? ""}
-          />
+          <input id="form-capacity" name="capacity" type="number" min={1} max={10000} defaultValue={form?.capacity ?? template?.capacity ?? ""} />
         </FieldLabel>
-        <label className="check">
-          <input
-            type="checkbox"
-            name="published"
-            defaultChecked={form?.published}
-          />
-          {t.published}
-        </label>
-        {fields.map((f, i) => (
-          <fieldset key={f.key}>
-            <legend>
-              {t.field} {i + 1}
-            </legend>
-            <FieldLabel id={"label-fr-" + i} label={t.labelFr}>
-              <input
-                id={"label-fr-" + i}
-                value={f.label.fr}
-                required
-                minLength={2}
-                maxLength={160}
-                onChange={(e) =>
-                  setFields(
-                    fields.map((v, n) =>
-                      n === i
-                        ? { ...v, label: { ...v.label, fr: e.target.value } }
-                        : v,
-                    ),
-                  )
-                }
-              />
-            </FieldLabel>
-            <FieldLabel id={"label-nl-" + i} label={t.labelNl}>
-              <input
-                id={"label-nl-" + i}
-                value={f.label.nl}
-                required
-                minLength={2}
-                maxLength={160}
-                onChange={(e) =>
-                  setFields(
-                    fields.map((v, n) =>
-                      n === i
-                        ? { ...v, label: { ...v.label, nl: e.target.value } }
-                        : v,
-                    ),
-                  )
-                }
-              />
-            </FieldLabel>
-            <FieldLabel
-              id={"label-en-" + i}
-              label={
-                locale === "en"
-                  ? "English label (optional)"
-                  : locale === "fr"
-                    ? "Libellé anglais (facultatif)"
-                    : "Engels label (optioneel)"
-              }
+        <div className="question-list" ref={list}>
+          {fields.map((f, i) => (
+            <fieldset
+              key={f.key}
+              data-key={f.key}
+              className={`question-card ${dragging === i ? "dragging" : ""}`.trim()}
+              draggable={dragging === i}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", f.key);
+              }}
+              onDragOver={(e) => {
+                if (dragging !== null) e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragging !== null) move(dragging, i);
+                setDragging(null);
+              }}
+              onDragEnd={() => setDragging(null)}
             >
-              <input
-                id={"label-en-" + i}
-                value={f.label.en ?? ""}
-                minLength={2}
-                maxLength={160}
-                onChange={(e) =>
-                  setFields(
-                    fields.map((v, n) =>
-                      n === i
-                        ? { ...v, label: { ...v.label, en: e.target.value } }
-                        : v,
-                    ),
-                  )
-                }
-              />
-            </FieldLabel>
-            <FieldLabel id={"type-" + i} label={t.type}>
-              <select
-                id={"type-" + i}
-                value={f.type}
-                onChange={(e) =>
-                  setFields(
-                    fields.map((v, n) =>
-                      n === i
-                        ? { ...v, type: e.target.value as Field["type"] }
-                        : v,
-                    ),
-                  )
-                }
-              >
-                {Object.entries(typeLabels[locale]).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </FieldLabel>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={f.required}
-                onChange={(e) =>
-                  setFields(
-                    fields.map((v, n) =>
-                      n === i ? { ...v, required: e.target.checked } : v,
-                    ),
-                  )
-                }
-              />
-              {t.required}
-            </label>
-            <FieldEditorExtras
-              locale={locale}
-              field={f}
-              index={i}
-              update={(next) =>
-                setFields(fields.map((v, n) => (n === i ? next : v)))
-              }
-            />
-            {(f.type === "choice" || f.type === "multi") && (
-              <FieldLabel id={"options-" + i} label={t.options}>
-                <textarea
-                  id={"options-" + i}
-                  value={f.options.join("\n")}
-                  onChange={(e) =>
-                    setFields(
-                      fields.map((v, n) =>
-                        n === i
-                          ? { ...v, options: e.target.value.split("\n") }
-                          : v,
-                      ),
-                    )
-                  }
+              <legend>{fill(q.question, { n: i + 1 })}</legend>
+              <div className="question-tools">
+                <button
+                  type="button"
+                  className="icon-button sm question-grip"
+                  data-focus="grip"
+                  aria-label={fill(q.drag, { n: i + 1 })}
+                  title={fill(q.drag, { n: i + 1 })}
+                  onPointerDown={() => setDragging(i)}
+                  onPointerUp={() => setDragging(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                      e.preventDefault();
+                      move(i, e.key === "ArrowUp" ? i - 1 : i + 1, "grip");
+                    }
+                  }}
+                >
+                  <Icon name="grip" size={16} />
+                </button>
+                <button type="button" className="icon-button sm" data-focus="up" aria-label={fill(q.moveUp, { n: i + 1 })} title={fill(q.moveUp, { n: i + 1 })} disabled={i === 0} onClick={() => move(i, i - 1, "up")}>
+                  <Icon name="arrowUp" size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button sm"
+                  data-focus="down"
+                  aria-label={fill(q.moveDown, { n: i + 1 })}
+                  title={fill(q.moveDown, { n: i + 1 })}
+                  disabled={i === fields.length - 1}
+                  onClick={() => move(i, i + 1, "down")}
+                >
+                  <Icon name="arrowDown" size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button sm question-remove"
+                  aria-label={fill(q.removeQuestion, { n: i + 1, label: label(f) })}
+                  title={fill(q.removeQuestion, { n: i + 1, label: label(f) })}
+                  onClick={() => remove(i)}
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              </div>
+              <FieldLabel id={"label-fr-" + i} label={t.labelFr}>
+                <input
+                  id={"label-fr-" + i}
+                  value={f.label.fr}
+                  required
+                  minLength={2}
+                  maxLength={160}
+                  onChange={(e) => change(i, { ...f, label: { ...f.label, fr: e.target.value } })}
                 />
               </FieldLabel>
-            )}
-            <FieldLabel id={"condition-" + i} label={t.condition}>
-              <select
-                id={"condition-" + i}
-                value={f.condition?.key ?? ""}
-                onChange={(e) =>
-                  setFields(
-                    fields.map((v, n) =>
-                      n === i
-                        ? {
-                            ...v,
-                            condition: e.target.value
-                              ? { key: e.target.value, equals: "" }
-                              : undefined,
-                          }
-                        : v,
-                    ),
-                  )
-                }
+              <FieldLabel id={"label-nl-" + i} label={t.labelNl}>
+                <input
+                  id={"label-nl-" + i}
+                  value={f.label.nl}
+                  required
+                  minLength={2}
+                  maxLength={160}
+                  onChange={(e) => change(i, { ...f, label: { ...f.label, nl: e.target.value } })}
+                />
+              </FieldLabel>
+              <FieldLabel
+                id={"label-en-" + i}
+                label={locale === "en" ? "English label (optional)" : locale === "fr" ? "Libellé anglais (facultatif)" : "Engels label (optioneel)"}
               >
-                <option value="">{t.noCondition}</option>
-                {fields
-                  .slice(0, i)
-                  .filter(
-                    (v) =>
-                      v.type === "choice" ||
-                      v.type === "multi" ||
-                      v.type === "text",
-                  )
-                  .map((v) => (
-                    <option key={v.key} value={v.key}>
-                      {v.label[locale] || v.label.fr}
+                <input
+                  id={"label-en-" + i}
+                  value={f.label.en ?? ""}
+                  minLength={2}
+                  maxLength={160}
+                  onChange={(e) => change(i, { ...f, label: { ...f.label, en: e.target.value } })}
+                />
+              </FieldLabel>
+              <FieldLabel id={"type-" + i} label={t.type}>
+                <select id={"type-" + i} value={f.type} onChange={(e) => change(i, { ...f, type: e.target.value as Field["type"] })}>
+                  {Object.entries(typeLabels[locale]).map(([key, text]) => (
+                    <option key={key} value={key}>
+                      {text}
                     </option>
                   ))}
-              </select>
-            </FieldLabel>
-            {f.condition && (
-              <FieldLabel id={"equals-" + i} label={t.conditionValue}>
-                <input
-                  id={"equals-" + i}
-                  maxLength={100}
-                  value={f.condition.equals}
-                  onChange={(e) =>
-                    setFields(
-                      fields.map((v, n) =>
-                        n === i
-                          ? {
-                              ...v,
-                              condition: {
-                                key: v.condition!.key,
-                                equals: e.target.value,
-                              },
-                            }
-                          : v,
-                      ),
-                    )
-                  }
-                />
+                </select>
               </FieldLabel>
-            )}
-            <Button
-              type="button"
-              onClick={() =>
-                setFields(
-                  fields
-                    .filter((_, n) => n !== i)
-                    .map((v) =>
-                      v.condition?.key === f.key
-                        ? { ...v, condition: undefined }
-                        : v,
-                    ),
-                )
-              }
-            >
-              {t.remove}
-            </Button>
-          </fieldset>
-        ))}
+              <label className="check">
+                <input type="checkbox" checked={f.required} onChange={(e) => change(i, { ...f, required: e.target.checked })} />
+                {t.required}
+              </label>
+              <FieldEditorExtras locale={locale} field={f} index={i} update={(next) => change(i, next)} />
+              {(f.type === "choice" || f.type === "multi") && (
+                <FieldLabel id={"options-" + i} label={t.options}>
+                  <textarea id={"options-" + i} value={f.options.join("\n")} onChange={(e) => change(i, { ...f, options: e.target.value.split("\n") })} />
+                </FieldLabel>
+              )}
+              <FieldLabel id={"condition-" + i} label={t.condition}>
+                <select
+                  id={"condition-" + i}
+                  value={f.condition?.key ?? ""}
+                  onChange={(e) => change(i, { ...f, condition: e.target.value ? { key: e.target.value, equals: "" } : undefined })}
+                >
+                  <option value="">{t.noCondition}</option>
+                  {fields
+                    .slice(0, i)
+                    .filter((v) => v.type === "choice" || v.type === "multi" || v.type === "text")
+                    .map((v) => (
+                      <option key={v.key} value={v.key}>
+                        {v.label[locale] || v.label.fr}
+                      </option>
+                    ))}
+                </select>
+              </FieldLabel>
+              {f.condition && (
+                <FieldLabel id={"equals-" + i} label={t.conditionValue}>
+                  <input
+                    id={"equals-" + i}
+                    maxLength={100}
+                    value={f.condition.equals}
+                    onChange={(e) => change(i, { ...f, condition: { key: f.condition!.key, equals: e.target.value } })}
+                  />
+                </FieldLabel>
+              )}
+            </fieldset>
+          ))}
+        </div>
+        <p className="sr-only" role="status">
+          {moved}
+        </p>
         <div className="actions">
           <Button
             type="button"
+            icon="plus"
+            variant="secondary"
             disabled={fields.length >= 20}
             onClick={() =>
-              setFields([
-                ...fields,
-                {
-                  key: "q" + Date.now(),
-                  type: "text",
-                  label: { fr: "", nl: "" },
-                  required: false,
-                  options: [],
-                  confidential: false,
-                },
-              ])
+              setFields((cur) => [...cur, { key: "q" + Date.now(), type: "text", label: { fr: "", nl: "" }, required: false, options: [], confidential: false }])
             }
           >
             {t.add}
           </Button>
           <Button disabled={busy || !seasons.length}>{t.save}</Button>
-          <Button type="button" onClick={() => setPreview(!preview)}>
+          <Button type="button" variant="secondary" onClick={() => setPreview(!preview)}>
             {t.preview}
           </Button>
         </div>
       </form>
       {preview && (
-        <section
-          className={
-            mobile ? "registration-preview mobile" : "registration-preview"
-          }
-        >
+        <section className={mobile ? "registration-preview mobile" : "registration-preview"}>
           <h3>{t.preview}</h3>
           <label className="check">
-            <input
-              type="checkbox"
-              checked={mobile}
-              onChange={(e) => setMobile(e.target.checked)}
-            />
+            <input type="checkbox" checked={mobile} onChange={(e) => setMobile(e.target.checked)} />
             {t.mobile}
           </label>
-          <Questions
-            locale={locale}
-            fields={fields}
-            answers={answers}
-            setAnswers={setAnswers}
-          />
+          <Questions locale={locale} fields={fields} answers={answers} setAnswers={setAnswers} />
         </section>
       )}
     </Panel>
@@ -869,8 +735,20 @@ export function Registrations({
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [selected, setSelected] = useState(""),
-    [editing, setEditing] = useState("new"),
+    // Wave 17 (F1): the form shown in the editor ("" = the first one), a new one, a reuse or a template.
+    [editing, setEditing] = useState(""),
+    [notice, setNotice] = useState(""),
     [sharing, setSharing] = useState(""),
+    [previewing, setPreviewing] = useState(""),
+    [templating, setTemplating] = useState(""),
+    [creating, setCreating] = useState(false),
+    [dialog, setDialog] = useState<
+      | null
+      | { kind: "team"; app: Application }
+      | { kind: "full"; app: Application; teamId: string; team: string }
+      | { kind: "refuse" | "complement"; app: Application }
+    >(null),
+    [admission, setAdmission] = useState({ app: "", profile: "", confirm: false, open: false }),
     [filter, setFilter] = useState("pending"),
     [answerDraft, setAnswerDraft] = useState<{
       key: string;
@@ -982,6 +860,84 @@ export function Registrations({
     if (!r.ok) throw new Error(value.error);
     return value as { id: string };
   }
+  const fc = formsCopy[locale];
+  const org = data?.context?.organization_id;
+  /** Several steps of the admin page: one at a time, the error said once. */
+  async function act(work: () => Promise<void>) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await work();
+    } catch (e) {
+      setError(errorText(e instanceof Error ? e.message : ""));
+    } finally {
+      setBusy(false);
+    }
+  }
+  /**
+   * Wave 17 (F1): a decision in one click, undone for a few seconds; the
+   * email and the invitation leave after that delay. A full team, a file
+   * that already exists: the next step is asked instead.
+   */
+  async function decide(a: Application, status: "accepted" | "refused" | "waiting" | "incomplete", extra: { teamId?: string; message?: string; overCapacity?: boolean } = {}) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    const own = admission.app === a.id;
+    try {
+      const r = (await send({
+        action: "decision",
+        id: a.id,
+        expectedVersion: a.version,
+        status,
+        message: extra.message ?? "",
+        teamId: extra.teamId || undefined,
+        acceptOverCapacity: !!extra.overCapacity,
+        confirmDuplicate: own && admission.confirm,
+        profileId: (own && admission.profile) || undefined,
+      })) as { id: string; undo?: string };
+      setDialog(null);
+      await load();
+      const done = { accepted: fc.accepted, refused: fc.refused, waiting: fc.waited, incomplete: fc.completed }[status];
+      undoToast(locale, done, r.undo, org, load, status === "accepted" ? "check" : status === "refused" ? "close" : "clock");
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      if (code === "TEAM_FULL" && extra.teamId) {
+        setDialog({ kind: "full", app: a, teamId: extra.teamId, team: data?.teams?.find((x) => x.id === extra.teamId)?.name ?? "" });
+        return;
+      }
+      setDialog(null);
+      if (["MATCH_EXISTING", "CONFIRM_IDENTITY", "IDENTITY_MISMATCH"].includes(code)) {
+        setSelected(a.id);
+        setAdmission((v) => ({ ...(v.app === a.id ? v : { profile: "", confirm: false }), app: a.id, open: true }));
+        setError(fc.identity + " " + errorText(code));
+        return;
+      }
+      setError(errorText(code));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const seasonTeams = (a: Application) => (data?.teams ?? []).filter((x) => x.season_id === a.season_id);
+  function accept(a: Application) {
+    const teams = seasonTeams(a);
+    if (teams.length > 1) setDialog({ kind: "team", app: a });
+    else void decide(a, "accepted", { teamId: teams[0]?.id });
+  }
+  const decisionButtons = (a: Application, labelled = false) => (
+    <DecisionButtons
+      locale={locale}
+      name={a.subject_name}
+      status={a.status}
+      busy={busy}
+      labelled={labelled}
+      onAccept={() => accept(a)}
+      onRefuse={() => setDialog({ kind: "refuse", app: a })}
+      onWaiting={() => void decide(a, "waiting")}
+      onComplement={() => setDialog({ kind: "complement", app: a })}
+    />
+  );
   const b = bulkCopy[locale];
   const applications = (data?.applications ?? []).filter(
     (a) =>
@@ -993,6 +949,16 @@ export function Registrations({
           ? a.status === "accepted" && !!a.decided_at && new Date(a.decided_at).getTime() > recentSince
           : a.status === filter),
   );
+  // The editor: a form of the list, a reuse ("clone:"), a template ("platform:", "club:") or a blank one ("new").
+  const forms = data?.forms ?? [];
+  const chosen = editing || forms.find((f) => !f.archived)?.id || "new";
+  const current = forms.find((f) => f.id === chosen);
+  const source = chosen.startsWith("clone:") ? forms.find((f) => "clone:" + f.id === chosen) : undefined;
+  const clubTemplate = chosen.startsWith("club:") ? data?.templates?.find((x) => "club:" + x.id === chosen) : undefined;
+  const platformId = chosen.startsWith("platform:") ? (chosen.slice(9) as Parameters<typeof platformTemplate>[0]) : null;
+  const template = source ?? (clubTemplate ? { ...clubTemplate, title: clubTemplate.name } : platformId ? platformTemplate(platformId, locale) : undefined);
+  const heading = current ? fill(fc.editing, { form: current.title }) : source ? fill(fc.reusing, { form: source.title }) : template?.title ?? fc.newEditing;
+  const editorKey = chosen + "-" + (current?.version ?? 0);
   return (
     <>
       <main id="main" className="access registrations">
@@ -1001,12 +967,9 @@ export function Registrations({
             title={t.title}
             subtitle={data.context.organization_name}
             actions={
-              <>
-                <button type="button" className="button secondary" onClick={() => setEditing("tigerstorm")}>
-                  {registrationExtras[locale].tigerstorm}
-                </button>
-                <Button onClick={() => setEditing("new")}>{t.newForm}</Button>
-              </>
+              <Button icon="plus" onClick={() => setCreating(true)}>
+                {fc.newForm}
+              </Button>
             }
           />
         ) : (
@@ -1147,80 +1110,113 @@ export function Registrations({
         )}
         {mode === "admin" && data?.context && (
           <>
-            {editing === "tigerstorm" && (
-              <p className="notice">{registrationExtras[locale].tigerstormHint}</p>
-            )}
-            <Card title={t.forms} id="reg-forms">
+            <Card title={fc.forms} id="reg-forms">
               {!data.seasons?.length && <p>{t.closed}</p>}
               {data.forms?.length ? (
-                <div className="table-scroll">
-                  <table className="compact-table">
-                    <tbody>
-                      {data.forms.map((f) => (
-                        <tr key={f.id}>
-                          <th scope="row">
-                            <button type="button" className="text-button form-open" onClick={() => setSharing(f.id)}>
-                              {f.title}
-                            </button>
-                          </th>
-                          <td>
-                            <Badge tone={f.published ? "success" : "neutral"} dot>
-                              {f.published
-                                ? t.formOpen
-                                : locale === "en"
-                                  ? "Closed"
-                                  : locale === "fr"
-                                    ? "Fermé"
-                                    : "Gesloten"}
-                            </Badge>
-                          </td>
-                          <td className="muted">v{f.version}</td>
-                          <td className="row-actions">
-                            <button type="button" className="text-button" onClick={() => setEditing(f.id)}>{t.edit}</button>
-                            <button type="button" className="text-button" onClick={() => setEditing("clone:" + f.id)}>{t.clone}</button>
-                            {f.published && (
-                              <>
-                                <button type="button" className="text-button" onClick={() => setSharing(f.id)}>
-                                  {registrationExtras[locale].share}
-                                </button>
-                                <Link href={"/" + locale + "/inscription/" + f.id}>{t.public}</Link>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <FormsList
+                  locale={locale}
+                  forms={data.forms}
+                  selected={current?.id ?? ""}
+                  onSelect={(f) => {
+                    setEditing(f.id);
+                    setNotice("");
+                  }}
+                  onPreview={(f) => setPreviewing(f.id)}
+                  onReuse={(f) => {
+                    setEditing("clone:" + f.id);
+                    setNotice("");
+                    requestAnimationFrame(() => document.getElementById("form-title")?.focus());
+                  }}
+                  onShare={(f) => setSharing(f.id)}
+                  onArchive={(f) =>
+                    void act(async () => {
+                      await send({ action: "archive", id: f.id, archived: !f.archived });
+                      await load();
+                      showToast({ message: f.archived ? fc.restoredDone : fc.archivedDone, icon: "archive" });
+                    })
+                  }
+                  onSaveTemplate={(f) => setTemplating(f.id)}
+                />
               ) : (
-                <EmptyState title={t.empty} />
+                <EmptyState title={fc.empty} />
               )}
             </Card>
+            {creating && (
+              <NewFormDialog
+                locale={locale}
+                templates={data.templates ?? []}
+                close={() => setCreating(false)}
+                remove={(tpl) =>
+                  void act(async () => {
+                    await send({ action: "deleteTemplate", id: tpl.id });
+                    await load();
+                    showToast({ message: fc.templateDeleted, icon: "trash" });
+                  })
+                }
+                pick={(c) => {
+                  setCreating(false);
+                  if (c.kind === "scratch") {
+                    setEditing("new");
+                    setNotice("");
+                  } else if (c.kind === "platform") {
+                    setEditing("platform:" + c.id);
+                    setNotice(fill(fc.fromTemplateNotice, { name: fc.templateNames[c.id] }));
+                  } else {
+                    setEditing("club:" + c.template.id);
+                    setNotice(fill(fc.fromTemplateNotice, { name: c.template.name }));
+                  }
+                  requestAnimationFrame(() => document.getElementById("form-title")?.focus());
+                }}
+              />
+            )}
+            {previewing && data.forms?.some((f) => f.id === previewing) && (
+              <FormPreview locale={locale} form={data.forms.find((f) => f.id === previewing)!} close={() => setPreviewing("")} />
+            )}
+            {templating && data.forms?.some((f) => f.id === templating) && (
+              <SaveTemplateDialog
+                locale={locale}
+                form={data.forms.find((f) => f.id === templating)!}
+                busy={busy}
+                close={() => setTemplating("")}
+                save={(name) =>
+                  void act(async () => {
+                    await send({ action: "saveTemplate", formId: templating, name });
+                    setTemplating("");
+                    await load();
+                    showToast({ message: fc.templateSaved, icon: "check" });
+                  })
+                }
+              />
+            )}
             {sharing && data.forms?.some((f) => f.id === sharing) && (
               <ShareDialog
                 locale={locale}
                 form={data.forms.find((f) => f.id === sharing)!}
+                club={data.context.organization_name}
+                busy={busy}
                 close={() => setSharing("")}
+                save={(v) =>
+                  act(async () => {
+                    await send({ action: "publish", id: sharing, ...v });
+                    await load();
+                    showToast({ message: v.published ? fc.openSaved : fc.closeSaved, icon: "check" });
+                  })
+                }
               />
             )}
             <FormEditor
-              key={
-                editing +
-                "-" +
-                (data.forms?.find((f) => f.id === editing)?.version ?? 0)
-              }
+              key={editorKey}
               locale={locale}
-              form={data.forms?.find((f) => f.id === editing)}
-              template={
-                editing === "tigerstorm"
-                  ? tigerstormTemplate(locale)
-                  : data.forms?.find((f) => "clone:" + f.id === editing)
-              }
+              form={current}
+              template={template}
+              heading={heading}
+              notice={notice}
               seasons={data.seasons ?? []}
               busy={busy}
               save={(body) =>
                 task(async () => {
                   const result = await send(body);
+                  if (!body.id) setNotice(fc.savedClosed);
                   setEditing(result.id);
                 })
               }
@@ -1245,6 +1241,32 @@ export function Registrations({
                     <option value="all">{t.all}</option>
                   </select>
                 </div>
+                {/* Wave 17 (G2): the applications shown, with the answers to their forms (confidential ones only for those who may read them). */}
+                <ExportButton
+                  locale={locale}
+                  organizationId={data.context?.organization_id ?? ""}
+                  dataset="registrations"
+                  subject={t.review}
+                  rows={applications}
+                  columns={[
+                    { id: "person", label: b.person, value: (a) => a.subject_name },
+                    { id: "birth", label: t.birth, type: "date", value: (a) => a.birth_date },
+                    { id: "form", label: b.form, value: (a) => a.form_snapshot.title },
+                    { id: "submitted", label: b.submitted, type: "date", value: (a) => a.submitted_at?.slice(0, 10) ?? null },
+                    { id: "status", label: b.state, value: (a) => sl[a.status] },
+                    { id: "applicant", label: exportCopy[locale].applicant, value: (a) => a.applicant_name },
+                    { id: "email", label: exportCopy[locale].email, value: (a) => a.applicant_email },
+                    ...[...new Map(applications.flatMap((a) => a.form_snapshot.fields.filter((f) => !["file", "signature"].includes(f.type)).map((f) => [f.key, f] as const))).values()].slice(0, 30).map((f) => ({
+                      id: "answer:" + f.key,
+                      label: (f.label[locale] ?? f.label.fr).slice(0, 80),
+                      type: (f.type === "date" ? "date" : "text") as "date" | "text",
+                      value: (a: Application) => {
+                        const v = a.answers[f.key];
+                        return Array.isArray(v) ? v.join(", ") : typeof v === "boolean" ? (v ? "✓" : "") : (v ?? null);
+                      },
+                    })),
+                  ]}
+                />
               </Toolbar>
             )}
             {mode === "admin" ? (
@@ -1281,6 +1303,12 @@ export function Registrations({
                         {sl[a.status]}
                       </Badge>
                     ),
+                  },
+                  {
+                    key: "decision",
+                    header: fc.decision,
+                    hideable: false,
+                    cell: (a) => (["submitted", "incomplete", "review", "waiting"].includes(a.status) ? decisionButtons(a) : null),
                   },
                 ]}
                 actions={(["accepted", "refused"] as const).map((status) => ({
@@ -1583,86 +1611,50 @@ export function Registrations({
             )}
             {mode === "admin" && (
               <>
-                <p>{t.matchHint}</p>
-                {["submitted", "incomplete", "review", "waiting"].includes(
-                  application.status,
-                ) && (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const d = new FormData(e.currentTarget);
-                      void task(async () => {
-                        await send({
-                          action: "decision",
-                          id: application.id,
-                          expectedVersion: application.version,
-                          status: d.get("status"),
-                          message: d.get("message"),
-                          profileId: d.get("profile") || undefined,
-                          teamId: d.get("team") || undefined,
-                          confirmDuplicate: d.has("confirm"),
-                        });
-                      });
-                    }}
-                  >
-                    <FieldLabel id="decision-status" label={t.status}>
-                      <select
-                        id="decision-status"
-                        name="status"
-                        defaultValue="review"
-                      >
-                        {(
-                          [
-                            "review",
-                            "incomplete",
-                            "waiting",
-                            "accepted",
-                            "refused",
-                          ] as const
-                        ).map((v) => (
-                          <option key={v} value={v}>
-                            {sl[v]}
-                          </option>
-                        ))}
-                      </select>
-                    </FieldLabel>
-                    <FieldLabel id="decision-message" label={t.message}>
-                      <textarea
-                        id="decision-message"
-                        name="message"
-                        maxLength={3000}
-                      />
-                    </FieldLabel>
-                    <FieldLabel id="decision-profile" label={t.profile}>
-                      <select id="decision-profile" name="profile">
-                        <option value="">{t.newProfile}</option>
-                        {data?.profiles?.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.full_name} · {p.birth_date}
-                          </option>
-                        ))}
-                      </select>
-                    </FieldLabel>
-                    <label className="check">
-                      <input type="checkbox" name="confirm" />
-                      {t.confirm}
-                    </label>
-                    <FieldLabel id="decision-team" label={t.team}>
-                      <select id="decision-team" name="team">
-                        <option value="">{t.noTeam}</option>
-                        {data?.teams
-                          ?.filter(
-                            (team) => team.season_id === application.season_id,
-                          )
-                          .map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
+                {["submitted", "incomplete", "review", "waiting", "refused"].includes(application.status) && (
+                  <section className="decision-panel" aria-labelledby="decision-heading">
+                    <h3 id="decision-heading">{application.status === "refused" ? fc.change : fc.decision}</h3>
+                    {decisionButtons(application, true)}
+                    <details
+                      open={admission.app === application.id && admission.open}
+                      onToggle={(e) => {
+                        const open = e.currentTarget.open;
+                        setAdmission((v) => (v.app === application.id ? { ...v, open } : { app: application.id, profile: "", confirm: false, open }));
+                      }}
+                    >
+                      <summary>{fc.admission}</summary>
+                      <p>{t.matchHint}</p>
+                      <FieldLabel id="decision-profile" label={t.profile}>
+                        <select
+                          id="decision-profile"
+                          value={admission.app === application.id ? admission.profile : ""}
+                          onChange={(e) => {
+                            const profile = e.target.value;
+                            setAdmission((v) => ({ ...(v.app === application.id ? v : { confirm: false, open: true }), app: application.id, profile }));
+                          }}
+                        >
+                          <option value="">{t.newProfile}</option>
+                          {data?.profiles?.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.full_name} · {p.birth_date}
                             </option>
                           ))}
-                      </select>
-                    </FieldLabel>
-                    <Button disabled={busy}>{t.decide}</Button>
-                  </form>
+                        </select>
+                      </FieldLabel>
+                      <label className="check">
+                        <input
+                          type="checkbox"
+                          checked={admission.app === application.id && admission.confirm}
+                          onChange={(e) => {
+                            const confirm = e.target.checked;
+                            setAdmission((v) => ({ ...(v.app === application.id ? v : { profile: "", open: true }), app: application.id, confirm }));
+                          }}
+                        />
+                        {t.confirm}
+                      </label>
+                    </details>
+                    <p className="muted small">{fc.mailDelay}</p>
+                  </section>
                 )}
                 <h3>{t.notes}</h3>
                 <form
@@ -1716,6 +1708,36 @@ export function Registrations({
               ))}
             </ol>
           </Panel>
+        )}
+        {dialog?.kind === "team" && (
+          <TeamDialog
+            locale={locale}
+            name={dialog.app.subject_name}
+            teams={seasonTeams(dialog.app)}
+            busy={busy}
+            close={() => setDialog(null)}
+            accept={(teamId) => void decide(dialog.app, "accepted", { teamId })}
+          />
+        )}
+        {dialog?.kind === "full" && (
+          <FullDialog
+            locale={locale}
+            team={dialog.team}
+            busy={busy}
+            close={() => setDialog(null)}
+            anyway={() => void decide(dialog.app, "accepted", { teamId: dialog.teamId, overCapacity: true })}
+            waiting={() => void decide(dialog.app, "waiting")}
+          />
+        )}
+        {(dialog?.kind === "refuse" || dialog?.kind === "complement") && (
+          <MessageDialog
+            locale={locale}
+            kind={dialog.kind}
+            name={dialog.app.subject_name}
+            busy={busy}
+            close={() => setDialog(null)}
+            send={(message) => void decide(dialog.app, dialog.kind === "refuse" ? "refused" : "incomplete", { message })}
+          />
         )}
         <Button disabled={busy} onClick={() => void task(load)}>
           {t.refresh}

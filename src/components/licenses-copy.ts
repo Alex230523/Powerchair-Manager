@@ -1,7 +1,7 @@
 import type { Locale } from "../lib/locale";
 
 const fr = {
-  clubTitle: "Transferts, licences et classifications",
+  clubTitle: "Licences et classifications",
   clubIntro:
     "Demandez les licences de la saison et la validation des classifications à votre fédération.",
   fedTitle: "Licences, classifications et transferts",
@@ -40,8 +40,8 @@ const fr = {
   classes: {
     PF1: "PF1",
     PF2: "PF2",
-    pending: "Évaluation en cours",
-    not_classified: "Non classé",
+    pending: "En attente",
+    not_classified: "Non définie",
   } as Record<string, string>,
   until: "jusqu'au",
   noPlayer: "Aucun joueur actif.",
@@ -59,6 +59,7 @@ const fr = {
   validate: "Valider",
   validUntil: "Valable jusqu'au",
   control: "Commande",
+  toValidate: "Transferts de la bourse à valider : {n}",
   transfers: "Transferts entre clubs",
   from: "De",
   to: "Vers",
@@ -90,7 +91,7 @@ const fr = {
 };
 type Copy = typeof fr;
 const nl: Copy = {
-  clubTitle: "Transfers, licenties en classificaties",
+  clubTitle: "Licenties en classificaties",
   clubIntro:
     "Vraag de licenties van het seizoen en de validatie van de classificaties aan bij uw federatie.",
   fedTitle: "Licenties, classificaties en transfers",
@@ -129,8 +130,8 @@ const nl: Copy = {
   classes: {
     PF1: "PF1",
     PF2: "PF2",
-    pending: "Evaluatie lopend",
-    not_classified: "Niet geclassificeerd",
+    pending: "In afwachting",
+    not_classified: "Niet bepaald",
   },
   until: "tot",
   noPlayer: "Geen actieve spelers.",
@@ -148,6 +149,7 @@ const nl: Copy = {
   validate: "Valideren",
   validUntil: "Geldig tot",
   control: "Bediening",
+  toValidate: "Transfers van de beurs te valideren: {n}",
   transfers: "Transfers tussen clubs",
   from: "Van",
   to: "Naar",
@@ -179,7 +181,7 @@ const nl: Copy = {
   },
 };
 const en: Copy = {
-  clubTitle: "Transfers, licences and classifications",
+  clubTitle: "Licences and classifications",
   clubIntro:
     "Ask your federation for this season's licences and for classification checks.",
   fedTitle: "Licences, classifications and transfers",
@@ -217,8 +219,8 @@ const en: Copy = {
   classes: {
     PF1: "PF1",
     PF2: "PF2",
-    pending: "Assessment ongoing",
-    not_classified: "Not classified",
+    pending: "Pending",
+    not_classified: "Not defined",
   },
   until: "until",
   noPlayer: "No active player.",
@@ -236,6 +238,7 @@ const en: Copy = {
   validate: "Validate",
   validUntil: "Valid until",
   control: "Control",
+  toValidate: "Market transfers to validate: {n}",
   transfers: "Transfers between clubs",
   from: "From",
   to: "To",

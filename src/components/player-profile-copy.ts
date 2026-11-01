@@ -71,7 +71,6 @@ type Copy = {
   control: string;
   controls: Record<string, string>;
   sportNotes: string;
-  positionLink: string;
   chairs: string;
   noChair: string;
   primary: string;
@@ -146,10 +145,10 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     formerPlayer: "Ancien joueur",
     attendance: "Présences",
     attendanceRate: "Taux de présence",
-    answerRate: "Réponses aux convocations",
+    answerRate: "Réponses aux invitations",
     closedSessions: "séances pointées",
     recent: "Derniers événements",
-    noAttendance: "Aucune convocation pour l’instant.",
+    noAttendance: "Aucune invitation pour l’instant.",
     responses: {
       none: "Pas de réponse",
       present: "Présent",
@@ -177,8 +176,8 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     classifications: {
       PF1: "PF1",
       PF2: "PF2",
-      pending: "Évaluation en cours",
-      not_classified: "Non classé",
+      pending: "En attente",
+      not_classified: "Non définie",
     },
     validUntil: "Valable jusqu’au",
     control: "Commande du fauteuil",
@@ -191,7 +190,6 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       other: "Autre",
     },
     sportNotes: "Notes sportives (points forts, rôle, consignes)",
-    positionLink: "Poste et numéro se modifient dans la fiche du répertoire.",
     chairs: "Fauteuils",
     noChair: "Aucun fauteuil lié à ce joueur.",
     primary: "Principal",
@@ -202,7 +200,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     allEvents: "Tous événements",
     matchStatsSoon:
       "Buts, temps de jeu et résultats arriveront avec le module compétitions. Les chiffres ci-dessus viennent des présences pointées.",
-    invitations: "convocations",
+    invitations: "invitations",
     presences: "présences",
     errors: {
       STALE_VERSION:
@@ -268,10 +266,10 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     formerPlayer: "Oud-speler",
     attendance: "Aanwezigheid",
     attendanceRate: "Aanwezigheidsgraad",
-    answerRate: "Antwoorden op oproepingen",
+    answerRate: "Antwoorden op uitnodigingen",
     closedSessions: "geregistreerde sessies",
     recent: "Laatste activiteiten",
-    noAttendance: "Nog geen oproeping.",
+    noAttendance: "Nog geen uitnodiging.",
     responses: {
       none: "Geen antwoord",
       present: "Aanwezig",
@@ -299,7 +297,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       PF1: "PF1",
       PF2: "PF2",
       pending: "Beoordeling lopend",
-      not_classified: "Niet geclassificeerd",
+      not_classified: "Niet bepaald",
     },
     validUntil: "Geldig tot",
     control: "Besturing van de rolstoel",
@@ -312,7 +310,6 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       other: "Andere",
     },
     sportNotes: "Sportnotities (sterktes, rol, instructies)",
-    positionLink: "Positie en nummer wijzigt u in de fiche van het register.",
     chairs: "Rolstoelen",
     noChair: "Geen rolstoel gekoppeld aan deze speler.",
     primary: "Hoofdrolstoel",
@@ -323,7 +320,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     allEvents: "Alle activiteiten",
     matchStatsSoon:
       "Doelpunten, speeltijd en uitslagen volgen met de competitiemodule. De cijfers hierboven komen uit de geregistreerde aanwezigheden.",
-    invitations: "oproepingen",
+    invitations: "uitnodigingen",
     presences: "aanwezigheden",
     errors: {
       STALE_VERSION:
@@ -389,10 +386,10 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     formerPlayer: "Former player",
     attendance: "Attendance",
     attendanceRate: "Attendance rate",
-    answerRate: "Call-up answers",
+    answerRate: "Invitation answers",
     closedSessions: "recorded sessions",
     recent: "Latest events",
-    noAttendance: "No call-up yet.",
+    noAttendance: "No invitation yet.",
     responses: {
       none: "No answer",
       present: "Present",
@@ -421,7 +418,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       PF1: "PF1",
       PF2: "PF2",
       pending: "Assessment pending",
-      not_classified: "Not classified",
+      not_classified: "Not defined",
     },
     validUntil: "Valid until",
     control: "Chair control",
@@ -434,7 +431,6 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       other: "Other",
     },
     sportNotes: "Sport notes (strengths, role, instructions)",
-    positionLink: "Position and number are edited in the directory record.",
     chairs: "Chairs",
     noChair: "No chair linked to this player.",
     primary: "Main",
@@ -445,7 +441,7 @@ export const playerProfileCopy: Record<Locale, Copy> = {
     allEvents: "All events",
     matchStatsSoon:
       "Goals, playing time and results will come with the competitions module. The figures above come from recorded attendance.",
-    invitations: "call-ups",
+    invitations: "invitations",
     presences: "attended",
     errors: {
       STALE_VERSION:

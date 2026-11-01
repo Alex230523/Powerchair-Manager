@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Prompt 2.9: the club's palette. Chosen in Settings > Club with a live
@@ -21,12 +22,8 @@ test("club palettes: choice, first paint, public page, every main page in both t
   const email = `palette-club-${Date.now()}@example.test`;
   try {
     await db.query('DELETE FROM "rateLimit"');
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Palette president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+    await prepareSignIn(page, db, "Palette president", email, "Browser-test-passphrase-2026!");
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [user]);
@@ -44,7 +41,7 @@ test("club palettes: choice, first paint, public page, every main page in both t
     await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role) VALUES($1,$2,$3,'player')", [club, team, player]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // 1. Settings > Club: live preview, then saved.

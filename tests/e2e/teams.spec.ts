@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 12: the president of a club with two teams picks "Équipe B" once in
@@ -28,14 +29,10 @@ test("the team chosen in the top bar follows the president; teams are created, c
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
   const email = `teams-${Date.now()}@example.test`;
   try {
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Teams test president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
+    await prepareSignIn(page, db, "Teams test president", email, "Browser-test-passphrase-2026!");
     const signOut = page.getByRole("button", { name: "Se déconnecter" });
     for (let attempt = 0; attempt < 2; attempt++) {
-      await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+      await page.getByRole("button", { name: "Se connecter", exact: true }).click();
       try {
         await expect(signOut).toBeVisible({ timeout: 8000 });
         break;
@@ -79,7 +76,7 @@ test("the team chosen in the top bar follows the president; teams are created, c
     // The profile menu at the foot of the sidebar replaces the raw select of the top bar.
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
     // 1. Top bar: current season, "Équipe B" chosen once.
     await page.goto("/fr");
@@ -88,25 +85,27 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await expect(bar.getByRole("combobox", { name: "Saison", exact: true })).toHaveValue(season);
     await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe B" });
     await expect(page).toHaveURL(/[?&]team=/);
-    await expect(page.locator(".scope-chip")).toContainText("Équipe B");
+    // Wave 16 (B1): no chip under the bar; the team capsule is tinted instead.
+    await expect(page.locator(".scope-chip")).toHaveCount(0);
+    await expect(bar.locator(".capsule").filter({ has: page.getByRole("combobox", { name: "Équipe", exact: true }) })).toHaveAttribute("data-active", "");
     await axe(page, "dashboard with a team");
     // Players, then calendar: the local filter already holds the team.
     await page.goto("/fr/players");
     await loaded(page, "/fr/players");
     await expect(page.locator("#directory-team")).toHaveValue(teamB);
-    await expect(page.locator(".scope-chip")).toContainText("Équipe B");
+    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveValue(teamB);
     await expect(page.locator("main")).toContainText("Yanis El Amrani");
     await expect(page.locator("main table")).not.toContainText("Emma Peeters");
     await axe(page, "players filtered");
     await page.goto("/fr/calendar");
     await loaded(page, "/fr/calendar");
     await expect(page.locator("#calendar-team")).toHaveValue(teamB);
-    await expect(page.locator(".scope-chip")).toContainText("Équipe B");
+    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveValue(teamB);
     await axe(page, "calendar filtered");
-    // A local change offers to apply it everywhere; the chip then goes away.
+    // A local change offers to apply it everywhere; the capsule then goes back to neutral.
     await page.locator("#calendar-team").selectOption("");
     await page.getByRole("button", { name: "Appliquer à toute la plateforme", exact: true }).click();
-    await expect(page.locator(".scope-chip")).toHaveCount(0);
+    await expect(bar.locator(".capsule").filter({ has: page.getByRole("combobox", { name: "Équipe", exact: true }) })).not.toHaveAttribute("data-active", "");
     await expect(page).not.toHaveURL(/[?&]team=/);
     // Wave 15: the dues page follows the team chosen in the top bar (no whole-club note any more).
     await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe A" });
@@ -114,7 +113,8 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await loaded(page, "/fr/dues");
     await expect(page.locator(".scope-note")).toHaveCount(0);
     await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamA);
-    await page.locator(".scope-chip .scope-clear").click();
+    // Back to all teams through the capsule itself.
+    await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Toutes les équipes" });
     await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue("");
 
     // 2. Mes équipes: one card per team, a new team with its colour.
@@ -141,7 +141,9 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await page.getByRole("link", { name: "Ouvrir la fiche de l'équipe : Équipe A", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/fr/teams/${teamA}$`));
     await loaded(page, "/fr/teams/A");
-    await expect(page.getByRole("tab", { name: "Effectif", exact: true })).toBeVisible();
+    // A6: the dashboard opens first; the roster is the next tab.
+    await expect(page.getByRole("tab", { name: "Tableau de bord", exact: true })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Effectif", exact: true }).click();
     await expect(page.locator("main table")).toContainText("Emma Peeters");
     await axe(page, "team sheet");
     await page.getByRole("button", { name: "Déplacer vers… : Emma Peeters" }).click();
@@ -153,10 +155,11 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await expect(page.locator("main table")).not.toContainText("Emma Peeters");
     const memberships = (
       await db.query(
-        "SELECT t.name,(m.ends_on=CURRENT_DATE-1) AS closed_yesterday,(m.starts_on=CURRENT_DATE) AS from_today FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.profile_id=$1 AND NOT m.cancelled ORDER BY m.starts_on",
+        "SELECT t.name,(m.ends_on=(now() AT TIME ZONE 'Europe/Brussels')::date-1) AS closed_yesterday,(m.starts_on=(now() AT TIME ZONE 'Europe/Brussels')::date) AS from_today FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.profile_id=$1 AND NOT m.cancelled ORDER BY m.starts_on",
         [emma],
       )
     ).rows;
+    // Dates are Brussels' (the app's), not the database server's: they differ from 22:00 UTC.
     expect(memberships).toEqual([
       { name: "Équipe A", closed_yesterday: true, from_today: false },
       { name: "Équipe B", closed_yesterday: null, from_today: true },

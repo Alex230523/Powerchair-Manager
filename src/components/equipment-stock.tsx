@@ -8,6 +8,7 @@ import { Badge, EmptyState, Card } from "./ui";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
+import { fleetCopy } from "./fleet-copy";
 
 type View = Awaited<ReturnType<typeof equipmentView>>;
 type Item = View["items"][number];
@@ -66,7 +67,8 @@ export function Stock({
             name: String(f.get("name") ?? "").trim(),
             category: String(f.get("category")),
             quantity: Number(f.get("quantity") || 0),
-            storage: String(f.get("storage") ?? "").trim(),
+            storage: "",
+            storageLocationId: String(f.get("place") ?? "") || null,
             expiresOn: String(f.get("expires") ?? "") || null,
             notes: String(f.get("notes") ?? "").trim(),
             archived: f.get("archived") === "on",
@@ -94,18 +96,23 @@ export function Stock({
           </label>
           <label htmlFor={id("storage")}>
             {t.storage}
-            <input id={id("storage")} name="storage" maxLength={120} list="storage-places-items" defaultValue={item?.storage} />
+            {/* Wave 17 (Q1): one of the club's storage places. */}
+            <select id={id("storage")} name="place" defaultValue={item?.storage_location_id ?? ""}>
+              <option value="">{fleetCopy[locale].noPlace}</option>
+              {view.storage.places
+                .filter((p) => !p.archived || p.id === item?.storage_location_id)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
           </label>
           <label htmlFor={id("expires")}>
             {t.expires}
             <input id={id("expires")} name="expires" type="date" defaultValue={item?.expires_on ?? ""} />
           </label>
         </div>
-        <datalist id="storage-places-items">
-          {view.storages.map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
         <label htmlFor={id("notes")}>
           {t.notes}
           <input id={id("notes")} name="notes" maxLength={1000} defaultValue={item?.notes} />
@@ -217,6 +224,7 @@ export function Stock({
                         category: i.category,
                         quantity: i.quantity,
                         storage: i.storage,
+                        storageLocationId: i.storage_location_id,
                         expiresOn: i.expires_on,
                         notes: i.notes,
                         archived: true,

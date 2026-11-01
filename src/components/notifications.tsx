@@ -9,6 +9,7 @@ import { notificationCopy, notificationErrors } from "./notifications-copy";
 import { errors } from "./access-copy";
 import { peopleErrors } from "./people-copy";
 import { Panel, Button, PageHeader, Card } from "./ui";
+import { PushSettings } from "./push-settings";
 import { WeeklyDigest } from "./weekly-digest";
 type View = Awaited<ReturnType<typeof notificationView>>;
 const variables: Record<string, string[]> = {
@@ -43,6 +44,7 @@ const variables: Record<string, string[]> = {
   registration_link: ["name", "organization", "url"],
   license_update: ["name", "person", "status", "organization", "url"],
   funding_task: ["name", "title", "due", "organization", "url"],
+  dues_issued: ["name", "person", "amount", "due", "details", "organization", "url"],
 };
 /** `embedded`: rendered inside Réglages (wave 11) as a section instead of a page. */
 export function Notifications({ locale, embedded = false }: { locale: Locale; embedded?: boolean }) {
@@ -323,6 +325,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                 {t.test}
               </Button>
             </Panel>
+            <PushSettings locale={locale} />
             {data.digest && <WeeklyDigest locale={locale} digest={data.digest} send={digestSend} />}
             {data.manage && (
               <>

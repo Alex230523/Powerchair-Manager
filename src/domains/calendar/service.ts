@@ -9,6 +9,7 @@ import {
   type Principal,
 } from "../access/service";
 import { publish } from "../notifications/queue";
+import { queuePush, urgentChange } from "../notifications/push-queue";
 import { manages as managesAttendance, mayRespond } from "../attendance/access";
 import { docAccess, type Doc } from "../documents/access";
 import {
@@ -33,6 +34,11 @@ import { shiftLocal, toInstant } from "./time";
 import { calendarIcs } from "./ics";
 import { permissions } from "../access/policy";
 import { moneyDeadlinesIn } from "../funding/service";
+import { groupProfiles } from "../communication/service";
+import { inviteForEvent } from "../attendance/service";
+import { offerUndo } from "../undo/service";
+import { visibleVenue } from "../venues/schema";
+import { setProgram, programOf, type ProgramItem } from "../exercises/service";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
 async function tx<T>(db: Pool, fn: (c: PoolClient) => Promise<T>) {
@@ -88,7 +94,7 @@ function needManage(s: Scope) {
       mfaSatisfied(!!s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
     );
 }
-const eventSelect = `SELECT e.*,s.interval_days,COALESCE(v.name,NULLIF(e.free_location,''),p.name) AS place_name,COALESCE(v.address,p.address) AS place_address,t.name AS team_name,t.color AS team_color,u.name AS responsible_name FROM calendar_event e JOIN calendar_series s ON s.id=e.series_id LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id LEFT JOIN team t ON t.id=e.team_id JOIN "user" u ON u.id=e.responsible_user_id`;
+const eventSelect = `SELECT e.*,s.interval_days,COALESCE(v.name,NULLIF(e.free_location,''),p.name) AS place_name,COALESCE(v.address,p.address) AS place_address,t.name AS team_name,t.color AS team_color,u.name AS responsible_name,et.name AS type_name,et.color AS type_color,et.family AS type_family FROM calendar_event e JOIN calendar_series s ON s.id=e.series_id LEFT JOIN event_type et ON et.id=e.event_type_id LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id LEFT JOIN team t ON t.id=e.team_id JOIN "user" u ON u.id=e.responsible_user_id`;
 async function record(s: Scope, id: string) {
   const e = (
     await s.c.query(eventSelect + " WHERE e.id=$1 AND e.organization_id=$2", [
@@ -136,7 +142,7 @@ async function changeLog(
   );
   await audit(s.c, e.organization_id, s.p.userId, "calendar." + action, e.id);
 }
-async function notify(s: Scope, events: Event[]) {
+async function notify(s: Scope, events: Event[], created = false) {
   const users = (
     await s.c.query(
       "SELECT DISTINCT u.id,u.name,u.email,COALESCE(p.locale,'fr') AS locale FROM \"user\" u JOIN role_assignment r ON r.user_id=u.id JOIN organization_membership m ON m.user_id=u.id AND m.organization_id=r.organization_id LEFT JOIN person p ON p.user_id=u.id WHERE r.organization_id=$1 AND u.active AND m.active AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())",
@@ -161,6 +167,20 @@ async function notify(s: Scope, events: Event[]) {
       if (target) break;
     }
     if (!target) continue;
+    // B4: a change reaches the phone, as urgent within 48 hours (a new event comes with its invitation).
+    if (!created)
+      await queuePush(s.c, {
+        organizationId: s.a.organization_id,
+        userId: u.id,
+        topic: urgentChange(target.starts_at, null) ? "urgent" : "change",
+        kind: "calendar_update",
+        category: "sport",
+        resourceType: "calendar",
+        resourceId: target.id,
+        locale: u.locale,
+        eventKey: "calendar:" + batch,
+        url: `/${u.locale}/calendar`,
+      });
     await publish(s.c, {
       organizationId: s.a.organization_id,
       userId: u.id,
@@ -200,7 +220,8 @@ async function validate(s: Scope, input: EventInput) {
   if (
     input.sharedVenueId &&
     !(
-      await s.c.query("SELECT 1 FROM shared_venue WHERE id=$1", [
+      await s.c.query(`SELECT 1 FROM shared_venue v WHERE ${visibleVenue()} AND v.id=$2`, [
+        org,
         input.sharedVenueId,
       ])
     ).rowCount
@@ -334,6 +355,82 @@ async function links(s: Scope, id: string, input: EventInput) {
       [id, s.a.organization_id, document],
     );
 }
+/* ------------------------------------------- Types and invitations (wave 16, E1) */
+/** The club's type: its legacy kind fills kind, its name the free type. Archived types stay on the events that have them. */
+async function withType<T extends EventInput>(s: Scope, input: T, current: string | null = null): Promise<T> {
+  if (!input.eventTypeId) return input;
+  const t = (await s.c.query("SELECT legacy_kind,name,archived FROM event_type WHERE id=$1 AND organization_id=$2", [input.eventTypeId, s.a.organization_id])).rows[0] as
+    | { legacy_kind: EventInput["kind"]; name: string; archived: boolean }
+    | undefined;
+  if (!t || (t.archived && current !== input.eventTypeId)) throw new AccessError("NOT_FOUND", 404);
+  return { ...input, kind: t.legacy_kind, customType: t.legacy_kind === "custom" ? t.name : input.customType };
+}
+type InvitePlan = { invited: string[]; guardians: string[]; groups: { kind: string; ref: string | null }[]; ask: boolean; deadline: string | null };
+/**
+ * Who the groups chosen in the form are, today: team members, players,
+ * coaches, staff, a Communication group, people one by one; parents of the
+ * invited players. A coach invites within the team only.
+ */
+async function resolveInvite(s: Scope, input: EventInput): Promise<InvitePlan | null> {
+  const inv = input.invite;
+  if (!inv) return null;
+  const org = s.a.organization_id,
+    boss = manager(s.a);
+  const invited = new Set<string>();
+  const add = (ids: string[]) => ids.forEach((id) => invited.add(id));
+  for (const g of inv.groups) {
+    if (["players", "coaches", "staff", "group"].includes(g.kind) && !boss) throw new AccessError("FORBIDDEN");
+    if (g.kind === "team") {
+      const team = (await s.c.query("SELECT t.id FROM team t JOIN season se ON se.id=t.season_id WHERE t.id=$1 AND t.organization_id=$2 AND NOT t.archived AND NOT se.archived", [g.ref, org])).rows[0];
+      if (!team) throw new AccessError("NOT_FOUND", 404);
+      if (!boss && !(await coachTeam(s.c, s.a, g.ref))) throw new AccessError("FORBIDDEN");
+      add(await groupProfiles(s.c, org, { audiences: ["players", "coaches"], team_ids: [g.ref!], profile_ids: [] }));
+    } else if (g.kind === "teamCoaches") {
+      if (!input.teamId) throw new AccessError("INVALID_INPUT", 400);
+      add(await groupProfiles(s.c, org, { audiences: ["coaches"], team_ids: [input.teamId], profile_ids: [] }));
+    } else if (g.kind === "players" || g.kind === "coaches" || g.kind === "staff") {
+      add(await groupProfiles(s.c, org, { audiences: [g.kind], team_ids: [], profile_ids: [] }));
+    } else if (g.kind === "group") {
+      const group = (await s.c.query("SELECT audiences,team_ids,profile_ids FROM recipient_group WHERE id=$1 AND organization_id=$2 AND NOT archived", [g.ref, org])).rows[0];
+      if (!group) throw new AccessError("NOT_FOUND", 404);
+      add(await groupProfiles(s.c, org, group));
+    } else if (g.kind === "person") invited.add(g.ref!);
+  }
+  const guardians = inv.groups.some((g) => g.kind === "guardians")
+    ? (
+        await s.c.query(
+          `SELECT DISTINCT g.guardian_profile_id AS id FROM guardian_relationship g JOIN club_person c ON c.id=g.guardian_profile_id AND c.organization_id=g.organization_id
+            WHERE g.organization_id=$1 AND g.subject_profile_id=ANY($2::uuid[]) AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND c.status='active'`,
+          [org, [...invited]],
+        )
+      ).rows.map((r) => r.id as string)
+    : [];
+  return { invited: [...invited], guardians: guardians.filter((id) => !invited.has(id)), groups: inv.groups, ask: inv.ask, deadline: inv.deadline };
+}
+/** After the event is written: parents, the groups kept, the invitations with answers, the trip. */
+async function afterLinks(s: Scope, e: Event, plan: InvitePlan | null, deadlineShift: number | null, tripId: string | null | undefined, exercises?: ProgramItem[]) {
+  const org = s.a.organization_id;
+  // Wave 16 (E2): the training's programme.
+  if (exercises !== undefined) await setProgram(s.c, org, s.p.userId, e.id, exercises);
+  if (plan) {
+    for (const id of plan.guardians)
+      await s.c.query("INSERT INTO calendar_participant(event_id,organization_id,profile_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [e.id, org, id]);
+    await s.c.query("DELETE FROM calendar_invite_group WHERE event_id=$1", [e.id]);
+    for (const g of plan.groups)
+      await s.c.query("INSERT INTO calendar_invite_group(organization_id,event_id,kind,ref) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING", [org, e.id, g.kind, g.ref]);
+    if (plan.ask && plan.invited.length) {
+      const start = new Date(e.starts_at).getTime();
+      // The answer is due before the start: the date asked (same distance on a series), else two hours before.
+      const deadline = new Date(deadlineShift !== null ? start - deadlineShift : start - 2 * 3600000);
+      await inviteForEvent(s.c, s.p, s.a, e, plan.invited, deadline);
+    }
+  }
+  if (tripId !== undefined) {
+    await s.c.query("UPDATE trip SET calendar_event_id=NULL,version=version+1 WHERE calendar_event_id=$1 AND organization_id=$2", [e.id, org]);
+    if (tripId && !(await s.c.query("UPDATE trip SET calendar_event_id=$1,version=version+1 WHERE id=$2 AND organization_id=$3 RETURNING id", [e.id, tripId, org])).rowCount)
+      throw new AccessError("NOT_FOUND", 404);
+  }
+}
 async function capacity(s: Scope, e: Event) {
   if (!e.place_id) return;
   const place = (
@@ -384,6 +481,10 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       team_name: string | null;
       team_color: string | null;
       responsible_name: string;
+      type_name: string | null;
+      type_color: string | null;
+      type_family: string | null;
+      event_type_id: string | null;
     })[];
     const events = [];
     const own = await ownProfiles(s.c, s.a);
@@ -420,6 +521,27 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
           : [],
         attendance: await attendanceRows(s, e),
         documents: docs,
+        // Wave 16 (E2): the programme; players see titles and minutes, staff the coach's notes too.
+        program: await programOf(s.c, e.id, staff),
+        // Wave 16 (E1): the groups invited (to edit them), the register (to remind), the linked trip.
+        inviteGroups: staff ? (await s.c.query("SELECT kind,ref FROM calendar_invite_group WHERE event_id=$1 ORDER BY kind,ref", [e.id])).rows as { kind: string; ref: string | null }[] : [],
+        register: staff
+          ? (((await s.c.query("SELECT id,version,deadline,closed_at IS NOT NULL AS closed,reminder_sent_at FROM attendance_register WHERE event_id=$1", [e.id])).rows[0] ?? null) as {
+              id: string;
+              version: number;
+              deadline: string;
+              closed: boolean;
+              reminder_sent_at: string | null;
+            } | null)
+          : null,
+        trip: ((
+          await s.c.query(
+            `SELECT t.id,t.title,t.status,t.departure_at,t.meeting_point,
+                    (SELECT count(*)::int FROM trip_vehicle v WHERE v.trip_id=t.id) AS vehicles
+               FROM trip t WHERE t.calendar_event_id=$1 AND t.organization_id=$2 AND t.status<>'cancelled' LIMIT 1`,
+            [e.id, s.a.organization_id],
+          )
+        ).rows[0] ?? null) as { id: string; title: string; status: string; departure_at: string | null; meeting_point: string; vehicles: number } | null,
         history: staff
           ? (
               await s.c.query(
@@ -481,7 +603,9 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       hasMore: rows.length > 100,
       sharedVenues: (
         await s.c.query(
-          "SELECT id,name,address FROM shared_venue ORDER BY name,id",
+          // Wave 17 (C4): the validated halls of the federation, and those this club proposed.
+          `SELECT v.id,v.name,v.address,v.category FROM shared_venue v WHERE ${visibleVenue()} ORDER BY v.category,v.name,v.id`,
+          [s.a.organization_id],
         )
       ).rows,
       documentOptions,
@@ -493,6 +617,47 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
       },
       manage: manager(s.a),
       canPlan,
+      // Wave 16 (E1): the club's types, Communication groups and trips to link, for the form.
+      eventTypes: (
+        await s.c.query(
+          "SELECT id,name,family,legacy_kind,color,icon,ask_response,default_groups,register,archived,position,version,(SELECT count(*)::int FROM calendar_event e WHERE e.event_type_id=t.id) AS used FROM event_type t WHERE organization_id=$1 ORDER BY archived,position,name",
+          [s.a.organization_id],
+        )
+      ).rows as {
+        id: string;
+        name: string;
+        family: "training" | "match" | "meeting" | "other";
+        legacy_kind: string;
+        color: string;
+        icon: string;
+        ask_response: boolean;
+        default_groups: string[];
+        register: boolean;
+        archived: boolean;
+        position: number;
+        version: number;
+        used: number;
+      }[],
+      // Wave 16 (E2): the sheets the planner may put in a training.
+      exerciseOptions: canPlan
+        ? ((
+            await s.c.query(
+              "SELECT id,title,duration_minutes,objective FROM exercise WHERE organization_id=$1 AND NOT archived AND (shared OR author_id=$2) ORDER BY lower(title) LIMIT 300",
+              [s.a.organization_id, s.p.userId],
+            )
+          ).rows as { id: string; title: string; duration_minutes: number; objective: string }[])
+        : [],
+      recipientGroups: manager(s.a)
+        ? ((await s.c.query("SELECT id,name FROM recipient_group WHERE organization_id=$1 AND NOT archived ORDER BY name", [s.a.organization_id])).rows as { id: string; name: string }[])
+        : [],
+      trips: canPlan
+        ? ((
+            await s.c.query(
+              "SELECT id,title,starts_on::text AS starts_on,calendar_event_id FROM trip WHERE organization_id=$1 AND status IN ('planned','confirmed') AND ends_on>=CURRENT_DATE-1 ORDER BY starts_on LIMIT 100",
+              [s.a.organization_id],
+            )
+          ).rows as { id: string; title: string; starts_on: string; calendar_event_id: string | null }[])
+        : [],
       // Modules the club switched off: the page hides their buttons (wave 11).
       offModules: (s.a as { disabled_modules?: string[] }).disabled_modules ?? [],
       range,
@@ -529,6 +694,34 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
     };
   });
 }
+/** Settings > Activities (wave 16, E1): the club's event types. */
+export async function eventTypesView(db: Pool, p: Principal) {
+  return scope(db, p, async (s) => {
+    needManage(s);
+    return {
+      organization_id: s.a.organization_id,
+      types: (
+        await s.c.query(
+          "SELECT id,name,family,color,icon,ask_response,default_groups,register,archived,position,version,(SELECT count(*)::int FROM calendar_event e WHERE e.event_type_id=t.id) AS used FROM event_type t WHERE organization_id=$1 ORDER BY archived,position,name",
+          [s.a.organization_id],
+        )
+      ).rows as {
+        id: string;
+        name: string;
+        family: "training" | "match" | "meeting" | "other";
+        color: string;
+        icon: string;
+        ask_response: boolean;
+        default_groups: string[];
+        register: boolean;
+        archived: boolean;
+        position: number;
+        version: number;
+        used: number;
+      }[],
+    };
+  });
+}
 export async function calendarCopyWeek(
   db: Pool,
   p: Principal,
@@ -549,23 +742,6 @@ export async function calendarExecute(
     async (s) => {
       // Week copies go through calendarCopyWeek (their own result).
       if (input.action === "copyWeek") throw new AccessError("INVALID_INPUT", 400);
-      if (input.action === "sharedVenue") {
-        needManage(s);
-        const row = (
-          await s.c.query(
-            "INSERT INTO shared_venue(name,address,created_by,organization_id) VALUES($1,$2,$3,$4) RETURNING id",
-            [input.name, input.address, p.userId, s.a.organization_id],
-          )
-        ).rows[0];
-        await audit(
-          s.c,
-          s.a.organization_id,
-          p.userId,
-          "calendar.sharedVenue",
-          row.id,
-        );
-        return { id: row.id as string };
-      }
       if (input.action === "place") {
         needManage(s);
         if (input.id) {
@@ -748,9 +924,13 @@ export async function calendarExecute(
         }
         if (input.intervalDays === 0 && input.occurrences !== 1)
           throw new AccessError("INVALID_INPUT", 400);
-        await validate(s, input);
+        // Wave 16 (E1): the club's type, and the people the chosen groups stand for.
+        const typed = await withType(s, input);
+        const plan = await resolveInvite(s, typed);
+        const base = plan ? { ...typed, participants: [...new Set([...typed.participants, ...plan.invited])] } : typed;
+        await validate(s, base);
         const schedule = Array.from({ length: input.occurrences }, (_, i) => ({
-          ...input,
+          ...base,
           localStart: shiftLocal(input.localStart, i * input.intervalDays),
           localEnd: shiftLocal(input.localEnd, i * input.intervalDays),
         }));
@@ -800,13 +980,121 @@ export async function calendarExecute(
               ],
             )
           ).rows[0] as Event;
+          if (typed.eventTypeId !== undefined) await s.c.query("UPDATE calendar_event SET event_type_id=$2 WHERE id=$1", [e.id, typed.eventTypeId]);
           await links(s, e.id, item);
+          await afterLinks(s, e, plan, plan?.deadline ? instants[0].start.getTime() - Date.parse(plan.deadline) : null, i === 0 ? input.tripId : undefined, input.exercises);
           await capacity(s, e);
           await changeLog(s, e, null, "created");
           events.push(e);
         }
-        await notify(s, events);
+        await notify(s, events, true);
         return { id: events[0].id };
+      }
+      if (input.action === "eventType") {
+        // Settings > Activities (wave 16, E1): the club's types; a used type is archived, never deleted.
+        needManage(s);
+        const org = s.a.organization_id;
+        const legacy: Record<string, EventInput["kind"]> = { training: "training", match: "friendly", meeting: "meeting", other: "custom" };
+        const values = [input.name, input.family, input.color, input.icon, input.askResponse, input.defaultGroups, input.register, input.archived];
+        try {
+          if (input.id) {
+            const r = await s.c.query(
+              `UPDATE event_type SET name=$3,family=$4,color=$5,icon=$6,ask_response=$7,default_groups=$8,register=$9,archived=$10,
+                      legacy_kind=CASE WHEN family=$4 THEN legacy_kind ELSE $12 END,version=version+1
+                WHERE id=$1 AND organization_id=$2 AND version=$11 RETURNING id`,
+              [input.id, org, ...values, input.expectedVersion ?? 0, legacy[input.family]],
+            );
+            if (!r.rowCount) throw new AccessError("STALE_VERSION", 409);
+            // Events keep their kind in step with the type's family.
+            await s.c.query("UPDATE calendar_event SET kind=t.legacy_kind,custom_type=CASE WHEN t.legacy_kind='custom' THEN t.name ELSE '' END FROM event_type t WHERE t.id=$1 AND calendar_event.event_type_id=t.id", [input.id]);
+            await audit(s.c, org, p.userId, "calendar.eventType", input.id);
+            return { id: input.id };
+          }
+          const id = (
+            await s.c.query(
+              `INSERT INTO event_type(organization_id,name,family,color,icon,ask_response,default_groups,register,archived,legacy_kind,position)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,(SELECT COALESCE(max(position),0)+1 FROM event_type WHERE organization_id=$1)) RETURNING id`,
+              [org, ...values, legacy[input.family]],
+            )
+          ).rows[0].id as string;
+          await audit(s.c, org, p.userId, "calendar.eventType", id);
+          return { id };
+        } catch (e) {
+          if ((e as { code?: string }).code === "23505") throw new AccessError("TYPE_EXISTS", 409);
+          throw e;
+        }
+      }
+      if (input.action === "previewInvite") {
+        if (!manager(s.a) && !(await coachTeam(s.c, s.a, input.teamId))) throw new AccessError("FORBIDDEN");
+        const plan = await resolveInvite(s, { teamId: input.teamId, invite: input.invite } as EventInput);
+        const ids = [...(plan?.invited ?? []), ...(plan?.guardians ?? [])];
+        const people = (await s.c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND id=ANY($2::uuid[]) ORDER BY full_name", [s.a.organization_id, ids])).rows as {
+          id: string;
+          full_name: string;
+        }[];
+        return { id: "preview", people: people.map((x) => x.full_name), count: people.length };
+      }
+      if (input.action === "createTrip") {
+        const e = await record(s, input.eventId);
+        if (!(await canWrite(s.c, s.a, e))) throw new AccessError("FORBIDDEN");
+        if ((s.a as { disabled_modules?: string[] }).disabled_modules?.includes("trips")) throw new AccessError("MODULE_OFF");
+        const day = e.local_start.slice(0, 10),
+          end = e.local_end.slice(0, 10);
+        const family = (e as Event & { type_family?: string }).type_family;
+        const place = e as Event & { place_name?: string | null; place_address?: string | null };
+        const trip = (
+          await s.c.query(
+            "INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,destination,place_id,created_by,calendar_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+            [
+              s.a.organization_id,
+              e.title.slice(0, 120),
+              e.kind === "tournament" ? "tournament" : family === "match" ? "away_match" : e.kind === "camp" ? "camp" : "other",
+              day,
+              end < day ? day : end,
+              [place.place_name, place.place_address].filter(Boolean).join(" · ").slice(0, 300),
+              e.place_id,
+              p.userId,
+              e.id,
+            ],
+          )
+        ).rows[0].id as string;
+        await audit(s.c, s.a.organization_id, p.userId, "trip.created", trip);
+        return { id: trip };
+      }
+      if (input.action === "eventTypeOrder") {
+        needManage(s);
+        for (const [i, id] of input.ids.entries())
+          await s.c.query("UPDATE event_type SET position=$3 WHERE id=$1 AND organization_id=$2", [id, s.a.organization_id, i + 1]);
+        return { id: input.ids[0] };
+      }
+      if (input.action === "delete") {
+        // Wave 16 (E1): only an event nobody answered, without attendance taken nor match; otherwise cancel it.
+        const e = await record(s, input.id);
+        if (!(await canWrite(s.c, s.a, e))) throw new AccessError("FORBIDDEN");
+        if (e.version !== input.expectedVersion) throw new AccessError("STALE_VERSION", 409);
+        const used = (
+          await s.c.query(
+            `SELECT EXISTS(SELECT 1 FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$1 AND (i.response<>'none' OR i.actual<>'unchecked'))
+                 OR EXISTS(SELECT 1 FROM attendance_register r WHERE r.event_id=$1 AND r.closed_at IS NOT NULL)
+                 OR EXISTS(SELECT 1 FROM match m WHERE m.calendar_event_id=$1)
+                 OR EXISTS(SELECT 1 FROM event_mail m WHERE m.event_id=$1) AS used`,
+            [e.id],
+          )
+        ).rows[0].used as boolean;
+        if (used) throw new AccessError("EVENT_IN_USE", 409);
+        const register = (await s.c.query("SELECT id FROM attendance_register WHERE event_id=$1", [e.id])).rows[0]?.id;
+        if (register) {
+          await s.c.query("DELETE FROM attendance_history WHERE register_id=$1", [register]);
+          await s.c.query("DELETE FROM attendance_invitation WHERE register_id=$1", [register]);
+          await s.c.query("DELETE FROM attendance_register WHERE id=$1", [register]);
+        }
+        await s.c.query("UPDATE trip SET calendar_event_id=NULL,version=version+1 WHERE calendar_event_id=$1", [e.id]);
+        await s.c.query("UPDATE calendar_event SET copied_from=NULL WHERE copied_from=$1", [e.id]);
+        for (const table of ["calendar_invite_group", "calendar_participant", "calendar_document", "calendar_history"])
+          await s.c.query(`DELETE FROM ${table} WHERE event_id=$1`, [e.id]);
+        await s.c.query("DELETE FROM calendar_event WHERE id=$1 AND organization_id=$2", [e.id, s.a.organization_id]);
+        await audit(s.c, s.a.organization_id, p.userId, "calendar.deleted", e.id, { title: e.title, local_start: e.local_start });
+        return { id: e.id };
       }
       const anchor = await record(s, input.id);
       if (!(await canWrite(s.c, s.a, anchor)))
@@ -850,14 +1138,23 @@ export async function calendarExecute(
           await changeLog(s, e, target, "cancelled", input.reason);
           changed.push(e);
         }
+        if (changed.length) {
+          await notify(s, changed);
+          // Undo (wave 15, C10), for 8 seconds on screen: the events come back as they were.
+          const undo = await offerUndo(s.c, s.a.organization_id, p.userId, "eventCancel", anchor.id, { ids: changed.map((e) => e.id) });
+          return { id: anchor.id, undo };
+        }
       } else {
         if (anchor.status === "cancelled")
           throw new AccessError("INVALID_TRANSITION", 409);
-        await validate(s, input);
+        const typed = await withType(s, input, (anchor as Event & { event_type_id?: string | null }).event_type_id ?? null);
+        const plan = await resolveInvite(s, typed);
+        const base = plan ? { ...typed, participants: [...new Set([...typed.participants, ...plan.invited])] } : typed;
+        await validate(s, base);
         const planned = targets.map((e) => ({
           e,
           input: {
-            ...input,
+            ...base,
             localStart: shiftLocal(
               input.localStart,
               (e.ordinal - anchor.ordinal) * (anchor.interval_days ?? 0),
@@ -929,7 +1226,9 @@ export async function calendarExecute(
               ],
             )
           ).rows[0] as Event;
+          if (typed.eventTypeId !== undefined) await s.c.query("UPDATE calendar_event SET event_type_id=$2 WHERE id=$1", [e.id, typed.eventTypeId]);
           await links(s, e.id, item);
+          await afterLinks(s, e, plan, plan?.deadline ? time.start.getTime() - Date.parse(plan.deadline) : null, old.id === anchor.id ? input.tripId : undefined, input.exercises);
           await capacity(s, e);
           await changeLog(s, e, before, "updated");
           changed.push(e);
@@ -1064,7 +1363,7 @@ async function copyWeek(
       skipped.push({ title: e.title, local_start: e.local_start, reason: err.code });
     }
   }
-  if (created.length) await notify(s, created);
+  if (created.length) await notify(s, created, true);
   await audit(s.c, org, s.p.userId, "calendar.copyWeek", input.requestId);
   return { created: created.length, skipped };
 }

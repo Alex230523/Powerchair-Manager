@@ -2,9 +2,9 @@ import { getAuth } from "@/lib/auth-server";
 import { getDb } from "@/lib/db";
 import { AccessError } from "@/domains/access/service";
 import { peopleExportGrid, filterSchema } from "@/domains/people/service";
-import { exportOptions, printablePage } from "@/domains/people/export";
+import { columnTypes, exportOptions, printablePage } from "@/domains/people/export";
 import { csvRows } from "@/domains/people/csv";
-import { xlsx } from "@/lib/xlsx";
+import { typedXlsx } from "@/lib/xlsx";
 import { z, ZodError } from "zod";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     );
     const name = "personnes-" + today;
     if (options.format === "xlsx")
-      return new Response(xlsx(grid, organization) as BodyInit, {
+      return new Response(typedXlsx(options.columns.map((c, i) => ({ header: String(grid[0][i]), type: columnTypes[c] })), grid.slice(1), organization) as BodyInit, {
         headers: {
           ...headers,
           "Content-Type":

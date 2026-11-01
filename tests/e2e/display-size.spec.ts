@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C4): text size and stronger contrast. Chosen in the account
@@ -21,12 +22,8 @@ test("display: very large text and stronger contrast", async ({ page }) => {
   const email = `display-${Date.now()}@example.test`;
   try {
     await db.query('DELETE FROM "rateLimit"');
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Display president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+    await prepareSignIn(page, db, "Display president", email, "Browser-test-passphrase-2026!");
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [user]);
@@ -44,7 +41,7 @@ test("display: very large text and stronger contrast", async ({ page }) => {
     await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role) VALUES($1,$2,$3,'player')", [club, team, player]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. The choice in the account menu applies at once.
@@ -52,11 +49,23 @@ test("display: very large text and stronger contrast", async ({ page }) => {
     const base = await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
     expect(base).toBe(14);
     await page.locator(".profile-menu > summary").click();
-    await page.getByRole("group", { name: "Taille du texte" }).getByRole("button", { name: "Très grand" }).click();
+    // Wave 16 (M1): a compact list in the account menu, and a small contrast box.
+    await page.locator(".profile-menu-body").getByRole("combobox", { name: "Taille du texte", exact: true }).selectOption("xlarge");
     await expect(page.locator("html")).toHaveAttribute("data-text-size", "xlarge");
     expect(await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize))).toBe(17.5);
     await page.getByRole("checkbox", { name: "Contraste renforcé" }).check();
     await expect(page.locator("html")).toHaveAttribute("data-contrast", "more");
+    const box = (await page.locator(".profile-menu-body").getByRole("checkbox", { name: "Contraste renforcé" }).boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(20);
+    // In very large text the open menu still fits the sidebar, at 1440 and 1024 px.
+    for (const width of [1440, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect((await page.locator(".profile-menu-body").boundingBox())!.width, `menu at ${width}`).toBeLessThanOrEqual(240);
+    }
+    // The open menu itself (it lies over the sidebar, whose entries it hides on purpose).
+    const menuViolations = (await new AxeBuilder({ page }).include(".profile-menu-body").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations.map((v) => v.id);
+    expect(menuViolations, "account menu open, very large text").toEqual([]);
+    await page.setViewportSize({ width: 1280, height: 900 });
 
     // 2. Kept on this device and applied before paint on the next page.
     await page.reload();

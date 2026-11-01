@@ -7,6 +7,7 @@ import { useData, usePost } from "./use-api";
 import { Badge, Card, EmptyState } from "./ui";
 import { Modal } from "./modal";
 import { duesSettingsCopy } from "./dues-settings-copy";
+import { duesIssueCopy } from "./dues-issue-copy";
 export { duesSettingsCopy };
 
 type Plan = {
@@ -24,7 +25,7 @@ type Plan = {
   team_id: string | null;
   team_name: string | null;
 };
-type View = { manage: boolean; plans: Plan[]; seasons: { id: string; name: string }[]; teams: { id: string; name: string; season_id: string }[] };
+type View = { manage: boolean; autoPlanId: string | null; plans: Plan[]; seasons: { id: string; name: string }[]; teams: { id: string; name: string; season_id: string }[] };
 type Post = (url: string, body: Record<string, unknown>, done: string) => Promise<void | boolean>;
 
 export function DuesSettingsPanel({
@@ -147,6 +148,36 @@ export function DuesSettingsPanel({
               </tbody>
             </table>
           </div>
+        )}
+        {/* A3: the fee issued by itself when a registration is accepted. */}
+        {data && (
+          <form
+            className="auto-reminders"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const plan = String(new FormData(e.currentTarget).get("autoPlan") ?? "");
+              void post({ organizationId, action: "autoIssue", planId: plan || null }, t.saved);
+            }}
+          >
+            <h3>{duesIssueCopy[locale].autoTitle}</h3>
+            <p className="muted small">{duesIssueCopy[locale].autoIntro}</p>
+            <label>
+              {duesIssueCopy[locale].autoLabel}
+              <select name="autoPlan" key={data.autoPlanId ?? "none"} defaultValue={data.autoPlanId ?? ""}>
+                <option value="">{duesIssueCopy[locale].autoNone}</option>
+                {data.plans
+                  .filter((p) => !p.archived)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.category} · {p.season_name} · {money(p.amount_cents)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button className="button secondary" disabled={busy}>
+              {duesIssueCopy[locale].autoSave}
+            </button>
+          </form>
         )}
         <form
           className="auto-reminders"

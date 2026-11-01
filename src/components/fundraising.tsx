@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { ContactPicker } from "./contact-picker";
+import { crmCopy } from "./crm-copy";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
@@ -8,6 +10,7 @@ import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, EmptyState, PageHeader, Card } from "./ui";
+import { FinanceNav } from "./finance-nav";
 
 export const fundraisingCopy = {
   fr: {
@@ -534,6 +537,8 @@ export function Fundraising({ locale }: { locale: Locale }) {
             donor: String(f.get("donor") ?? ""),
             anonymous: f.get("anonymous") === "on",
             profileId: String(f.get("collector") ?? "") || null,
+            // A4: the donor in the contact book, when the book is reachable.
+            ...(f.has("donorContact") ? { contactId: String(f.get("donorContact") ?? "") || null } : {}),
           }).then((ok) => ok && form.reset());
         }}
       >
@@ -561,6 +566,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
           {t.donor}
           <input name="donor" maxLength={160} />
         </label>
+        <ContactPicker locale={locale} name="donorContact" value={null} label={crmCopy[locale].donor} none={crmCopy[locale].nobody} />
         <label className="check">
           <input type="checkbox" name="anonymous" />
           {t.anonymous}
@@ -587,6 +593,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
       <PageHeader title={t.title} subtitle={t.intro} actions={data.can.manage && editing !== "group" && (
           <button type="button" className="button" onClick={() => setEditing("group")}>{t.newGroup}</button>
         )} />
+      {data.can.manage && <FinanceNav locale={locale} current="income" income="fundraising" />}
       {error && <p role="alert">{error}</p>}
       {(message || copied) && <p role="status">{copied || message}</p>}
       {editing === "group" && <Card label={t.newGroup}>{groupForm()}</Card>}
@@ -675,7 +682,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
                                     // Wave 15: a sponsor brought to a pot can be followed as a partner (sheet prefilled).
                                     <Link
                                       className="text-button"
-                                      href={`/${locale}/funding/partners?new=1&name=${encodeURIComponent((m.donor || m.label).slice(0, 160))}&note=${encodeURIComponent(
+                                      href={`/${locale}/funding/grants-sponsors?vue=sponsoring&new=1&name=${encodeURIComponent((m.donor || m.label).slice(0, 160))}&note=${encodeURIComponent(
                                         sponsorsCopy[locale].fromPot.replace("{name}", m.collector ?? "").replace("{pot}", pot.name),
                                       )}`}
                                     >

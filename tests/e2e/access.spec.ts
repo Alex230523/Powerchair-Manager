@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { readFile, readdir } from "node:fs/promises";
 import { createAuth } from "../../src/lib/auth";
+import { prepareSignIn } from "../support/session";
 for (const locale of ["fr", "nl"])
   test(`access form accessibility ${locale}`, async ({ page }) => {
     await page.goto(`/${locale}/access`);
@@ -26,7 +27,7 @@ for (const locale of ["fr", "nl"])
       ),
     ).toBe(true);
   });
-test("real account without email verification, MFA, contexts, invitation, revocation and recovery", async ({
+test("real account without email verification, contexts, invitation, revocation and recovery", async ({
   page,
   browser,
 }) => {
@@ -61,18 +62,9 @@ test("real account without email verification, MFA, contexts, invitation, revoca
   }
   const memberBrowser = await browser.newContext();
   try {
-    await page.goto("/fr/access");
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
-    await page.getByLabel("Nom complet").fill("Présidente test");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page
-      .getByLabel("Mot de passe (12 caractères minimum)", { exact: true })
-      .fill(password);
-    await page
-      .getByRole("button", { name: "Créer mon compte", exact: true })
-      .click();
+    // Wave 16 (I1): no free sign-up any more; the account is created on the server, then signed in.
+    await prepareSignIn(page, db, "Présidente test", email, password);
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Se déconnecter" }),
     ).toBeVisible();
@@ -242,7 +234,8 @@ test("real account without email verification, MFA, contexts, invitation, revoca
       .getByRole("button", { name: "Se connecter", exact: true })
       .click();
     const signed = await signing;
-    expect(signed.status(), await signed.text()).toBe(200);
+    // The page leaves for the home right away: the body is gone, the status stays.
+    expect(signed.status()).toBe(200);
     // Signed in: straight to the home page, no code asked.
     await expect(page).toHaveURL(/\/fr$/);
     await page.goto("/fr/access");
@@ -301,4 +294,31 @@ test("workspace HTTP boundary rejects anonymous and cross-origin writes", async 
       })
     ).status(),
   ).toBe(401);
+});
+
+test("visitor (wave 16, I1): no menu, no free sign-up, the « Rejoindre » page", async ({ page }) => {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/fr/access");
+    await expect(page.locator(".sidebar")).toHaveCount(0);
+    await expect(page.locator(".bottom-nav")).toHaveCount(0);
+    await expect(page.locator(".scope-bar")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Créer mon compte", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Se connecter", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole("link", { name: "Pas encore de compte ?" }).click();
+  await expect(page).toHaveURL(/\/fr\/join$/);
+  await expect(page.getByRole("heading", { name: "Rejoindre la plateforme", level: 1 })).toBeVisible();
+  for (const title of ["Je suis joueur, parent ou coach", "Je suis président de club ou arbitre", "Je représente une fédération", "J’ai reçu une invitation"])
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.locator(".sidebar")).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+  // The public route refuses a sign-up without the invitation of that email.
+  const refused = await page.request.post("/api/auth/sign-up/email", {
+    headers: { origin: "http://127.0.0.1:3100" },
+    data: { name: "Intrus", email: `intrus-${Date.now()}@example.test`, password: "Browser-only-passphrase-2026!" },
+  });
+  expect(refused.status()).toBe(403);
+  expect((await refused.json()).code).toBe("INVITATION_REQUIRED");
 });

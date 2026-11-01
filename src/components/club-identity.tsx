@@ -102,6 +102,9 @@ const official = {
     ibanHint: "Repris sur les conventions de sponsoring.",
     invalid: "Vérifiez le numéro d’entreprise et l’IBAN : l’un des deux n’est pas valide.",
     rollover: "Passage de saison",
+    legal: "Forme du club",
+    legalHelp: "Le statut du club propose ses obligations selon la forme (Réglages, Club, Statut et obligations).",
+    legalForms: { "": "Non précisée", asbl: "ASBL", de_facto: "Association de fait", other: "Autre" },
   },
   nl: {
     title: "Voor officiële documenten",
@@ -114,6 +117,9 @@ const official = {
     ibanHint: "Overgenomen op de sponsorovereenkomsten.",
     invalid: "Controleer het ondernemingsnummer en de IBAN: een van beide is ongeldig.",
     rollover: "Seizoensovergang",
+    legal: "Vorm van de club",
+    legalHelp: "Het statuut van de club stelt de verplichtingen voor volgens de vorm (Instellingen, Club, Statuut en verplichtingen).",
+    legalForms: { "": "Niet opgegeven", asbl: "VZW", de_facto: "Feitelijke vereniging", other: "Andere" },
   },
   en: {
     title: "For official papers",
@@ -126,6 +132,9 @@ const official = {
     ibanHint: "Printed on sponsorship agreements.",
     invalid: "Check the company number and the IBAN: one of them is not valid.",
     rollover: "Season rollover",
+    legal: "Legal form",
+    legalHelp: "The club status proposes its obligations from the form (Settings, Club, Status and obligations).",
+    legalForms: { "": "Not given", asbl: "Non-profit (ASBL)", de_facto: "Unincorporated association", other: "Other" },
   },
 };
 /** `only`: "identity" in Settings > Club (wave 15), "teams" in Gestion du club, which links to the identity. */
@@ -258,7 +267,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
           </div>
           {view.canEdit ? (
             <form
-              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "") + (o.iban ?? "")}
+              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.legal_form ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "") + (o.iban ?? "")}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -269,6 +278,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                   ...(o.kind === "club"
                     ? {
                         federationId: String(f.get("federation") ?? "") || null,
+                        legalForm: String(f.get("legalForm") ?? "") || null,
                         address: String(f.get("address") ?? "").trim(),
                         companyNumber: String(f.get("company") ?? "").trim(),
                         signatory: String(f.get("signatory") ?? "").trim(),
@@ -314,6 +324,21 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                       </option>
                     ))}
                   </select>
+                </label>
+              )}
+              {o.kind === "club" && (
+                <label htmlFor="club-legal-form">
+                  {official[locale].legal}
+                  <select id="club-legal-form" name="legalForm" defaultValue={o.legal_form ?? ""} aria-describedby="club-legal-form-help">
+                    {(["", "asbl", "de_facto", "other"] as const).map((k) => (
+                      <option key={k} value={k}>
+                        {official[locale].legalForms[k]}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="muted small" id="club-legal-form-help">
+                    {official[locale].legalHelp}
+                  </span>
                 </label>
               )}
               {o.kind === "club" && (

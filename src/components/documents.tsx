@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { compressFormImages } from "@/lib/image-compress";
 import {
   useCallback,
   useEffect,
@@ -152,7 +153,7 @@ export function Documents({ locale }: { locale: Locale }) {
           <p>
             <Link
               className="button secondary"
-              href={`/${locale}/reminders?kind=documents`}
+              href={`/${locale}/settings/notifications?kind=documents#settings-reminders`}
             >
               {remindLabel[locale]}
             </Link>
@@ -316,6 +317,8 @@ export function Documents({ locale }: { locale: Locale }) {
                       form(e, async (d) => {
                         d.set("organizationId", data.context.organization_id);
                         d.set("version", String(doc.version));
+                        // B2: a photo of a document is made lighter before it is sent.
+                        await compressFormImages(d);
                         const r = await fetch("/api/documents/file/" + doc.id, {
                           method: "POST",
                           body: d,

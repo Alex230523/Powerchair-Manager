@@ -1,7 +1,7 @@
 import { english } from "../lib/english";
 export const attendanceCopy = {
   fr: {
-    title: "Présences et convocations",
+    title: "Présences et invitations",
     intro: "Votre réponse et le pointage du coach sont conservés séparément.",
     access: "Mon espace",
     calendar: "Calendrier",
@@ -15,7 +15,7 @@ export const attendanceCopy = {
     load: "Actualiser",
     loading: "Chargement…",
     empty:
-      "Aucune convocation dans cette période. Les responsables peuvent convoquer depuis un événement à venir.",
+      "Aucune invitation dans cette période. Les responsables peuvent inviter depuis un événement à venir.",
     error: "Action impossible. Actualisez les données puis réessayez.",
     saved: "Enregistré.",
     offline:
@@ -26,8 +26,8 @@ export const attendanceCopy = {
     pending: "Registre ouvert",
     deadline: "Date limite de réponse (heure de Bruxelles)",
     minimum: "Effectif confirmé minimum",
-    invite: "Envoyer / modifier les convocations",
-    candidates: "Personnes à convoquer",
+    invite: "Envoyer / modifier les invitations",
+    candidates: "Personnes à inviter",
     nocandidates:
       "Ajoutez d’abord des participants ou une équipe dans le calendrier.",
     notice:
@@ -39,21 +39,21 @@ export const attendanceCopy = {
     mark: "Enregistrer le pointage",
     reason: "Motif de correction (obligatoire après clôture)",
     correction: "Corrigé depuis le tableau des présences",
-    withdrawn: "Convocation retirée",
+    withdrawn: "Invitation retirée",
     remind: "Relancer les personnes sans réponse",
     close: "Clôturer le registre",
     closeHint:
-      "La clôture exige un pointage pour chaque personne encore convoquée. Les corrections ultérieures restent possibles avec un motif.",
+      "La clôture exige un pointage pour chaque personne encore invitée. Les corrections ultérieures restent possibles avec un motif.",
     stats: "Statistiques de la période",
     statHint:
-      "Taux de réponse sur convocations actives ; assiduité sur registres clôturés non annulés. Retard et départ anticipé comptent comme participation. Aucun pointage n’est déduit d’une réponse.",
+      "Taux de réponse sur invitations actives ; assiduité sur registres clôturés non annulés. Retard et départ anticipé comptent comme participation. Aucun pointage n’est déduit d’une réponse.",
     player: "Personne",
-    invited: "Convoqué",
+    invited: "Invités",
     answered: "Réponses",
     attended: "Participations",
     rate: "Assiduité",
     history: "Historique",
-    noRegister: "Aucune convocation envoyée.",
+    noRegister: "Aucune invitation envoyée.",
     responses: {
       none: "Sans réponse",
       present: "Présent",
@@ -64,17 +64,20 @@ export const attendanceCopy = {
       unchecked: "Non pointé",
       present: "Présent",
       absent: "Absent",
+      excused: "Excusé",
       late: "Retard",
       early: "Départ anticipé",
     },
     actions: {
-      invite: "Convocations modifiées",
+      invite: "Invitations modifiées",
       respond: "Réponse modifiée",
       mark: "Pointage corrigé",
       close: "Registre clôturé",
       remind: "Relance envoyée",
       automatic_reminder: "Relance automatique",
       threshold_check: "Contrôle de l’effectif",
+      mark_all: "Tout le monde pointé présent",
+      undo: "Pointage annulé",
     },
     errors: {
       STALE_VERSION:
@@ -86,7 +89,7 @@ export const attendanceCopy = {
       INVALID_DEADLINE:
         "L’échéance doit être future et au plus tard au début de l’événement.",
       INVALID_THRESHOLD:
-        "Le seuil ne peut pas dépasser le nombre de personnes convoquées.",
+        "Le seuil ne peut pas dépasser le nombre de personnes invitées.",
       INVALID_PARTICIPANT:
         "Une personne ne fait plus partie des participants prévus.",
       REGISTER_CLOSED: "Le registre est clôturé.",
@@ -95,7 +98,7 @@ export const attendanceCopy = {
       INCOMPLETE_REGISTER: "Pointez chaque personne avant de clôturer.",
       REMINDER_RECENT:
         "Une relance a déjà été envoyée il y a moins d’une heure.",
-      INVITATION_WITHDRAWN: "Cette convocation a été retirée.",
+      INVITATION_WITHDRAWN: "Cette invitation a été retirée.",
       FORBIDDEN:
         "Votre profil ou votre lien familial ne permet pas cette action.",
       CONTEXT_CHANGED: "Le contexte a changé : actualisez la page.",
@@ -106,7 +109,7 @@ export const attendanceCopy = {
     },
   },
   nl: {
-    title: "Aanwezigheid en oproepen",
+    title: "Aanwezigheid en uitnodigingen",
     intro: "Uw antwoord en de vaststelling door de coach blijven gescheiden.",
     access: "Accounts en context",
     calendar: "Kalender",
@@ -120,7 +123,7 @@ export const attendanceCopy = {
     load: "Vernieuwen",
     loading: "Laden…",
     empty:
-      "Geen oproepen in deze periode. Beheerders kunnen deelnemers voor een toekomstig evenement oproepen.",
+      "Geen uitnodigingen in deze periode. Beheerders kunnen deelnemers voor een toekomstig evenement uitnodigen.",
     error: "Actie niet mogelijk. Vernieuw de gegevens en probeer opnieuw.",
     saved: "Opgeslagen.",
     offline:
@@ -131,7 +134,7 @@ export const attendanceCopy = {
     pending: "Register open",
     deadline: "Antwoorddeadline (Brusselse tijd)",
     minimum: "Minimum bevestigde deelnemers",
-    invite: "Oproepen versturen / wijzigen",
+    invite: "Uitnodigingen versturen / wijzigen",
     candidates: "Op te roepen personen",
     nocandidates: "Voeg eerst deelnemers of een team toe in de kalender.",
     notice:
@@ -143,21 +146,21 @@ export const attendanceCopy = {
     mark: "Aanwezigheid opslaan",
     reason: "Reden van correctie (verplicht na afsluiting)",
     correction: "Gecorrigeerd vanuit de aanwezigheidstabel",
-    withdrawn: "Oproep ingetrokken",
-    remind: "Herinnering voor onbeantwoorde oproepen",
+    withdrawn: "Uitnodiging ingetrokken",
+    remind: "Herinnering voor onbeantwoorde uitnodigingen",
     close: "Register afsluiten",
     closeHint:
-      "Iedere opgeroepen persoon moet geregistreerd zijn. Latere correcties vereisen een reden.",
+      "Iedere uitgenodigde persoon moet geregistreerd zijn. Latere correcties vereisen een reden.",
     stats: "Statistieken van de periode",
     statHint:
-      "Antwoordpercentage op actieve oproepen; aanwezigheid op afgesloten, niet-geannuleerde registers. Te laat en vroeg vertrek tellen als deelname. Een antwoord wordt nooit als aanwezigheid geteld.",
+      "Antwoordpercentage op actieve uitnodigingen; aanwezigheid op afgesloten, niet-geannuleerde registers. Te laat en vroeg vertrek tellen als deelname. Een antwoord wordt nooit als aanwezigheid geteld.",
     player: "Persoon",
-    invited: "Oproepen",
+    invited: "Uitgenodigd",
     answered: "Antwoorden",
     attended: "Deelnames",
     rate: "Aanwezigheid",
     history: "Geschiedenis",
-    noRegister: "Nog geen oproepen verstuurd.",
+    noRegister: "Nog geen uitnodigingen verstuurd.",
     responses: {
       none: "Geen antwoord",
       present: "Aanwezig",
@@ -168,17 +171,20 @@ export const attendanceCopy = {
       unchecked: "Niet geregistreerd",
       present: "Aanwezig",
       absent: "Afwezig",
+      excused: "Verontschuldigd",
       late: "Te laat",
       early: "Vroeg vertrek",
     },
     actions: {
-      invite: "Oproepen gewijzigd",
+      invite: "Uitnodigingen gewijzigd",
       respond: "Antwoord gewijzigd",
       mark: "Aanwezigheid gecorrigeerd",
       close: "Register afgesloten",
       remind: "Herinnering verstuurd",
       automatic_reminder: "Automatische herinnering",
       threshold_check: "Bezetting gecontroleerd",
+      mark_all: "Iedereen als aanwezig geregistreerd",
+      undo: "Registratie ongedaan gemaakt",
     },
     errors: {
       STALE_VERSION:
@@ -190,14 +196,14 @@ export const attendanceCopy = {
       INVALID_DEADLINE:
         "De deadline moet in de toekomst liggen, uiterlijk bij aanvang.",
       INVALID_THRESHOLD:
-        "De drempel mag het aantal opgeroepen personen niet overschrijden.",
+        "De drempel mag het aantal uitgenodigde personen niet overschrijden.",
       INVALID_PARTICIPANT:
         "Een persoon behoort niet meer tot de geplande deelnemers.",
       REGISTER_CLOSED: "Het register is afgesloten.",
       CORRECTION_REASON: "Geef een reden en een vastgestelde aanwezigheid op.",
       INCOMPLETE_REGISTER: "Registreer iedereen voordat u afsluit.",
       REMINDER_RECENT: "Er is minder dan een uur geleden al herinnerd.",
-      INVITATION_WITHDRAWN: "Deze oproep is ingetrokken.",
+      INVITATION_WITHDRAWN: "Deze uitnodiging is ingetrokken.",
       FORBIDDEN: "Uw mandaat of familierelatie staat deze actie niet toe.",
       CONTEXT_CHANGED: "De context is gewijzigd. Vernieuw de pagina.",
       CONTEXT_REQUIRED: "Kies uw club en mandaat bij Accounts en context.",

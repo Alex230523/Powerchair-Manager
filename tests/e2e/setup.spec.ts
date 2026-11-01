@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
+import { prepareSignIn } from "../support/session";
 
 /**
  * Wave 15 (C3): a new club's president sees "Bien démarrer" computed from the
@@ -19,12 +20,8 @@ test("getting started of a new club", async ({ page }) => {
   const email = `setup-${Date.now()}@example.test`;
   try {
     await db.query('DELETE FROM "rateLimit"');
-    await page.goto("/fr/access");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
-    await page.getByLabel("Nom complet", { exact: true }).fill("Setup president");
-    await page.getByLabel("Adresse email", { exact: true }).fill(email);
-    await page.getByLabel("Mot de passe (12 caractères minimum)", { exact: true }).fill("Browser-test-passphrase-2026!");
-    await page.getByRole("button", { name: "Créer mon compte", exact: true }).click();
+    await prepareSignIn(page, db, "Setup president", email, "Browser-test-passphrase-2026!");
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
     await db.query('UPDATE "user" SET "twoFactorEnabled"=true WHERE id=$1', [user]);
@@ -33,7 +30,7 @@ test("getting started of a new club", async ({ page }) => {
     const mandate = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,'club_president') RETURNING id", [club, user])).rows[0].id;
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
-    await Promise.all([page.waitForEvent("load"), page.getByLabel("Profil actif", { exact: true }).selectOption(mandate)]);
+    await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. A new club: 0 of 9, each step with "Commencer".

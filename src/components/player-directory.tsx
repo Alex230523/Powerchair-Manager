@@ -7,14 +7,46 @@ import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
 import { errors } from "./access-copy";
-import { Button, EmptyState, PageHeader } from "./ui";
+import { Badge, Button, EmptyState, PageHeader } from "./ui";
 import { Modal } from "./modal";
+import { SheetDialog, DepartureDialog } from "./player-sheet";
+import { fillIn, sheetCopy } from "./player-sheet-copy";
 import { PlayerImport } from "./player-import";
 import { ExportDialog } from "./export-dialog";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { setupCopy } from "./setup-copy";
+import { InviteFields, isMinor } from "./invite-fields";
+import { coachSpaceCopy } from "./coach-space-copy";
+import type { TrainingState } from "@/domains/licences/schema";
+
+/** Wave 17 (O1): « Formé » (course and date in the tooltip), « En attente de validation » or « Non formé ». */
+function TrainingBadge({ locale, state }: { locale: Locale; state: TrainingState | null | undefined }) {
+  const t = coachSpaceCopy[locale];
+  if (state?.status === "trained") {
+    const date = state.on
+      ? new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(state.on + "T12:00:00Z"))
+      : "";
+    const tip = t.trainedTip.replace("{title}", state.title).replace("{date}", date);
+    return (
+      <span className="training-badge" title={tip}>
+        <Badge tone="success">{t.trained}</Badge>
+        <span className="sr-only"> · {tip}</span>
+      </span>
+    );
+  }
+  if (state?.status === "pending") {
+    const tip = t.pendingTip.replace("{title}", state.title);
+    return (
+      <span className="training-badge" title={tip}>
+        <Badge tone="warning">{t.pending}</Badge>
+        <span className="sr-only"> · {tip}</span>
+      </span>
+    );
+  }
+  return <Badge tone="neutral">{t.untrained}</Badge>;
+}
 const copy = {
   fr: {
     players: "Joueurs",
@@ -31,8 +63,6 @@ const copy = {
     addCoach: "Ajouter un coach",
     existing: "Ajouter une personne déjà connue du club",
     personal: "Informations personnelles",
-    game: "Informations de jeu",
-    coaching: "Équipes encadrées",
     position: "Poste",
     number: "Numéro de maillot",
     archive: "Vers les anciens joueurs",
@@ -47,16 +77,8 @@ const copy = {
     new: "Nouvelle fiche",
     all: "Tous",
     unassigned: "Sans équipe actuelle",
-    open: "Voir le profil",
-    full: "Fiche complète",
-    close: "Fermer la fiche",
     addRole: "Ajouter au répertoire",
-    noAccess:
-      "Les informations personnelles restent limitées à vos autorisations.",
     count: "personnes",
-    positions: ["Gardien", "Défenseur", "Ailier", "Pivot", "Polyvalent"],
-    history: "Historique sportif",
-    gameSave: "Enregistrer les informations de jeu",
   },
   nl: {
     players: "Spelers",
@@ -73,8 +95,6 @@ const copy = {
     addCoach: "Coach toevoegen",
     existing: "Bestaande persoon toevoegen",
     personal: "Persoonlijke gegevens",
-    game: "Sportinformatie",
-    coaching: "Begeleide teams",
     position: "Positie",
     number: "Shirtnummer",
     archive: "Naar oud-spelers",
@@ -89,15 +109,8 @@ const copy = {
     new: "Nieuw dossier",
     all: "Alle",
     unassigned: "Geen huidig team",
-    open: "Profiel bekijken",
-    full: "Volledige fiche",
-    close: "Profiel sluiten",
     addRole: "Aan lijst toevoegen",
-    noAccess: "Persoonlijke gegevens blijven beperkt tot uw rechten.",
     count: "personen",
-    positions: ["Doelman", "Verdediger", "Vleugelspeler", "Spits", "Allround"],
-    history: "Sportgeschiedenis",
-    gameSave: "Sportinformatie opslaan",
   },
   en: {
     players: "Players",
@@ -114,8 +127,6 @@ const copy = {
     addCoach: "Add coach",
     existing: "Add a person already known to the club",
     personal: "Personal information",
-    game: "Playing information",
-    coaching: "Coached teams",
     position: "Position",
     number: "Shirt number",
     archive: "Move to former players",
@@ -130,15 +141,8 @@ const copy = {
     new: "New record",
     all: "All",
     unassigned: "No current team",
-    open: "View profile",
-    full: "Full profile",
-    close: "Close profile",
     addRole: "Add to directory",
-    noAccess: "Personal details remain limited to your permissions.",
     count: "people",
-    positions: ["Goalkeeper", "Defender", "Winger", "Pivot", "All-rounder"],
-    history: "Sport history",
-    gameSave: "Save playing information",
   },
 };
 type View = Awaited<ReturnType<typeof peopleView>>;
@@ -166,11 +170,14 @@ export function PlayerDirectory({
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState(""),
     [creating, setCreating] = useState(create),
+    [inviting, setInviting] = useState(true),
+    [newBirth, setNewBirth] = useState(""),
     [importKey, setImportKey] = useState(0),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
     [position, setPosition] = useState(""),
-    [minimum, setMinimum] = useState("");
+    // Wave 17 (J1): the departure window (reason and note), for a departure or a later change.
+    [leaving, setLeaving] = useState<{ id: string; mode: "leave" | "edit" } | null>(null);
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
@@ -263,9 +270,7 @@ export function PlayerDirectory({
         isFormer(r) === former &&
         r.full_name.toLocaleLowerCase().includes(q.toLocaleLowerCase()) &&
         (!team || current(r).some((a) => a.team_id === team)) &&
-        (!position || r.playing_position === position) &&
-        (!minimum ||
-          (r.birth_date && ageOn(r.birth_date, today) >= Number(minimum))),
+        (!position || r.playing_position === position),
     ) ?? [];
   const teamsOf = (r: Profile) => [...new Set(current(r).map((a) => a.team_id))];
   const positionOf = (r: Profile) =>
@@ -338,22 +343,30 @@ export function PlayerDirectory({
     joinedOn: f.get("joinedOn"),
   });
   async function archive(r: Profile) {
+    // Leaving: the departure window asks why. Coming back: a confirmation.
+    if (!former) {
+      setLeaving({ id: r.id, mode: "leave" });
+      return;
+    }
     if (confirming !== r.id) {
       setConfirming(r.id);
       return;
     }
-    if (
-      await send({
-        action: "directoryArchive",
-        id: r.id,
-        role,
-        archived: !former,
-      })
-    ) {
+    if (await send({ action: "directoryArchive", id: r.id, role, archived: false })) {
       setConfirming("");
       setSelected("");
     }
   }
+  const sc = sheetCopy[locale];
+  const space = coachSpaceCopy[locale];
+  const situationText = (r: Profile) => {
+    const x = r.situation;
+    if (!x) return "—";
+    if (x.kind === "deceased") return sc.statuses.deceased;
+    if (x.kind === "club") return x.team ? fillIn(sc.playsAtTeam, { club: x.club, team: x.team }) : fillIn(sc.playsAt, { club: x.club });
+    if (x.kind === "team") return fillIn(sc.otherTeam, { teams: x.teams.join(", ") });
+    return sc.statuses[x.status];
+  };
   return (
     <main id="main" className="access player-directory">
       <PageHeader title={title} subtitle={data?.context.name ?? t.intro} actions={<><div className="directory-actions">
@@ -389,6 +402,7 @@ export function PlayerDirectory({
               key={importKey}
               locale={locale}
               role={role}
+              canInvite={!!data.capabilities.invite}
               initiallyOpen={importing || importKey > 0}
               organizationId={data.context.id}
               teams={data.teams.filter(
@@ -419,7 +433,7 @@ export function PlayerDirectory({
       )}
       {data && (
         <>
-          {role === "coach" && manager && (
+          {role === "coach" && manager && !data.capabilities.invite && (
             <p className="notice">
               {locale === "fr"
                 ? "Une fiche de coach ne crée pas de compte ni de droits de connexion. Les invitations et accès se gèrent dans Mon espace."
@@ -481,18 +495,6 @@ export function PlayerDirectory({
                 </select>
               </label>
             )}
-            {data.capabilities.peopleRead && (
-              <label>
-                {p.minAge}
-                <input
-                  type="number"
-                  min="0"
-                  max="120"
-                  value={minimum}
-                  onChange={(e) => setMinimum(e.target.value)}
-                />
-              </label>
-            )}
           </form>
           <div className="directory-meta">
             <p>
@@ -501,7 +503,7 @@ export function PlayerDirectory({
             {data.capabilities.canExport && (
               <ExportDialog
                 locale={locale}
-                query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}${minimum ? "&minAge=" + minimum : ""}`}
+                query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
               />
             )}
           </div>
@@ -564,7 +566,32 @@ export function PlayerDirectory({
                     { key: "number", header: t.number, sort: (r: Profile) => r.jersey_number, cell: (r: Profile) => r.jersey_number ?? "—" },
                   ]
                 : []),
+              ...(role === "coach" && !former
+                ? [
+                    {
+                      key: "training",
+                      header: space.training,
+                      sort: (r: Profile) => (r.training?.status === "trained" ? 0 : r.training?.status === "pending" ? 1 : 2),
+                      cell: (r: Profile) => <TrainingBadge locale={locale} state={r.training} />,
+                    },
+                  ]
+                : []),
               { key: "age", header: p.age, sort: ageOf, cell: (r) => ageOf(r) ?? "—" },
+              ...(former
+                ? [
+                    {
+                      key: "situation",
+                      header: sc.situation,
+                      sort: situationText,
+                      cell: (r: Profile) =>
+                        r.situation?.kind === "deceased" ? (
+                          <Badge tone="neutral">{sc.inMemoriam}</Badge>
+                        ) : (
+                          <span className={r.situation?.kind === "club" || r.situation?.kind === "team" ? undefined : "muted"}>{situationText(r)}</span>
+                        ),
+                    },
+                  ]
+                : []),
               {
                 key: "actions",
                 header: p.actions,
@@ -572,12 +599,14 @@ export function PlayerDirectory({
                 cell: (r) => (
                   <>
                     <div className="row-actions">
-                      <button className="text-button" aria-label={`${t.open} : ${r.full_name}`} onClick={() => setSelected(r.id)}>
-                        {t.open} →
+                      <button className="text-button" aria-label={fillIn(sc.viewOf, { name: r.full_name })} onClick={() => setSelected(r.id)}>
+                        {sc.view} →
                       </button>
-                      <Link className="text-button" href={`/${locale}/${role === "player" ? "players" : "coaches"}/${r.id}`} aria-label={`${t.full} : ${r.full_name}`}>
-                        {t.full}
-                      </Link>
+                      {manager && former && (
+                        <button className="text-button" aria-label={fillIn(sc.editSituationOf, { name: r.full_name })} onClick={() => setLeaving({ id: r.id, mode: "edit" })}>
+                          {sc.editSituation}
+                        </button>
+                      )}
                       {manager && r.status === "active" && (
                         <button className="button secondary" disabled={busy} onClick={() => void archive(r)}>
                           {confirming === r.id ? (former ? t.restoreConfirm : t.confirm) : former ? t.restore : role === "player" ? t.archive : t.archiveCoach}
@@ -692,12 +721,19 @@ export function PlayerDirectory({
         >
           {feedback}
           <form
+            onChange={(e) => {
+              const field = e.target;
+              if (field instanceof HTMLInputElement && field.name === "birthDate") setNewBirth(field.value);
+            }}
             onSubmit={(e) =>
               submit(e, (f) => {
+                const invite = !!data?.capabilities.invite && inviting;
                 void send({
                   action: "createPerson",
                   ...personal(f),
                   directoryRoles: [role],
+                  invite,
+                  ...(invite && f.get("guardianEmail") ? { guardianName: f.get("guardianName"), guardianEmail: f.get("guardianEmail") } : {}),
                 }).then((r) => {
                   if (r?.id) {
                     setCreating(false);
@@ -709,250 +745,40 @@ export function PlayerDirectory({
           >
             <h3>{t.personal}</h3>
             {personalFields()}
+            {data?.capabilities.invite && <InviteFields locale={locale} on={inviting} setOn={setInviting} minor={role === "player" && isMinor(newBirth)} />}
             <Button disabled={busy}>{p.create}</Button>
           </form>
         </Modal>
       )}
       {person && (
-        <Modal
-          title={person.full_name}
+        <SheetDialog
+          locale={locale}
+          id={person.id}
+          name={person.full_name}
+          role={role}
           close={() => {
             setSelected("");
             setConfirming("");
           }}
-        >
-          {feedback}
-          <section>
-            <h3>{t.personal}</h3>
-            {person.detailed ? (
-              manager ? (
-                <form
-                  key={person.id + "-" + person.version}
-                  onSubmit={(e) =>
-                    submit(e, (f) => {
-                      void send({
-                        action: "updatePerson",
-                        id: person.id,
-                        version: person.version,
-                        ...personal(f),
-                      });
-                    })
-                  }
-                >
-                  {personalFields(person)}
-                  <Button disabled={busy}>{p.save}</Button>
-                </form>
-              ) : (
-                <>
-                  <dl>
-                    <dt>{p.name}</dt>
-                    <dd>{person.full_name}</dd>
-                    <dt>{p.birth}</dt>
-                    <dd>{person.birth_date ?? "—"}</dd>
-                    <dt>{p.email}</dt>
-                    <dd>{person.email || "—"}</dd>
-                    <dt>{p.phone}</dt>
-                    <dd>{person.phone || "—"}</dd>
-                  </dl>
-                  {person.can_edit && (
-                    <form
-                      key={"contacts-" + person.id + "-" + person.version}
-                      onSubmit={(e) =>
-                        submit(e, (f) => {
-                          void send({
-                            action: "contacts",
-                            id: person.id,
-                            version: person.version,
-                            email: f.get("email"),
-                            phone: f.get("phone"),
-                          });
-                        })
-                      }
-                    >
-                      <label>
-                        {p.email}
-                        <input
-                          name="email"
-                          type="email"
-                          defaultValue={person.email ?? ""}
-                        />
-                      </label>
-                      <label>
-                        {p.phone}
-                        <input
-                          name="phone"
-                          maxLength={40}
-                          defaultValue={person.phone ?? ""}
-                        />
-                      </label>
-                      <Button disabled={busy}>{p.save}</Button>
-                    </form>
-                  )}
-                </>
-              )
-            ) : (
-              <p>{t.noAccess}</p>
-            )}
-          </section>
-          <section>
-            <h3>{role === "player" ? t.game : t.coaching}</h3>
-            {role === "player" &&
-              (teamsManage && !isFormer(person) ? (
-                <form
-                  key={"game-" + person.id + "-" + person.version}
-                  onSubmit={(e) =>
-                    submit(e, (f) => {
-                      void send({
-                        action: "gameInfo",
-                        id: person.id,
-                        version: person.version,
-                        position: f.get("position"),
-                        jerseyNumber:
-                          f.get("number") === ""
-                            ? null
-                            : Number(f.get("number")),
-                      });
-                    })
-                  }
-                >
-                  <label>
-                    {t.position}
-                    <input
-                      name="position"
-                      maxLength={80}
-                      list="playing-positions"
-                      defaultValue={person.playing_position}
-                    />
-                    <datalist id="playing-positions">
-                      {t.positions.map((v) => (
-                        <option key={v} value={v} />
-                      ))}
-                    </datalist>
-                  </label>
-                  <label>
-                    {t.number}
-                    <input
-                      name="number"
-                      type="number"
-                      min="0"
-                      max="99"
-                      defaultValue={person.jersey_number ?? ""}
-                    />
-                  </label>
-                  <Button disabled={busy}>{t.gameSave}</Button>
-                </form>
-              ) : (
-                <p>
-                  {t.position}: {person.playing_position || "—"} · {t.number}:{" "}
-                  {person.jersey_number ?? "—"}
-                </p>
-              ))}
-            <h4>{t.history}</h4>
-            <ul>
-              {person.assignments
-                .filter((a) => a.role === role)
-                .map((a) => (
-                  <li key={a.id}>
-                    {teamName(a.team_id)} · {a.position || "—"} · {a.starts_on}{" "}
-                    → {a.ends_on ?? "—"}
-                    {a.closed_at || a.cancelled ? ` · ${p.archived}` : ""}
-                  </li>
-                ))}
-            </ul>
-            {!person.assignments.some((a) => a.role === role) && (
-              <p>{t.unassigned}</p>
-            )}
-            {teamsManage && !isFormer(person) && (
-              <form
-                onSubmit={(e) =>
-                  submit(e, (f) => {
-                    void send({
-                      action: "assign",
-                      profileId: person.id,
-                      teamId: f.get("team"),
-                      role,
-                      position: f.get("position") || "",
-                      startsOn: f.get("from"),
-                      endsOn: f.get("until") || null,
-                    });
-                  })
-                }
-              >
-                <label>
-                  {p.team}
-                  <select name="team" required>
-                    {data?.teams
-                      .filter((v) => !v.archived && !v.season_archived)
-                      .map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name} ·{" "}
-                          {data.seasons.find((s) => s.id === v.season_id)?.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label>
-                  {t.position}
-                  <input
-                    name="position"
-                    maxLength={80}
-                    defaultValue={person.playing_position}
-                  />
-                </label>
-                <label>
-                  {p.from}
-                  <input
-                    name="from"
-                    type="date"
-                    defaultValue={today}
-                    required
-                  />
-                </label>
-                <label>
-                  {p.until}
-                  <input name="until" type="date" />
-                </label>
-                <Button
-                  disabled={
-                    busy ||
-                    !data?.teams.some((v) => !v.archived && !v.season_archived)
-                  }
-                >
-                  {p.assign}
-                </Button>
-              </form>
-            )}
-          </section>
-          <div className="directory-actions">
-            <Link
-              className="button"
-              href={`/${locale}/${role === "player" ? "players" : "coaches"}/${person.id}`}
-            >
-              {t.full}
-            </Link>
-            <Link className="button secondary" href={`/${locale}/dues`}>
-              {t.dues}
-            </Link>
-            <Link
-              className="button secondary"
-              href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
-            >
-              {data?.capabilities.registrationsManage
-                ? t.registrations
-                : locale === "fr"
-                  ? "Mes inscriptions"
-                  : locale === "nl"
-                    ? "Mijn inschrijvingen"
-                    : "My applications"}
-            </Link>
-            <button
-              className="button secondary"
-              onClick={() => setSelected("")}
-            >
-              {t.close}
-            </button>
-          </div>
-        </Modal>
+          onChanged={() => void load()}
+        />
+      )}
+      {leaving && data && (
+        <DepartureDialog
+          locale={locale}
+          person={data.profiles.find((r) => r.id === leaving.id)!}
+          mode={leaving.mode}
+          president={data.context.role === "club_president"}
+          busy={busy}
+          close={() => setLeaving(null)}
+          save={async (v) => {
+            const ok =
+              leaving.mode === "leave" && v.status !== "deceased"
+                ? await send({ action: "directoryArchive", id: leaving.id, role, archived: true, departureStatus: v.status, departureNote: v.note })
+                : await send({ action: "departure", id: leaving.id, status: v.status, note: v.note, confirm: v.confirm });
+            if (ok) setLeaving(null);
+          }}
+        />
       )}
     </main>
   );

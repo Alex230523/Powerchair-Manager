@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import { messagesCopy } from "./messages-copy";
 import { Modal } from "./modal";
 import { Button, Panel, Badge, PageHeader } from "./ui";
+import { InterclubThreads } from "./transfers";
 import { undoToast } from "./toast";
 import { toastCopy } from "./toast-copy";
 type Thread = {
@@ -362,6 +363,8 @@ export function Messages({ locale }: { locale: Locale }) {
           </form>
         </Modal>
       )}
+      {/* Wave 17 (J3): the conversations between clubs about transfer requests. */}
+      <InterclubThreads locale={locale} />
     </main>
   );
 }

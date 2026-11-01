@@ -5,6 +5,7 @@ import { chartsCopy } from "./charts-copy";
 import { Segmented } from "./ui";
 import { cssVars } from "./css-vars";
 import { niceStep } from "./chart-math";
+import { arcPath, ringSegments } from "@/domains/statistics/club-math";
 export { niceStep, trendSentence } from "./chart-math";
 
 /**
@@ -50,29 +51,35 @@ export function ChartFrame({
   legend,
   table,
   children,
+  view: controlled,
 }: {
   locale: Locale;
   legend: { id: string; label: string; color: string; dashed?: boolean }[];
   /** The same figures as a table. */
   table: ReactNode;
   children: (hidden: Set<string>) => ReactNode;
+  /** Chosen outside (the « ... » menu of the statistics, wave 16): no switch in the frame. */
+  view?: "chart" | "table";
 }) {
   const c = chartsCopy[locale];
-  const [view, setView] = useState("chart"),
+  const [own, setView] = useState("chart"),
     [hidden, setHidden] = useState<string[]>([]);
+  const view = controlled ?? own;
   return (
     <div className="chart-frame">
-      <div className="chart-tools">
-        <Segmented
-          label={c.seeData}
-          items={[
-            { id: "chart", label: c.chart },
-            { id: "table", label: c.table },
-          ]}
-          value={view}
-          onChange={setView}
-        />
-      </div>
+      {!controlled && (
+        <div className="chart-tools">
+          <Segmented
+            label={c.seeData}
+            items={[
+              { id: "chart", label: c.chart },
+              { id: "table", label: c.table },
+            ]}
+            value={view}
+            onChange={setView}
+          />
+        </div>
+      )}
       {view === "chart" ? (
         <>
           {children(new Set(hidden))}
@@ -151,6 +158,8 @@ export function LineChart({
   max = 100,
   format,
   height = 240,
+  tickEvery,
+  titles,
 }: {
   locale: Locale;
   /** Accessible name: what the chart shows and its trend. */
@@ -160,6 +169,10 @@ export function LineChart({
   max?: number;
   format: (v: number) => string;
   height?: number;
+  /** A label every n categories at least (weeks: every 4), more apart if the width asks. */
+  tickEvery?: number;
+  /** Longer names of the categories, for the tooltip and the screen reader. */
+  titles?: string[];
 }) {
   const c = chartsCopy[locale];
   const { ref, width } = useWidth();
@@ -170,7 +183,9 @@ export function LineChart({
   const x = (i: number) => (n <= 1 ? m.l + pw / 2 : m.l + (i * pw) / (n - 1));
   const y = (v: number) => m.t + ph - (Math.min(Math.max(v, 0), max) / max) * ph;
   const { active, setActive, onPointerMove, onKeyDown } = usePointer(n, (px) => (n <= 1 ? 0 : Math.round(((px - m.l) * (n - 1)) / pw)));
-  const step = Math.max(1, Math.ceil((n * 64) / pw));
+  const fit = Math.max(1, Math.ceil((n * 64) / pw));
+  const step = tickEvery ? tickEvery * Math.ceil(fit / tickEvery) : fit;
+  const title = (i: number) => titles?.[i] ?? categories[i];
   const path = (values: (number | null)[]) =>
     values
       .map((v, i) => (v === null ? "" : `${i === 0 || values[i - 1] === null ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`))
@@ -216,9 +231,9 @@ export function LineChart({
           </g>
         ))}
       </svg>
-      {active !== null && <Tooltip x={x(active)} width={width} title={categories[active]} rows={rows(active)} />}
+      {active !== null && <Tooltip x={x(active)} width={width} title={title(active)} rows={rows(active)} />}
       <p className="sr-only" aria-live="polite">
-        {active !== null ? `${categories[active]} : ${rows(active).map((r) => `${r.label} ${r.value}`).join(", ")}` : ""}
+        {active !== null ? `${title(active)} : ${rows(active).map((r) => `${r.label} ${r.value}`).join(", ")}` : ""}
       </p>
       <p className="sr-only">{c.keys}</p>
     </div>
@@ -301,6 +316,248 @@ export function StackedBarChart({
         {active !== null ? `${categories[active]} : ${rows(active).map((r) => `${r.label} ${r.value}`).join(", ")}` : ""}
       </p>
       <p className="sr-only">{c.keys}</p>
+    </div>
+  );
+}
+
+export type BarGroup = { label: string; total: number; bars: { id: string; label: string; color: string; value: number }[] };
+/**
+ * Grouped bars (wave 16, S1): one group per season, the bars side by side (a
+ * team each, in its colour), the group's total above it. The total is given:
+ * a person in two teams counts in both bars but once in the total.
+ */
+export function GroupedBarChart({
+  locale,
+  summary,
+  groups,
+  hidden,
+  height = 260,
+  format = (v) => String(v),
+}: {
+  locale: Locale;
+  summary: string;
+  groups: BarGroup[];
+  hidden: Set<string>;
+  height?: number;
+  format?: (v: number) => string;
+}) {
+  const c = chartsCopy[locale];
+  const { ref, width } = useWidth();
+  const m = { l: 40, r: 12, t: 24, b: 28 };
+  const pw = Math.max(width - m.l - m.r, 40),
+    ph = height - m.t - m.b,
+    n = groups.length;
+  const shown = groups.map((g) => g.bars.filter((b) => !hidden.has(b.id)));
+  const peak = Math.max(1, ...groups.map((g) => g.total), ...shown.flat().map((b) => b.value));
+  const stepY = niceStep(peak / 4);
+  const top = Math.max(stepY * Math.ceil(peak / stepY), stepY);
+  const y = (v: number) => m.t + ph - (v / top) * ph;
+  const band = pw / Math.max(n, 1);
+  const { active, setActive, onPointerMove, onKeyDown } = usePointer(n, (px) => Math.floor((px - m.l) / band));
+  const ticks: number[] = [];
+  for (let v = 0; v <= top + 1e-9; v += stepY) ticks.push(v);
+  const rows = (i: number): TipRow[] => [
+    ...shown[i].map((b) => ({ id: b.id, label: b.label, color: b.color, value: format(b.value) })),
+    { id: "__total", label: c.total, color: "transparent", value: format(groups[i].total) },
+  ];
+  return (
+    <div ref={ref} className="chart" role="group" aria-label={summary} tabIndex={0} onKeyDown={onKeyDown} onBlur={() => setActive(null)}>
+      <svg width={width} height={height} aria-hidden="true" onPointerMove={onPointerMove} onPointerLeave={() => setActive(null)}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={m.l + pw} y1={y(v)} y2={y(v)} stroke="var(--grid-line)" strokeWidth={1} />
+            <text x={m.l - 8} y={y(v)} dy="0.32em" textAnchor="end" className="chart-axis">
+              {format(v)}
+            </text>
+          </g>
+        ))}
+        {active !== null && <rect x={m.l + band * active} y={m.t} width={band} height={ph} fill="var(--surface-soft)" />}
+        {groups.map((g, i) => {
+          const bars = shown[i];
+          const inner = band * 0.8,
+            bar = Math.max(3, Math.min(22, inner / Math.max(bars.length, 1) - 2));
+          const start = m.l + band * i + (band - bars.length * (bar + 2) + 2) / 2;
+          const highest = Math.max(g.total, ...bars.map((b) => b.value));
+          return (
+            <g key={g.label + i}>
+              {bars.map((b, j) => (
+                <rect key={b.id} x={start + j * (bar + 2)} y={y(b.value)} width={bar} height={Math.max(y(0) - y(b.value), 0)} fill={b.color} rx={2} />
+              ))}
+              {g.total > 0 && (
+                <text x={m.l + band * (i + 0.5)} y={y(highest) - 6} textAnchor="middle" className="chart-total">
+                  {format(g.total)}
+                </text>
+              )}
+              <text x={m.l + band * (i + 0.5)} y={height - 8} textAnchor="middle" className="chart-axis">
+                {g.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      {active !== null && <Tooltip x={m.l + band * (active + 0.5)} width={width} title={groups[active].label} rows={rows(active)} />}
+      <p className="sr-only" aria-live="polite">
+        {active !== null ? `${groups[active].label} : ${rows(active).map((r) => `${r.label} ${r.value}`).join(", ")}` : ""}
+      </p>
+      <p className="sr-only">{c.keys}</p>
+    </div>
+  );
+}
+
+/**
+ * A ring of results (wave 16, S1): wins in --success, draws in --warning,
+ * losses in --danger, 1 px of background between the segments; grey without
+ * a match. The number of matches in the middle, in the serif face.
+ */
+export function DonutChart({
+  won,
+  drawn,
+  lost,
+  label,
+  unit,
+  size = 120,
+}: {
+  won: number;
+  drawn: number;
+  lost: number;
+  /** Accessible name: the team and its results in words; none when a link around it already says so. */
+  label?: string;
+  /** « matchs » under the number. */
+  unit: string;
+  size?: number;
+}) {
+  const { total, segments } = ringSegments(won, drawn, lost);
+  const r = size / 2,
+    inner = r - Math.max(12, size * 0.14);
+  const colors = { won: "var(--success)", drawn: "var(--warning)", lost: "var(--danger)" } as const;
+  return (
+    <svg className="donut" width={size} height={size} viewBox={`0 0 ${size} ${size}`} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+      {total ? (
+        segments.map((s) => <path key={s.key} d={arcPath(r, r, r - 1, inner, s.start, s.end)} fill={colors[s.key]} stroke="var(--surface)" strokeWidth={1} />)
+      ) : (
+        <path d={arcPath(r, r, r - 1, inner, 0, 1)} fill="var(--grid-line)" />
+      )}
+      <text x={r} y={r - 2} textAnchor="middle" className="donut-total">
+        {total}
+      </text>
+      <text x={r} y={r + 16} textAnchor="middle" className="chart-axis">
+        {unit}
+      </text>
+    </svg>
+  );
+}
+
+/** One horizontal bar split in parts (wave 16, S1: the storage), 1 px of background between them. */
+export function SplitBar({ parts, label, height = 20 }: { parts: { id: string; share: number; color: string }[]; label: string; height?: number }) {
+  const { ref, width } = useWidth();
+  // Where each part starts: the sum of the parts before it.
+  const starts = parts.map((_, i) => parts.slice(0, i).reduce((n, p) => n + Math.max(0, p.share * width), 0));
+  return (
+    <div ref={ref} className="split-bar">
+      <svg width={width} height={height} role="img" aria-label={label}>
+        {parts.map((p, i) => {
+          const w = Math.max(0, p.share * width);
+          return w > 0 ? <rect key={p.id} x={starts[i]} y={0} width={w} height={height} fill={p.color} stroke="var(--surface)" strokeWidth={1} /> : null;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+export type DivergingBar = { id: string; label: string; title: string; up: number; down: number; color: string };
+/**
+ * Bars above and below the axis (wave 16, S2: goals per match): goals scored
+ * above in the team's colour, conceded below in --chart-8, one pair per
+ * match in order. The arrows go through the matches.
+ */
+export function DivergingBarChart({
+  locale,
+  summary,
+  bars,
+  upLabel,
+  downLabel,
+  height = 240,
+}: {
+  locale: Locale;
+  summary: string;
+  bars: DivergingBar[];
+  upLabel: string;
+  downLabel: string;
+  height?: number;
+}) {
+  const c = chartsCopy[locale];
+  const { ref, width } = useWidth();
+  const m = { l: 32, r: 12, t: 12, b: 12 };
+  const pw = Math.max(width - m.l - m.r, 40),
+    n = bars.length;
+  const peak = Math.max(1, ...bars.map((b) => Math.max(b.up, b.down)));
+  const stepY = niceStep(peak / 2);
+  const top = Math.max(stepY * Math.ceil(peak / stepY), stepY);
+  const half = (height - m.t - m.b) / 2;
+  const zero = m.t + half;
+  const y = (v: number) => zero - (v / top) * half;
+  const band = pw / Math.max(n, 1),
+    bar = Math.max(2, Math.min(18, band * 0.7));
+  const cx = (i: number) => m.l + band * (i + 0.5);
+  const { active, setActive, onPointerMove, onKeyDown } = usePointer(n, (px) => Math.floor((px - m.l) / band));
+  const ticks: number[] = [];
+  for (let v = -top; v <= top + 1e-9; v += stepY) ticks.push(v);
+  const rows = (i: number): TipRow[] => [
+    { id: "up", label: upLabel, color: bars[i].color, value: String(bars[i].up) },
+    { id: "down", label: downLabel, color: "var(--chart-8)", value: String(bars[i].down) },
+  ];
+  return (
+    <div ref={ref} className="chart" role="group" aria-label={summary} tabIndex={0} onKeyDown={onKeyDown} onBlur={() => setActive(null)}>
+      <svg width={width} height={height} aria-hidden="true" onPointerMove={onPointerMove} onPointerLeave={() => setActive(null)}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={m.l + pw} y1={y(v)} y2={y(v)} stroke={v === 0 ? "var(--border-strong)" : "var(--grid-line)"} strokeWidth={1} />
+            <text x={m.l - 8} y={y(v)} dy="0.32em" textAnchor="end" className="chart-axis">
+              {Math.abs(v)}
+            </text>
+          </g>
+        ))}
+        {active !== null && <rect x={m.l + band * active} y={m.t} width={band} height={half * 2} fill="var(--surface-soft)" />}
+        {bars.map((b, i) => (
+          <g key={b.id}>
+            {b.up > 0 && <rect x={cx(i) - bar / 2} y={y(b.up)} width={bar} height={zero - y(b.up)} fill={b.color} rx={2} />}
+            {b.down > 0 && <rect x={cx(i) - bar / 2} y={zero} width={bar} height={y(-b.down) - zero} fill="var(--chart-8)" rx={2} />}
+          </g>
+        ))}
+      </svg>
+      {active !== null && <Tooltip x={cx(active)} width={width} title={bars[active].title} rows={rows(active)} />}
+      <p className="sr-only" aria-live="polite">
+        {active !== null ? `${bars[active].title} : ${rows(active).map((r) => `${r.label} ${r.value}`).join(", ")}` : ""}
+      </p>
+      <p className="sr-only">{c.keys}</p>
+    </div>
+  );
+}
+
+/** Horizontal bars, one per row, the label on the left and the figure at the end (wave 16, S2: playing time). */
+export function HorizontalBars({ summary, rows, format }: { summary: string; rows: { id: string; label: string; value: number; note?: string; color: string }[]; format: (v: number) => string }) {
+  const { ref, width } = useWidth();
+  const rowHeight = 30,
+    labelWidth = Math.min(160, Math.max(90, width * 0.3)),
+    // Room for the figure and its note (« 120 min · 3 tit. »).
+    valueWidth = rows.some((r) => r.note) ? 120 : 64;
+  const peak = Math.max(1, ...rows.map((r) => r.value));
+  const pw = Math.max(width - labelWidth - valueWidth - 8, 20);
+  return (
+    <div ref={ref} className="chart">
+      <svg width={width} height={rows.length * rowHeight} role="img" aria-label={summary}>
+        {rows.map((r, i) => (
+          <g key={r.id} transform={`translate(0 ${i * rowHeight})`}>
+            <text x={0} y={rowHeight / 2} dy="0.32em" className="chart-axis chart-row-label">
+              {r.label.length > 22 ? r.label.slice(0, 21) + "…" : r.label}
+            </text>
+            <rect x={labelWidth} y={7} width={Math.max((r.value / peak) * pw, r.value ? 2 : 0)} height={rowHeight - 14} rx={2} fill={r.color} />
+            <text x={labelWidth + (r.value / peak) * pw + 6} y={rowHeight / 2} dy="0.32em" className="chart-total">
+              {r.note ? `${format(r.value)} · ${r.note}` : format(r.value)}
+            </text>
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }

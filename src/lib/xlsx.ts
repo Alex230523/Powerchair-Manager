@@ -98,25 +98,48 @@ export function columnName(index: number) {
 
 /** A workbook with one sheet; the first row is bold and frozen. */
 export function xlsx(rows: unknown[][], sheetName = "Export") {
+  return typedXlsx(
+    (rows[0] ?? []).map((h) => ({ header: String(h ?? ""), type: "text" as const })),
+    rows.slice(1),
+    sheetName,
+  );
+}
+
+/**
+ * Wave 17 (G2): typed cells. Amounts are numbers shown with two decimals,
+ * dates real dates, counts whole numbers; text stays inline text (never a
+ * formula). The header is bold and frozen.
+ */
+export type ColumnType = "text" | "number" | "money" | "date";
+const style: Record<ColumnType, number> = { text: 0, number: 4, money: 2, date: 3 };
+/** Days since 1899-12-30, the spreadsheet epoch, for a YYYY-MM-DD date. */
+export function serialDate(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000);
+}
+function cell(ref: string, value: unknown, type: ColumnType) {
+  if (value === null || value === undefined || value === "") return `<c r="${ref}"/>`;
+  if (type === "date" && /^\d{4}-\d{2}-\d{2}/.test(String(value))) return `<c r="${ref}" s="${style.date}"><v>${serialDate(String(value))}</v></c>`;
+  if ((type === "money" || type === "number") && Number.isFinite(Number(value))) return `<c r="${ref}" s="${style[type]}"><v>${Number(value)}</v></c>`;
+  return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(String(value))}</t></is></c>`;
+}
+export function typedXlsx(columns: { header: string; type: ColumnType }[], rows: unknown[][], sheetName = "Export") {
+  const head =
+    `<row r="1">` + columns.map((c, i) => `<c r="${columnName(i)}1" t="inlineStr" s="1"><is><t xml:space="preserve">${xml(c.header)}</t></is></c>`).join("") + "</row>";
+  const body = rows.map((row, r) => `<row r="${r + 2}">` + columns.map((c, i) => cell(`${columnName(i)}${r + 2}`, row[i], c.type)).join("") + "</row>").join("");
+  const widths = columns.length ? "<cols>" + columns.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.type === "text" ? 24 : 14}" customWidth="1"/>`).join("") + "</cols>" : "";
   const sheet =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
     '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+    widths +
     "<sheetData>" +
-    rows
-      .map(
-        (row, r) =>
-          `<row r="${r + 1}">` +
-          row
-            .map((value, c) => {
-              const text = value === null || value === undefined ? "" : String(value);
-              return `<c r="${columnName(c)}${r + 1}" t="inlineStr"${r === 0 ? ' s="1"' : ""}><is><t xml:space="preserve">${xml(text)}</t></is></c>`;
-            })
-            .join("") +
-          "</row>",
-      )
-      .join("") +
+    head +
+    body +
     "</sheetData></worksheet>";
+  return pack(sheet, sheetName);
+}
+function pack(sheet: string, sheetName: string) {
   const name = xml(sheetName.replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Export");
   const files: Record<string, string> = {
     "[Content_Types].xml":
@@ -127,7 +150,7 @@ export function xlsx(rows: unknown[][], sheetName = "Export") {
     "xl/_rels/workbook.xml.rels":
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
     "xl/styles.xml":
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>',
     "xl/worksheets/sheet1.xml": sheet,
   };
   return zip(

@@ -21,6 +21,8 @@ export type Workspace = {
     kind: "club" | "federation";
     logo_version: string | null;
     disabled_modules?: string[];
+    /** B8: approved for tax receipts. */
+    tax_approved?: boolean;
   };
   permissions: string[];
   fundraisingOpen?: boolean;
@@ -76,6 +78,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/dues", "dues", "dues"),
               ...item("/fundraising", "fundraising", "piggyBank", !!state?.fundraisingOpen),
               registrations,
+              // Wave 17 (J3): « Visible par les autres clubs », the player's or the parent's choice.
+              ...item("/transfers", "transfers", "handshake"),
             ],
           },
         ]
@@ -91,8 +95,12 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                 ...(manager ? [registrations] : []),
                 ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
+                // Wave 16 (E2): the coaches' exercise sheets.
+                ...item("/exercises", "exercises", "clipboardList", true),
                 ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
-                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
+                // Wave 17 (J3): the transfer market between the federation's clubs.
+                ...item("/transfers", "transfers", "handshake", has("people.read")),
+                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage")),
               ],
             },
             {
@@ -101,6 +109,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "calendar",
               items: [
                 ...item("/calendar", "calendar", "calendar"),
+                // B9: events open to the public (registration by a link).
+                ...item("/events", "openEvents", "megaphone", has("calendar.manage", "mandates.manage")),
                 ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                 ...item("/trips", "trips", "bus", has("calendar.read", "calendar.manage")),
                 ...item("/venues", "halls", "pin", has("calendar.manage")),
@@ -121,9 +131,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupMoney",
               icon: "funding",
               items: [
+                // Wave 17 (N1): one « Finances » page with tabs, and « Cotisations » kept apart (often opened).
                 ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
-                ...item("/fundraising", "pots", "piggyBank", has("dues.read", "dues.manage")),
+                // A2: grants and sponsors in one page, two views.
+                ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
               ],
             },
             {
@@ -132,8 +144,14 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "club",
               items: [
                 ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
+                // B6: the public page, widgets, API keys and webhooks.
+                ...item("/club/public", "publicPage", "globe"),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
+                // B5: incidents and their insurance declaration.
+                ...item("/incidents", "incidents", "alert", has("people.manage", "mandates.manage")),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
+                // Wave 17 (O1): the club's tasks, by type.
+                ...item("/tasks", "tasks", "clipboardList"),
               ],
             },
             {
@@ -142,9 +160,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               icon: "settings",
               folded: true,
               items: [
-                ...item("/reminders", "reminders", "bellRing", !off.has("reminders") && has("dues.manage", "documents.manage", "notifications.manage")),
                 ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
-                ...item("/offline-book", "offlineBook", "bookLock", !off.has("trips") && has("calendar.read", "calendar.manage")),
                 ...item("/settings", "settings", "settings"),
               ],
             },
@@ -160,8 +176,10 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/teams", "teams", "team", has("people.read", "teams.manage") || role === "coach"),
                   ...(manager ? [registrations] : []),
                   ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
+                  ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
                   ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
-                  ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read")),
+                  ...item("/transfers", "transfers", "handshake", has("people.read")),
+                  ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
                 ],
               },
               {
@@ -170,6 +188,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 icon: "calendar",
                 items: [
                   ...item("/calendar", "calendar", "calendar"),
+                  ...item("/events", "openEvents", "megaphone", has("calendar.manage")),
                   ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                   // Trips and halls are reached from the calendar page (wave 11).
                   ...item("/tournaments", "tournaments", "trophy"),
@@ -187,6 +206,10 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
+                  // B5: a coach reports an incident of his players.
+                  ...item("/incidents", "incidents", "alert", role === "coach" || has("people.manage")),
+                  // A1: everyone has a to-do (only one's own tasks unless one plans).
+                  ...item("/tasks", "tasks", "clipboardList"),
                 ],
               },
               {
@@ -194,11 +217,10 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 label: "groupFinance",
                 icon: "funding",
                 items: [
-                  ...item("/funding", "funding", "funding", has("dues.read", "dues.manage")),
+                  ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
                   ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
-                  ...item("/funding/grants", "grants", "document", has("dues.read", "dues.manage")),
-                  ...item("/funding/partners", "partners", "team", has("dues.read", "dues.manage")),
-                  ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
+                  // A2: grants and sponsors in one page, two views.
+                  ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
                 ],
               },
             ]
@@ -212,15 +234,24 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     ...((role === "referee"
                       ? [{ route: "/referee", label: "refereeSpace", icon: "whistle" }]
                       : [
+                          // Wave 16 (I3): the order of the federation president's day.
                           { route: "/federation/clubs", label: "federationClubs", icon: "club" },
-                          { route: "/federation/courses", label: "courses", icon: "team" },
-                          { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
+                          { route: "/federation/teams", label: "federationTeams", icon: "players" },
+                          { route: "/tournaments", label: "tournaments", icon: "trophy" },
                           { route: "/federation/referees", label: "designations", icon: "whistle" },
+                          { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
+                          { route: "/transfers", label: "transfers", icon: "handshake" },
+                          { route: "/federation/affiliations", label: "affiliations", icon: "landmark" },
+                          { route: "/federation/courses", label: "courses", icon: "team" },
+                          // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
+                          { route: "/equipment", label: "equipment", icon: "wheelchair" },
                         ]) satisfies NavItem[]),
+                    ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
-                    { route: "/tournaments", label: "tournaments", icon: "trophy" },
                     { route: "/venues", label: "venues", icon: "pin" },
                     { route: "/documents", label: "documents", icon: "document" },
+                    // A1: the federation's own to-do.
+                    { route: "/tasks", label: "tasks", icon: "clipboardList" },
                   ],
                 },
               ]
@@ -242,7 +273,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
           ? ([
               ...(kind === "club" && !member
                 ? ([
-                    ...item("/reminders", "reminders", "bellRing", !off.has("reminders") && has("dues.manage", "documents.manage", "notifications.manage")),
                     ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
                   ] satisfies NavItem[])
                 : []),
@@ -251,9 +281,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
           : state
             ? ([registrations] satisfies NavItem[])
             : []),
-        ...(kind === "club" && !member && !off.has("trips") && has("calendar.read", "calendar.manage")
-          ? ([{ route: "/offline-book", label: "offlineBook", icon: "bookLock" }] satisfies NavItem[])
-          : []),
       ],
     };
   return [...groups, admin].filter((g) => g.items.length > 0);

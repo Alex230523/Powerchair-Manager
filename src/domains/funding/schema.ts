@@ -23,21 +23,7 @@ export const contactTags = [
   "other",
 ] as const;
 export type ContactTag = (typeof contactTags)[number];
-export const contactCommand = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("contact"),
-    id: z.uuid().optional(),
-    fullName: text(120).min(2),
-    organizationName: text(160),
-    role: text(120),
-    email: z.union([z.literal(""), z.email().max(200)]),
-    phone: text(40),
-    tags: z.array(z.enum(contactTags)).max(10),
-    notes: text(4000),
-    archived: z.boolean().optional(),
-  }),
-]);
-export type ContactCommand = z.infer<typeof contactCommand>;
+/** The contact book's commands live in crm/schema (A4). */
 
 export const grantStatuses = ["idea", "submitted", "granted", "refused", "paid", "closed"] as const;
 export type GrantStatus = (typeof grantStatuses)[number];
@@ -60,7 +46,7 @@ const packageCondition = z.object({
 });
 /** A proof is a web link (or a file, uploaded on its own route). */
 const proofUrl = z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(500)]);
-export type TaskStatus = "todo" | "done";
+export type TaskStatus = "todo" | "doing" | "done";
 
 export const fundingCommand = z.discriminatedUnion("action", [
   z.object({
@@ -87,8 +73,14 @@ export const fundingCommand = z.discriminatedUnion("action", [
     explanation: text(4000).optional(),
     endsOn: day,
     recheckOn: day,
+    /** A2: the date the call opens and the start of the period covered. */
+    opensOn: day,
+    startsOn: day,
   }),
   z.object({ action: z.literal("deleteGrant"), id: z.uuid() }),
+  /** A2: money received for a grant, one line per instalment. */
+  z.object({ action: z.literal("grantPayment"), grantId: z.uuid(), receivedOn: z.iso.date(), amountCents: cents.refine((n) => n > 0), note: text(200) }),
+  z.object({ action: z.literal("deleteGrantPayment"), id: z.uuid() }),
   z.object({
     action: z.literal("funder"),
     id: z.uuid(),
@@ -135,7 +127,12 @@ export const fundingCommand = z.discriminatedUnion("action", [
     newContact: newContact.optional(),
     /** Write the payment in the ledger (sponsor income) when it is marked as received. */
     recordPayment: z.boolean().optional(),
+    /** A2: the person of the club in charge, and the last contact. Absent keeps the value. */
+    responsibleId: z.uuid().nullable().optional(),
+    lastContactOn: day,
   }),
+  /** A2: « Contact pris aujourd'hui ». */
+  z.object({ action: z.literal("partnerContacted"), id: z.uuid() }),
   z.object({ action: z.literal("deletePartner"), id: z.uuid() }),
   z.object({
     action: z.literal("package"),
@@ -146,6 +143,8 @@ export const fundingCommand = z.discriminatedUnion("action", [
     description: text(2000),
     places: z.number().int().min(1).max(1000).nullable(),
     featured: z.boolean(),
+    /** B6: its sponsors are named on the club's public page. */
+    publicVisible: z.boolean().optional(),
     conditions: z.array(packageCondition).max(30),
   }),
   z.object({ action: z.literal("archivePackage"), id: z.uuid(), archived: z.boolean() }),

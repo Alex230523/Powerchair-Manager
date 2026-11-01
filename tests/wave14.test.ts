@@ -25,12 +25,15 @@ describe("president menu (wave 14)", () => {
   });
   it("places each page where the design says", () => {
     const routes = Object.fromEntries(groups.map((g) => [g.id, g.items.map((i) => i.route)]));
-    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/licenses", "/statistics"]);
-    expect(routes.activities).toEqual(["/calendar", "/matches", "/trips", "/venues", "/tournaments"]);
+    // Wave 16 (E2): the exercise sheets after the attendance.
+    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/licenses", "/transfers", "/statistics"]);
+    expect(routes.activities).toEqual(["/calendar", "/events", "/matches", "/trips", "/venues", "/tournaments"]);
     expect(routes.communication).toEqual(["/communication", "/documents"]);
-    expect(routes.money).toEqual(["/funding", "/dues", "/fundraising"]);
-    expect(routes.clubGroup).toEqual(["/club/manage", "/equipment", "/contacts"]);
-    expect(routes.more).toEqual(["/reminders", "/privacy", "/offline-book", "/settings"]);
+    // A2: « Subsides & sponsors » has its own entry.
+    expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors"]);
+    expect(routes.clubGroup).toEqual(["/club/manage", "/club/public", "/equipment", "/incidents", "/contacts", "/tasks"]);
+    // Wave 17 (G3): Relances moved to Settings, the offline book is gone.
+    expect(routes.more).toEqual(["/privacy", "/settings"]);
   });
   it("respects switched-off modules and missing rights", () => {
     const off = menuGroups(base("club_president", all, { disabled_modules: ["trips", "equipment", "fundraising"] }));
@@ -40,7 +43,8 @@ describe("president menu (wave 14)", () => {
     expect(routes).not.toContain("/fundraising");
     expect(routes).not.toContain("/offline-book");
     const few = menuGroups(base("club_president", ["people.read"]));
-    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "more"]);
+    // Wave 17 (O1): a president always plans the club's tasks.
+    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "clubGroup", "more"]);
   });
   it("labels every group and item in the three languages", () => {
     for (const locale of ["fr", "nl", "en"] as const)

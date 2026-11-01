@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
-import { retentionView } from "../../src/domains/statistics/retention";
+import { clubStatistics } from "../../src/domains/statistics/club";
 import { attendanceView } from "../../src/domains/attendance/service";
 
 /** Wave 15 (2.6): the headcount per season and team colours behind the charts, one club at a time. */
@@ -60,27 +60,26 @@ afterAll(async () => {
   await root.end();
 });
 
-it("splits each season of the club by team and by category, a player once", async () => {
-  const v = await retentionView(db, president);
-  expect(v.headcount).toEqual([
-    { season: "2025-26", total: 2, teams: [{ name: "Lions", color: "blue", count: 2 }], categories: [{ name: "Senior", count: 2 }] },
-    {
-      season: "2026-27",
-      total: 3,
-      teams: [
+it("counts each season of the club by team, a player in two teams once in the total, with the retention", async () => {
+  // Wave 16 (S1): the headcount moved to the « Club » tab (grouped bars per team).
+  const v = (await clubStatistics(db, president, "headcount", {})) as { seasons: { name: string; total: number; shared: number; teams: unknown[]; retention: unknown }[] };
+  expect(v.seasons.map((s) => [s.name, s.total, s.shared, s.teams])).toEqual([
+    ["2025-26", 2, 0, [{ name: "Lions", color: "blue", count: 2 }]],
+    [
+      "2026-27",
+      3,
+      1,
+      [
         { name: "Aigles", color: "amber", count: 2 },
-        { name: "Lions", color: "blue", count: 1 },
+        { name: "Lions", color: "blue", count: 2 },
       ],
-      categories: [
-        { name: "Jeunes", count: 2 },
-        { name: "Senior", count: 1 },
-      ],
-    },
+    ],
   ]);
-  expect(v.seasons[1]).toMatchObject({ members: 3, stayed: 1, joined: 2, left: 1, rate: 50 });
-  // Nothing of the other club; the coach without the directory right is refused.
+  expect(v.seasons[1].retention).toEqual({ stayed: 1, joined: 2, left: 1, rate: 50 });
+  // Nothing of the other club; a coach who supervises no team sees no one (wave 16, S2: coaches see their own teams).
   expect(JSON.stringify(v)).not.toContain("Autres");
-  await expect(retentionView(db, coach)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  const c = (await clubStatistics(db, coach, "headcount", {})) as { seasons: { total: number }[] };
+  expect(c.seasons.map((s) => s.total)).toEqual([0, 0]);
 });
 
 it("gives the team colours to the monthly lines", async () => {

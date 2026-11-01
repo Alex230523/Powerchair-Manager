@@ -72,7 +72,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       {
         title: "Calendrier et présences",
-        text: "Entraînements, convocations, réponses et pointage le jour même.",
+        text: "Entraînements, invitations, réponses et pointage le jour même.",
       },
       {
         title: "Inscriptions et documents",
@@ -132,7 +132,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Départ en déplacement",
       grant: "Subside : dossier ou justificatif",
       partner: "Partenaire : relance ou renouvellement",
-      accounts: "Comptes annuels : assemblée ou dépôt",
+      accounts: "Statut du club : comptes ou obligation",
     },
     responseNeeded: "Réponse attendue",
     cancelled: "Annulé",
@@ -151,7 +151,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       myAttendance: {
         title: "Présences à confirmer",
-        text: "Convocations qui attendent votre réponse",
+        text: "Invitations qui attendent votre réponse",
       },
       myDocuments: {
         title: "Documents à fournir",
@@ -160,6 +160,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       myApplications: {
         title: "Dossiers à compléter",
         text: "Le club attend des compléments",
+      },
+      myTasks: {
+        title: "Mes tâches",
+        text: "À faire dans les 14 jours, ou en retard",
       },
       registrationsReview: {
         title: "Inscriptions à examiner",
@@ -201,6 +205,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Documents manquants",
         text: "Demandés, non déposés ou refusés",
       },
+      teamsOverCapacity: {
+        title: "Équipes au-delà de leurs places",
+        text: "Plus de joueurs que de places : revoyez les places ou les affectations",
+      },
       documentsExpiring: {
         title: "Expirent sous 30 jours",
         text: "À anticiper",
@@ -223,6 +231,12 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         hint: "Montant prévu, paiements suivis au lot bancaire",
       },
       myNextDue: { label: "Ma prochaine échéance" },
+      seasonPlayers: { label: "Joueurs", hint: "Toutes équipes de la saison" },
+      seasonTeams: { label: "Équipes" },
+      seasonCoaches: { label: "Coachs", hint: "Coachs et assistants" },
+      chairs: { label: "Fauteuils", hint: "Fauteuils du club" },
+      trainingsDone: { label: "Entraînements faits", hint: "Cette saison" },
+      matchesPlayed: { label: "Matchs joués", hint: "Cette saison, chaque match compte" },
     },
   },
   nl: {
@@ -238,7 +252,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       {
         title: "Kalender en aanwezigheid",
-        text: "Trainingen, oproepingen, antwoorden en registratie op de dag zelf.",
+        text: "Trainingen, uitnodigingen, antwoorden en registratie op de dag zelf.",
       },
       {
         title: "Inschrijvingen en documenten",
@@ -297,7 +311,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Vertrek verplaatsing",
       grant: "Subsidie: dossier of verantwoording",
       partner: "Partner: opvolging of verlenging",
-      accounts: "Jaarrekening: algemene vergadering of neerlegging",
+      accounts: "Statuut van de club: rekeningen of verplichting",
     },
     responseNeeded: "Antwoord verwacht",
     cancelled: "Geannuleerd",
@@ -316,7 +330,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       myAttendance: {
         title: "Aanwezigheid te bevestigen",
-        text: "Oproepingen wachten op je antwoord",
+        text: "Uitnodigingen wachten op je antwoord",
       },
       myDocuments: {
         title: "Documenten aan te leveren",
@@ -325,6 +339,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       myApplications: {
         title: "Dossiers aan te vullen",
         text: "De club wacht op aanvullingen",
+      },
+      myTasks: {
+        title: "Mijn taken",
+        text: "Te doen binnen 14 dagen, of te laat",
       },
       registrationsReview: {
         title: "Inschrijvingen te beoordelen",
@@ -366,6 +384,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Ontbrekende documenten",
         text: "Gevraagd, niet geüpload of geweigerd",
       },
+      teamsOverCapacity: {
+        title: "Teams boven hun plaatsen",
+        text: "Meer spelers dan plaatsen: herzie de plaatsen of de toewijzingen",
+      },
       documentsExpiring: {
         title: "Verlopen binnen 30 dagen",
         text: "Tijdig opvolgen",
@@ -388,6 +410,12 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         hint: "Gepland bedrag, betalingen volgen in de bankfase",
       },
       myNextDue: { label: "Mijn volgende vervaldag" },
+      seasonPlayers: { label: "Spelers", hint: "Alle teams van het seizoen" },
+      seasonTeams: { label: "Teams" },
+      seasonCoaches: { label: "Coaches", hint: "Coaches en assistenten" },
+      chairs: { label: "Rolstoelen", hint: "Rolstoelen van de club" },
+      trainingsDone: { label: "Gegeven trainingen", hint: "Dit seizoen" },
+      matchesPlayed: { label: "Gespeelde wedstrijden", hint: "Dit seizoen, elke wedstrijd telt" },
     },
   },
   en: {
@@ -403,7 +431,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       {
         title: "Calendar and attendance",
-        text: "Training sessions, call-ups, answers and same-day check-in.",
+        text: "Training sessions, invitations, answers and same-day check-in.",
       },
       {
         title: "Registrations and documents",
@@ -462,7 +490,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       trip: "Trip departure",
       grant: "Grant: application or report",
       partner: "Partner: follow-up or renewal",
-      accounts: "Annual accounts: assembly or filing",
+      accounts: "Club status: accounts or obligation",
     },
     responseNeeded: "Answer needed",
     cancelled: "Cancelled",
@@ -481,7 +509,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       },
       myAttendance: {
         title: "Attendance to confirm",
-        text: "Call-ups waiting for your answer",
+        text: "Invitations waiting for your answer",
       },
       myDocuments: {
         title: "Documents to provide",
@@ -490,6 +518,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       myApplications: {
         title: "Applications to complete",
         text: "The club is waiting for more information",
+      },
+      myTasks: {
+        title: "My tasks",
+        text: "Due within 14 days, or late",
       },
       registrationsReview: {
         title: "Registrations to review",
@@ -531,6 +563,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Missing documents",
         text: "Requested, not uploaded or refused",
       },
+      teamsOverCapacity: {
+        title: "Teams over their places",
+        text: "More players than places: review the places or the assignments",
+      },
       documentsExpiring: {
         title: "Expiring within 30 days",
         text: "Plan ahead",
@@ -553,6 +589,12 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         hint: "Scheduled amount, payments tracked with the bank module",
       },
       myNextDue: { label: "My next instalment" },
+      seasonPlayers: { label: "Players", hint: "Every team of the season" },
+      seasonTeams: { label: "Teams" },
+      seasonCoaches: { label: "Coaches", hint: "Coaches and assistants" },
+      chairs: { label: "Wheelchairs", hint: "The club's wheelchairs" },
+      trainingsDone: { label: "Trainings held", hint: "This season" },
+      matchesPlayed: { label: "Matches played", hint: "This season, every match counts" },
     },
   },
 };

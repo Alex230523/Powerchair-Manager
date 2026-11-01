@@ -16,11 +16,12 @@ export const editableKinds = [
   "registration_link",
   "license_update",
   "funding_task",
+  "dues_issued",
 ] as const;
 /** Club-written mails: the text comes from the club, not from a template. */
-export const clubWrittenKinds = ["club_newsletter", "event_mail"] as const;
+export const clubWrittenKinds = ["club_newsletter", "event_mail", "automation"] as const;
 /** Built by the platform from the person's own figures (wave 15, C7); not editable by the club. */
-export const builtKinds = ["weekly_digest"] as const;
+export const builtKinds = ["weekly_digest", "tax_receipt", "tax_identity"] as const;
 export const allKinds = [
   "auth_verify",
   "auth_reset",
@@ -48,9 +49,18 @@ export type Variables = {
   /** Club-written mails (newsletter, event mail): subject and text. */
   title?: string;
   message?: string;
+  /** B1: the dues account and the fee's structured communication. */
+  iban?: string;
+  reference?: string;
 };
 export type Template = { subject: string; body: string };
 export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
+  // B7: an automation's message, written per rule (and per club) with its variables already filled in.
+  automation: {
+    fr: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+    nl: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+    en: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
+  },
   club_newsletter: {
     fr: {
       subject: "{title}",
@@ -71,6 +81,35 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     nl: { subject: "{title}", body: "{message}" },
     en: { subject: "{title}", body: "{message}" },
   },
+  // B8: to a donor (no account): the private link to their receipt, and the secure form for their national number.
+  tax_receipt: {
+    fr: {
+      subject: "Attestation fiscale {details} · {organization}",
+      body: "Bonjour {name},\nMerci pour votre soutien. Votre attestation fiscale pour les dons de {details} (total : {amount}) est disponible ici :\n{url}\nElle est aussi transmise à l'administration fiscale via Belcotax-on-Web.\n{organization}",
+    },
+    nl: {
+      subject: "Fiscaal attest {details} · {organization}",
+      body: "Hallo {name},\nBedankt voor uw steun. Uw fiscaal attest voor de giften van {details} (totaal: {amount}) staat hier klaar:\n{url}\nHet wordt ook via Belcotax-on-Web aan de belastingadministratie bezorgd.\n{organization}",
+    },
+    en: {
+      subject: "Tax receipt {details} · {organization}",
+      body: "Hello {name},\nThank you for your support. Your tax receipt for the gifts of {details} (total: {amount}) is available here:\n{url}\nIt is also sent to the tax administration through Belcotax-on-Web.\n{organization}",
+    },
+  },
+  tax_identity: {
+    fr: {
+      subject: "Votre numéro national pour l'attestation fiscale · {organization}",
+      body: "Bonjour {name},\nPour vous délivrer une attestation fiscale pour vos dons, la loi demande votre numéro de registre national. Vous pouvez le donner en toute sécurité sur cette page (lien valable 30 jours) :\n{url}\nNe l'écrivez jamais dans la communication d'un virement.\n{organization}",
+    },
+    nl: {
+      subject: "Uw rijksregisternummer voor het fiscaal attest · {organization}",
+      body: "Hallo {name},\nOm u een fiscaal attest voor uw giften te bezorgen, vraagt de wet uw rijksregisternummer. U kunt het veilig opgeven op deze pagina (link 30 dagen geldig):\n{url}\nSchrijf het nooit in de mededeling van een overschrijving.\n{organization}",
+    },
+    en: {
+      subject: "Your national number for the tax receipt · {organization}",
+      body: "Hello {name},\nTo give you a tax receipt for your gifts, the law asks for your national register number. You can give it safely on this page (link valid for 30 days):\n{url}\nNever write it in a bank transfer's communication.\n{organization}",
+    },
+  },
   event_mail: {
     fr: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
     nl: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
@@ -88,6 +127,20 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     en: {
       subject: "Membership fee reminder · {person}",
       body: "Hello {name},\nUnless we are mistaken, the membership fee for {person} is not settled yet.\nAmount: {amount}\nDue: {due}\n{details}\nIf you have already paid, please ignore this message.\nKind regards,\n{organization}\n{url}",
+    },
+  },
+  dues_issued: {
+    fr: {
+      subject: "Cotisation {organization} · {person}",
+      body: "Bonjour {name},\nLa cotisation de {person} est émise.\nMontant : {amount}\nÉchéancier :\n{details}\nPremière échéance : {due}\nVirement sur le compte {iban} avec la communication structurée {reference} (ou celle de chaque échéance ci-dessus). Le QR de virement est dans votre espace.\n{url}\nSportivement,\n{organization}",
+    },
+    nl: {
+      subject: "Lidgeld {organization} · {person}",
+      body: "Hallo {name},\nHet lidgeld van {person} is aangemaakt.\nBedrag: {amount}\nBetalingsplan:\n{details}\nEerste vervaldag: {due}\nOverschrijving op rekening {iban} met de gestructureerde mededeling {reference} (of die van elke vervaldag hierboven). De overschrijvings-QR staat in uw ruimte.\n{url}\nSportieve groeten,\n{organization}",
+    },
+    en: {
+      subject: "Membership fee {organization} · {person}",
+      body: "Hello {name},\nThe membership fee for {person} has been issued.\nAmount: {amount}\nSchedule:\n{details}\nFirst due date: {due}\nTransfer to the account {iban} with the structured communication {reference} (or that of each instalment above). The transfer QR is in your space.\n{url}\nKind regards,\n{organization}",
     },
   },
   document_reminder: {
@@ -180,12 +233,12 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
       body: "An update is available in your secure workspace for {organization}.\n{url}",
     },
     fr: {
-      subject: "Convocations et présences · {organization}",
-      body: "Bonjour {name},\nUne convocation, une relance ou une alerte d’effectif est disponible. Consultez les informations à jour.\n{url}",
+      subject: "Invitations et présences · {organization}",
+      body: "Bonjour {name},\nUne invitation, une relance ou une alerte d’effectif est disponible. Consultez les informations à jour.\n{url}",
     },
     nl: {
-      subject: "Oproepen en aanwezigheid · {organization}",
-      body: "Hallo {name},\nEen oproep, herinnering of bezettingsmelding staat klaar. Bekijk de actuele informatie.\n{url}",
+      subject: "Uitnodigingen en aanwezigheid · {organization}",
+      body: "Hallo {name},\nEen uitnodiging, herinnering of bezettingsmelding staat klaar. Bekijk de actuele informatie.\n{url}",
     },
   },
   calendar_update: {
@@ -261,15 +314,15 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
   invitation: {
     en: {
       subject: "Invitation · {organization}",
-      body: "You are invited to {organization} as {role}. Use an account with this email address to accept the invitation. The link is valid for seven days.\n{url}",
+      body: "Hello {name},\n{organization} invites you to Powerchair Manager as {role}{team}.\nCreate your account: {url}\nThe link is valid for seven days.",
     },
     fr: {
       subject: "Invitation · {organization}",
-      body: "Vous êtes invité à rejoindre {organization} avec le rôle {role}.\nCréez ou utilisez un compte avec cette adresse, puis acceptez l’invitation.\n{url}\nLe lien est valable sept jours.",
+      body: "Bonjour {name},\n{organization} vous invite sur Powerchair Manager comme {role}{team}.\nCréer mon compte : {url}\nLe lien est valable sept jours.",
     },
     nl: {
       subject: "Uitnodiging · {organization}",
-      body: "U bent uitgenodigd voor {organization} als {role}.\nMaak of gebruik een account met dit adres en accepteer de uitnodiging.\n{url}\nDe link is zeven dagen geldig.",
+      body: "Hallo {name},\n{organization} nodigt u uit op Powerchair Manager als {role}{team}.\nMijn account aanmaken: {url}\nDe link is zeven dagen geldig.",
     },
   },
   access_changed: {
@@ -332,8 +385,12 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
 const allowed: Record<Kind, string[]> = {
   club_newsletter: ["title", "message", "organization", "url"],
   event_mail: ["title", "message", "organization", "url"],
+  automation: ["title", "message", "organization", "url"],
   weekly_digest: ["title", "message", "url"],
+  tax_receipt: ["name", "organization", "url", "amount", "details"],
+  tax_identity: ["name", "organization", "url"],
   attendance_update: ["name", "organization", "url"],
+  dues_issued: ["name", "organization", "url", "person", "amount", "due", "details", "iban", "reference"],
   dues_reminder: [
     "name",
     "organization",
@@ -361,7 +418,7 @@ const allowed: Record<Kind, string[]> = {
   registration_update: ["name", "organization", "url"],
   auth_verify: ["name", "url"],
   auth_reset: ["name", "url"],
-  invitation: ["organization", "role", "url"],
+  invitation: ["name", "organization", "role", "team", "url"],
   access_changed: ["organization", "url"],
   team_assignment: ["organization", "url"],
   family_access: ["organization", "url"],

@@ -1,7 +1,7 @@
 import { notificationAllowed as attendanceAllowed } from "../attendance/access";
 import { notificationAllowed as calendarAllowed } from "../calendar/access";
 import { notificationAllowed } from "../documents/access";
-import type { Db, Category, ResourceType, Envelope } from "./queue";
+import { deceasedUser, type Db, type Category, type ResourceType, type Envelope } from "./queue";
 import {
   permissions,
   isAdmin,
@@ -72,6 +72,21 @@ async function addressAllowed(db: Db, target: Target, envelope?: Envelope) {
     return newsletterAllowed(db, target, envelope);
   if (target.resource_type === "event_mail")
     return eventMailAllowed(db, target, null, envelope);
+  // B9: a person registered to an open event, at the address given (the registration still exists).
+  if (target.resource_type === "open_event")
+    return !!(
+      await db.query("SELECT 1 FROM open_registration WHERE id::text=$1 AND organization_id=$2 AND lower(email)=lower($3)", [target.resource_id, target.organization_id, envelope.email])
+    ).rowCount;
+  // B8: a donor of an approved club, at the address the club keeps (the request still open, the receipt still current).
+  if (target.resource_type === "tax")
+    return !!(
+      await db.query(
+        target.kind === "tax_identity"
+          ? "SELECT 1 FROM tax_donor d JOIN organization o ON o.id=d.organization_id AND o.tax_approved WHERE d.id::text=$1 AND d.organization_id=$2 AND lower(d.email)=lower($3) AND EXISTS (SELECT 1 FROM tax_identity_request q WHERE q.donor_id=d.id AND q.used_at IS NULL AND q.expires_at>now())"
+          : "SELECT 1 FROM tax_receipt r JOIN tax_donor d ON d.id=r.donor_id JOIN organization o ON o.id=r.organization_id AND o.tax_approved WHERE r.id::text=$1 AND r.organization_id=$2 AND r.status='issued' AND lower(d.email)=lower($3)",
+        [target.resource_id, target.organization_id, envelope.email],
+      )
+    ).rowCount;
   return false;
 }
 export type Target = {
@@ -113,6 +128,8 @@ export async function allowed(
     );
   }
   if (!target.recipient_user_id) return addressAllowed(db, target, envelope);
+  // Wave 17 (J1): no email any more to a person who has died, whatever was queued before.
+  if (target.resource_type !== "auth" && (await deceasedUser(db, target.recipient_user_id))) return false;
   const result = await db.query(
     'SELECT id,email,active,"emailVerified" FROM "user" WHERE id=$1',
     [target.recipient_user_id],
@@ -138,12 +155,26 @@ export async function allowed(
   // Reminders point at the person concerned (resource = their profile).
   if (target.kind === "dues_reminder" || target.kind === "document_reminder")
     return speaksFor(db, target.organization_id, target.resource_id, user.id);
+  // B4: a fee issued (resource = the receivable) reaches the person concerned or a current representative, while it is still open.
+  if (target.kind === "dues_issued") {
+    const r = (await db.query("SELECT profile_id FROM dues_receivable WHERE id::text=$1 AND organization_id=$2 AND status='open'", [target.resource_id, target.organization_id])).rows[0];
+    return !!r && speaksFor(db, target.organization_id, r.profile_id, user.id);
+  }
   if (target.resource_type === "newsletter")
     return newsletterAllowed(db, target, envelope);
   if (target.resource_type === "event_mail")
     return eventMailAllowed(db, target, user.id, envelope);
   if (target.resource_type === "attendance")
     return attendanceAllowed(db, user.id, target.resource_id);
+  // B7: an automation's message reaches a person still linked to the club (an active account or profile).
+  if (target.resource_type === "automation")
+    return !!(
+      await db.query(
+        `SELECT 1 FROM organization_membership WHERE organization_id=$1 AND user_id=$2 AND active
+         UNION ALL SELECT 1 FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.organization_id=$1 AND p.user_id=$2 AND c.status='active'`,
+        [target.organization_id, user.id],
+      )
+    ).rowCount;
   if (target.resource_type === "calendar")
     return calendarAllowed(db, user.id, target.resource_id);
   if (target.resource_type === "document")
