@@ -139,7 +139,7 @@ it("serves a public calendar that can be revoked", async () => {
 it("gives the API what its key allows, at its rate, until it is revoked", async () => {
   const { key, id } = (await run(president, { action: "createKey", name: "Site du club", scopes: ["read:matches"] })) as { key: string; id: string };
   expect((await integrationsView(db, president)).keys[0]).toMatchObject({ name: "Site du club", scopes: ["read:matches"] });
-  expect(JSON.stringify(await integrationsView(db, president))).not.toContain(key.split("_")[2]);
+  expect(JSON.stringify(await integrationsView(db, president))).not.toContain(key.slice(13));
   const auth = await apiAuth(db, `Bearer ${key}`, "read:matches");
   expect(auth.organization).toBe(clubA);
   const matches = await apiMatches(db, auth.organization, null, null);
