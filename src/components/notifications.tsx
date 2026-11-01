@@ -9,6 +9,7 @@ import { notificationCopy, notificationErrors } from "./notifications-copy";
 import { errors } from "./access-copy";
 import { peopleErrors } from "./people-copy";
 import { Panel, Button, PageHeader, Card } from "./ui";
+import { PushSettings } from "./push-settings";
 import { WeeklyDigest } from "./weekly-digest";
 type View = Awaited<ReturnType<typeof notificationView>>;
 const variables: Record<string, string[]> = {
@@ -324,6 +325,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                 {t.test}
               </Button>
             </Panel>
+            <PushSettings locale={locale} />
             {data.digest && <WeeklyDigest locale={locale} digest={data.digest} send={digestSend} />}
             {data.manage && (
               <>

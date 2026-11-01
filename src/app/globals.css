@@ -10123,3 +10123,11 @@ ul.task-page li {
 .report-breakdown {
   margin-top: 12px;
 }
+
+/* B4: the phone topics of each club. */
+.push-topics {
+  margin: 12px 0 0;
+}
+.push-topics .check {
+  min-height: 44px;
+}

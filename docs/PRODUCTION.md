@@ -50,6 +50,9 @@ Quotas vérifiés le 22 octobre 2026 sur les pages officielles (liens en fin de 
 | `STORAGE_DRIVER` | non | `postgres` (seule valeur aujourd'hui) |
 | `PFM_CONTACT_EMAIL` | non | Adresse affichée aux fédérations |
 | `PFM_LOCAL_MAIL` | **jamais** en production | Capture locale des emails |
+| `PFM_VAPID_PUBLIC_KEY`, `PFM_VAPID_PRIVATE_KEY` | pour les notifications sur téléphone (B4) | Paire de clés VAPID, générée une fois avec `node scripts/vapid-keys.mjs` ; la clé privée reste secrète, la changer désabonne tous les appareils |
+| `PFM_VAPID_SUBJECT` | avec les clés | `mailto:` ou `https://` de contact pour les services de notification |
+| `PUSH_TRANSPORT` | non | `web` par défaut en production avec les clés ; `local` écrit les notifications dans `PFM_PUSH_DIR` |
 
 Secrets de GitHub (modèles de workflow) : `PFM_URL`, `CRON_SECRET`, `PROD_DATABASE_URL`, `BACKUP_PASSPHRASE`.
 

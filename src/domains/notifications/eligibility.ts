@@ -150,6 +150,11 @@ export async function allowed(
   // Reminders point at the person concerned (resource = their profile).
   if (target.kind === "dues_reminder" || target.kind === "document_reminder")
     return speaksFor(db, target.organization_id, target.resource_id, user.id);
+  // B4: a fee issued (resource = the receivable) reaches the person concerned or a current representative, while it is still open.
+  if (target.kind === "dues_issued") {
+    const r = (await db.query("SELECT profile_id FROM dues_receivable WHERE id::text=$1 AND organization_id=$2 AND status='open'", [target.resource_id, target.organization_id])).rows[0];
+    return !!r && speaksFor(db, target.organization_id, r.profile_id, user.id);
+  }
   if (target.resource_type === "newsletter")
     return newsletterAllowed(db, target, envelope);
   if (target.resource_type === "event_mail")
