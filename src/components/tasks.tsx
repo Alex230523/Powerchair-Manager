@@ -112,7 +112,13 @@ export function Tasks({
     [editing, setEditing] = useState<null | { category: Category } | TaskRow>(null),
     [detail, setDetail] = useState<string | null>(openTask ?? null),
     [year, setYear] = useState(false),
-    [asked, setAsked] = useState(create);
+    [asked, setAsked] = useState(create),
+    [lastCreate, setLastCreate] = useState(create);
+  // Ctrl+K on the tasks page itself: the same page gets « ?new=1 » without remounting.
+  if (create !== lastCreate) {
+    setLastCreate(create);
+    if (create) setAsked(true);
+  }
   // « ?new=1 » waits for the rights before opening, once.
   if (asked && data) {
     setAsked(false);
