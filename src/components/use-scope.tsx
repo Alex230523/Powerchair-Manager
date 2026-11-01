@@ -13,6 +13,8 @@ export { defaultSeasonId, resolve };
  */
 export type ScopeValue = {
   organizationId: string | null;
+  /** B8: the club is approved for tax receipts (the module shows only then). */
+  taxApproved: boolean;
   seasons: SeasonOption[];
   teams: TeamOption[];
   seasonId: string | null;
@@ -26,6 +28,7 @@ export type ScopeValue = {
 };
 const empty: ScopeValue = {
   organizationId: null,
+  taxApproved: false,
   seasons: [],
   teams: [],
   seasonId: null,
@@ -97,11 +100,13 @@ function UrlReader({ onChange }: { onChange: (raw: Raw) => void }) {
 }
 export function ScopeProvider({
   organizationId,
+  taxApproved = false,
   seasons,
   teams,
   children,
 }: {
   organizationId: string | null;
+  taxApproved?: boolean;
   seasons: SeasonOption[];
   teams: TeamOption[];
   children: ReactNode;
@@ -140,6 +145,7 @@ export function ScopeProvider({
   const value = useMemo<ScopeValue>(
     () => ({
       organizationId,
+      taxApproved,
       seasons,
       teams,
       seasonId,
@@ -150,7 +156,7 @@ export function ScopeProvider({
       setSeason: (id) => navigate(id, null),
       setTeam: (id) => navigate(seasonId, id),
     }),
-    [organizationId, seasons, teams, seasonId, teamId, navigate],
+    [organizationId, taxApproved, seasons, teams, seasonId, teamId, navigate],
   );
   return (
     <ScopeContext.Provider value={value}>

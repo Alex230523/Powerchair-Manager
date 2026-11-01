@@ -3,6 +3,7 @@ import { processOne, recoverExpired } from "../notifications/worker";
 import { createTransport } from "../notifications/transport";
 import { digestTick } from "../digest/service";
 import { sweepDocuments } from "../documents/service";
+import { taxPurge } from "../tax/service";
 import { eventMailTick } from "../communication/service";
 import { fundingTaskTick } from "../funding/service";
 import { affiliationTick } from "../affiliations/service";
@@ -40,11 +41,11 @@ export const jobs = {
       return { recovered, digests, processed: sent, deferred: budget.allowed === 0 ? budget.pending : 0, sentToday: budget.sentToday + sent };
     },
   },
-  /** Documents that expire. */
+  /** Documents that expire, and (B8) donors' data ten years after their last gift. */
   documents: {
     every: 60,
     async run(db) {
-      return { expired: await sweepDocuments(db) };
+      return { expired: await sweepDocuments(db), taxPurged: await taxPurge(db) };
     },
   },
   /** Attendance (the « convocation sans réponse » automation, B7) and the event mails prepared for a given time. */

@@ -19,6 +19,8 @@ export const ruleKeys = [
   "sponsorRenewal",
   "sponsorQuiet",
   "taskLate",
+  /** B8: the Belcotax-on-Web filing of the tax receipts, for an approved club only. */
+  "taxDeadline",
 ] as const;
 export type RuleKey = (typeof ruleKeys)[number];
 export type Recipients = "person" | "president" | "responsible";
@@ -49,6 +51,8 @@ export const catalog: Record<RuleKey, RuleDef> = {
   sponsorQuiet: { builtin: false, enabled: false, modules: ["finance"], delay: { value: 90, min: 30, max: 365 }, recipients: ["responsible", "president"], actions: ["notify", "email", "task"], defaultActions: ["notify", "email"], category: "sponsors" },
   // Tasks created by an automation are never « late » for this rule: no loop between rules.
   taskLate: { builtin: false, enabled: false, modules: [], delay: { value: 1, min: 0, max: 60 }, recipients: ["responsible"], actions: ["notify", "email"], defaultActions: ["notify", "email"] },
+  // On by default, but only a club approved for tax receipts ever sees or runs it.
+  taxDeadline: { builtin: false, enabled: true, modules: ["finance"], delay: { value: 30, min: 7, max: 90 }, recipients: ["president"], actions: ["notify", "email", "task"], defaultActions: ["notify", "email", "task"], category: "admin" },
 };
 
 /** The message of a non built-in rule, editable per club; {person}, {about}, {date}, {organization}. */
@@ -73,6 +77,11 @@ export const defaultMessages: Record<Exclude<RuleKey, "duesReminder" | "callNoAn
     fr: { subject: "Sponsor sans nouvelles · {about}", body: "Bonjour,\nAucun contact avec {about} depuis le {date}. Un appel ou un mot suffit pour garder le lien." },
     nl: { subject: "Sponsor zonder nieuws · {about}", body: "Hallo,\nGeen contact met {about} sinds {date}. Een telefoontje of een berichtje volstaat om de band te houden." },
     en: { subject: "Sponsor without news · {about}", body: "Hello,\nNo contact with {about} since {date}. A call or a short note keeps the link alive." },
+  },
+  taxDeadline: {
+    fr: { subject: "Attestations fiscales à déposer · {about}", body: "Bonjour,\nLes fiches 281.71 des dons ({about}) sont à déposer sur Belcotax-on-Web au plus tard le {date}. Émettez les attestations et téléchargez le fichier dans Finances › Attestations fiscales." },
+    nl: { subject: "Fiscale attesten in te dienen · {about}", body: "Hallo,\nDe fiches 281.71 van de giften ({about}) moeten uiterlijk op {date} via Belcotax-on-Web ingediend worden. Reik de attesten uit en download het bestand in Financiën › Fiscale attesten." },
+    en: { subject: "Tax receipts to file · {about}", body: "Hello,\nThe 281.71 fiches of the gifts ({about}) must be filed on Belcotax-on-Web by {date}. Issue the receipts and download the file in Finances › Tax receipts." },
   },
   taskLate: {
     fr: { subject: "Tâche en retard · {about}", body: "Bonjour {person},\nLa tâche « {about} » était prévue pour le {date}." },

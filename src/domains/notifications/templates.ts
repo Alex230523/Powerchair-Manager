@@ -21,7 +21,7 @@ export const editableKinds = [
 /** Club-written mails: the text comes from the club, not from a template. */
 export const clubWrittenKinds = ["club_newsletter", "event_mail", "automation"] as const;
 /** Built by the platform from the person's own figures (wave 15, C7); not editable by the club. */
-export const builtKinds = ["weekly_digest"] as const;
+export const builtKinds = ["weekly_digest", "tax_receipt", "tax_identity"] as const;
 export const allKinds = [
   "auth_verify",
   "auth_reset",
@@ -80,6 +80,35 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
     fr: { subject: "{title}", body: "{message}" },
     nl: { subject: "{title}", body: "{message}" },
     en: { subject: "{title}", body: "{message}" },
+  },
+  // B8: to a donor (no account): the private link to their receipt, and the secure form for their national number.
+  tax_receipt: {
+    fr: {
+      subject: "Attestation fiscale {details} · {organization}",
+      body: "Bonjour {name},\nMerci pour votre soutien. Votre attestation fiscale pour les dons de {details} (total : {amount}) est disponible ici :\n{url}\nElle est aussi transmise à l'administration fiscale via Belcotax-on-Web.\n{organization}",
+    },
+    nl: {
+      subject: "Fiscaal attest {details} · {organization}",
+      body: "Hallo {name},\nBedankt voor uw steun. Uw fiscaal attest voor de giften van {details} (totaal: {amount}) staat hier klaar:\n{url}\nHet wordt ook via Belcotax-on-Web aan de belastingadministratie bezorgd.\n{organization}",
+    },
+    en: {
+      subject: "Tax receipt {details} · {organization}",
+      body: "Hello {name},\nThank you for your support. Your tax receipt for the gifts of {details} (total: {amount}) is available here:\n{url}\nIt is also sent to the tax administration through Belcotax-on-Web.\n{organization}",
+    },
+  },
+  tax_identity: {
+    fr: {
+      subject: "Votre numéro national pour l'attestation fiscale · {organization}",
+      body: "Bonjour {name},\nPour vous délivrer une attestation fiscale pour vos dons, la loi demande votre numéro de registre national. Vous pouvez le donner en toute sécurité sur cette page (lien valable 30 jours) :\n{url}\nNe l'écrivez jamais dans la communication d'un virement.\n{organization}",
+    },
+    nl: {
+      subject: "Uw rijksregisternummer voor het fiscaal attest · {organization}",
+      body: "Hallo {name},\nOm u een fiscaal attest voor uw giften te bezorgen, vraagt de wet uw rijksregisternummer. U kunt het veilig opgeven op deze pagina (link 30 dagen geldig):\n{url}\nSchrijf het nooit in de mededeling van een overschrijving.\n{organization}",
+    },
+    en: {
+      subject: "Your national number for the tax receipt · {organization}",
+      body: "Hello {name},\nTo give you a tax receipt for your gifts, the law asks for your national register number. You can give it safely on this page (link valid for 30 days):\n{url}\nNever write it in a bank transfer's communication.\n{organization}",
+    },
   },
   event_mail: {
     fr: { subject: "{title}", body: "{message}\n\n{organization}\n{url}" },
@@ -358,6 +387,8 @@ const allowed: Record<Kind, string[]> = {
   event_mail: ["title", "message", "organization", "url"],
   automation: ["title", "message", "organization", "url"],
   weekly_digest: ["title", "message", "url"],
+  tax_receipt: ["name", "organization", "url", "amount", "details"],
+  tax_identity: ["name", "organization", "url"],
   attendance_update: ["name", "organization", "url"],
   dues_issued: ["name", "organization", "url", "person", "amount", "due", "details", "iban", "reference"],
   dues_reminder: [

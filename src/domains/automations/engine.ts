@@ -1,3 +1,4 @@
+import { belcotaxDeadline } from "../tax/rules";
 import type { Pool, PoolClient } from "pg";
 import { publish } from "../notifications/queue";
 import { brusselsToday } from "../people/service";
@@ -28,7 +29,7 @@ export type Occurrence = {
   url: string;
   recipients: Recipient[];
 };
-export type Club = { id: string; name: string; disabled: string[]; dues_rules: unknown; stopped: boolean };
+export type Club = { id: string; name: string; disabled: string[]; dues_rules: unknown; stopped: boolean; tax_approved?: boolean };
 
 const locale = (l: string | null | undefined): Locale => (l === "nl" || l === "en" ? l : "fr");
 const addDays = (iso: string, n: number) => {
@@ -70,7 +71,8 @@ export async function settingsOf(c: PoolClient | Pool, club: Club): Promise<Reco
   ) as Record<RuleKey, Settings>;
 }
 /** On, not paused, its modules on, the club not stopped. */
-export const active = (club: Club, s: Settings) => !club.stopped && s.enabled && !s.paused && catalog[s.rule].modules.every((m) => !club.disabled.includes(m));
+export const active = (club: Club, s: Settings) =>
+  !club.stopped && s.enabled && !s.paused && catalog[s.rule].modules.every((m) => !club.disabled.includes(m)) && (s.rule !== "taxDeadline" || !!club.tax_approved);
 
 /* ------------------------------------------------------------ Recipients */
 const userSql = `u.id AS "userId",u.email,u.name,COALESCE(pe.locale,'fr') AS locale`;
@@ -147,6 +149,13 @@ async function planGeneric(c: PoolClient, club: Club, s: Settings, today: string
       const list = s.recipients === "responsible" ? await to("responsible", r.responsible_id) : [];
       out.push({ entity: r.id, due: r.due, about: r.name, person: "", url: `/funding/grants-sponsors?vue=sponsoring&partner=${r.id}`, recipients: list.length ? list : await to("president", null) });
     }
+  if (s.rule === "taxDeadline") {
+    // The gifts of last year are filed by the end of February: from `delay` days before, once per year.
+    const year = Number(today.slice(0, 4)) - 1,
+      due = belcotaxDeadline(year);
+    if (today <= due && today >= addDays(due, -delay))
+      out.push({ entity: club.id, due, about: String(year), person: "", url: "/funding/tax", recipients: await to("president", null) });
+  }
   if (s.rule === "taskLate")
     for (const t of (
       await c.query(
@@ -305,7 +314,7 @@ async function journal(c: PoolClient, org: string, rule: RuleKey, result: "done"
  */
 export async function runAutomations(db: Pool, today = brusselsToday(), only?: RuleKey[]) {
   const clubs = (
-    await db.query("SELECT id,name,disabled_modules AS disabled,dues_rules,automations_stopped AS stopped FROM organization WHERE kind='club'")
+    await db.query("SELECT id,name,disabled_modules AS disabled,dues_rules,automations_stopped AS stopped,tax_approved FROM organization WHERE kind='club'")
   ).rows as Club[];
   const counts: Record<string, number> = { sent: 0, errors: 0 };
   const where: Record<"callNoAnswer" | "licenceExpiring" | "grantDeadline" | "sponsorRenewal", string[]> = { callNoAnswer: [], licenceExpiring: [], grantDeadline: [], sponsorRenewal: [] };

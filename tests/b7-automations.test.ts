@@ -6,8 +6,8 @@ import { clubWrittenKinds } from "../src/domains/notifications/templates";
 
 /** B7: the catalogue of automations and its texts. */
 describe("B7 automations", () => {
-  it("has the ten rules of the specification, each coherent", () => {
-    expect(ruleKeys).toHaveLength(10);
+  it("has the ten rules of the specification (and B8's filing reminder), each coherent", () => {
+    expect(ruleKeys).toHaveLength(11);
     for (const rule of ruleKeys) {
       const d = catalog[rule];
       expect(d.defaultActions.every((a) => d.actions.includes(a)), rule).toBe(true);
@@ -18,7 +18,8 @@ describe("B7 automations", () => {
       if (d.actions.includes("task")) expect(d.category, rule).toBeTruthy();
     }
     // The existing reminders keep running as before the engine.
-    expect(ruleKeys.filter((r) => catalog[r].enabled)).toEqual(["callNoAnswer", "licenceExpiring", "grantDeadline", "sponsorRenewal"]);
+    // B8's reminder is on too, but only an approved club ever runs it.
+    expect(ruleKeys.filter((r) => catalog[r].enabled)).toEqual(["callNoAnswer", "licenceExpiring", "grantDeadline", "sponsorRenewal", "taxDeadline"]);
     // « Tâche en retard » never creates a task: no loop between rules.
     expect(catalog.taskLate.actions).not.toContain("task");
   });

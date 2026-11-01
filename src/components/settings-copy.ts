@@ -110,6 +110,7 @@ const fr: Copy = {
     "notifications.manage": "Gérer les notifications",
     "dues.manage": "Gérer cotisations et finances",
     "dues.read": "Consulter cotisations et finances",
+    "tax.identity": "Numéros nationaux des donateurs (attestations fiscales)",
     "equipment.manage": "Gérer le matériel",
   },
   roles: {
@@ -185,6 +186,7 @@ const nl: Copy = {
     "notifications.manage": "Meldingen beheren",
     "dues.manage": "Bijdragen en financiën beheren",
     "dues.read": "Bijdragen en financiën raadplegen",
+    "tax.identity": "Rijksregisternummers van schenkers (fiscale attesten)",
     "equipment.manage": "Materiaal beheren",
   },
   roles: {
@@ -259,6 +261,7 @@ const en: Copy = {
     "notifications.manage": "Manage notifications",
     "dues.manage": "Manage dues and finance",
     "dues.read": "View dues and finance",
+    "tax.identity": "Donors' national numbers (tax receipts)",
     "equipment.manage": "Manage equipment",
   },
   roles: {

@@ -28,6 +28,8 @@ export const delegable = [
   "equipment.manage",
   "people.sensitive",
   "dues.read",
+  /** B8: a donor's national number, for the tax receipts (each opening is logged). */
+  "tax.identity",
 ] as const;
 export type Permission =
   "organization.read" | "mandates.manage" | (typeof delegable)[number];

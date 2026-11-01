@@ -72,6 +72,16 @@ async function addressAllowed(db: Db, target: Target, envelope?: Envelope) {
     return newsletterAllowed(db, target, envelope);
   if (target.resource_type === "event_mail")
     return eventMailAllowed(db, target, null, envelope);
+  // B8: a donor of an approved club, at the address the club keeps (the request still open, the receipt still current).
+  if (target.resource_type === "tax")
+    return !!(
+      await db.query(
+        target.kind === "tax_identity"
+          ? "SELECT 1 FROM tax_donor d JOIN organization o ON o.id=d.organization_id AND o.tax_approved WHERE d.id::text=$1 AND d.organization_id=$2 AND lower(d.email)=lower($3) AND EXISTS (SELECT 1 FROM tax_identity_request q WHERE q.donor_id=d.id AND q.used_at IS NULL AND q.expires_at>now())"
+          : "SELECT 1 FROM tax_receipt r JOIN tax_donor d ON d.id=r.donor_id JOIN organization o ON o.id=r.organization_id AND o.tax_approved WHERE r.id::text=$1 AND r.organization_id=$2 AND r.status='issued' AND lower(d.email)=lower($3)",
+        [target.resource_id, target.organization_id, envelope.email],
+      )
+    ).rowCount;
   return false;
 }
 export type Target = {

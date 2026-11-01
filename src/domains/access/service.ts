@@ -102,7 +102,7 @@ async function account(db: Db, p: Principal) {
 }
 async function active(db: Db, p: Principal) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules,o.tax_approved FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
     [p.sessionId, p.userId],
   );
   if (!result.rowCount) throw new AccessError("CONTEXT_REQUIRED");
@@ -110,12 +110,14 @@ async function active(db: Db, p: Principal) {
     organization_name: string;
     kind: "club" | "federation";
     disabled_modules: string[];
+    /** B8: the club is approved for tax receipts (the module shows only then). */
+    tax_approved: boolean;
   };
 }
 /** A mandate's context without a session (wave 15, C7: the weekly digest), with the same validity checks as active(). */
 async function mandateContext(db: Db, mandateId: string) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules,o.tax_approved FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
     [mandateId],
   );
   return (result.rows[0] ?? null) as Awaited<ReturnType<typeof active>> | null;
@@ -503,9 +505,12 @@ export async function execute(
         const own = permissions(context.role, context.grants);
         if (command.grants.some((g) => !own.includes(g)))
           throw new AccessError("FORBIDDEN");
+        // B8: tax.identity is given from the tax receipts page, never shown here: the
+        // rights screen keeps it as it was unless it names it.
+        const kept = target.grants.includes("tax.identity") && !command.grants.includes("tax.identity") ? ["tax.identity"] : [];
         await client.query(
           "UPDATE role_assignment SET grants=$3 WHERE id=$1 AND organization_id=$2",
-          [command.id, context.organization_id, [...new Set(command.grants)]],
+          [command.id, context.organization_id, [...new Set([...command.grants, ...kept])]],
         );
         // The rights journal shows what changed, not only that something did.
         await audit(

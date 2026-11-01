@@ -17,7 +17,8 @@ describe("wave 17, N1: finances", () => {
     expect(JSON.stringify(shellCopy)).not.toContain("Argent");
   });
   it("orders the tabs as the review asks", () => {
-    expect(financeSections).toEqual(["overview", "operations", "budget", "income", "affiliations", "statements", "accounts"]);
+    // « tax » (B8) last, shown only to a club approved for tax receipts.
+    expect(financeSections).toEqual(["overview", "operations", "budget", "income", "affiliations", "statements", "accounts", "tax"]);
     expect(shape(financeNavCopy.nl)).toEqual(shape(financeNavCopy.fr));
     expect(shape(financeSectionsCopy.en)).toEqual(shape(financeSectionsCopy.fr));
     for (const t of [financeNavCopy, financeSectionsCopy]) expect(JSON.stringify(t)).not.toMatch(/[–—]/);
