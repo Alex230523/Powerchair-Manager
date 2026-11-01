@@ -88,7 +88,7 @@ test("the contact book as a light CRM", async ({ page }) => {
     await grant.getByRole("button", { name: "+ Créer un contact" }).click();
     await grant.getByLabel("Nom", { exact: true }).fill("Sophie Échevine");
     await grant.getByRole("button", { name: "Créer et choisir" }).click();
-    await expect(grant.getByLabel("Contact", { exact: true })).toHaveValue(/[0-9a-f-]{36}/);
+    await expect(grant.getByRole("combobox", { name: "Contact", exact: true })).toHaveValue(/[0-9a-f-]{36}/);
     await grant.getByRole("button", { name: "Enregistrer", exact: true }).click();
     await expect(grant).toHaveCount(0);
     expect((await db.query("SELECT count(*)::int AS n FROM grant_application g JOIN contact c ON c.id=g.contact_id WHERE g.organization_id=$1 AND c.full_name='Sophie Échevine'", [club])).rows[0].n).toBe(1);
