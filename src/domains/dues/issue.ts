@@ -1,4 +1,7 @@
 import type { PoolClient } from "pg";
+import { duesAccount } from "../bank/service";
+import { formatReference } from "../bank/reference";
+import { formatIban } from "../../lib/iban";
 import { AccessError } from "../access/service";
 import { publish } from "../notifications/queue";
 import { installmentsFrom } from "../registrations/schema";
@@ -159,12 +162,14 @@ export async function tellFamilies(c: PoolClient, org: string, ids: string[]) {
   const base = process.env.BETTER_AUTH_URL ?? "";
   const rows = (
     await c.query(
-      `SELECT d.id,d.profile_id,cp.full_name,d.net_cents,o.name AS organization,
-              COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments
+      `SELECT d.id,d.profile_id,cp.full_name,d.net_cents,o.name AS organization,d.reference,
+              COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents,'reference',i.reference) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments
          FROM dues_receivable d JOIN club_person cp ON cp.id=d.profile_id JOIN organization o ON o.id=d.organization_id WHERE d.id=ANY($1::uuid[]) AND d.organization_id=$2 AND d.net_cents>0`,
       [ids, org],
     )
-  ).rows as { id: string; profile_id: string; full_name: string; net_cents: number; organization: string; installments: { due_on: string; amount_cents: number }[] }[];
+  ).rows as { id: string; profile_id: string; full_name: string; net_cents: number; organization: string; reference: string; installments: { due_on: string; amount_cents: number; reference: string }[] }[];
+  // B1: the account the families pay to; without one, the e-mail points to their space.
+  const account = await duesAccount(c, org);
   let sent = 0;
   for (const r of rows) {
     const people = (
@@ -197,7 +202,9 @@ export async function tellFamilies(c: PoolClient, org: string, ids: string[]) {
           person: r.full_name,
           amount: money(r.net_cents),
           due: r.installments[0] ? day(r.installments[0].due_on) : "",
-          details: r.installments.map((i) => `${day(i.due_on)} : ${money(i.amount_cents)}`).join("\n"),
+          details: r.installments.map((i) => `${day(i.due_on)} : ${money(i.amount_cents)} · ${formatReference(i.reference)}`).join("\n"),
+          iban: account ? formatIban(account.iban) : ({ fr: "indiqué dans votre espace", nl: "vermeld in uw ruimte", en: "shown in your space" } as const)[u.locale],
+          reference: formatReference(r.reference),
         },
       });
       sent++;

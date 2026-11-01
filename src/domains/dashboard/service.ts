@@ -296,8 +296,8 @@ export async function computeFor(
     );
   }
 
-  // Dues: scheduled instalments only. Payments and reconciliation arrive with lot 09,
-  // so nothing here claims that an amount is paid or late.
+  // Dues: the instalments scheduled in the next 30 days (the payments
+  // reconciled from the bank, B1, show on the dues page and in the reminders).
   if (club && on("dues") && has("dues.manage")) {
     scopes.push("dues");
     const next = await count(

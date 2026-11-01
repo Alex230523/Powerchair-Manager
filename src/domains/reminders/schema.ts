@@ -12,9 +12,9 @@ export type Command = z.infer<typeof commandSchema>;
 
 export type Installment = { due_on: string; amount_cents: number };
 /**
- * Dues situation of one receivable on a given day. Payments are recorded by the
- * bank module (lot 09); until then "overdue" means "due date passed", and the
- * treasurer decides who is really behind before sending a reminder.
+ * Dues situation of one receivable on a given day. The payments recorded (by
+ * hand or reconciled from a bank statement, B1) cover the oldest instalments
+ * first; what is left past its date is "overdue".
  */
 export function duesStatus(
   installments: Installment[],

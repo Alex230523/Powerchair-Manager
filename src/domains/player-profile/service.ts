@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { duesAccount } from "../bank/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { audit, AccessError, type Principal } from "../access/service";
 import {
@@ -234,14 +235,20 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
     const dues = can.viewMoney
       ? (
           await c.query(
-            "SELECT d.id,d.category,d.net_cents,d.status,COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments FROM dues_receivable d WHERE d.organization_id=$1 AND d.profile_id=$2 AND d.status='open' ORDER BY d.created_at DESC",
+            `SELECT d.id,d.category,d.net_cents,d.status,d.reference,
+                    (SELECT COALESCE(sum(t.amount_cents),0)::int FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in') AS paid_cents,
+                    COALESCE((SELECT json_agg(json_build_object('due_on',i.due_on::text,'amount_cents',i.amount_cents,'reference',i.reference) ORDER BY i.ordinal) FROM dues_installment i WHERE i.receivable_id=d.id),'[]') AS installments
+               FROM dues_receivable d WHERE d.organization_id=$1 AND d.profile_id=$2 AND d.status='open' ORDER BY d.created_at DESC`,
             [org, id],
           )
         ).rows
       : [];
 
+    // B1: the club's dues account, for the transfer QR (never a proof of payment).
+    const payment = dues.length ? await duesAccount(c, org) : null;
     return {
       today: day,
+      payment: payment && { iban: payment.iban, bic: payment.bic, holder: payment.holder || s.context.organization_name },
       context: {
         id: org,
         name: s.context.organization_name,

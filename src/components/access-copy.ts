@@ -158,6 +158,21 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "Een schijf wordt geregistreerd zodra de subsidie toegekend is.",
     en: "An instalment is recorded once the grant is awarded.",
   },
+  OVERPAID: {
+    fr: "Ce montant dépasse ce qui reste dû : mettez le surplus en crédit pour la famille.",
+    nl: "Dit bedrag is hoger dan wat nog openstaat: zet het overschot als tegoed voor het gezin.",
+    en: "This amount is more than what is left: put the surplus as a credit for the family.",
+  },
+  INVALID_IBAN: {
+    fr: "Cet IBAN n'est pas valide : vérifiez les chiffres.",
+    nl: "Dit IBAN is niet geldig: controleer de cijfers.",
+    en: "This IBAN is not valid: check the digits.",
+  },
+  CREDIT_TOO_LOW: {
+    fr: "Le crédit de cette personne ne couvre pas ce montant.",
+    nl: "Het tegoed van deze persoon dekt dit bedrag niet.",
+    en: "This person's credit does not cover this amount.",
+  },
   ALREADY_PAID: {
     fr: "Cette affiliation est déjà en ordre.",
     nl: "Deze aansluiting is al in orde.",

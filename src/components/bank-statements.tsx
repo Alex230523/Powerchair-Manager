@@ -9,12 +9,14 @@ import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { FinanceNav } from "./finance-nav";
 import { useData } from "./use-api";
+import { BankReconcile } from "./bank-reconcile";
 
 /**
  * Wave 17 (N1): Finances > Relevés de compte. The bank's statement of each
  * month is filed as proof (PDF or CSV); its closing balance, entered or read
- * from the CSV, is set beside the platform's cash on the same day. The
- * line-by-line reconciliation is lot 09's: only its place is kept here.
+ * from the CSV, is set beside the platform's cash on the same day. B1 (lot
+ * 09): below, the bank accounts, the statement import and the line-by-line
+ * reconciliation.
  */
 type Statement = {
   id: string;
@@ -172,9 +174,9 @@ export function BankStatements({ locale }: { locale: Locale }) {
           ) : (
             <EmptyState title={t.none} />
           )}
-          <p className="muted">{t.lot09}</p>
         </Card>
       )}
+      {data && <BankReconcile locale={locale} />}
       {adding && data && (
         <Modal title={t.upload} close={() => setAdding(false)}>
           <form

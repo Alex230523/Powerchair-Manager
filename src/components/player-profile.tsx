@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
 import type { playerProfileView } from "@/domains/player-profile/service";
+import { applyPayments } from "@/domains/reminders/schema";
+import { bankCopy } from "./bank-copy";
+import { TransferQr } from "./transfer-qr";
 import {
   classifications,
   controls,
@@ -581,21 +584,30 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
                   id: string;
                   category: string;
                   net_cents: number;
-                  installments: { due_on: string; amount_cents: number }[];
+                  reference: string;
+                  paid_cents: number;
+                  installments: { due_on: string; amount_cents: number; reference: string }[];
                 }) => {
-                  const next = d.installments.find(
-                    (i) => i.due_on >= view.today,
-                  );
+                  // B1: the next unpaid instalment (the payments recorded cover the oldest first).
+                  const unpaid = d.installments.length ? applyPayments(d.installments, d.paid_cents) : d.net_cents > d.paid_cents ? [{ due_on: "", amount_cents: d.net_cents - d.paid_cents, reference: d.reference }] : [];
+                  const next = unpaid[0] as { due_on: string; amount_cents: number; reference?: string } | undefined;
                   return (
-                    <li key={d.id}>
+                    <li key={d.id} className="profile-due">
                       <span>
                         <strong>{d.category}</strong> · {money(d.net_cents)}
                       </span>
-                      {next && (
+                      {next && next.due_on && (
                         <span className="muted">
                           {t.nextDue} : {money(next.amount_cents)} ·{" "}
                           {day(next.due_on)}
                         </span>
+                      )}
+                      {next && view.payment && (
+                        <details>
+                          <summary>{bankCopy[locale].pay}</summary>
+                          <p className="muted small">{bankCopy[locale].payIntro}</p>
+                          <TransferQr locale={locale} payment={view.payment} cents={next.amount_cents} reference={next.reference ?? d.reference} printHref={`/${locale}/players/${id}/payment/${d.id}`} />
+                        </details>
                       )}
                     </li>
                   );

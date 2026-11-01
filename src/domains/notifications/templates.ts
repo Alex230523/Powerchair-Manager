@@ -49,6 +49,9 @@ export type Variables = {
   /** Club-written mails (newsletter, event mail): subject and text. */
   title?: string;
   message?: string;
+  /** B1: the dues account and the fee's structured communication. */
+  iban?: string;
+  reference?: string;
 };
 export type Template = { subject: string; body: string };
 export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
@@ -100,15 +103,15 @@ export const builtin: Record<Kind, Record<"fr" | "nl" | "en", Template>> = {
   dues_issued: {
     fr: {
       subject: "Cotisation {organization} · {person}",
-      body: "Bonjour {name},\nLa cotisation de {person} est émise.\nMontant : {amount}\nÉchéancier :\n{details}\nPremière échéance : {due}\nLes détails et le moyen de paiement sont dans votre espace.\n{url}\nSportivement,\n{organization}",
+      body: "Bonjour {name},\nLa cotisation de {person} est émise.\nMontant : {amount}\nÉchéancier :\n{details}\nPremière échéance : {due}\nVirement sur le compte {iban} avec la communication structurée {reference} (ou celle de chaque échéance ci-dessus). Le QR de virement est dans votre espace.\n{url}\nSportivement,\n{organization}",
     },
     nl: {
       subject: "Lidgeld {organization} · {person}",
-      body: "Hallo {name},\nHet lidgeld van {person} is aangemaakt.\nBedrag: {amount}\nBetalingsplan:\n{details}\nEerste vervaldag: {due}\nDe details en de betaalwijze staan in uw ruimte.\n{url}\nSportieve groeten,\n{organization}",
+      body: "Hallo {name},\nHet lidgeld van {person} is aangemaakt.\nBedrag: {amount}\nBetalingsplan:\n{details}\nEerste vervaldag: {due}\nOverschrijving op rekening {iban} met de gestructureerde mededeling {reference} (of die van elke vervaldag hierboven). De overschrijvings-QR staat in uw ruimte.\n{url}\nSportieve groeten,\n{organization}",
     },
     en: {
       subject: "Membership fee {organization} · {person}",
-      body: "Hello {name},\nThe membership fee for {person} has been issued.\nAmount: {amount}\nSchedule:\n{details}\nFirst due date: {due}\nThe details and how to pay are in your space.\n{url}\nKind regards,\n{organization}",
+      body: "Hello {name},\nThe membership fee for {person} has been issued.\nAmount: {amount}\nSchedule:\n{details}\nFirst due date: {due}\nTransfer to the account {iban} with the structured communication {reference} (or that of each instalment above). The transfer QR is in your space.\n{url}\nKind regards,\n{organization}",
     },
   },
   document_reminder: {
@@ -356,7 +359,7 @@ const allowed: Record<Kind, string[]> = {
   automation: ["title", "message", "organization", "url"],
   weekly_digest: ["title", "message", "url"],
   attendance_update: ["name", "organization", "url"],
-  dues_issued: ["name", "organization", "url", "person", "amount", "due", "details"],
+  dues_issued: ["name", "organization", "url", "person", "amount", "due", "details", "iban", "reference"],
   dues_reminder: [
     "name",
     "organization",

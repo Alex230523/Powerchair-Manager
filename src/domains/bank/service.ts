@@ -459,11 +459,11 @@ async function takeCredit(s: Scope, profileId: string, cents: number) {
   for (const r of rows) {
     if (left <= 0) break;
     if (r.amount_cents <= left) {
-      await s.c.query("UPDATE finance_transaction SET credit_profile_id=NULL WHERE id=$1", [r.id]);
+      await s.c.query("UPDATE finance_transaction SET credit_profile_id=NULL WHERE id=$1 AND organization_id=$2", [r.id, s.org]);
       taken.push(r.id);
       left -= r.amount_cents;
     } else {
-      await s.c.query("UPDATE finance_transaction SET amount_cents=amount_cents-$2 WHERE id=$1", [r.id, left]);
+      await s.c.query("UPDATE finance_transaction SET amount_cents=amount_cents-$2 WHERE id=$1 AND organization_id=$3", [r.id, left, s.org]);
       taken.push(
         (
           await s.c.query(

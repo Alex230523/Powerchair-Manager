@@ -117,7 +117,7 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       /** Wave 17 (N1): an operation made elsewhere (dues, sponsor, affiliation) is deleted from there. */
       origin: "dues" | "sponsor" | "affiliation" | null;
     })[];
-    // Dues are scheduled amounts: payments are only reconciled with lot 09.
+    // Dues are scheduled amounts; what is paid comes from the ledger (by hand or from the bank, B1).
     const dues = (
       await c.query(
         "SELECT COALESCE(sum(i.amount_cents),0)::int AS total,COALESCE(sum(i.amount_cents) FILTER (WHERE i.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE+30),0)::int AS next30 FROM dues_installment i JOIN dues_receivable d ON d.id=i.receivable_id WHERE d.organization_id=$1 AND d.status='open' AND i.due_on BETWEEN $2 AND $3",
@@ -475,7 +475,7 @@ export async function financeReport(db: Pool, p: Principal, label: string, raw: 
 /**
  * Wave 17 (N1): bank statements, filed as proof month by month, with their
  * closing balance (entered, or read from a CSV) beside the platform's cash
- * at the same date. The line-by-line reconciliation is lot 09's.
+ * at the same date. The line-by-line reconciliation is in domains/bank (B1).
  */
 export async function statementsView(db: Pool, p: Principal) {
   return scope(db, p, false, async (c, org, _user, edit) => {

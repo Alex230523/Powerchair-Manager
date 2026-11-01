@@ -99,11 +99,17 @@ export async function writeSchedule(
   first: string,
 ) {
   const rows = schedule(cents, count, first);
+  // B1: an instalment keeps its structured communication when the schedule changes (by its rank).
+  const kept = new Map(
+    (
+      await s.c.query("SELECT ordinal,reference FROM dues_installment WHERE receivable_id=$1", [id])
+    ).rows.map((r: { ordinal: number; reference: string }) => [r.ordinal, r.reference]),
+  );
   await s.c.query("DELETE FROM dues_installment WHERE receivable_id=$1", [id]);
   for (const r of rows)
     await s.c.query(
-      "INSERT INTO dues_installment(receivable_id,ordinal,due_on,amount_cents) VALUES($1,$2,$3,$4)",
-      [id, r.ordinal, r.due_on, r.amount_cents],
+      "INSERT INTO dues_installment(receivable_id,ordinal,due_on,amount_cents,reference) VALUES($1,$2,$3,$4,COALESCE($5,payment_reference()))",
+      [id, r.ordinal, r.due_on, r.amount_cents, kept.get(r.ordinal) ?? null],
     );
   return rows;
 }

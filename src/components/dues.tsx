@@ -51,8 +51,6 @@ const copy = {
     overpaid: "Le montant dépasse ce qui reste dû sur cette cotisation.",
     title: "Cotisations",
     intro: "Barèmes par saison, créances individuelles et échéanciers.",
-    limits:
-      "Les encaissements, virements, QR et rapprochements seront disponibles au lot 09. Aucun paiement n’est enregistré ici.",
     plans: "Barèmes",
     season: "Saison",
     team: "Équipe",
@@ -133,8 +131,6 @@ const copy = {
     overpaid: "Het bedrag is hoger dan wat nog verschuldigd is.",
     title: "Bijdragen",
     intro: "Seizoenstarieven, individuele vorderingen en termijnen.",
-    limits:
-      "Betalingen, overschrijvingen, QR en afstemming volgen in fase 09. Hier worden geen betalingen geboekt.",
     plans: "Tarieven",
     season: "Seizoen",
     team: "Team",
@@ -215,8 +211,6 @@ const copy = {
     overpaid: "The amount exceeds what is still due on this receivable.",
     title: "Dues",
     intro: "Season rates, individual receivables and instalments.",
-    limits:
-      "Payments, bank transfers, QR codes and reconciliation will follow in lot 09. No payments are recorded here.",
     plans: "Rates",
     season: "Season",
     team: "Team",
