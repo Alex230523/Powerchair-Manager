@@ -51,6 +51,7 @@ type Copy = {
   components: string;
   noComponents: string;
   componentKinds: Record<"battery" | "charger", string>;
+  componentKind: string;
   label: string;
   serial: string;
   since: string;
@@ -150,6 +151,7 @@ export const workshopCopy: Record<Locale, Copy> = {
     components: "Batteries et chargeurs",
     noComponents: "Aucune batterie ni aucun chargeur enregistré.",
     componentKinds: { battery: "Batterie", charger: "Chargeur" },
+    componentKind: "Batterie ou chargeur",
     label: "Désignation",
     serial: "Numéro de série",
     since: "En service depuis",
@@ -253,6 +255,7 @@ export const workshopCopy: Record<Locale, Copy> = {
     components: "Batterijen en laders",
     noComponents: "Geen batterij of lader geregistreerd.",
     componentKinds: { battery: "Batterij", charger: "Lader" },
+    componentKind: "Batterij of lader",
     label: "Omschrijving",
     serial: "Serienummer",
     since: "In gebruik sinds",
@@ -356,6 +359,7 @@ export const workshopCopy: Record<Locale, Copy> = {
     components: "Batteries and chargers",
     noComponents: "No battery or charger recorded.",
     componentKinds: { battery: "Battery", charger: "Charger" },
+    componentKind: "Battery or charger",
     label: "Description",
     serial: "Serial number",
     since: "In service since",

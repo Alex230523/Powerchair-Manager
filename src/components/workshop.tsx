@@ -551,7 +551,7 @@ function Components({ locale, chair, today, busy, send }: { locale: Locale; chai
       >
         <div className="form-grid">
           <label htmlFor={id("kind")}>
-            {t.kind}
+            {t.componentKind}
             <select id={id("kind")} name="kind" defaultValue="battery">
               <option value="battery">{t.componentKinds.battery}</option>
               <option value="charger">{t.componentKinds.charger}</option>
