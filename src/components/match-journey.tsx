@@ -11,12 +11,12 @@ import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { useData } from "./use-api";
 
 /**
- * A5: one match sheet, three steps. « Avant »: the call-up and its answers,
+ * A5: one match sheet, three steps. « Avant »: the invitation and its answers,
  * the line-up among those present with its blocking problems and warnings,
  * the trip, the day's checklist sent to the to-do. « Jour J »: big buttons
  * for goals, cards and substitutions, kept on the phone without network.
  * « Après »: the result confirmed, the PDF sheet, the referee, the draft
- * announcement. Players and parents see their call-up, the published
+ * announcement. Players and parents see their invitation, the published
  * line-up and the result.
  */
 type View = Awaited<ReturnType<typeof journeyView>>;
