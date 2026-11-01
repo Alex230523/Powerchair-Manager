@@ -58,7 +58,7 @@ test("tax receipts only for an approved club", async ({ page }) => {
     await page.goto("/fr/funding");
     await page.getByRole("navigation", { name: "Sections des finances" }).getByRole("link", { name: "Attestations fiscales" }).click();
     await expect(page).toHaveURL(/\/fr\/funding\/tax$/);
-    await page.getByRole("button", { name: "Ajouter un donateur" }).click();
+    await page.getByRole("button", { name: "Ajouter un donateur", exact: true }).click();
     const donor = page.getByRole("dialog", { name: "Ajouter un donateur" });
     await donor.getByLabel("Nom", { exact: true }).fill("Marie Peeters");
     await donor.getByLabel("Rue et numéro").fill("Rue Haute 3");
@@ -67,7 +67,7 @@ test("tax receipts only for an approved club", async ({ page }) => {
     await axe(page, "donor", "dialog[open]");
     await donor.getByRole("button", { name: "Enregistrer" }).click();
     await expect(donor).toHaveCount(0);
-    await page.getByRole("button", { name: "Ajouter un don" }).click();
+    await page.getByRole("button", { name: "Ajouter un don", exact: true }).click();
     const gift = page.getByRole("dialog", { name: "Ajouter un don" });
     await gift.getByRole("combobox", { name: "Donateur", exact: true }).selectOption({ label: "Marie Peeters" });
     await gift.getByLabel("Montant (€)").fill("45");
