@@ -50,7 +50,7 @@ test("a hall's booking from the calendar, on a phone", async ({ page }) => {
     const card = page.locator(".booking-card").filter({ hasText: "Hall des Sports" });
     await expect(card.getByRole("heading", { name: "Hall des Sports · Saison 2026-2027" })).toBeVisible({ timeout: 15000 });
     await expect(card.locator(".trip-meta").getByText("À demander")).toBeVisible();
-    await expect(card.getByText(/\(6 séances\)/)).toBeVisible();
+    await expect(card.getByRole("listitem").filter({ hasText: /\(6 séances\)/ })).toBeVisible();
     await card.getByText("Email prêt à envoyer").click();
     await expect(card.getByRole("link", { name: "Ouvrir dans la messagerie" })).toHaveAttribute("href", /^mailto:salle@example\.test\?subject=/);
     await axe(page, "bookings");
