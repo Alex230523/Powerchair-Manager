@@ -8,6 +8,9 @@ type HomeCopy = {
   features: { title: string; text: string }[];
   greeting: string;
   noContext: string;
+  /** Signed in, no club yet (the dashboard answers CONTEXT_REQUIRED). */
+  noClub: string;
+  noClubLink: string;
   chooseProfile: string;
   todo: string;
   allClear: string;
@@ -139,6 +142,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     loading: "Chargement du tableau de bord…",
     error: "Le tableau de bord est momentanément indisponible.",
     retry: "Réessayer",
+    noClub: "Vous êtes connecté, mais votre compte n'est encore relié à aucun club.",
+    noClubLink: "Choisir mon club ou mon profil",
     open: "Ouvrir",
     todos: {
       documentsExpired: {
@@ -318,6 +323,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     loading: "Dashboard wordt geladen…",
     error: "Het dashboard is tijdelijk niet beschikbaar.",
     retry: "Opnieuw proberen",
+    noClub: "U bent aangemeld, maar uw account is nog aan geen enkele club gekoppeld.",
+    noClubLink: "Mijn club of profiel kiezen",
     open: "Openen",
     todos: {
       documentsExpired: {
@@ -497,6 +504,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     loading: "Loading the dashboard…",
     error: "The dashboard is temporarily unavailable.",
     retry: "Try again",
+    noClub: "You are signed in, but your account is not linked to any club yet.",
+    noClubLink: "Choose my club or profile",
     open: "Open",
     todos: {
       documentsExpired: {

@@ -14,7 +14,7 @@ describe("visitor and sign-up on invitation", () => {
   });
   it("renders the visitor without any menu, from the server's knowledge of the session", () => {
     const shell = readFileSync("src/components/app-shell.tsx", "utf8");
-    expect(shell).toContain("if (!signedIn) return <GuestShell locale={locale}>{children}</GuestShell>;");
+    expect(shell).toContain("if (!signedIn || signedOut) return <GuestShell locale={locale}>{children}</GuestShell>;");
     const guest = shell.slice(shell.indexOf("function GuestShell"), shell.indexOf("export function AppShell"));
     for (const absent of ["sidebar", "bottom-nav", "ScopeBar", "bell"]) expect(guest).not.toContain(absent);
     expect(readFileSync("src/app/[locale]/layout.tsx", "utf8")).toContain("signedIn={signedIn}");

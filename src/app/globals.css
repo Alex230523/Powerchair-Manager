@@ -10224,3 +10224,67 @@ ul.task-page li {
   overflow-wrap: anywhere;
   margin: 6px 0;
 }
+
+/* Before signing in: a discreet language choice (FR, then NL and EN in a short list). */
+.lang-menu {
+  position: relative;
+}
+.lang-menu > summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  cursor: pointer;
+}
+.lang-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.lang-menu > summary::after {
+  content: "";
+  width: 0.4em;
+  height: 0.4em;
+  margin-left: 0.4em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+.lang-menu > summary:hover,
+.lang-menu[open] > summary {
+  background: var(--surface-soft);
+}
+.lang-menu ul {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  min-width: 4.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-pop);
+}
+.lang-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+}
+.lang-menu a:hover,
+.lang-menu a:focus-visible {
+  background: var(--surface-soft);
+}

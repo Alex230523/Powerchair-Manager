@@ -97,6 +97,33 @@ export function LanguageChoice({ t, locale, id }: { t: Copy; locale: Locale; id:
     </select>
   );
 }
+/**
+ * Before signing in: a discreet « FR » that opens a short list of the other
+ * languages (NL, EN), instead of a long selector.
+ */
+export function LanguageMenu({ t, locale }: { t: Copy; locale: Locale }) {
+  const path = usePathname();
+  const ref = useRef<HTMLDetailsElement>(null);
+  return (
+    <details className="lang-menu" ref={ref}>
+      <summary aria-label={`${t.language} : ${languageNames[locale]}`}>
+        <span aria-hidden="true">{locale.toUpperCase()}</span>
+      </summary>
+      <ul>
+        {(["fr", "nl", "en"] as const)
+          .filter((l) => l !== locale)
+          .map((l) => (
+            <li key={l}>
+              <Link href={path.replace(/^\/(fr|nl|en)(?=\/|$)/, `/${l}`)} lang={l} hrefLang={l} onClick={() => ref.current?.removeAttribute("open")}>
+                <span aria-hidden="true">{l.toUpperCase()}</span>
+                <span className="sr-only">{languageNames[l]}</span>
+              </Link>
+            </li>
+          ))}
+      </ul>
+    </details>
+  );
+}
 /* Text size and contrast (wave 15, C4): kept on this device, applied before paint by themeScript. */
 const textSizes = ["normal", "large", "xlarge"] as const;
 type TextSize = (typeof textSizes)[number];
@@ -190,10 +217,7 @@ function GuestShell({ locale, children }: { locale: Locale; children: ReactNode 
           <span className="brand-name">{t.brandName}</span>
         </Link>
         <div className="guest-tools">
-          <label className="sr-only" htmlFor="guest-language">
-            {t.language}
-          </label>
-          <LanguageChoice t={t} locale={locale} id="guest-language" />
+          <LanguageMenu t={t} locale={locale} />
           {!onAccess && (
             <Link className="button sm" href={`/${locale}/access`}>
               {t.signIn}
@@ -211,6 +235,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   const path = usePathname(),
     t = shellCopy[locale];
   const [state, setState] = useState<Workspace | null>(null),
+    [signedOut, setSignedOut] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [todos, setTodos] = useState<Todo[]>([]),
@@ -229,7 +254,11 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     let cancelled = false;
     const load = () => {
       fetch("/api/workspace", { cache: "no-store" })
-        .then(async (r) => (r.ok ? await r.json() : null))
+        .then(async (r) => {
+          // The session ended (or the sign-in did not hold): the visitor's bar, without the menu.
+          if (!cancelled) setSignedOut(r.status === 401);
+          return r.ok ? await r.json() : null;
+        })
         .then((s) => {
           if (!cancelled) setState(s);
         })
@@ -417,7 +446,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
       .map((e) => ({ route: `/settings/${e.category}#${e.anchor}`, label: `${h.entries[e.id].title} · ${t.settings}` })),
   ];
   const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
-  if (!signedIn) return <GuestShell locale={locale}>{children}</GuestShell>;
+  if (!signedIn || signedOut) return <GuestShell locale={locale}>{children}</GuestShell>;
   return (
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}

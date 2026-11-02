@@ -118,6 +118,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [B5 : incidents, blessures et déclaration d'assurance](evolutions/2026-10-22-zb-b5-incidents.md) |
 | 22/10/2026 | [B9 : événements ouverts au public](evolutions/2026-10-22-zc-b9-evenements-ouverts.md) |
 | 22/10/2026 | [B6 : pages publiques, widgets, API et webhooks](evolutions/2026-10-22-zd-b6-pages-publiques-api.md) |
+| 02/11/2026 | [Connexion : sans menu, langue discrète](evolutions/2026-11-02-ze-connexion-langues.md) |
 
 ## Convention
 
