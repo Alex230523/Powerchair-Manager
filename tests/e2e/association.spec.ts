@@ -48,11 +48,11 @@ test("the register and the assembly, on a phone", async ({ page }) => {
     await page.getByLabel("Lieu", { exact: true }).fill("Local du club");
     await page.getByRole("button", { name: "Planifier", exact: true }).click();
     const meeting = page.locator(".asbl-meeting").first();
-    await expect(meeting.getByText("Décharge aux administrateurs")).toBeVisible();
+    await expect(meeting.getByText("Décharge aux administrateurs").first()).toBeVisible();
     await meeting.getByRole("checkbox", { name: "Martine Membre" }).check();
     await meeting.getByRole("form", { name: "Vote : Décharge aux administrateurs" }).getByLabel("Pour").fill("1");
     await meeting.getByRole("form", { name: "Vote : Décharge aux administrateurs" }).getByRole("button", { name: "Enregistrer le vote" }).click();
-    await expect(meeting.getByText("Adopté")).toBeVisible();
+    await expect(meeting.getByText("Adopté").first()).toBeVisible();
     await axe(page, "assembly");
     await meeting.getByRole("button", { name: "Clôturer et rédiger le PV" }).click();
     await expect(meeting.getByRole("textbox", { name: "Procès-verbal" })).toHaveValue(/Décharge aux administrateurs/);
