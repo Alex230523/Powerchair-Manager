@@ -8,6 +8,7 @@ import {
   tripExecute,
   tripsView,
 } from "../../src/domains/trips/service";
+import type { Round } from "../../src/domains/trips/rounds";
 import { playerProfileExecute } from "../../src/domains/player-profile/service";
 import { financeExecute } from "../../src/domains/finance/service";
 import { venueExecute, venuesView } from "../../src/domains/venues/service";
@@ -188,8 +189,8 @@ it("prepares a trip with participants, an adapted vehicle and care, each role se
     club,
   );
   detail = await tripDetail(db, president, id);
-  expect(detail.vehicles[0].load).toMatchObject({ chairs: 1, chairsOver: 0 });
-  expect(detail.vehicles[0].warnings).toEqual(["noLicence"]);
+  expect((detail.vehicles as Round[])[0].load).toMatchObject({ chairs: 1, chairsOver: 0 });
+  expect((detail.vehicles as Round[])[0].warnings).toEqual(["noLicence"]);
   // The coach drives: only Hugo still needs a seat.
   expect(detail.unassigned.out).toEqual([hugoRow.id]);
   await tripExecute(
@@ -198,7 +199,7 @@ it("prepares a trip with participants, an adapted vehicle and care, each role se
     { action: "licence", profileId: coachProfile, categories: ["B", "D1"], validUntil: inDays(1000) },
     club,
   );
-  expect((await tripDetail(db, president, id)).vehicles[0].warnings).toEqual([]);
+  expect(((await tripDetail(db, president, id)).vehicles as Round[])[0].warnings).toEqual([]);
 
   // Care instruction on Léa's profile, then ticked by the travelling coach.
   const saved = await playerProfileExecute(

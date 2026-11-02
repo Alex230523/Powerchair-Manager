@@ -213,9 +213,14 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
     const lineup = await lineupOf(c, org, matchId);
     const live = await liveOf(c, org, matchId);
     const t = tally(live);
-    const trip = m.calendar_event_id
-      ? (((await c.query("SELECT id,title FROM trip WHERE calendar_event_id=$1 AND organization_id=$2 ORDER BY created_at LIMIT 1", [m.calendar_event_id, org])).rows[0] ?? null) as { id: string; title: string } | null)
-      : null;
+    // 3: the trip serving the match directly, or its event.
+    const trip = ((
+      await c.query("SELECT id,title FROM trip WHERE organization_id=$1 AND (match_id=$2 OR ($3::uuid IS NOT NULL AND calendar_event_id=$3)) ORDER BY match_id IS NULL,created_at LIMIT 1", [
+        org,
+        matchId,
+        m.calendar_event_id ?? null,
+      ])
+    ).rows[0] ?? null) as { id: string; title: string } | null;
     const tasks = (
       await c.query("SELECT t.id,t.title,t.source_kind,t.status,COALESCE(cp.full_name,'') AS responsible FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.match_id=$2 ORDER BY t.created_at", [
         org,

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
 import type { tripsView, tripDetail } from "@/domains/trips/service";
@@ -10,6 +10,8 @@ import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { TripDetailSections } from "./trip-detail";
 import { Badge, EmptyState, PageHeader, Card } from "./ui";
+import { Modal } from "./modal";
+import { tripTransportCopy } from "./trip-transport-copy";
 
 type List = Awaited<ReturnType<typeof tripsView>>;
 export type Detail = Awaited<ReturnType<typeof tripDetail>>;
@@ -41,7 +43,7 @@ export const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : nu
 export function useTripFailure(locale: Locale) {
   const t = tripsCopy[locale];
   return useCallback(
-    (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
+    (code: string) => t.errors[code] ?? tripTransportCopy[locale].errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
     [t, locale],
   );
 }
@@ -69,19 +71,61 @@ export function TripForm({
   onSubmit,
 }: {
   locale: Locale;
-  list: Pick<List, "venues" | "places"> & Partial<Pick<List, "teams">>;
+  list: Pick<List, "venues" | "places"> & Partial<Pick<List, "teams" | "links">>;
   trip?: Detail["trip"];
   busy: boolean;
   onSubmit: (fields: Record<string, unknown>) => void;
 }) {
-  const t = tripsCopy[locale];
+  const t = tripsCopy[locale],
+    tt = tripTransportCopy[locale];
   const [kind, setKind] = useState(trip?.kind ?? "tournament");
+  // 3: transport (one day) or stay (several), and what the trip serves.
+  const [mode, setMode] = useState<"transport" | "stay">((trip?.mode as "transport" | "stay" | undefined) ?? "transport");
+  const [link, setLink] = useState(trip?.match_id ? `match:${trip.match_id}` : trip?.tournament_day_id ? `day:${trip.tournament_day_id}` : trip?.calendar_event_id ? `event:${trip.calendar_event_id}` : "");
+  const form = useRef<HTMLFormElement>(null);
+  /** The date, time and place of what the trip serves fill the form (still editable). */
+  function serve(value: string) {
+    setLink(value);
+    const [what, id] = value.split(":");
+    const set = (name: string, v: string) => {
+      const el = form.current?.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
+      if (el && v) el.value = v;
+    };
+    const day = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+    if (what === "event") {
+      const e = list.links?.events.find((x) => x.id === id);
+      if (!e) return;
+      set("startsOn", e.local_start.slice(0, 10));
+      set("endsOn", day(e.ends_at));
+      set("placeId", e.place_id ?? "");
+      set("destination", [e.place_name, e.place_address].filter(Boolean).join(", "));
+      const title = form.current?.elements.namedItem("title") as HTMLInputElement | null;
+      if (title && !title.value) title.value = e.title.slice(0, 120);
+    } else if (what === "match") {
+      const m = list.links?.matches.find((x) => x.id === id);
+      if (!m) return;
+      set("startsOn", day(m.starts_at));
+      set("endsOn", day(m.starts_at));
+      set("destination", m.venue);
+    } else if (what === "day") {
+      const d = list.links?.days.find((x) => x.id === id);
+      if (!d) return;
+      set("startsOn", d.day);
+      set("endsOn", d.day);
+      set("destination", d.venue);
+    }
+  }
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const s = (k: string) => String(f.get(k) ?? "");
     const acc = s("accommodationAccessible");
+    const [what, linked] = link.split(":");
     onSubmit({
+      mode,
+      ...(list.links
+        ? { calendarEventId: what === "event" ? linked : null, matchId: what === "match" ? linked : null, tournamentDayId: what === "day" ? linked : null }
+        : {}),
       title: s("title"),
       kind: s("kind"),
       startsOn: s("startsOn"),
@@ -107,8 +151,56 @@ export function TripForm({
   const f = t.fields;
   const id = trip?.id ?? "new";
   return (
-    <form className="trip-form" onSubmit={submit}>
+    <form className="trip-form" onSubmit={submit} ref={form}>
       <div className="form-grid">
+        <label htmlFor={`${id}-mode`}>
+          {tt.mode}
+          <select id={`${id}-mode`} name="mode" value={mode} onChange={(e) => setMode(e.target.value as "transport" | "stay")} aria-describedby={`${id}-mode-hint`}>
+            <option value="transport">{tt.modes.transport}</option>
+            <option value="stay">{tt.modes.stay}</option>
+          </select>
+          <span className="muted small" id={`${id}-mode-hint`}>
+            {tt.modeHint}
+          </span>
+        </label>
+        {list.links && (
+          <label htmlFor={`${id}-serves`}>
+            {tt.serves}
+            <select id={`${id}-serves`} value={link} onChange={(e) => serve(e.target.value)} aria-describedby={`${id}-serves-hint`}>
+              <option value="">{tt.servesNone}</option>
+              {list.links.events.length > 0 && (
+                <optgroup label={tt.servesKinds.event}>
+                  {list.links.events.map((x) => (
+                    <option key={x.id} value={`event:${x.id}`}>
+                      {x.title} · {timeLabel(locale, x.starts_at)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {list.links.matches.length > 0 && (
+                <optgroup label={tt.servesKinds.match}>
+                  {list.links.matches.map((x) => (
+                    <option key={x.id} value={`match:${x.id}`}>
+                      {[x.team, x.opponent].filter(Boolean).join(" · ")} · {timeLabel(locale, x.starts_at)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {list.links.days.length > 0 && (
+                <optgroup label={tt.servesKinds.tournamentDay}>
+                  {list.links.days.map((x) => (
+                    <option key={x.id} value={`day:${x.id}`}>
+                      {[x.tournament, x.label].filter(Boolean).join(" · ")} · {dayLabel(locale, x.day)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <span className="muted small" id={`${id}-serves-hint`}>
+              {tt.servesHint}
+            </span>
+          </label>
+        )}
         <label htmlFor={`${id}-title`}>
           {f.title}
           <input id={`${id}-title`} name="title" required minLength={2} maxLength={120} defaultValue={trip?.title} placeholder="Ex. Tournoi de Gand" />
@@ -201,11 +293,12 @@ export function TripForm({
           <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder="Ex. Sophie, 0470 12 34 56" />
         </label>
       </div>
-      <label htmlFor={`${id}-acc`}>
+      {/* 3: the accommodation belongs to a stay; a transport keeps what it had, hidden. */}
+      <label htmlFor={`${id}-acc`} hidden={mode !== "stay"}>
         {f.accommodation}
         <textarea id={`${id}-acc`} name="accommodation" maxLength={1000} rows={2} defaultValue={trip?.accommodation} />
       </label>
-      <label htmlFor={`${id}-acca`}>
+      <label htmlFor={`${id}-acca`} hidden={mode !== "stay"}>
         {f.accommodationAccessible}
         <select
           id={`${id}-acca`}
@@ -235,7 +328,9 @@ export function TripsPage({ locale }: { locale: Locale }) {
   const failure = useTripFailure(locale);
   const { data, error, setError, denied, reload } = useData<List>("/api/trips", failure);
   const { busy, message, post } = usePost("/api/trips", reload, setError, failure);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(false),
+    [preview, setPreview] = useState<string | null>(null);
+  const tt = tripTransportCopy[locale];
   // The team chosen in the top bar (wave 15): its trips and the whole-club ones.
   const team = useScope().teamId;
   if (!data)
@@ -274,18 +369,27 @@ export function TripsPage({ locale }: { locale: Locale }) {
           {data.trips.filter((x) => !team || !x.team_id || x.team_id === team).map((x) => (
             <Card as="li" key={x.id} className="trip-card" data={{ status: x.status }}>
               <div className="trip-card-head">
-                <Link href={`/${locale}/trips/${x.id}`}>
+                {/* 3: a click opens the trip's window; the full page is one link away. */}
+                <button type="button" className="text-button trip-open" onClick={() => setPreview(x.id)} aria-label={tt.preview.replace("{title}", x.title)}>
                   <strong>{x.title}</strong>
-                </Link>
+                </button>
                 <Countdown locale={locale} c={x.countdown} />
               </div>
               <p className="muted">
                 {t.kinds[x.kind]} · {dayLabel(locale, x.starts_on)}
                 {x.ends_on !== x.starts_on && ` → ${dayLabel(locale, x.ends_on)}`}
+                {x.serves && ` · ${x.serves}`}
                 {x.destination && ` · ${x.destination}`}
               </p>
+              {(x.departure_at || x.arrival_at) && (
+                <p className="small">
+                  {[x.departure_at && tt.departure.replace("{time}", hourLabel(locale, x.departure_at)), x.arrival_at && tt.arrival.replace("{time}", hourLabel(locale, x.arrival_at))].filter(Boolean).join(" · ")}
+                </p>
+              )}
               <p className="trip-meta">
                 <Badge>{t.statuses[x.status]}</Badge>
+                <Badge tone="info">{tt.modes[x.mode as "transport" | "stay"]}</Badge>
+                {x.vehicles > 0 && <span>{tt.vehicles.replace("{n}", String(x.vehicles))}</span>}
                 {x.team_name && (
                   <span className="team-chip" data-color={x.team_color ?? "none"}>
                     <span className="team-dot" aria-hidden="true" />
@@ -301,11 +405,68 @@ export function TripsPage({ locale }: { locale: Locale }) {
       ) : (
         <EmptyState title={t.none} />
       )}
+      {preview && <TripPreview locale={locale} id={preview} close={() => setPreview(null)} />}
       {(data.can.manage || data.fleet.length > 0) && (
         <Fleet locale={locale} data={data} busy={busy} post={post} />
       )}
       {data.can.manage && <Drivers locale={locale} data={data} busy={busy} post={post} />}
     </main>
+  );
+}
+
+/** « 08:30 » in Brussels. */
+export const hourLabel = (l: Locale, iso: string) =>
+  new Intl.DateTimeFormat(tag(l), { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" }).format(new Date(iso));
+
+/** 3: the trip's window from the list: when, what for, each vehicle with its driver and departure. */
+function TripPreview({ locale, id, close }: { locale: Locale; id: string; close: () => void }) {
+  const t = tripsCopy[locale],
+    tt = tripTransportCopy[locale];
+  const failure = useTripFailure(locale);
+  const { data, error } = useData<Detail>(`/api/trips?id=${id}`, failure);
+  return (
+    <Modal title={data?.trip.title ?? t.title} close={close}>
+      {!data ? (
+        <p role={error ? "alert" : "status"}>{error || t.loading}</p>
+      ) : (
+        <>
+          <p>
+            {dayLabel(locale, data.trip.starts_on)}
+            {data.trip.ends_on !== data.trip.starts_on && ` → ${dayLabel(locale, data.trip.ends_on)}`} · {tt.modes[data.trip.mode as "transport" | "stay"]}
+            {data.serves && ` · ${tt.servesKinds[data.serves.kind]} : ${data.serves.title}`}
+          </p>
+          <ul className="plain-list trip-preview">
+            {data.vehicles.map((v) => {
+              const first = v.stops[0],
+                arrive = v.stops.find((st) => st.kind === "arrive");
+              return (
+                <li key={v.id}>
+                  <strong>{v.name}</strong> <Badge>{tt.kinds[v.kind as "club" | "rental" | "private"]}</Badge>
+                  <br />
+                  <span className="small">
+                    {[
+                      v.drivers.map((d) => d.full_name).join(", "),
+                      first?.at && tt.departure.replace("{time}", hourLabel(locale, first.at)),
+                      arrive?.at && tt.arrival.replace("{time}", hourLabel(locale, arrive.at)),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="actions">
+            <Link className="button" href={`/${locale}/trips/${id}`}>
+              {tt.openFull}
+            </Link>
+            <Link className="button secondary" href={`/${locale}/trips/${id}/roadsheet`}>
+              {tt.sheet}
+            </Link>
+          </p>
+        </>
+      )}
+    </Modal>
   );
 }
 

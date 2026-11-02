@@ -257,5 +257,6 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/transfers` |  |  |  |  |  |  |  |  |  |   |
 | `/trips` |  |  |  |  |  |  |  |  |  |   |
 | `/trips/[id]` |  |  |  |  |  |  |  |  |  |   |
+| `/trips/[id]/roadsheet` |  |  |  |  |  |  |  |  |  |   |
 | `/venues` |  |  |  |  |  |  |  |  |  |   |
 | `/welcome/[token]` |  |  |  |  |  |  |  |  |  |   |

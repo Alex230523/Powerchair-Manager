@@ -10828,3 +10828,123 @@ ul.task-page li {
   display: grid;
   gap: var(--space-1);
 }
+
+/* 3: trips as transport logistics. */
+.trip-form [hidden],
+.road-sheet [hidden] {
+  display: none;
+}
+.trip-open {
+  text-align: start;
+  min-height: 44px;
+}
+.trip-preview li + li {
+  margin-top: var(--space-2);
+}
+.segmented-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+.trip-drivers li,
+.trip-driver-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+.trip-driver-candidates {
+  margin-top: var(--space-2);
+}
+.trip-round-title {
+  font-size: var(--text-md);
+  margin: var(--space-3) 0 var(--space-2);
+}
+.trip-round {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.trip-round li {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: var(--space-2);
+  padding-block: var(--space-1);
+  border-top: 1px solid var(--border);
+}
+.trip-stop-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.trip-route a {
+  display: inline-block;
+  min-height: 24px;
+  padding-block: var(--space-1);
+}
+.round-steps {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.round-steps > li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  background: var(--surface);
+  cursor: grab;
+}
+.round-steps > li[data-dragging] {
+  outline: 2px dashed var(--primary);
+}
+.round-steps fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.trip-costs {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+.trip-costs dd {
+  margin: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.trip-tasks-toggle {
+  margin-top: var(--space-4);
+}
+.trip-tasks {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.trip-task {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  min-width: 0;
+}
+.sheet-vehicle + .sheet-vehicle {
+  margin-top: var(--space-4);
+}
+@media print {
+  .road-sheet .trip-route,
+  .road-sheet .back-link {
+    display: none !important;
+  }
+  .road-sheet .sheet-vehicle {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}

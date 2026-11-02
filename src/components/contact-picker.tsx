@@ -17,7 +17,8 @@ type List = { organization_id: string; can: { create: boolean }; contacts: Choic
  * host form reads it like any field; without access to the book, the field
  * is not shown and the host leaves the link as it is (absent = unchanged).
  */
-export function ContactPicker({ locale, name, value, label, none }: { locale: Locale; name: string; value: string | null; label: string; none: string }) {
+/** `tags`: those ticked when a contact is created here (3: « Loueur » for a rental company). */
+export function ContactPicker({ locale, name, value, label, none, tags: initialTags = [] }: { locale: Locale; name: string; value: string | null; label: string; none: string; tags?: string[] }) {
   const t = crmCopy[locale];
   const tagCopy = (fundingCopy[locale] as (typeof fundingCopy)["fr"]).contacts as { tags: string; tag: Record<string, string> };
   const uid = useId();
@@ -26,7 +27,7 @@ export function ContactPicker({ locale, name, value, label, none }: { locale: Lo
     [creating, setCreating] = useState(false),
     [draft, setDraft] = useState({ fullName: "", organizationName: "", email: "", phone: "" }),
     // 1: the tags chosen right in the creation (« Ajouter un contact »).
-    [tags, setTags] = useState<string[]>([]),
+    [tags, setTags] = useState<string[]>(initialTags),
     [busy, setBusy] = useState(false),
     [status, setStatus] = useState(""),
     [failed, setFailed] = useState(""),
@@ -63,7 +64,7 @@ export function ContactPicker({ locale, name, value, label, none }: { locale: Lo
       setChosen(v.id);
       setCreating(false);
       setDraft({ fullName: "", organizationName: "", email: "", phone: "" });
-      setTags([]);
+      setTags(initialTags);
       setStatus(t.pickerCreated);
     } catch (e) {
       setFailed(errors[(e as Error).message]?.[locale] ?? errors.INVALID_INPUT?.[locale] ?? "");

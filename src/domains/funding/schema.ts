@@ -20,6 +20,7 @@ export const contactTags = [
   "supplier",
   "medical",
   "volunteer",
+  "rental",
   "other",
 ] as const;
 export type ContactTag = (typeof contactTags)[number];

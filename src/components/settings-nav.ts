@@ -80,6 +80,7 @@ export const settingsEntries = [
   { id: "eventTypes", category: "activities", anchor: "settings-event-types" },
   { id: "holidays", category: "activities", anchor: "settings-holidays" },
   { id: "taskTemplates", category: "activities", anchor: "settings-task-templates" },
+  { id: "mileage", category: "activities", anchor: "settings-mileage" },
   { id: "duesRates", category: "money", anchor: "settings-dues-title" },
   { id: "fiscalYear", category: "money", anchor: "settings-fiscal-title" },
   { id: "rightsJournal", category: "journals", anchor: "journal-rights" },

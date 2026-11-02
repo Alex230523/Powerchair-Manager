@@ -260,6 +260,7 @@ export const pages: Record<string, PageAccess> = {
   "/transfers": {},
   "/trips": {},
   "/trips/[id]": {},
+  "/trips/[id]/roadsheet": {},
   "/venues": {},
   "/welcome/[token]": {},
 };

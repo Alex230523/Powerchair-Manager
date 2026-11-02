@@ -1,4 +1,5 @@
 "use client";
+import { TripSettings } from "./trip-settings";
 import { TutorialSettings } from "./first-steps";
 import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
@@ -675,6 +676,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           )}
           {/* Wave 17 (O1): the task templates (transport, training…), for those who plan. */}
           {shown && category === "activities" && <TaskTemplates locale={locale} />}
+          {/* 3: the mileage allowance's rate for private vehicles on trips. */}
+          {shown && category === "activities" && <TripSettings locale={locale} />}
           {/* 28: the parental authorizations' texts. */}
           {shown && category === "documents" && <AuthorizationSettings locale={locale} />}
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (

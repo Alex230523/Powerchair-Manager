@@ -1069,7 +1069,8 @@ export async function calendarExecute(
         const place = e as Event & { place_name?: string | null; place_address?: string | null };
         const trip = (
           await s.c.query(
-            "INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,destination,place_id,created_by,calendar_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+            // 3: one day is a transport, several days a stay.
+            "INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,destination,place_id,created_by,calendar_event_id,mode) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $5::date>$4::date THEN 'stay' ELSE 'transport' END) RETURNING id",
             [
               s.a.organization_id,
               e.title.slice(0, 120),
