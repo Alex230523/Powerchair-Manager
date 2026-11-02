@@ -13,6 +13,8 @@ type HomeCopy = {
   noClubLink: string;
   /** 24: an old link to the messaging. */
   messagingRemoved: string;
+  /** 12: the president's shortcut. */
+  clubSettings: string;
   chooseProfile: string;
   todo: string;
   allClear: string;
@@ -146,6 +148,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Réessayer",
     noClub: "Vous êtes connecté, mais votre compte n'est encore relié à aucun club.",
     noClubLink: "Choisir mon club ou mon profil",
+    clubSettings: "Réglages du club",
     messagingRemoved: "La messagerie a été retirée. Les nouvelles du club arrivent par la Communication du club et les notifications.",
     open: "Ouvrir",
     todos: {
@@ -328,6 +331,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Opnieuw proberen",
     noClub: "U bent aangemeld, maar uw account is nog aan geen enkele club gekoppeld.",
     noClubLink: "Mijn club of profiel kiezen",
+    clubSettings: "Clubinstellingen",
     messagingRemoved: "De berichtendienst is verwijderd. Het clubnieuws komt via de clubcommunicatie en de meldingen.",
     open: "Openen",
     todos: {
@@ -510,6 +514,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Try again",
     noClub: "You are signed in, but your account is not linked to any club yet.",
     noClubLink: "Choose my club or profile",
+    clubSettings: "Club settings",
     messagingRemoved: "The messaging has been removed. Club news arrives through the club communication and the notifications.",
     open: "Open",
     todos: {

@@ -9,8 +9,8 @@ export const setupSteps = ["identity", "season", "team", "coach", "players", "du
 export type SetupStep = (typeof setupSteps)[number];
 export const setupLinks: Record<SetupStep, string> = {
   identity: "/settings/club#club-identity-title",
-  season: "/club/manage#teams",
-  team: "/club/manage#teams",
+  season: "/settings/seasons",
+  team: "/teams",
   coach: "/access#access-invite",
   players: "/players?import=1",
   dues: "/settings/money#settings-dues-title",

@@ -216,14 +216,8 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <div className="grid">
-        {only === "teams" ? (
-          <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
-            <p className="muted">{t.movedText}</p>
-            <p>
-              <Link href={`/${locale}/settings/club#club-identity-title`}>{t.movedLink}</Link>
-            </p>
-          </Card>
-        ) : (
+        {/* 12: no « identity moved » card any more on the teams side. */}
+        {only === "teams" ? null : (
         <Card title={t.identity} labelledBy="club-identity-title" headingId="club-identity-title">
           <p className="muted">{t.intro}</p>
           <div className="logo-row">

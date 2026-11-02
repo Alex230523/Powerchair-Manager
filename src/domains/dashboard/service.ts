@@ -292,7 +292,7 @@ export async function computeFor(
     metrics.push(
       metric("activeMembers", m.members, { href: "/club" }),
       metric("activePlayers", m.players, { href: "/players" }),
-      metric("activeTeams", m.teams, { href: "/club/manage" }),
+      metric("activeTeams", m.teams, { href: "/teams" }),
     );
   }
 

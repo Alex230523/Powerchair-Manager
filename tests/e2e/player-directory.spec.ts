@@ -131,7 +131,6 @@ test("player listing, personal then sporting profile, former players and dedicat
     await page.screenshot({ path: "test-results/player-mobile.png" });
     for (const [url, title] of [
       ["/en/coaches", "Coach management"],
-      ["/fr/club/manage", "Gestion du club"],
       ["/nl/funding", "Financiën"],
       ["/fr/settings", "Réglages"],
     ]) {

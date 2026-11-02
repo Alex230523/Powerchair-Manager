@@ -116,7 +116,7 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/matches",
       "/fr/licenses",
       "/fr/federal-calendar",
-      "/fr/privacy",
+      "/fr/settings/data",
       "/fr/settings",
       "/fr/statistics",
       "/fr/trips",
@@ -221,8 +221,10 @@ test("new club, federation and referee pages load and pass axe", async ({
     // Wave 17 (J3): « Transferts » became « Licences », next to « Bourse aux transferts ».
     for (const name of ["Classification", "Bourse aux transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
-    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club", "Plus"])
+    // 12: no « Plus » group; « Réglages » closes the menu.
+    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
+    await expect(page.locator("nav summary").filter({ hasText: "Plus" })).toHaveCount(0);
     await page.goto("/fr/calendar");
     await expect(page.locator("main").getByRole("link", { name: "Déplacements", exact: true })).toBeVisible();
     // Wave 17 (C4): « Lieux » is managed on its page, a place is added from the calendar.

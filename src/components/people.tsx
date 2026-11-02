@@ -32,10 +32,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export function People({
   locale,
   management = false,
+  embedded = false,
   children,
 }: {
   locale: Locale;
   management?: boolean;
+  /** 12: the seasons and teams inside Réglages › Saisons et équipes (no page of its own). */
+  embedded?: boolean;
   /** Extra sections shown under the title (club identity on the management page). */
   children?: React.ReactNode;
 }) {
@@ -221,17 +224,13 @@ export function People({
       ));
   return (
     <>
-      <main id="main" className="access club">
-        <h1>
-          {management
-            ? locale === "fr"
-              ? "Gestion du club"
-              : locale === "nl"
-                ? "Club beheren"
-                : "Club management"
-            : t.title}
-        </h1>
-        <p>{t.intro}</p>
+      <Shell embedded={embedded} label={t.seasons}>
+        {!embedded && (
+          <>
+            <h1>{t.title}</h1>
+            <p>{t.intro}</p>
+          </>
+        )}
         <div role="status" aria-live="polite">
           {loading ? t.loading : message}
         </div>
@@ -1176,7 +1175,19 @@ export function People({
         >
           {t.retry}
         </button>
-      </main>
+      </Shell>
     </>
+  );
+}
+
+function Shell({ embedded, label, children }: { embedded: boolean; label: string; children: React.ReactNode }) {
+  return embedded ? (
+    <section id="settings-seasons" className="club embedded" aria-label={label}>
+      {children}
+    </section>
+  ) : (
+    <main id="main" className="access club">
+      {children}
+    </main>
   );
 }

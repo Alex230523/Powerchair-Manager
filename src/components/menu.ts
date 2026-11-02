@@ -145,7 +145,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupClub",
               icon: "club",
               items: [
-                ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
                 // B6: the public page, widgets, API keys and webhooks.
                 ...item("/club/public", "publicPage", "globe"),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
@@ -154,16 +153,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
-              ],
-            },
-            {
-              id: "more",
-              label: "groupMore",
-              icon: "settings",
-              folded: true,
-              items: [
-                ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
-                ...item("/settings", "settings", "settings"),
               ],
             },
           ]
@@ -204,7 +193,6 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 label: "groupManagement",
                 icon: "club",
                 items: [
-                  ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
@@ -266,25 +254,13 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
     });
   const groups = club.map((g) => ({ ...g, items: shown(g.items) })).filter((g) => g.items.length > 0);
   if (president) return groups;
+  // 12: without a profile chosen, the registrations; « Réglages » is the shell's last entry (settingsItem).
   const admin: NavGroup = {
-      id: "admin",
-      label: "admin",
-      icon: "settings",
-      items: [
-        ...(state?.selected
-          ? ([
-              ...(kind === "club" && !member
-                ? ([
-                    ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
-                  ] satisfies NavItem[])
-                : []),
-              { route: "/settings", label: "settings", icon: "settings" },
-            ] satisfies NavItem[])
-          : state
-            ? ([registrations] satisfies NavItem[])
-            : []),
-      ],
-    };
+    id: "admin",
+    label: "admin",
+    icon: "settings",
+    items: !state?.selected && state ? [registrations] : [],
+  };
   return [...groups, admin].filter((g) => g.items.length > 0);
 }
 
@@ -296,6 +272,13 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
  * Player or parent: calendar, my file (or the child's), dues.
  * With a task of one's own open (22), « Tâches » replaces the third.
  */
+/**
+ * 12: one « Réglages » at the foot of the menu, for every profile, under the
+ * groups (no « Plus » group any more). Personal data, the club's identity,
+ * members, seasons and modules are categories of Réglages.
+ */
+export const settingsItem: NavItem = { route: "/settings", label: "settings", icon: "settings" };
+
 export function bottomNav(state: Workspace | null, openTasks = 0): NavItem[] {
   if (!state?.selected) return [];
   const all = menuGroups(state).flatMap((g) => g.items);

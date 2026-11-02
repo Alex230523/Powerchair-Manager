@@ -37,7 +37,7 @@ test("undo: archive a team, cancel it, too late, hover pause", async ({ page }) 
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 1. One click archives (no confirmation), the message offers "Annuler".
-    await page.goto("/fr/club/manage");
+    await page.goto("/fr/settings/seasons");
     // The team's own line in the Teams panel (a team selector elsewhere also says "Lions").
     const lions = page.locator("#teams li").filter({ has: page.locator("strong", { hasText: /^Lions$/ }) });
     await lions.getByRole("button", { name: "Archiver", exact: true }).click();

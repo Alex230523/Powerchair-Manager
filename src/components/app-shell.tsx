@@ -13,7 +13,7 @@ import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
 import { defaultSeasonId, ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
-import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
+import { bottomNav, menuGroups, settingsItem, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
 import { settingsEntries, visibleCategories } from "./settings-nav";
@@ -508,6 +508,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 </details>
               );
             })}
+            {/* 12: « Réglages » closes the menu, for every profile. */}
+            {state?.selected && <div className="nav-settings">{item(settingsItem)}</div>}
           </nav>
           {/* The account corner: photo, name and role open the account menu. */}
           <details className="profile-menu" ref={account}>

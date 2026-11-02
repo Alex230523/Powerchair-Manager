@@ -5,15 +5,17 @@ import type { IconName } from "./icons";
  * pages, the command palette and the tests share it. Visibility follows the
  * same rules as the panels it groups; the services still check every right.
  */
-export const settingsCategories = ["account", "notifications", "club", "members", "activities", "money", "journals"] as const;
+export const settingsCategories = ["account", "notifications", "data", "club", "members", "seasons", "activities", "money", "journals"] as const;
 export type SettingsCategory = (typeof settingsCategories)[number];
 export const isSettingsCategory = (x: string): x is SettingsCategory => (settingsCategories as readonly string[]).includes(x);
 
 export const categoryIcons: Record<SettingsCategory, IconName> = {
   account: "userRound",
   notifications: "bell",
+  data: "shield",
   club: "club",
   members: "players",
+  seasons: "calendar",
   activities: "calendar",
   money: "funding",
   journals: "shield",
@@ -35,8 +37,12 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
   const shown: Record<SettingsCategory, boolean> = {
     account: true,
     notifications: true,
+    // 12: « Mes données » for everyone; the club's personal data for audit.read or mandates.manage.
+    data: true,
     club: club && (admin || has("mandates.manage")),
     members: club && has("mandates.manage"),
+    // 12: seasons and teams, and the season's passage (former « Gestion du club »).
+    seasons: club && (has("teams.manage") || has("mandates.manage")),
     activities: club && has("mandates.manage"),
     money: club && has("mandates.manage") && !off.has("dues"),
     journals: has("audit.read") || has("mandates.manage") || a.role === "club_president",
@@ -74,7 +80,11 @@ export const settingsEntries = [
   { id: "fiscalYear", category: "money", anchor: "settings-fiscal-title" },
   { id: "rightsJournal", category: "journals", anchor: "journal-rights" },
   { id: "healthJournal", category: "journals", anchor: "journal-health" },
-  { id: "privacy", category: "journals", anchor: "settings-privacy" },
+  { id: "myData", category: "data", anchor: "settings-my-data" },
+  { id: "privacy", category: "data", anchor: "settings-club-data" },
+  { id: "presidency", category: "club", anchor: "settings-presidency" },
+  { id: "seasons", category: "seasons", anchor: "settings-seasons" },
+  { id: "rollover", category: "seasons", anchor: "settings-rollover" },
 ] as const satisfies readonly { id: string; category: SettingsCategory; anchor: string }[];
 export type SettingsEntryId = (typeof settingsEntries)[number]["id"];
 export type SettingsEntryCopy = Record<SettingsEntryId, { title: string; keywords: string }>;

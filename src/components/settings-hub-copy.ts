@@ -28,6 +28,14 @@ type Copy = {
   privacyTitle: string;
   privacyText: string;
   privacyLink: string;
+  myDataTitle: string;
+  myDataText: string;
+  myDataExport: string;
+  myDataFix: string;
+  myDataAccount: string;
+  rolloverTitle: string;
+  rolloverText: string;
+  rolloverLink: string;
   categories: Record<SettingsCategory, { title: string; text: string }>;
   entries: SettingsEntryCopy;
 };
@@ -58,11 +66,21 @@ const fr: Copy = {
   privacyTitle: "Confidentialité",
   privacyText: "Demandes d’accès, d’export et d’effacement, durées de conservation des données.",
   privacyLink: "Ouvrir la page Confidentialité",
+  myDataTitle: "Mes données",
+  myDataText: "Ce que la plateforme garde sur vous : votre compte, vos préférences, vos fiches dans chaque club et les personnes que vous représentez. Les données de santé se demandent au club.",
+  myDataExport: "Télécharger mes données (JSON)",
+  myDataFix: "Une information est fausse ? Corrigez votre nom et votre photo ici, ou demandez au club de corriger votre fiche.",
+  myDataAccount: "Mon compte",
+  rolloverTitle: "Passage de saison",
+  rolloverText: "Préparer la saison suivante : équipes, joueurs reconduits, vérification de début de saison.",
+  rolloverLink: "Ouvrir le passage de saison",
   categories: {
     account: { title: "Mon compte", text: "Photo de profil, langue, thème et rôle de coach." },
     notifications: { title: "Notifications et résumé", text: "Ce que vous recevez, par email ou dans l’application." },
-    club: { title: "Club", text: "Nom, logo et contact du club, modules activés." },
+    data: { title: "Données personnelles", text: "Mes données ; pour le club : registre, demandes, conservation." },
+    club: { title: "Club", text: "Nom, logo et contact du club, modules activés, transmission de la présidence." },
     members: { title: "Membres et droits", text: "Ce que chaque coach peut voir et gérer, profils de droits." },
+    seasons: { title: "Saisons et équipes", text: "Saisons, équipes, coachs par équipe, passage de saison." },
     activities: { title: "Activités", text: "Effectif attendu aux entraînements et aux matchs." },
     money: { title: "Finances", text: "Barèmes de cotisation, alerte de saison lancée, rappels automatiques." },
     journals: { title: "Journaux et confidentialité", text: "Qui a changé quels droits, qui a lu des données de santé." },
@@ -96,7 +114,11 @@ const fr: Copy = {
     fiscalYear: { title: "Exercice comptable", keywords: "comptes annuels clôture janvier juillet assemblée générale" },
     rightsJournal: { title: "Journal des droits", keywords: "historique audit droits" },
     healthJournal: { title: "Journal des accès aux données de santé", keywords: "santé médical lectures" },
-    privacy: { title: "Confidentialité", keywords: "rgpd données effacement export conservation" },
+    privacy: { title: "Données personnelles du club", keywords: "rgpd données effacement export conservation registre demandes doublons" },
+    myData: { title: "Mes données", keywords: "rgpd export rectification consentement mes informations" },
+    presidency: { title: "Transmission de la présidence", keywords: "président passer la main successeur" },
+    seasons: { title: "Saisons et équipes", keywords: "saison équipe gestion du club coachs par équipe" },
+    rollover: { title: "Passage de saison", keywords: "nouvelle saison vérification début de saison" },
   },
 };
 
@@ -126,10 +148,20 @@ const nl: Copy = {
   privacyTitle: "Privacy",
   privacyText: "Verzoeken tot inzage, export en wissing, bewaartermijnen van gegevens.",
   privacyLink: "De privacypagina openen",
+  myDataTitle: "Mijn gegevens",
+  myDataText: "Wat het platform over u bewaart: uw account, uw voorkeuren, uw fiches in elke club en de personen die u vertegenwoordigt. Gezondheidsgegevens vraagt u aan de club.",
+  myDataExport: "Mijn gegevens downloaden (JSON)",
+  myDataFix: "Klopt er iets niet? Pas uw naam en foto hier aan, of vraag de club uw fiche te corrigeren.",
+  myDataAccount: "Mijn account",
+  rolloverTitle: "Seizoensovergang",
+  rolloverText: "Het volgende seizoen voorbereiden: teams, verlengde spelers, controle bij de start van het seizoen.",
+  rolloverLink: "De seizoensovergang openen",
   categories: {
     account: { title: "Mijn account", text: "Profielfoto, taal, thema en coachrol." },
     notifications: { title: "Meldingen en overzicht", text: "Wat je ontvangt, per e-mail of in de applicatie." },
     club: { title: "Club", text: "Naam, logo en contact van de club, actieve modules." },
+    data: { title: "Persoonsgegevens", text: "Mijn gegevens; voor de club: register, verzoeken, bewaring." },
+    seasons: { title: "Seizoenen en teams", text: "Seizoenen, teams, coaches per team, seizoensovergang." },
     members: { title: "Leden en rechten", text: "Wat elke coach mag zien en beheren, rechtenprofielen." },
     activities: { title: "Activiteiten", text: "Verwachte bezetting op trainingen en wedstrijden." },
     money: { title: "Financiën", text: "Lidgeldtarieven, waarschuwing bij gestart seizoen, automatische herinneringen." },
@@ -164,7 +196,11 @@ const nl: Copy = {
     fiscalYear: { title: "Boekjaar", keywords: "jaarrekening afsluiting januari juli algemene vergadering" },
     rightsJournal: { title: "Logboek van de rechten", keywords: "geschiedenis audit rechten" },
     healthJournal: { title: "Logboek van toegang tot gezondheidsgegevens", keywords: "gezondheid medisch inzage" },
-    privacy: { title: "Privacy", keywords: "avg gegevens wissing export bewaring" },
+    privacy: { title: "Persoonsgegevens van de club", keywords: "avg gegevens wissing export bewaring register verzoeken" },
+    myData: { title: "Mijn gegevens", keywords: "avg export rechtzetting toestemming mijn informatie" },
+    presidency: { title: "Overdracht van het voorzitterschap", keywords: "voorzitter opvolger" },
+    seasons: { title: "Seizoenen en teams", keywords: "seizoen team clubbeheer coaches per team" },
+    rollover: { title: "Seizoensovergang", keywords: "nieuw seizoen controle begin van het seizoen" },
   },
 };
 
@@ -194,11 +230,21 @@ const en: Copy = {
   privacyTitle: "Privacy",
   privacyText: "Access, export and erasure requests, data retention periods.",
   privacyLink: "Open the Privacy page",
+  myDataTitle: "My data",
+  myDataText: "What the platform keeps about you: your account, your preferences, your records in each club and the people you represent. Health data are asked of the club.",
+  myDataExport: "Download my data (JSON)",
+  myDataFix: "Something wrong? Correct your name and photo here, or ask the club to correct your record.",
+  myDataAccount: "My account",
+  rolloverTitle: "Season rollover",
+  rolloverText: "Prepare the next season: teams, players carried over, start-of-season check.",
+  rolloverLink: "Open the season rollover",
   categories: {
     account: { title: "My account", text: "Profile photo, language, theme and coach role." },
     notifications: { title: "Notifications and digest", text: "What you receive, by email or in the application." },
     club: { title: "Club", text: "Club name, logo and contact, enabled modules." },
+    data: { title: "Personal data", text: "My data; for the club: register, requests, retention." },
     members: { title: "Members and rights", text: "What each coach may see and manage, rights profiles." },
+    seasons: { title: "Seasons and teams", text: "Seasons, teams, coaches per team, season rollover." },
     activities: { title: "Activities", text: "Expected attendance at trainings and matches." },
     money: { title: "Finances", text: "Membership rates, season-started warning, automatic reminders." },
     journals: { title: "Logs and privacy", text: "Who changed which rights, who read health data." },
@@ -232,7 +278,11 @@ const en: Copy = {
     fiscalYear: { title: "Financial year", keywords: "annual accounts closing january july general assembly" },
     rightsJournal: { title: "Rights log", keywords: "history audit rights" },
     healthJournal: { title: "Health data access log", keywords: "health medical reads" },
-    privacy: { title: "Privacy", keywords: "gdpr data erasure export retention" },
+    privacy: { title: "Club personal data", keywords: "gdpr data erasure export retention register requests" },
+    myData: { title: "My data", keywords: "gdpr export rectification consent my information" },
+    presidency: { title: "Handing over the presidency", keywords: "president successor" },
+    seasons: { title: "Seasons and teams", keywords: "season team club management coaches per team" },
+    rollover: { title: "Season rollover", keywords: "new season start of season check" },
   },
 };
 

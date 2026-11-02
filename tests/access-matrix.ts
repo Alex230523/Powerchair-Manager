@@ -110,6 +110,7 @@ export const apiRoutes: Record<string, ApiRoute> = {
   "presidency": { methods: ["GET", "POST"] },
   "privacy": { methods: ["GET", "POST"] },
   "privacy/export": { methods: ["GET"] },
+  "privacy/mine": { methods: ["GET"], note: "« Mes données » : ce que la plateforme garde sur la personne connectée (point 12)" },
   "public/club/[slug]": { methods: ["GET"] },
   "public/ics/[token]": { methods: ["GET"] },
   "push": { methods: ["GET", "POST"] },

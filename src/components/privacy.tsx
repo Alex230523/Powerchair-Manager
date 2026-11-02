@@ -12,7 +12,8 @@ const fill = (s: string, v: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k: string) => String(v[k] ?? ""));
 
 /** Duplicates, GDPR export and anonymisation, retention rules. */
-export function Privacy({ locale }: { locale: Locale }) {
+/** 12: also a part of Réglages › Données personnelles (embedded: no page of its own). */
+export function Privacy({ locale, embedded = false }: { locale: Locale; embedded?: boolean }) {
   const t = privacyCopy[locale];
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -94,8 +95,12 @@ export function Privacy({ locale }: { locale: Locale }) {
   const selected = view?.people.find((p) => p.id === person);
 
   return (
-    <main id="main" className="access privacy">
-      <PageHeader title={t.title} subtitle={t.intro} />
+    <Wrapper embedded={embedded}>
+      {embedded ? (
+        <h2 id="settings-club-data">{t.title}</h2>
+      ) : (
+        <PageHeader title={t.title} subtitle={t.intro} />
+      )}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.restricted}</p>}
@@ -337,6 +342,18 @@ export function Privacy({ locale }: { locale: Locale }) {
           )}
         </>
       )}
+    </Wrapper>
+  );
+}
+
+function Wrapper({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+  return embedded ? (
+    <section className="privacy embedded" aria-labelledby="settings-club-data">
+      {children}
+    </section>
+  ) : (
+    <main id="main" className="access privacy">
+      {children}
     </main>
   );
 }

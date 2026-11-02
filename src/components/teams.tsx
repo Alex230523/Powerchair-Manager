@@ -15,6 +15,7 @@ import { teamBoardCopy } from "./team-board-copy";
 import { shellCopy } from "./shell-copy";
 import { kindLabels } from "./calendar-copy";
 import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
+import { ClubIdentity } from "./club-identity";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
@@ -268,6 +269,8 @@ export function Teams({ locale }: { locale: Locale }) {
           />
         </Modal>
       )}
+      {/* 12: the teams' colours, here since « Gestion du club » is gone. */}
+      {data.can.manage && <ClubIdentity locale={locale} only="teams" />}
       <p className="muted small">
         <Icon name="team" /> {s.teams}
       </p>

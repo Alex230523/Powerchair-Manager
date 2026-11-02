@@ -96,6 +96,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/presidency` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/privacy` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/privacy/export` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/privacy/mine` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/public/club/[slug]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/public/ics/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/push` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -145,6 +146,7 @@ Notes :
 
 - `/api/auth/[...all]` : Better Auth (connexion, inscription sur invitation) : couvert par tests/e2e/access.spec.ts
 - `/api/messaging-archive` : PDF des anciens échanges de la messagerie, pour la présidence du club, jusqu'à la suppression des tables (point 24)
+- `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 
 ## Pages
 

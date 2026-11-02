@@ -40,6 +40,8 @@ import { exportCopy } from "./export-copy";
 import { Icon } from "./icons";
 import { AccountPanels } from "./account-settings";
 import { ClubIdentity } from "./club-identity";
+import { Privacy } from "./privacy";
+import { People } from "./people";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
@@ -384,8 +386,37 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
-          {/* Wave 17 (G1): the president hands over the presidency. */}
-          {shown && category === "members" && ws?.selected?.role === "club_president" && <PresidencyHandover locale={locale} />}
+          {/* Wave 17 (G1): the president hands over the presidency (12: under Club). */}
+          {shown && category === "club" && ws?.selected?.role === "club_president" && (
+            <div id="settings-presidency">
+              <PresidencyHandover locale={locale} />
+            </div>
+          )}
+          {/* 12: « Mes données » for everyone, the club's personal data for whom may see them. */}
+          {shown && category === "data" && (
+            <Card title={h.myDataTitle} labelledBy="settings-my-data" headingId="settings-my-data">
+              <p className="muted">{h.myDataText}</p>
+              <p>
+                <a className="button secondary" href="/api/privacy/mine" download>
+                  {h.myDataExport}
+                </a>
+              </p>
+              <p className="muted">
+                {h.myDataFix} <Link href={`/${locale}/settings/account`}>{h.myDataAccount}</Link>
+              </p>
+            </Card>
+          )}
+          {shown && category === "data" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />}
+          {/* 12: seasons, teams and the season's passage (the former « Gestion du club »). */}
+          {shown && category === "seasons" && <People locale={locale} management embedded />}
+          {shown && category === "seasons" && (
+            <Card title={h.rolloverTitle} labelledBy="settings-rollover" headingId="settings-rollover">
+              <p className="muted">{h.rolloverText}</p>
+              <p>
+                <Link href={`/${locale}/club/rollover`}>{h.rolloverLink}</Link>
+              </p>
+            </Card>
+          )}
           {shown && category === "members" && !manage && !(gov && (gov.can.profiles || gov.profiles.length > 0)) && <EmptyState title={t.noMember} />}
 
           {shown && category === "account" && manage && ws.selected?.role === "club_president" && people && (
@@ -622,14 +653,6 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "money" && gov && !gov.disabled.includes("finance") && <FiscalYearPanel locale={locale} />}
           {shown && category === "journals" && gov?.can.rightsJournal && <Journal locale={locale} kind="rights" />}
           {shown && category === "journals" && gov?.can.healthJournal && <Journal locale={locale} kind="health" />}
-          {shown && category === "journals" && (own.has("audit.read") || own.has("mandates.manage")) && (
-            <Card title={h.privacyTitle} labelledBy="settings-privacy" headingId="settings-privacy">
-              <p className="muted">{h.privacyText}</p>
-              <p>
-                <Link href={`/${locale}/privacy`}>{h.privacyLink}</Link>
-              </p>
-            </Card>
-          )}
         </div>
       </div>
       {leaving && (

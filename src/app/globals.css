@@ -10525,3 +10525,10 @@ ul.task-page li {
 .combo-empty {
   padding: var(--space-3);
 }
+
+/* 12: « Réglages », the last entry of the menu, apart from the groups. */
+.nav-settings {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}

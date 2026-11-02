@@ -108,10 +108,12 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.goto("/fr/notifications");
     await expect(page).toHaveURL("/fr/settings/notifications");
     await expect(page.getByRole("button", { name: "Tester mes notifications", exact: true })).toBeVisible();
-    // Gestion du club keeps a link to the identity.
+    // 12: « Gestion du club » and « Données personnelles » are categories of Réglages.
     await page.goto("/fr/club/manage");
-    await page.getByRole("link", { name: "Ouvrir les réglages du club", exact: true }).click();
-    await expect(page).toHaveURL("/fr/settings/club#club-identity-title");
+    await expect(page).toHaveURL("/fr/settings/club");
+    await page.goto("/fr/privacy");
+    await expect(page).toHaveURL("/fr/settings/data");
+    await expect(page.getByRole("heading", { name: "Mes données", exact: true })).toBeVisible();
     // Ctrl+K finds a setting.
     await page.keyboard.press("Control+k");
     await page.getByRole("combobox", { name: /Rechercher un joueur/ }).fill("Barèmes");

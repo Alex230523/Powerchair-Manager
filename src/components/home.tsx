@@ -214,6 +214,13 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
                   {s.statistics}
                 </Link>
               )}
+              {/* 12: the president's shortcut to the club's settings (former « Gestion du club »). */}
+              {data.context.role === "club_president" && (
+                <Link className="button secondary" href={href("/settings/club")}>
+                  <Icon name="settings" />
+                  {t.clubSettings}
+                </Link>
+              )}
               {createItems.length > 0 && (
                 <div className="create-menu">
                   <Button icon="plus" aria-haspopup="menu" aria-expanded={creating} onClick={() => setCreating((v) => !v)}>
