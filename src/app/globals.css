@@ -99,7 +99,7 @@
   --space-12: 3rem;
   /* 1: one height for the fields, menus and buttons that share a row. */
   --control-height: 2.75rem;
-  --check-size: 1.25rem;
+  --check-size: 1.5rem;
 
   /* Text scale: nothing below 12 px. */
   --text-xs: 0.75rem;
