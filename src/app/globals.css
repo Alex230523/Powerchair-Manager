@@ -10532,3 +10532,39 @@ ul.task-page li {
   padding-top: var(--space-3);
   border-top: 1px solid var(--border);
 }
+
+/* 15: the home by role. */
+.focus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--card-gap);
+}
+.focus-next p {
+  margin: 0 0 var(--space-2);
+}
+.focus-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.focus-sub {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.focus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.focus-figure {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin: 0;
+}
+.focus-today {
+  grid-column: 1 / -1;
+  margin: 0;
+}

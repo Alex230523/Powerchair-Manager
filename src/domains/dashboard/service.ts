@@ -1,3 +1,4 @@
+import { coachFocus, federationFocus, memberFocus } from "./focus";
 import type { Pool, PoolClient } from "pg";
 import { myTasksCount } from "../tasks/service";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -536,6 +537,16 @@ export async function computeFor(
           ).rowCount,
         }
       : undefined;
+  // 15: the home by role.
+  const focus = !mfa
+    ? undefined
+    : club && (a.role === "player" || a.role === "guardian")
+      ? await memberFocus(c, org, own)
+      : club && a.role === "coach"
+        ? await coachFocus(c, org, own)
+        : !club && (a.role === "federation_president" || a.role === "federation_worker")
+          ? await federationFocus(c, org)
+          : undefined;
   // Getting started of a new club (wave 15, C3): for the president, until done or hidden.
   const setup = club && a.role === "club_president" && has("mandates.manage") ? await setupState(c, org) : null;
   return {
@@ -564,6 +575,7 @@ export async function computeFor(
     scopes,
     ...(finance ? { finance } : {}),
     ...(week ? { week } : {}),
+    ...(focus ? { focus } : {}),
   };
 }
 

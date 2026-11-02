@@ -123,6 +123,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [22 et 24 : tâches dans tous les menus, fin de la messagerie](evolutions/2026-11-02-zi-22-24-taches-fin-messagerie.md) |
 | 02/11/2026 | [1 : lot de corrections d'interface et écran de connexion](evolutions/2026-11-02-zk-01-corrections-interface.md) |
 | 02/11/2026 | [12 : navigation, « Gestion du club » et « Plus » rangés dans Réglages](evolutions/2026-11-02-zl-12-navigation-reglages.md) |
+| 02/11/2026 | [15 : accueil par rôle](evolutions/2026-11-02-zm-15-accueil-par-role.md) |
 
 ## Convention
 

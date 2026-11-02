@@ -1,3 +1,4 @@
+import type { Focus } from "./focus";
 // Pure dashboard shaping. No I/O here so ordering and visibility rules are unit-tested.
 import type { Readiness } from "./presence";
 import type { SetupState } from "../setup/schema";
@@ -225,6 +226,8 @@ export type Dashboard = {
   start?: { calendarSubscribed: boolean };
   /** Getting started of a new club, for its president (wave 15, C3). */
   setup?: SetupState;
+  /** 15: the home by role (player or parent, coach, federation). */
+  focus?: Focus;
 };
 export function formatCents(cents: number, locale: string) {
   return new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {

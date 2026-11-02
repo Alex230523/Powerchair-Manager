@@ -12,6 +12,7 @@ import {
 import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
 import { boardCopy } from "./home-board-copy";
+import { HomeFocus } from "./home-focus";
 import { cssVars } from "./css-vars";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
@@ -259,7 +260,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           <Board locale={locale} board={data.board} href={href} />
         ) : data.todos.length ? (
           <ul className="todo-list">
-            {data.todos.slice(0, 6).map((item) => (
+            {data.todos.slice(0, 5).map((item) => (
               <li key={item.key}>
                 <Card className="todo-card" href={href(item.href)} data={{ tone: item.tone }}>
                   <span className="todo-row">
@@ -281,6 +282,8 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           <EmptyState icon="check" tone="success" title={t.allClear} />
         )}
       </section>
+      {/* 15: the home by role: the next appointment with its answer, a coach's teams, the federation's day. */}
+      {data.focus && <HomeFocus locale={locale} focus={data.focus} organizationId={organizationId} href={href} reload={() => window.dispatchEvent(new Event("pfm-workspace"))} />}
       {data.context && (
         <div className="dash-grid dash-section">
           <Card
