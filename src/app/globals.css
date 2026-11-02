@@ -10834,6 +10834,7 @@ ul.task-page li {
 .task-parts {
   display: grid;
   gap: var(--space-1);
+}
 
 /* Audit 23: the controls of one toolbar row share one height (a segmented choice next to a menu). */
 .toolbar :is(.segmented button, select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .button) {
