@@ -98,6 +98,8 @@ it("starts the departure with only the steps that concern him, each in the to-do
   await expect(run(president, { action: "start", profileId: coachProfile, endsOn, reason: "moved", locale: "fr" }, clubA)).rejects.toMatchObject({ code: "DUPLICATE" });
   // Another club sees nothing of it.
   await expect(offboardingView(db, presidentB, coachProfile)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  // Another coach of the club sees nothing of it.
+  expect(await offboardingView(db, helper, coachProfile)).toMatchObject({ run: null, can: { manage: false, self: false } });
   // He was told (« Prévenir le coach »).
   expect((await db.query("SELECT 1 FROM notification_dispatch WHERE recipient_user_id=$1", [coach.userId])).rowCount).toBeGreaterThan(0);
 });
