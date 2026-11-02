@@ -187,7 +187,7 @@ export async function friendlyExecute(db: Pool, p: Principal, command: FriendlyC
       ids.push(
         (
           await c.query(
-            "INSERT INTO funding_task(organization_id,kind,title,detail,due_on,responsible_id,match_id,origin,created_by) VALUES($1,'transport',$2,$3,$4,$5,$6,'template',$7) RETURNING id",
+            "INSERT INTO task(organization_id,kind,title,detail,due_on,responsible_id,match_id,origin,created_by) VALUES($1,'transport',$2,$3,$4,$5,$6,'template',$7) RETURNING id",
             [org, i.title, i.detail ?? "", dueBefore(date, i.daysBefore), coach ?? null, m.id, p.userId],
           )
         ).rows[0].id,
@@ -266,7 +266,7 @@ export async function upcomingDetails(c: PoolClient, org: string, matches: Row[]
           [m.calendar_event_id, org],
         )
       ).rowCount;
-    const tasks = (await c.query("SELECT count(*)::int AS n FROM funding_task WHERE match_id=$1 AND organization_id=$2 AND kind='transport'", [m.id, org])).rows[0].n as number;
+    const tasks = (await c.query("SELECT count(*)::int AS n FROM task WHERE match_id=$1 AND organization_id=$2 AND kind='transport'", [m.id, org])).rows[0].n as number;
     out.set(m.id, {
       players: { ...players, tone: toneFor(players.coming, rules.players) },
       coaches: { ...coaches, tone: toneFor(coaches.coming, rules.coaches) },

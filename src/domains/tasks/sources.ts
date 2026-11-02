@@ -53,7 +53,7 @@ async function desired(c: PoolClient, org: string, today: string): Promise<Desir
     await c.query(
       `SELECT id,CASE WHEN program<>'' THEN funder||' · '||program ELSE funder END AS about,status,deadline_on::text AS deadline,report_due_on::text AS report,opens_on::text AS opens
          FROM grant_application g WHERE organization_id=$1 AND status IN ('idea','granted','paid')
-          AND NOT EXISTS (SELECT 1 FROM funding_task f WHERE f.grant_id=g.id AND f.organization_id=g.organization_id AND f.source_key IS NULL)`,
+          AND NOT EXISTS (SELECT 1 FROM task f WHERE f.grant_id=g.id AND f.organization_id=g.organization_id AND f.source_key IS NULL)`,
       [org],
     )
   ).rows as { id: string; about: string; status: string; deadline: string | null; report: string | null; opens: string | null }[];
@@ -113,7 +113,7 @@ export async function syncSources(c: PoolClient, org: string, today = brusselsTo
       created +=
         (
           await c.query(
-            `INSERT INTO funding_task(organization_id,kind,category,title,due_on,grant_id,chair_id,document_id,pot_id,origin,source_key,source_kind,source_params,created_by,partner_id,responsible_id)
+            `INSERT INTO task(organization_id,kind,category,title,due_on,grant_id,chair_id,document_id,pot_id,origin,source_key,source_kind,source_params,created_by,partner_id,responsible_id)
              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'template',$10,$11,$12,$13,$14,$15)
              ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING`,
             [org, d.kind, d.category, d.title, d.due, d.grant ?? null, d.chair ?? null, d.document ?? null, d.pot ?? null, d.key, d.source, JSON.stringify({ about: d.about }), creator, d.partner ?? null, d.responsible ?? null],
@@ -121,13 +121,13 @@ export async function syncSources(c: PoolClient, org: string, today = brusselsTo
         ).rowCount ?? 0;
   // A grant given its own check-list (wave 15) keeps only those steps: no double.
   await c.query(
-    `DELETE FROM funding_task t WHERE t.organization_id=$1 AND t.source_kind IN ('grantDeadline','grantOpening','grantReport') AND t.status<>'done'
-        AND EXISTS (SELECT 1 FROM funding_task f WHERE f.grant_id=t.grant_id AND f.organization_id=t.organization_id AND f.source_key IS NULL)`,
+    `DELETE FROM task t WHERE t.organization_id=$1 AND t.source_kind IN ('grantDeadline','grantOpening','grantReport') AND t.status<>'done'
+        AND EXISTS (SELECT 1 FROM task f WHERE f.grant_id=t.grant_id AND f.organization_id=t.organization_id AND f.source_key IS NULL)`,
     [org],
   );
   const closed = (
     await c.query(
-      "UPDATE funding_task SET status='done',done_on=$3,auto_closed=true,updated_at=now() WHERE organization_id=$1 AND source_key IS NOT NULL AND source_kind=ANY($4::text[]) AND status<>'done' AND NOT (source_key=ANY($2::text[])) RETURNING id",
+      "UPDATE task SET status='done',done_on=$3,auto_closed=true,updated_at=now() WHERE organization_id=$1 AND source_key IS NOT NULL AND source_kind=ANY($4::text[]) AND status<>'done' AND NOT (source_key=ANY($2::text[])) RETURNING id",
       [org, want.map((d) => d.key), today, sourceKinds],
     )
   ).rowCount;

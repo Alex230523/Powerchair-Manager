@@ -14,7 +14,7 @@ import type { Pool, PoolClient } from "pg";
  * - an invitation from another club, waiting for the demo club's answer.
  * Nothing happens if the league of the year is already there.
  */
-const OTHER_CLUBS: { name: string; players: string[] }[] = [
+export const OTHER_CLUBS: { name: string; players: string[] }[] = [
   { name: "Liège Power Club (démo)", players: ["Lucas Dubois", "Emma Lambert", "Noah Renard", "Chloé Hubert"] },
   { name: "Gent Rolling Lions (démo)", players: ["Arthur Claes", "Lotte Wouters", "Milan Jacobs", "Fien De Smet"] },
   { name: "Namur Wheels (démo)", players: ["Hugo Leroy", "Léa Simon", "Nathan Gilles", "Manon Collard"] },

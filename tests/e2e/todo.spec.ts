@@ -28,7 +28,7 @@ test("the club's to-do, by category", async ({ page }) => {
     await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)", [club, user]);
     const mandate = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,'club_president') RETURNING id", [club, user])).rows[0].id;
     await db.query("INSERT INTO grant_application(organization_id,funder,deadline_on,created_by) VALUES($1,'Province',CURRENT_DATE+12,$2)", [club, user]);
-    await db.query("INSERT INTO funding_task(organization_id,kind,category,title,due_on,created_by) VALUES($1,'other','admin','Assurance en retard',CURRENT_DATE-3,$2)", [club, user]);
+    await db.query("INSERT INTO task(organization_id,kind,category,title,due_on,created_by) VALUES($1,'other','admin','Assurance en retard',CURRENT_DATE-3,$2)", [club, user]);
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);

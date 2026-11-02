@@ -210,7 +210,7 @@ export type TaskRow = {
   proofs: { id: string; filename: string }[];
 };
 const selectTasks =
-  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM funding_task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
+  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
 /** The nearest open date of a partner: a condition to deliver, the payment, the renewal or a planned step. */
 export function partnerNearest(
   p: { status: string; paid_on: string | null; payment_due_on: string | null; renewal_on: string | null; next_action_on: string | null },
@@ -482,7 +482,7 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           else if (before && cmd.signedOn !== undefined && cmd.signedOn !== before.signed_on_text)
             // A new signing date moves the open conditions with it.
             await s.c.query(
-              "UPDATE funding_task t SET due_on=CASE WHEN $2::date IS NULL THEN NULL ELSE $2::date+c.offset_days END,updated_at=now() FROM partner_package_condition c WHERE t.partner_id=$1 AND t.condition_id=c.id AND t.status<>'done' AND c.offset_days IS NOT NULL",
+              "UPDATE task t SET due_on=CASE WHEN $2::date IS NULL THEN NULL ELSE $2::date+c.offset_days END,updated_at=now() FROM partner_package_condition c WHERE t.partner_id=$1 AND t.condition_id=c.id AND t.status<>'done' AND c.offset_days IS NOT NULL",
               [partnerId, cmd.signedOn],
             );
           // The payment, when marked as received, goes to the ledger once.
@@ -556,13 +556,13 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
         case "grantChecklist": {
           if (!(await s.c.query("SELECT 1 FROM grant_application WHERE id=$1 AND organization_id=$2", [cmd.grantId, s.org])).rowCount)
             throw new AccessError("NOT_FOUND", 404);
-          const have = new Set((await s.c.query("SELECT lower(title) AS t FROM funding_task WHERE grant_id=$1", [cmd.grantId])).rows.map((r) => r.t as string));
-          let position = (await s.c.query("SELECT COALESCE(max(position)+1,0)::int AS n FROM funding_task WHERE grant_id=$1", [cmd.grantId])).rows[0].n as number;
+          const have = new Set((await s.c.query("SELECT lower(title) AS t FROM task WHERE grant_id=$1", [cmd.grantId])).rows.map((r) => r.t as string));
+          let position = (await s.c.query("SELECT COALESCE(max(position)+1,0)::int AS n FROM task WHERE grant_id=$1", [cmd.grantId])).rows[0].n as number;
           let added = 0;
           for (const title of grantChecklist[cmd.locale])
             if (!have.has(title.toLowerCase())) {
               await s.c.query(
-                "INSERT INTO funding_task(organization_id,grant_id,title,position,origin,created_by,kind) VALUES($1,$2,$3,$4,'template',$5,'grant')",
+                "INSERT INTO task(organization_id,grant_id,title,position,origin,created_by,kind) VALUES($1,$2,$3,$4,'template',$5,'grant')",
                 [s.org, cmd.grantId, title, position++, s.userId],
               );
               added++;
@@ -592,7 +592,7 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           ).rows[0].id as string;
           // The check-list comes along, unticked, one year later; nobody is in charge yet.
           await s.c.query(
-            "INSERT INTO funding_task(organization_id,grant_id,title,detail,due_on,position,origin,created_by,kind) SELECT organization_id,$2,title,detail,CASE WHEN due_on IS NULL THEN NULL ELSE (due_on + interval '1 year')::date END,position,origin,$3,'grant' FROM funding_task WHERE grant_id=$1 ORDER BY position",
+            "INSERT INTO task(organization_id,grant_id,title,detail,due_on,position,origin,created_by,kind) SELECT organization_id,$2,title,detail,CASE WHEN due_on IS NULL THEN NULL ELSE (due_on + interval '1 year')::date END,position,origin,$3,'grant' FROM task WHERE grant_id=$1 ORDER BY position",
             [g.id, id, s.userId],
           );
           await log(s, "grant.nextYear", g.id, { next: id });
@@ -685,7 +685,7 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           if (cmd.responsibleId && !(await accountHolder(s, cmd.responsibleId))) throw new AccessError("NOT_FOUND", 404);
           if (cmd.id) {
             const changed = await s.c.query(
-              "UPDATE funding_task SET title=$3,detail=$4,due_on=$5,responsible_id=$6,proof_url=COALESCE($7,proof_url),updated_at=now() WHERE id=$1 AND organization_id=$2 AND (partner_id=$8 OR grant_id=$9) RETURNING id",
+              "UPDATE task SET title=$3,detail=$4,due_on=$5,responsible_id=$6,proof_url=COALESCE($7,proof_url),updated_at=now() WHERE id=$1 AND organization_id=$2 AND (partner_id=$8 OR grant_id=$9) RETURNING id",
               [cmd.id, s.org, cmd.title, cmd.detail, cmd.dueOn ?? null, cmd.responsibleId ?? null, cmd.proofUrl ?? null, cmd.partnerId ?? null, cmd.grantId ?? null],
             );
             if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
@@ -693,11 +693,11 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
             return { id: cmd.id };
           }
           const position = (
-            await s.c.query("SELECT COALESCE(max(position)+1,0)::int AS n FROM funding_task WHERE partner_id IS NOT DISTINCT FROM $1 AND grant_id IS NOT DISTINCT FROM $2", [cmd.partnerId ?? null, cmd.grantId ?? null])
+            await s.c.query("SELECT COALESCE(max(position)+1,0)::int AS n FROM task WHERE partner_id IS NOT DISTINCT FROM $1 AND grant_id IS NOT DISTINCT FROM $2", [cmd.partnerId ?? null, cmd.grantId ?? null])
           ).rows[0].n;
           const id = (
             await s.c.query(
-              "INSERT INTO funding_task(organization_id,partner_id,grant_id,title,detail,due_on,responsible_id,proof_url,position,origin,created_by,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'manual',$10,CASE WHEN $2::uuid IS NOT NULL THEN 'sponsor' ELSE 'grant' END) RETURNING id",
+              "INSERT INTO task(organization_id,partner_id,grant_id,title,detail,due_on,responsible_id,proof_url,position,origin,created_by,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'manual',$10,CASE WHEN $2::uuid IS NOT NULL THEN 'sponsor' ELSE 'grant' END) RETURNING id",
               [s.org, cmd.partnerId ?? null, cmd.grantId ?? null, cmd.title, cmd.detail, cmd.dueOn ?? null, cmd.responsibleId ?? null, cmd.proofUrl ?? "", position, s.userId],
             )
           ).rows[0].id as string;
@@ -706,7 +706,7 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
         }
         case "taskDone": {
           const changed = await s.c.query(
-            "UPDATE funding_task SET status=$3,done_on=CASE WHEN $3='done' THEN COALESCE($4::date,CURRENT_DATE) ELSE NULL END,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING id",
+            "UPDATE task SET status=$3,done_on=CASE WHEN $3='done' THEN COALESCE($4::date,CURRENT_DATE) ELSE NULL END,updated_at=now() WHERE id=$1 AND organization_id=$2 RETURNING id",
             [cmd.id, s.org, cmd.done ? "done" : "todo", cmd.doneOn ?? null],
           );
           if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
@@ -715,12 +715,12 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
         }
         case "deleteTask": {
           await logTask(s, cmd.id, "task.delete");
-          const gone = await s.c.query("DELETE FROM funding_task WHERE id=$1 AND organization_id=$2", [cmd.id, s.org]);
+          const gone = await s.c.query("DELETE FROM task WHERE id=$1 AND organization_id=$2", [cmd.id, s.org]);
           if (!gone.rowCount) throw new AccessError("NOT_FOUND", 404);
           return { id: cmd.id };
         }
         case "removeProof": {
-          const gone = await s.c.query("UPDATE funding_task_proof SET removed_at=now() WHERE id=$1 AND organization_id=$2 AND removed_at IS NULL RETURNING task_id", [cmd.id, s.org]);
+          const gone = await s.c.query("UPDATE task_proof SET removed_at=now() WHERE id=$1 AND organization_id=$2 AND removed_at IS NULL RETURNING task_id", [cmd.id, s.org]);
           if (!gone.rowCount) throw new AccessError("NOT_FOUND", 404);
           await logTask(s, gone.rows[0].task_id, "task.proofRemoved");
           return { id: cmd.id };
@@ -796,10 +796,10 @@ async function switchPackage(s: Scope, partnerId: string, from: string | null, t
   if (from) {
     const old = (await packageRows(s.c, s.org)).find((x) => x.id === from);
     const done = (
-      await s.c.query("SELECT count(*) FILTER (WHERE status='done')::int AS done,count(*)::int AS total FROM funding_task WHERE partner_id=$1 AND origin='condition'", [partnerId])
+      await s.c.query("SELECT count(*) FILTER (WHERE status='done')::int AS done,count(*)::int AS total FROM task WHERE partner_id=$1 AND origin='condition'", [partnerId])
     ).rows[0];
     await s.c.query(
-      "DELETE FROM funding_task WHERE partner_id=$1 AND origin='condition' AND status<>'done' AND (condition_id IS NULL OR condition_id IN (SELECT id FROM partner_package_condition WHERE package_id=$2))",
+      "DELETE FROM task WHERE partner_id=$1 AND origin='condition' AND status<>'done' AND (condition_id IS NULL OR condition_id IN (SELECT id FROM partner_package_condition WHERE package_id=$2))",
       [partnerId, from],
     );
     // The former package goes to the history: name, season, amount, conditions delivered.
@@ -808,11 +808,11 @@ async function switchPackage(s: Scope, partnerId: string, from: string | null, t
   if (!to) return;
   const conditions = (await packageRows(s.c, s.org)).find((x) => x.id === to)?.conditions ?? [];
   const present = new Set(
-    (await s.c.query("SELECT condition_id FROM funding_task WHERE partner_id=$1 AND condition_id IS NOT NULL", [partnerId])).rows.map((r) => r.condition_id as string),
+    (await s.c.query("SELECT condition_id FROM task WHERE partner_id=$1 AND condition_id IS NOT NULL", [partnerId])).rows.map((r) => r.condition_id as string),
   );
   for (const t of conditionTasks(conditions, p.signed_on).filter((t) => !present.has(t.condition_id)))
     await s.c.query(
-      "INSERT INTO funding_task(organization_id,partner_id,title,detail,due_on,position,origin,condition_id,created_by,kind) VALUES($1,$2,$3,$4,$5,$6,'condition',$7,$8,'sponsor')",
+      "INSERT INTO task(organization_id,partner_id,title,detail,due_on,position,origin,condition_id,created_by,kind) VALUES($1,$2,$3,$4,$5,$6,'condition',$7,$8,'sponsor')",
       [s.org, partnerId, t.title.slice(0, 200), t.detail, t.due_on, t.position, t.condition_id, s.userId],
     );
 }
@@ -827,7 +827,7 @@ async function accountHolder(s: Scope, profileId: string) {
 }
 /** The person in charge of a task may tick it (wave 15). */
 async function responsibleOf(s: Scope, taskId: string) {
-  const r = (await s.c.query("SELECT responsible_id FROM funding_task WHERE id=$1 AND organization_id=$2", [taskId, s.org])).rows[0];
+  const r = (await s.c.query("SELECT responsible_id FROM task WHERE id=$1 AND organization_id=$2", [taskId, s.org])).rows[0];
   return !!r?.responsible_id && s.own.has(r.responsible_id);
 }
 /** A task's change is logged on its partner (or grant), so the history of the file shows it. */
@@ -837,7 +837,7 @@ async function publicTag(s: Scope, contactId: string | null) {
     await s.c.query("UPDATE contact SET tags=array_append(tags,'public'),updated_at=now() WHERE id=$1 AND organization_id=$2 AND NOT ('public'=ANY(tags))", [contactId, s.org]);
 }
 async function logTask(s: Scope, taskId: string, action: string, details: Record<string, unknown> = {}) {
-  const t = (await s.c.query("SELECT partner_id,grant_id,title FROM funding_task WHERE id=$1 AND organization_id=$2", [taskId, s.org])).rows[0];
+  const t = (await s.c.query("SELECT partner_id,grant_id,title FROM task WHERE id=$1 AND organization_id=$2", [taskId, s.org])).rows[0];
   if (!t) throw new AccessError("NOT_FOUND", 404);
   await log(s, `${t.partner_id ? "partner" : "grant"}.${action}`, t.partner_id ?? t.grant_id, { title: t.title, task: taskId, ...details });
 }
@@ -856,7 +856,7 @@ export async function taskProofUpload(db: Pool, p: Principal, taskId: string, fi
       const name = file.name.replace(/[\\/\u0000-\u001f]/g, "_").trim().slice(0, 200) || "preuve";
       const id = (
         await s.c.query(
-          "INSERT INTO funding_task_proof(organization_id,task_id,filename,media_type,content,uploaded_by) SELECT $1,id,$3,$4,$5,$6 FROM funding_task WHERE id=$2 AND organization_id=$1 RETURNING id",
+          "INSERT INTO task_proof(organization_id,task_id,filename,media_type,content,uploaded_by) SELECT $1,id,$3,$4,$5,$6 FROM task WHERE id=$2 AND organization_id=$1 RETURNING id",
           [s.org, taskId, name, type, Buffer.from(file.bytes), s.userId],
         )
       ).rows[0]?.id as string | undefined;
@@ -872,7 +872,7 @@ export async function taskProofFile(db: Pool, p: Principal, id: string) {
   return scope(db, p, false, async (s) => {
     const row = (
       await s.c.query(
-        "SELECT f.filename,f.media_type,f.content,t.responsible_id FROM funding_task_proof f JOIN funding_task t ON t.id=f.task_id WHERE f.id=$1 AND f.organization_id=$2 AND f.removed_at IS NULL",
+        "SELECT f.filename,f.media_type,f.content,t.responsible_id FROM task_proof f JOIN task t ON t.id=f.task_id WHERE f.id=$1 AND f.organization_id=$2 AND f.removed_at IS NULL",
         [id, s.org],
       )
     ).rows[0];
@@ -889,7 +889,7 @@ export async function fundingTasksView(db: Pool, p: Principal) {
   return scope(db, p, false, async (s) => {
     const tasks = (
       await s.c.query(
-        selectTasks.replace("FROM funding_task t", ",COALESCE(pa.name,g.funder) AS file_name,COALESCE(g.program,'') AS file_detail FROM funding_task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id") +
+        selectTasks.replace("FROM task t", ",COALESCE(pa.name,g.funder) AS file_name,COALESCE(g.program,'') AS file_detail FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id") +
           " AND ($2 OR t.responsible_id=ANY($3::uuid[])) ORDER BY t.status,t.due_on NULLS LAST,t.position",
         [s.org, s.moneyRead, [...s.own]],
       )
@@ -916,7 +916,7 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
   const out: MoneyDeadline[] = [];
   const tasks = (
     await c.query(
-      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM funding_task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
+      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
       [org, from, to, all, own],
     )
   ).rows;
@@ -972,7 +972,7 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
 export async function moneyDeadlines(db: Pool, p: Principal, from: string, to: string) {
   return scope(db, p, false, async (s) => {
     // The layer is offered with the money right, or to the person in charge of an open task.
-    const mine = !s.moneyRead && !!(await s.c.query("SELECT 1 FROM funding_task WHERE organization_id=$1 AND kind IN ('sponsor','grant') AND status<>'done' AND responsible_id=ANY($2::uuid[]) LIMIT 1", [s.org, [...s.own]])).rowCount;
+    const mine = !s.moneyRead && !!(await s.c.query("SELECT 1 FROM task WHERE organization_id=$1 AND kind IN ('sponsor','grant') AND status<>'done' AND responsible_id=ANY($2::uuid[]) LIMIT 1", [s.org, [...s.own]])).rowCount;
     return {
       can: { all: s.moneyRead, layer: s.moneyRead || mine },
       items: await moneyDeadlinesIn(s.c, s.org, from, to, s.moneyRead, [...s.own]),
@@ -983,7 +983,7 @@ export async function moneyDeadlines(db: Pool, p: Principal, from: string, to: s
 export async function openTasksCount(c: PoolClient, org: string, kind: "partner" | "grant", days: number, all: boolean, own: string[]) {
   return (
     await c.query(
-      `SELECT count(*)::int AS n FROM funding_task WHERE organization_id=$1 AND status<>'done' AND ${kind === "partner" ? "partner_id" : "grant_id"} IS NOT NULL AND due_on<=CURRENT_DATE+$2::int AND ($3 OR responsible_id=ANY($4::uuid[]))`,
+      `SELECT count(*)::int AS n FROM task WHERE organization_id=$1 AND status<>'done' AND ${kind === "partner" ? "partner_id" : "grant_id"} IS NOT NULL AND due_on<=CURRENT_DATE+$2::int AND ($3 OR responsible_id=ANY($4::uuid[]))`,
       [org, days, all, own],
     )
   ).rows[0].n as number;
@@ -1001,7 +1001,7 @@ export async function partnerReport(db: Pool, token: string) {
   if (!p) throw new AccessError("NOT_FOUND", 404);
   const tasks = (
     await db.query(
-      "SELECT t.title,t.status,t.done_on::text AS done_on,t.proof_url,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename)) FROM funding_task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM funding_task t WHERE t.partner_id=$1 ORDER BY t.position,t.created_at",
+      "SELECT t.title,t.status,t.done_on::text AS done_on,t.proof_url,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename)) FROM task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM task t WHERE t.partner_id=$1 ORDER BY t.position,t.created_at",
       [p.id],
     )
   ).rows as { title: string; status: string; done_on: string | null; proof_url: string; proofs: { id: string; filename: string }[] }[];
@@ -1020,7 +1020,7 @@ export async function partnerReportProof(db: Pool, token: string, proofId: strin
   if (!/^[A-Za-z0-9_-]{20,40}$/.test(token)) throw new AccessError("NOT_FOUND", 404);
   const row = (
     await db.query(
-      "SELECT f.filename,f.media_type,f.content FROM funding_task_proof f JOIN funding_task t ON t.id=f.task_id JOIN partner p ON p.id=t.partner_id WHERE f.id=$1 AND p.report_token=$2 AND f.removed_at IS NULL AND t.status='done'",
+      "SELECT f.filename,f.media_type,f.content FROM task_proof f JOIN task t ON t.id=f.task_id JOIN partner p ON p.id=t.partner_id WHERE f.id=$1 AND p.report_token=$2 AND f.removed_at IS NULL AND t.status='done'",
       [proofId, token],
     )
   ).rows[0];
@@ -1054,7 +1054,7 @@ export async function fundingTaskTick(db: Pool, parts: FundingTickParts = {}) {
   const tasks = !(all || parts.tasks) ? [] : (
     await db.query(
       `SELECT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
-         FROM funding_task t JOIN organization o ON o.id=t.organization_id
+         FROM task t JOIN organization o ON o.id=t.organization_id
          LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
          JOIN "user" u ON u.id=COALESCE(t.responsible_user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
          LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id

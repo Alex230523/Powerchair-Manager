@@ -11,7 +11,7 @@
  * Never run against a production database: the passwords below are public.
  */
 import { Pool } from "pg";
-import { seedTournaments } from "./demo-tournaments";
+import { OTHER_CLUBS, seedTournaments } from "./demo-tournaments";
 import { randomUUID } from "node:crypto";
 import { createAuth } from "../src/lib/auth";
 import { execute, type Principal } from "../src/domains/access/service";
@@ -173,6 +173,7 @@ try {
     console.log(`« ${CLUB} » existe déjà.`);
     // Tournaments came later (21/10/2026): added to an existing demo once.
     await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
+    await markDemo();
     // Wave 16 (E1): the demo events take the club's type matching their kind.
     await db.query("UPDATE calendar_event e SET event_type_id=(SELECT t.id FROM event_type t WHERE t.organization_id=e.organization_id AND t.legacy_kind=e.kind ORDER BY t.position LIMIT 1) WHERE e.event_type_id IS NULL");
     printAccounts();
@@ -1728,6 +1729,7 @@ try {
   );
 
   await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
+  await markDemo();
   // Wave 16 (E1): the demo events take the club's type matching their kind.
   await db.query("UPDATE calendar_event e SET event_type_id=(SELECT t.id FROM event_type t WHERE t.organization_id=e.organization_id AND t.legacy_kind=e.kind ORDER BY t.position LIMIT 1) WHERE e.event_type_id IS NULL");
   console.log(`« ${CLUB} » est prêt.`);
@@ -1738,6 +1740,11 @@ try {
     await db.query("DELETE FROM session WHERE id=$1", [id]);
   }
   await db.end();
+}
+
+/** 13.1: the organisations of the demo are marked; a preview refuses any other. */
+async function markDemo() {
+  await db.query("UPDATE organization SET is_demo=true WHERE NOT is_demo AND name=ANY($1::text[])", [[CLUB, FEDERATION, ...OTHER_CLUBS.map((c) => c.name)]]);
 }
 
 function printAccounts() {

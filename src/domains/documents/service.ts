@@ -1,3 +1,4 @@
+import { cursorSchema, decodeCursor, PAGE_SIZE, pageOf } from "../../lib/cursor";
 import { emitWebhook } from "../integrations/webhooks";
 import { ensureStorage } from "../storage/service";
 import { storageAdapter } from "../../lib/storage-adapter";
@@ -250,19 +251,22 @@ async function slot(
   }
   return d;
 }
-export async function documentView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}) {
+export async function documentView(db: Pool, p: Principal, raw: { season?: string; team?: string } = {}, cursor?: string) {
+  // 13.3: the most recently changed first, a page at a time.
+  const [afterAt, afterId] = decodeCursor(cursorSchema.parse(cursor), 2) ?? [null, null];
   return scope(db, p, async (s) => {
     // The top bar's team (wave 12): documents of its current members only.
     const chosen = (s.a as { kind?: string }).kind === "club" ? await resolveScope(s.c, { organization_id: s.a.organization_id, role: s.a.role, user_id: s.a.user_id, team_id: s.a.team_id }, raw) : { teamId: null };
     const members = chosen.teamId ? new Set(await teamMembers(s.c, s.a.organization_id, chosen.teamId)) : null;
     const rows = (
       await s.c.query(
-        "SELECT d.*,d.expires_on::text AS expires_on,c.full_name AS owner_name,se.name AS season_name,o.name AS organization_name FROM club_document d JOIN organization o ON o.id=d.organization_id JOIN season se ON se.id=d.season_id LEFT JOIN club_person c ON c.id=d.profile_id WHERE d.organization_id=$1 OR EXISTS(SELECT 1 FROM document_share sh WHERE sh.document_id=d.id AND sh.federation_id=$1 AND sh.revoked_at IS NULL) ORDER BY d.updated_at DESC LIMIT 300",
-        [s.a.organization_id],
+        `SELECT d.*,d.updated_at::text AS cursor_at,d.expires_on::text AS expires_on,c.full_name AS owner_name,se.name AS season_name,o.name AS organization_name FROM club_document d JOIN organization o ON o.id=d.organization_id JOIN season se ON se.id=d.season_id LEFT JOIN club_person c ON c.id=d.profile_id WHERE (d.organization_id=$1 OR EXISTS(SELECT 1 FROM document_share sh WHERE sh.document_id=d.id AND sh.federation_id=$1 AND sh.revoked_at IS NULL)) AND ($2::timestamptz IS NULL OR (d.updated_at,d.id)<($2::timestamptz,$3::uuid)) ORDER BY d.updated_at DESC,d.id DESC LIMIT ${PAGE_SIZE + 1}`,
+        [s.a.organization_id, afterAt, afterId],
       )
     ).rows;
+    const page = pageOf(rows, PAGE_SIZE, (d) => [d.cursor_at, d.id]);
     const documents = [];
-    for (const d of rows) {
+    for (const d of page.items) {
       if (members && d.profile_id && !members.has(d.profile_id)) continue;
       if (!(await docAccess(s.c, s.a, d))) continue;
       const foreign = d.organization_id !== s.a.organization_id;
@@ -334,6 +338,7 @@ export async function documentView(db: Pool, p: Principal, raw: { season?: strin
       sensitiveGrant: s.a.grants.includes("documents.sensitive"),
       mfa: mfaSatisfied(!!s.a.twoFactorEnabled),
       documents,
+      next: page.next,
       profiles: admin
         ? (
             await s.c.query(

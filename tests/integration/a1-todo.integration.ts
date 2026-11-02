@@ -69,7 +69,7 @@ it("creates a task from a grant's deadline, once, and closes it when the file is
   // The daily run and a second view add nothing.
   await taskSourcesTick(db);
   await tasksView(db, presidentA);
-  expect((await db.query("SELECT count(*)::int AS n FROM funding_task WHERE grant_id=$1", [grant])).rows[0].n).toBe(1);
+  expect((await db.query("SELECT count(*)::int AS n FROM task WHERE grant_id=$1", [grant])).rows[0].n).toBe(1);
   // The grant's own sheet (Finances) keeps only its check-list.
   expect((await fundingView(db, presidentA)).tasks.some((t) => t.grant_id === grant)).toBe(false);
   // An automatic task cannot be deleted by hand.
@@ -81,7 +81,7 @@ it("creates a task from a grant's deadline, once, and closes it when the file is
   // A grant with its own check-list (wave 15) keeps only those steps.
   const other = (await db.query("INSERT INTO grant_application(organization_id,funder,deadline_on,created_by) VALUES($1,'Commune',$2,$3) RETURNING id", [clubA, plus(40), presidentA.userId])).rows[0].id;
   expect((await tasksView(db, presidentA)).tasks.filter((t) => t.grant_id === other).map((t) => t.source_kind)).toEqual(["grantDeadline"]);
-  await db.query("INSERT INTO funding_task(organization_id,grant_id,kind,title,origin,created_by) VALUES($1,$2,'grant','Déposer le dossier','template',$3)", [clubA, other, presidentA.userId]);
+  await db.query("INSERT INTO task(organization_id,grant_id,kind,title,origin,created_by) VALUES($1,$2,'grant','Déposer le dossier','template',$3)", [clubA, other, presidentA.userId]);
   expect((await tasksView(db, presidentA)).tasks.filter((t) => t.grant_id === other).map((t) => t.title)).toEqual(["Déposer le dossier"]);
   // The other club's view never touches it, and gets none.
   expect((await tasksView(db, presidentB)).tasks.some((t) => t.grant_id === grant)).toBe(false);
@@ -112,7 +112,7 @@ it("shows a player only the task given to him, which he works on", async () => {
 it("brings a recurring task back for its next date, and the yearly model once", async () => {
   const [monthly] = (await run(presidentA, clubA, { action: "create", category: "admin", title: "Relevé bancaire", dueOn: "2026-01-31", recurrence: "monthly" })).ids!;
   const { next } = await run(presidentA, clubA, { action: "done", id: monthly, done: true });
-  expect((await db.query("SELECT title,due_on::text AS due,recurrence,status FROM funding_task WHERE id=$1", [next])).rows[0]).toEqual({ title: "Relevé bancaire", due: "2026-02-28", recurrence: "monthly", status: "todo" });
+  expect((await db.query("SELECT title,due_on::text AS due,recurrence,status FROM task WHERE id=$1", [next])).rows[0]).toEqual({ title: "Relevé bancaire", due: "2026-02-28", recurrence: "monthly", status: "todo" });
   // The yearly model: applied twice, kept once; done, next year's comes.
   const items = [
     { key: "assembly", title: "Assemblée générale", dueOn: "2026-06-30" },
@@ -120,9 +120,9 @@ it("brings a recurring task back for its next date, and the yearly model once", 
   ];
   expect((await run(presidentA, clubA, { action: "applyYear", year: 2026, items })).ids).toHaveLength(2);
   expect((await run(presidentA, clubA, { action: "applyYear", year: 2026, items })).ids).toHaveLength(0);
-  const ubo = (await db.query("SELECT id FROM funding_task WHERE organization_id=$1 AND source_key='year:2026:ubo'", [clubA])).rows[0].id;
+  const ubo = (await db.query("SELECT id FROM task WHERE organization_id=$1 AND source_key='year:2026:ubo'", [clubA])).rows[0].id;
   await run(presidentA, clubA, { action: "done", id: ubo, done: true });
-  expect((await db.query("SELECT due_on::text AS due,category FROM funding_task WHERE organization_id=$1 AND source_key='year:2027:ubo'", [clubA])).rows).toEqual([{ due: "2027-07-30", category: "admin" }]);
+  expect((await db.query("SELECT due_on::text AS due,category FROM task WHERE organization_id=$1 AND source_key='year:2027:ubo'", [clubA])).rows).toEqual([{ due: "2027-07-30", category: "admin" }]);
   // Only those who plan apply it.
   await expect(run(player, clubA, { action: "applyYear", year: 2026, items })).rejects.toMatchObject({ code: "FORBIDDEN" });
 });

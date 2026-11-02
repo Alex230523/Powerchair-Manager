@@ -114,7 +114,7 @@ it("organises the transport from the Transport template, for the team's coach", 
   const out = (await friendlyMatchExecute(db, presidentB, { action: "organizeTransport", id: mineB }, clubB)) as { tasks: number };
   expect(out.tasks).toBe(5);
   const tasks = (
-    await db.query("SELECT t.title,t.due_on::text AS due,cp.full_name FROM funding_task t JOIN club_person cp ON cp.id=t.responsible_id WHERE t.match_id=$1 AND t.kind='transport' ORDER BY t.due_on,t.title", [mineB])
+    await db.query("SELECT t.title,t.due_on::text AS due,cp.full_name FROM task t JOIN club_person cp ON cp.id=t.responsible_id WHERE t.match_id=$1 AND t.kind='transport' ORDER BY t.due_on,t.title", [mineB])
   ).rows;
   expect(tasks.map((t) => t.full_name)).toEqual(Array(5).fill("Coach Ours"));
   expect(tasks[0].title).toBe("Réserver la camionnette");

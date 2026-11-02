@@ -138,10 +138,10 @@ it("sends nothing twice when the season changes, and never loops between rules",
   await set(president, clubA, { action: "rule", rule: "documentExpiring", enabled: true, paused: false, delayDays: 30, recipients: "person", actions: ["notify", "task"] });
   await set(president, clubA, { action: "rule", rule: "taskLate", enabled: true, paused: false, delayDays: 0, actions: ["notify"] });
   await runAutomations(db);
-  const auto = (await db.query("SELECT id,source_kind FROM funding_task WHERE organization_id=$1 AND source_kind='auto_documentExpiring'", [clubA])).rows;
+  const auto = (await db.query("SELECT id,source_kind FROM task WHERE organization_id=$1 AND source_kind='auto_documentExpiring'", [clubA])).rows;
   expect(auto).toHaveLength(2);
   // Even late and given to someone, an automation's task is not « en retard » for the engine.
-  await db.query("UPDATE funding_task SET due_on=$2,responsible_id=$3 WHERE id=ANY($1::uuid[])", [auto.map((t) => t.id), day(-5), ana]);
+  await db.query("UPDATE task SET due_on=$2,responsible_id=$3 WHERE id=ANY($1::uuid[])", [auto.map((t) => t.id), day(-5), ana]);
   expect((await planOf(clubA)).filter((l) => l.rule === "taskLate")).toEqual([]);
   // A new season: the same documents, the same keys, nothing sent again.
   const before = (await db.query("SELECT count(*)::int AS n FROM automation_run WHERE organization_id=$1 AND result IN ('sent','task')", [clubA])).rows[0].n;

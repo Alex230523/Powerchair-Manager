@@ -1,3 +1,4 @@
+import { cursorSchema } from "../../lib/cursor";
 import { z } from "zod";
 import { localTime } from "./time";
 export const kinds = [
@@ -164,7 +165,7 @@ export type Command = z.infer<typeof commandSchema>;
 export const rangeSchema = z
   .object({
     all: z.enum(["true", "false"]).optional(),
-    offset: z.coerce.number().int().min(0).max(1000000).optional(),
+    after: cursorSchema,
     from: z.iso.date(),
     to: z.iso.date(),
     team: z.union([id, z.literal("")]).default(""),

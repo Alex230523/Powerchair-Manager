@@ -291,7 +291,7 @@ async function teamBoard(s: Scope, team: TeamCard, players: string[], staff: str
   const tasks = (
     await s.c.query(
       `SELECT t.id,t.title,t.due_on::text AS due_on,t.status,COALESCE(cp.full_name,'') AS responsible
-         FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
+         FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
         WHERE t.organization_id=$1 AND t.status<>'done'
           AND (t.team_id=$2
                OR t.event_id IN (SELECT id FROM calendar_event WHERE organization_id=$1 AND team_id=$2)

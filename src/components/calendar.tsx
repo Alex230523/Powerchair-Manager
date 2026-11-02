@@ -120,7 +120,8 @@ type View = {
     user_id: string;
     role: string;
   };
-  hasMore: boolean;
+  /** 13.3: in the list of every event, the cursor of the next page. */
+  next: string | null;
   sharedVenues: { id: string; name: string; address: string }[];
   manage: boolean;
   canPlan: boolean;
@@ -206,8 +207,8 @@ export function Calendar({
             "Aucune invitation visible. Les présences ne sont pas déduites des participants.",
           location:
             "Choisissez un seul lieu : club, répertoire commun ou saisie libre.",
-          more: "Page suivante",
-          back: "Page précédente",
+          more: "Afficher plus",
+          shown: "{n} événements affichés",
         }
       : locale === "en"
         ? {
@@ -230,8 +231,8 @@ export function Calendar({
               "No visible invitations. Attendance is not inferred from participants.",
             location:
               "Choose one location: club, shared directory or free text.",
-            more: "Next page",
-            back: "Previous page",
+            more: "Show more",
+            shown: "{n} events shown",
           }
         : {
             subscribe: "Abonneren op kalender",
@@ -252,8 +253,8 @@ export function Calendar({
               "Geen zichtbare uitnodigingen. Aanwezigheid wordt niet afgeleid van deelnemers.",
             location:
               "Kies één locatie: club, gedeeld register of vrije tekst.",
-            more: "Volgende pagina",
-            back: "Vorige pagina",
+            more: "Meer tonen",
+            shown: "{n} activiteiten getoond",
           };
   const t = calendarCopy[locale],
     kl = kindLabels[locale];
@@ -270,7 +271,7 @@ export function Calendar({
     [moreDay, setMoreDay] = useState<string | null>(null),
     [editorOpen, setEditorOpen] = useState(create),
     [subscriptionOpen, setSubscriptionOpen] = useState(subscribe),
-    [offset, setOffset] = useState(0),
+    [moreBusy, setMoreBusy] = useState(false),
     [place, setPlace] = useState(""),
     [selected, setSelected] = useState(eventId ?? ""),
     [placeDialog, setPlaceDialog] = useState(false),
@@ -303,8 +304,6 @@ export function Calendar({
     params =
       "all=" +
       (view === "list" && !eventId ? "true" : "false") +
-      "&offset=" +
-      offset +
       "&from=" +
       range.from +
       "&to=" +
@@ -319,6 +318,20 @@ export function Calendar({
     if (!r.ok) throw new Error(b.error);
     setData(b);
   }, [params]);
+  /** 13.3: the next page of the list is added under the events already shown. */
+  async function showMore(cursor: string) {
+    setMoreBusy(true);
+    try {
+      const r = await fetch("/api/calendar?" + params + "&after=" + encodeURIComponent(cursor), { cache: "no-store" }),
+        b = await r.json();
+      if (!r.ok) throw new Error(b.error);
+      setData((d) => (d ? { ...d, events: [...d.events, ...b.events], next: b.next } : d));
+    } catch (e) {
+      setError(errorText(e instanceof Error ? e.message : ""));
+    } finally {
+      setMoreBusy(false);
+    }
+  }
   const errorText = useCallback(
     (code: string) =>
       (calendarErrors[code] ?? registrationErrors[code])?.[
@@ -527,7 +540,6 @@ export function Calendar({
                     value={view}
                     onChange={(v) => {
                       setView(v as PlannerView);
-                      setOffset(0);
                       setSelected("");
                     }}
                   />
@@ -578,7 +590,6 @@ export function Calendar({
                     value={team}
                     onChange={(e) => {
                       setTeam(e.target.value);
-                      setOffset(0);
                     }}
                   >
                     <option value="">{t.all}</option>
@@ -595,7 +606,6 @@ export function Calendar({
                     value={place}
                     onChange={(e) => {
                       setPlace(e.target.value);
-                      setOffset(0);
                     }}
                   >
                     <option value="">{t.all}</option>
@@ -747,8 +757,14 @@ export function Calendar({
                 </ul>
               )}
               <div className="actions">
-                {offset > 0 && <Button variant="secondary" onClick={() => setOffset(Math.max(0, offset - 100))}>{extra.back}</Button>}
-                {data.hasMore && <Button variant="secondary" onClick={() => setOffset(offset + 100)}>{extra.more}</Button>}
+                {data.next && (
+                  <Button variant="secondary" disabled={moreBusy} aria-busy={moreBusy} onClick={() => void showMore(data.next as string)}>
+                    {extra.more}
+                  </Button>
+                )}
+                <span className="sr-only" role="status" aria-live="polite">
+                  {data.next || data.events.length > 100 ? fillText(extra.shown, { n: String(data.events.length) }) : ""}
+                </span>
               </div>
             </Card>
             {moreDay && (

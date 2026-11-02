@@ -1,0 +1,31 @@
+# 13.1: each Vercel preview runs on its own Neon branch (created by the Neon
+# integration, named « preview/<git branch> », from the demo-only branch of
+# the preview project). When the pull request closes, merged or not, its
+# database branch goes: the free plan holds 10 branches per project.
+# Needs the repository secrets NEON_API_KEY and NEON_PROJECT_ID; without
+# them, nothing happens (docs/APERCUS-VERCEL.md).
+name: Preview database
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: read
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete the Neon branch of this preview
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          BRANCH: preview/${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "NEON_API_KEY or NEON_PROJECT_ID is not set: nothing to delete."; exit 0
+          fi
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches"
+          id=$(curl -fsS -H "Authorization: Bearer $NEON_API_KEY" "$api" | jq -r --arg b "$BRANCH" '.branches[] | select(.name == $b) | .id' | head -n1)
+          if [ -z "$id" ]; then echo "No branch $BRANCH: nothing to delete."; exit 0; fi
+          curl -fsS -X DELETE -H "Authorization: Bearer $NEON_API_KEY" "$api/$id" > /dev/null
+          echo "Deleted $BRANCH ($id)."

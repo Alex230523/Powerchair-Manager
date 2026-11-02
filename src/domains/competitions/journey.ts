@@ -217,7 +217,7 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
       ? (((await c.query("SELECT id,title FROM trip WHERE calendar_event_id=$1 AND organization_id=$2 ORDER BY created_at LIMIT 1", [m.calendar_event_id, org])).rows[0] ?? null) as { id: string; title: string } | null)
       : null;
     const tasks = (
-      await c.query("SELECT t.id,t.title,t.source_kind,t.status,COALESCE(cp.full_name,'') AS responsible FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.match_id=$2 ORDER BY t.created_at", [
+      await c.query("SELECT t.id,t.title,t.source_kind,t.status,COALESCE(cp.full_name,'') AS responsible FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.match_id=$2 ORDER BY t.created_at", [
         org,
         matchId,
       ])
@@ -301,7 +301,7 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
           if (item.responsibleId && !staff.has(item.responsibleId)) throw new AccessError("NOT_IN_TEAM", 400);
           const kind = item.key === "transport" ? "transport" : "equipment";
           const r = await c.query(
-            `INSERT INTO funding_task(organization_id,kind,category,title,due_on,responsible_id,match_id,team_id,origin,source_key,source_kind,source_params,created_by)
+            `INSERT INTO task(organization_id,kind,category,title,due_on,responsible_id,match_id,team_id,origin,source_key,source_kind,source_params,created_by)
              VALUES($1,$2,'sport',$3,($4::timestamptz AT TIME ZONE 'Europe/Brussels')::date,$5,$6,$7,'template',$8,$9,$10,$11)
              ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,
             [org, kind, `${item.key} · ${about}`.slice(0, 200), m.starts_at, item.responsibleId, m.id, m.team_id, `match:${m.id}:${item.key}`, `match_${item.key}`, JSON.stringify({ about }), p.userId],

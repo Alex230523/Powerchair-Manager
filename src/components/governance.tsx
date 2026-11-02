@@ -18,6 +18,7 @@ import { governanceCopy } from "./governance-copy";
 import { settingsCopy } from "./settings-copy";
 import { errors } from "./access-copy";
 import { Card, EmptyState } from "./ui";
+import { LoadMore } from "./use-api";
 
 export type Governance = {
   organizationId: string;
@@ -422,9 +423,25 @@ export function Journal({
     [applied, setApplied] = useState(filters),
     [data, setData] = useState<{
       rows: JournalRow[];
+      next: string | null;
       people: { id: string; name: string }[];
     } | null>(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [moreBusy, setMoreBusy] = useState(false);
+  /** 13.3: the older entries, a page at a time. */
+  async function showMore(cursor: string) {
+    setMoreBusy(true);
+    try {
+      const r = await fetch("/api/governance/journal?" + new URLSearchParams({ kind, ...applied, after: cursor }).toString(), { cache: "no-store" });
+      const v = await r.json();
+      if (!r.ok) throw new Error(v.error);
+      setData((d) => (d ? { ...d, rows: [...d.rows, ...v.rows], next: v.next } : d));
+    } catch (e) {
+      setError(errors[(e as Error).message]?.[locale] ?? errors.FORBIDDEN[locale]);
+    } finally {
+      setMoreBusy(false);
+    }
+  }
   useEffect(() => {
     let cancelled = false;
     fetch(
@@ -525,6 +542,7 @@ export function Journal({
       {error && <p role="alert">{error}</p>}
       {data &&
         (data.rows.length ? (
+          <>
           <div className="table-scroll" role="region" aria-label={heading} tabIndex={0}>
             <table className="ledger">
               <thead>
@@ -550,6 +568,8 @@ export function Journal({
               </tbody>
             </table>
           </div>
+          <LoadMore locale={locale} shown={data.rows.length} hasMore={!!data.next} busy={moreBusy} failed={false} onMore={() => void showMore(data.next as string)} />
+          </>
         ) : (
           <EmptyState title={g.empty} />
         ))}

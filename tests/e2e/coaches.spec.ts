@@ -39,9 +39,9 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     const season = (await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240) RETURNING id", [club])).rows[0].id;
     const team = (await db.query("INSERT INTO team(organization_id,season_id,name) VALUES($1,$2,'Les Aigles') RETURNING id", [club, season])).rows[0].id;
     await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'coach',CURRENT_DATE-10)", [club, team, profile]);
-    await db.query("INSERT INTO funding_task(organization_id,kind,title,due_on,responsible_id,origin,created_by) VALUES($1,'transport','Réserver la camionnette',CURRENT_DATE+7,$2,'manual',$3)", [club, profile, user]);
-    await db.query("INSERT INTO funding_task(organization_id,kind,title,due_on,responsible_id,origin,created_by) VALUES($1,'training','Choisir les fiches',CURRENT_DATE+2,$2,'manual',$3)", [club, profile, user]);
-    await db.query("INSERT INTO funding_task(organization_id,kind,title,origin,created_by) VALUES($1,'documents','Pour personne','manual',$2)", [club, user]);
+    await db.query("INSERT INTO task(organization_id,kind,title,due_on,responsible_id,origin,created_by) VALUES($1,'transport','Réserver la camionnette',CURRENT_DATE+7,$2,'manual',$3)", [club, profile, user]);
+    await db.query("INSERT INTO task(organization_id,kind,title,due_on,responsible_id,origin,created_by) VALUES($1,'training','Choisir les fiches',CURRENT_DATE+2,$2,'manual',$3)", [club, profile, user]);
+    await db.query("INSERT INTO task(organization_id,kind,title,origin,created_by) VALUES($1,'documents','Pour personne','manual',$2)", [club, user]);
     await db.query("INSERT INTO training_course(federation_id,title,level,created_by) VALUES($1,'Coach niveau 1','1',$2)", [federation, user]);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr");

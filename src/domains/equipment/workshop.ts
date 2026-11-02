@@ -289,7 +289,7 @@ export async function workshopExecute(db: Pool, p: Principal, cmd: WorkshopComma
         await releaseFuture(s, ch.id, "breakdown");
         const task = (
           await s.c.query(
-            "INSERT INTO funding_task(organization_id,kind,category,title,detail,due_on,chair_id,origin,created_by) VALUES($1,'equipment','equipment',$2,$3,$4::date,$5,'manual',$6) RETURNING id",
+            "INSERT INTO task(organization_id,kind,category,title,detail,due_on,chair_id,origin,created_by) VALUES($1,'equipment','equipment',$2,$3,$4::date,$5,'manual',$6) RETURNING id",
             [org, `Panne : ${ch.name}`.slice(0, 200), cmd.description, today, ch.id, s.p.userId],
           )
         ).rows[0].id as string;

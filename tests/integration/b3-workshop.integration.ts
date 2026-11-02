@@ -113,7 +113,7 @@ it("takes a chair out of service at once when a parent reports a breakdown the d
   expect(await status(own)).toBe("out_of_service");
   const report = (await db.query("SELECT status,task_id,photo_type FROM chair_report WHERE id=$1", [r.id])).rows[0];
   expect(report).toMatchObject({ status: "open", photo_type: "image/png" });
-  expect((await db.query("SELECT title FROM funding_task WHERE id=$1", [report.task_id])).rows[0].title).toBe("Panne : Strike d'Ana");
+  expect((await db.query("SELECT title FROM task WHERE id=$1", [report.task_id])).rows[0].title).toBe("Panne : Strike d'Ana");
   // The president is told in the application and by e-mail.
   expect((await db.query("SELECT count(*)::int AS n FROM app_notification WHERE recipient_user_id=$1 AND resource_id=$2", [user, r.id])).rows[0].n).toBe(1);
   expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1 AND resource_id=$2", [user, r.id])).rows[0].n).toBe(1);
