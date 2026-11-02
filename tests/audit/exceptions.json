@@ -1,1 +1,5 @@
-[]
+[
+  { "rule": "raw-text", "path": "/fr/documents", "target": "div.card-body > form > p", "reason": "La phrase d'aide liste volontairement les variables du modèle ({name}, {organization}, {season}, {date}) que l'on peut écrire dans le texte." },
+  { "rule": "card-heights", "path": "/fr/statistics", "target": "main#main > div.stats-grid", "reason": "Deux graphiques de nature différente (courbe et barres) côte à côte : chacun garde la hauteur de ses données." },
+  { "rule": "row-heights", "path": "/fr/tournaments", "target": "ul.plain-list > li > div.actions", "reason": "« Accepter et inscrire l'équipe » passe sur deux lignes à côté de « Refuser » dans une carte étroite ; les deux boutons restent alignés en haut et cliquables (44 px au moins)." }
+]

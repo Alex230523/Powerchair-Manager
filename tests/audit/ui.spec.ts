@@ -86,7 +86,12 @@ for (const role of roles)
         async function inspect(path: string, locale: string, what: string) {
           errors.length = 0;
           await settled(page);
-          const found: Finding[] = await page.evaluate(displayChecks, mark);
+          // A page whose script never gives the hand back is a finding, not a stalled run.
+          const found = await Promise.race([page.evaluate(displayChecks, mark), new Promise<null>((done) => setTimeout(() => done(null), 20000))]);
+          if (!found) {
+            issues.push({ rule: "page-hang", role, variant: variant.id, locale, path, what, target: "page", detail: "no answer to the checks within 20 s", shot: null });
+            return;
+          }
           mark += found.length + 1;
           const kept = variant.layout ? found : found.filter((f) => f.rule === "raw-text");
           if (variant.axe) {
