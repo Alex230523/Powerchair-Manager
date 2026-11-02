@@ -142,6 +142,41 @@ async function count(c: PoolClient, org: string, meetingId: string, kind: "assem
   return quorum(members, present, represented, percent);
 }
 
+type MeetingRow = {
+  id: string;
+  kind: "assembly" | "board";
+  title: string;
+  starts_at: string;
+  place: string;
+  status: "planned" | "held" | "closed" | "cancelled";
+  fiscal_year_start: string | null;
+  second_of: string | null;
+  invite_sent_at: string | null;
+  reminder_sent_at: string | null;
+  quorum_reached: boolean | null;
+  minutes: string;
+  signed_president_name: string | null;
+  signed_president_at: string | null;
+  signed_secretary_name: string | null;
+  signed_secretary_at: string | null;
+  document_id: string | null;
+  version: number;
+};
+type ItemRow = {
+  id: string;
+  position: number;
+  kind: ItemKind;
+  title: string;
+  detail: string;
+  majority: Majority;
+  profile_id: string | null;
+  board_role: string | null;
+  votes_for: number | null;
+  votes_against: number | null;
+  votes_abstain: number | null;
+  result: "adopted" | "rejected" | null;
+};
+
 export async function associationView(db: Pool, p: Principal, locale: Locale) {
   return scope(db, p, false, async (x) => {
     const r = await rules(x.c, x.org);
@@ -163,7 +198,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
                FROM member_register l JOIN club_person cp ON cp.id=l.profile_id JOIN "user" u ON u.id=l.recorded_by WHERE l.organization_id=$1 ORDER BY l.recorded_at DESC LIMIT 1000`,
             [x.org],
           )
-        ).rows
+        ).rows as { id: string; profile_id: string; full_name: string; event: string; status_after: string; board_role: string | null; decision_body: string | null; decision_on: string | null; meeting_id: string | null; reason: string; corrects_id: string | null; recorded_by: string; recorded_at: string }[]
       : [];
     // 3: suggestions, never added without a decision: adults with a team for more than a season, parents who carry tasks.
     const suggestions = x.manage
@@ -181,7 +216,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
              ORDER BY 2 LIMIT 30`,
             [x.org],
           )
-        ).rows
+        ).rows as { id: string; full_name: string; why: "adult" | "parent" }[]
       : [];
     const meetingsRaw = (
       await x.c.query(
@@ -189,7 +224,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
            FROM association_meeting WHERE organization_id=$1 ORDER BY starts_at DESC LIMIT 50`,
         [x.org],
       )
-    ).rows;
+    ).rows as MeetingRow[];
     const meetings = [];
     for (const m of meetingsRaw) {
       const attendees = (
@@ -210,7 +245,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
             "SELECT i.id,i.position,i.kind,i.title,i.detail,i.majority,i.profile_id,i.board_role,i.votes_for,i.votes_against,i.votes_abstain,i.result FROM meeting_item i WHERE i.meeting_id=$1 ORDER BY i.position",
             [m.id],
           )
-        ).rows,
+        ).rows as ItemRow[],
         attendees: x.manage ? attendees : attendees.map((a) => ({ ...a, answer: x.own.has(a.profile_id) ? a.answer : "none", present: false })),
         mine: mine.map((a) => a.profile_id),
         quorum: x.manage ? await count(x.c, x.org, m.id, m.kind, !!m.second_of, r) : null,
@@ -226,7 +261,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
       members,
       register: lines,
       suggestions,
-      people: x.manage ? (await x.c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' ORDER BY full_name", [x.org])).rows : [],
+      people: x.manage ? ((await x.c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' ORDER BY full_name", [x.org])).rows as { id: string; full_name: string }[]) : [],
       meetings,
       year: { ...year, planned: meetingsRaw.some((m) => m.kind === "assembly" && m.fiscal_year_start === year.from && m.status !== "cancelled") },
       endingMandates: x.manage ? endingMandates(members, today()) : [],
