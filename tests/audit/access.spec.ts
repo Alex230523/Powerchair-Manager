@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { apiRoutes, matrixRoles } from "../access-matrix";
 import { menuGroups, type Workspace } from "../../src/components/menu";
-import { prepareAudit, signIn, secretsB, origin, type AuditRole } from "./support";
+import { signIn, secretsB, origin, type AuditRole } from "./support";
 
 /**
  * Audit 26 (npm run audit:access): every API route, called for real by
@@ -31,7 +31,6 @@ test("each role reaches exactly what the matrix says", async () => {
   const menus: Record<string, string[]> = {};
   const problems: string[] = [];
   try {
-    await prepareAudit(db);
     const demoNames = (
       await db.query("SELECT c.full_name FROM club_person c JOIN organization o ON o.id=c.organization_id WHERE o.name='Club démo Powerchair' AND 'player'=ANY(c.directory_roles) ORDER BY c.full_name LIMIT 3")
     ).rows.map((r) => r.full_name as string);
@@ -74,6 +73,10 @@ test("each role reaches exactly what the matrix says", async () => {
   writeFileSync("audit-report/access-observed.json", JSON.stringify(observed, null, 1));
   writeFileSync("audit-report/access-menus.json", JSON.stringify(menus, null, 1));
   writeFileSync("audit-report/access-problems.txt", problems.join("\n"));
+  // The log carries what was seen, so a run can be read without its artefacts.
+  for (const [route, statuses] of Object.entries(observed)) console.log(`AUDIT access\t${route}\t${matrixRoles.map((r) => `${r}=${statuses[r] ?? "-"}`).join(" ")}`);
+  for (const [role, routes] of Object.entries(menus)) console.log(`AUDIT menu\t${role}\t${routes.join(" ")}`);
+  for (const p of problems) console.log(`AUDIT problem\t${p}`);
   if (!process.env.AUDIT_RECORD) expect(problems).toEqual([]);
 });
 
