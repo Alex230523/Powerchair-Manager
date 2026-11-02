@@ -11336,9 +11336,13 @@ ul.task-page li {
   margin: 0;
   padding-left: var(--space-4);
 }
+.guide-toc li {
+  padding-block: 2px;
+}
 .guide-toc a {
   display: inline-block;
-  min-height: 1.5rem;
+  min-height: 2rem;
+  line-height: 2rem;
 }
 .guide-lexicon {
   display: grid;

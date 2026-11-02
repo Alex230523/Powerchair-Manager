@@ -60,11 +60,13 @@ test("staff roles, from the settings to the coaches' list", async ({ page }) => 
 
     await page.goto("/fr/coaches");
     await expect(page.getByText("Trésorier").first()).toBeVisible();
+    await page.mouse.move(0, 0);
     const tip = page.locator(".tip-term").first();
     await tip.focus();
-    await expect(page.getByRole("tooltip").first()).toBeVisible();
+    const bubble = page.locator(`[id="${await tip.getAttribute("aria-describedby")}"]`);
+    await expect(bubble).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("tooltip").first()).toBeHidden();
+    await expect(bubble).toBeHidden();
     await axe(page, "coaches list");
     await page.screenshot({ path: "test-results/staff-roles-390.png", fullPage: true });
   } finally {
