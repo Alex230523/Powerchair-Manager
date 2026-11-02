@@ -42,7 +42,8 @@ for (const variant of [
     // Centred on a computer, 16 px from the edges on a phone.
     const c = (await card.boundingBox())!;
     if (variant.width > 640) expect(Math.abs(c.x + c.width / 2 - variant.width / 2)).toBeLessThanOrEqual(2);
-    else expect(Math.round(c.x)).toBe(16);
+    // The gutter is 1 rem: 16 px, a little more with very large text.
+    else expect(Math.round(c.x)).toBe(variant.size === "xlarge" ? 20 : 16);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     await axe(page, `sign-in ${variant.id}`);
     await page.screenshot({ path: `test-results/sign-in-${variant.id}.png`, fullPage: true });
