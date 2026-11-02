@@ -663,9 +663,12 @@ export function PlayerDirectory({
                         const list = data.coachExtras?.[r.id]?.formations ?? [];
                         const day = (d: string | null) => (d ? new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")) : "");
                         return (
+                          <>
+                          <TrainingBadge locale={locale} state={r.training} />{" "}
                           <Tip href={`/${locale}/coaches/${r.id}#formations`} definition={list.length ? list.map((x) => fillIn(staffRolesCopy[locale].formationOn, { title: x.title, date: day(x.on) })).join(" · ") : staffRolesCopy[locale].noFormation}>
                             {fillIn(staffRolesCopy[locale].formationsCount, { n: String(list.length) })}
                           </Tip>
+                          </>
                         );
                       },
                     },
