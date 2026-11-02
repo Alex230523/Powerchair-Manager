@@ -20,7 +20,7 @@ import { SetupCard } from "./setup-card";
 import { Badge, Button, Card, EmptyState, IconTile, KpiCard, PageHeader, Segmented } from "./ui";
 type State =
   | { kind: "loading" }
-  | { kind: "visitor"; failed: boolean }
+  | { kind: "visitor"; failed: boolean; noContext?: boolean }
   | { kind: "ready"; data: Dashboard };
 const zone = "Europe/Brussels";
 const featureIcons: IconName[] = ["players", "calendar", "document", "dues"];
@@ -42,9 +42,13 @@ export function Home({ locale }: { locale: Locale }) {
     const load = () =>
       fetch(url, { cache: "no-store" })
         .then(async (r) => {
+          const body = r.ok ? null : ((await r.json().catch(() => ({}))) as { error?: string });
+          // Signed in without a club yet: say so, rather than « unavailable ».
           const next: State = r.ok
             ? { kind: "ready", data: (await r.json()) as Dashboard }
-            : { kind: "visitor", failed: r.status !== 401 };
+            : body?.error === "CONTEXT_REQUIRED"
+              ? { kind: "visitor", failed: false, noContext: true }
+              : { kind: "visitor", failed: r.status !== 401 };
           if (!cancelled) setState(next);
         })
         .catch(() => {
@@ -88,6 +92,11 @@ export function Home({ locale }: { locale: Locale }) {
             <Icon name="arrow" />
           </Link>
         </section>
+        {state.noContext && (
+          <p role="status" className="notice dash-section">
+            {t.noClub} <Link href={`/${locale}/access`}>{t.noClubLink}</Link>
+          </p>
+        )}
         {state.failed && (
           <p role="alert" className="dash-section">
             {t.error}{" "}

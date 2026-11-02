@@ -26,12 +26,15 @@ for (const locale of ["fr", "nl", "en"])
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    // Wave 16 (I1): a visitor has no menu, only the brand, the language and « Se connecter ».
-    await expect(page.locator("header select")).toHaveCount(1);
+    // Wave 16 (I1): a visitor has no menu, only the brand, the language (a discreet « FR ») and « Se connecter ».
+    await expect(page.locator("header .lang-menu summary")).toHaveText(locale.toUpperCase());
     await expect(page.locator(".sidebar, .bottom-nav")).toHaveCount(0);
     await page.goto(`/${locale}/access`);
-    await page.locator("header select").selectOption("en");
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    // The list offers the other languages only.
+    const target = locale === "en" ? { code: "nl", name: /Nederlands/ } : { code: "en", name: /English/ };
+    await page.locator("header .lang-menu summary").click();
+    await page.locator("header .lang-menu").getByRole("link", { name: target.name }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", target.code);
   });
 test("root redirects and unsupported locale is rejected", async ({ page }) => {
   await page.goto("/");
