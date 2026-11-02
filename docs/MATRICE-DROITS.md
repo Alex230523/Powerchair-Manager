@@ -22,6 +22,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/bank` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/calendar` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/calendar/feed/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/calendar/season` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/calendar/types` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/classification` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/classification/texts` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -81,6 +82,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/incidents/file` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/incidents/pdf` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/integrations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/keys` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/licences` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/licences/copy` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/licenses` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -150,8 +152,10 @@ Notes :
 
 - `/api/auth/[...all]` : Better Auth (connexion, inscription sur invitation) : couvert par tests/e2e/access.spec.ts
 - `/api/authorizations` : Autorisations parentales : textes du club (Réglages › Documents), demandes à toutes les familles, relances ; refus par un parent (point 28)
+- `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
+- `/api/keys` : Clés et badges d'un coach ou d'un membre du staff (H10)
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 - `/api/seasons/plan` : Préparer la saison suivante : l'assistant annuel, réservé à la présidence du club (point 16)
@@ -170,6 +174,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/c/[slug]/widget/[kind]` |  |  |  |  |  |  |  |  |  |   |
 | `/cagnotte/[token]` |  |  |  |  |  |  |  |  |  |   |
 | `/calendar` |  |  |  |  |  |  |  |  |  |   |
+| `/calendar/season` |  |  |  |  |  |  |  |  |  |   |
 | `/club` |  |  |  |  |  |  |  |  |  |   |
 | `/club/manage` |  |  |  |  |  |  |  |  |  |   |
 | `/club/public` |  |  |  |  |  |  |  |  |  |   |

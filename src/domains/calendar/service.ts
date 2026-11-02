@@ -939,11 +939,16 @@ export async function calendarExecute(
         const plan = await resolveInvite(s, typed);
         const base = plan ? { ...typed, participants: [...new Set([...typed.participants, ...plan.invited])] } : typed;
         await validate(s, base);
-        const schedule = Array.from({ length: input.occurrences }, (_, i) => ({
-          ...base,
-          localStart: shiftLocal(input.localStart, i * input.intervalDays),
-          localEnd: shiftLocal(input.localEnd, i * input.intervalDays),
-        }));
+        if (input.dates && (input.intervalDays !== 7 || input.dates.length !== input.occurrences || input.localEnd.slice(0, 10) !== input.localStart.slice(0, 10)))
+          throw new AccessError("INVALID_INPUT", 400);
+        const schedule = input.dates
+          ? // H9: the days of the season plan, each at the slot's time.
+            [...input.dates].sort().map((d) => ({ ...base, localStart: d + input.localStart.slice(10), localEnd: d + input.localEnd.slice(10) }))
+          : Array.from({ length: input.occurrences }, (_, i) => ({
+              ...base,
+              localStart: shiftLocal(input.localStart, i * input.intervalDays),
+              localEnd: shiftLocal(input.localEnd, i * input.intervalDays),
+            }));
         for (const item of schedule) await seasonDate(s, item);
         const instants = schedule.map(times);
         for (const t of instants)

@@ -1,5 +1,6 @@
 "use client";
 import { useClubChildFilter } from "./child-switcher";
+import { seasonScheduleCopy } from "./season-schedule-copy";
 import Link from "next/link";
 import { EventList, MonthBoard, WeekGrid, colorAttrs, dayName, kindName, type ColorBy } from "./calendar-board";
 import { SubscribePanel } from "./calendar-subscribe";
@@ -532,6 +533,12 @@ export function Calendar({
                 )}
                 {data.canPlan && (
                   <Link className="button secondary" href={"/" + locale + "/venues"}>{pc.manage}</Link>
+                )}
+                {/* H9: the whole season's trainings at once. */}
+                {data.manage && (
+                  <Link className="button secondary" href={"/" + locale + "/calendar/season"}>
+                    {seasonScheduleCopy[locale].open}
+                  </Link>
                 )}
                 {data.manage && (
                   <Button variant="secondary" icon="pin" onClick={() => setPlaceDialog(true)}>

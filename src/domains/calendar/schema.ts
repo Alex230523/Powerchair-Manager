@@ -94,6 +94,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     ]),
     occurrences: z.number().int().min(1).max(52),
     requestId: id,
+    /** H9: the exact days of a weekly series (holidays and closures left out), the time of localStart and localEnd kept. */
+    dates: z.array(z.iso.date()).min(1).max(52).optional(),
   }),
   z.object({
     action: z.literal("update"),

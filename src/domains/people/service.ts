@@ -1,4 +1,5 @@
 import { mfaSatisfied } from "../../lib/security-policy";
+import { keyCounts, keysOnDeparture, seesAllKeys } from "../keys/service";
 import { csvRows } from "./csv";
 import { defaultColumns, exportGrid, type ExportColumn } from "./export";
 import { Pool, PoolClient } from "pg";
@@ -645,6 +646,8 @@ async function readPeople(s: Scope, filters: Filters) {
       role: s.context.role,
     },
     ownProfileId: v.own?.id ?? null,
+    // H10: the keys each person still holds, for those who may see them (president, equipment, members).
+    keyCounts: seesAllKeys(s.context.role, s.rights) ? await keyCounts(s.client, s.context.organization_id) : null,
     capabilities: {
       peopleManage: managers,
       registrationsManage: s.rights.includes("registrations.manage"),
@@ -933,6 +936,8 @@ export async function peopleExecute(
             "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE profile_id=$1 AND organization_id=$2 AND role=$3 AND closed_at IS NULL AND NOT cancelled AND (ends_on IS NULL OR ends_on>=CURRENT_DATE)",
             [command.id, org, command.role],
           );
+        // H10: leaving with keys or badges, a task « Récupérer les clés ».
+        if (command.archived) await keysOnDeparture(c, org, command.id, s.p.userId);
         target = command.id;
       } else if (command.action === "departure") {
         const existing = await profile(s, command.id);
@@ -963,6 +968,7 @@ export async function peopleExecute(
             [command.id, org, command.status, command.note],
           );
         }
+        await keysOnDeparture(c, org, command.id, s.p.userId);
         target = command.id;
       } else if (command.action === "updateSeason") {
         if (!orderedDates(command.startsOn, command.endsOn))

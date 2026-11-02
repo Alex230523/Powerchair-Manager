@@ -45,6 +45,7 @@ import { People } from "./people";
 import { SeasonCheckPanel } from "./season-check";
 import { AuthorizationSettings } from "./authorization-settings";
 import { seasonPlanCopy } from "./season-plan-copy";
+import { seasonScheduleCopy } from "./season-schedule-copy";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
@@ -661,6 +662,17 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           )}
           {shown && category === "activities" && gov?.can.presence && <TeamPlacesSettings locale={locale} />}
           {shown && category === "activities" && <EventTypesSettings locale={locale} />}
+          {/* H9: the holidays of reference, the closures and the season planner. */}
+          {shown && category === "activities" && (
+            <Card title={seasonScheduleCopy[locale].referenceTitle} labelledBy="settings-holidays" headingId="settings-holidays">
+              <p className="muted">{seasonScheduleCopy[locale].settingsText}</p>
+              <p>
+                <Link className="button" href={`/${locale}/calendar/season`}>
+                  {seasonScheduleCopy[locale].open}
+                </Link>
+              </p>
+            </Card>
+          )}
           {/* Wave 17 (O1): the task templates (transport, training…), for those who plan. */}
           {shown && category === "activities" && <TaskTemplates locale={locale} />}
           {/* 28: the parental authorizations' texts. */}

@@ -10,6 +10,7 @@ import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { initials } from "./app-shell";
 import { Card, Stat } from "./player-profile";
+import { StaffKeys } from "./staff-keys";
 import { Badge, EmptyState, Tabs } from "./ui";
 import { DriverLicence } from "./driver-licence";
 import { Tasks } from "./tasks";
@@ -221,6 +222,9 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
             <EmptyState title={t.noDetails} />
           )}
         </Card>
+
+        {/* H10: the keys and badges held (the person, the president, equipment or members). */}
+        <StaffKeys locale={locale} profileId={id} />
 
         <Card title={t.teams} icon="team">
           {view.teams.length ? (

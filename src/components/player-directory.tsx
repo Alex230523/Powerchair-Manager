@@ -15,6 +15,7 @@ import { fillIn, sheetCopy } from "./player-sheet-copy";
 import { PlayerImport } from "./player-import";
 import { ExportDialog } from "./export-dialog";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
+import { keysCopy } from "./keys-copy";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { setupCopy } from "./setup-copy";
@@ -626,6 +627,17 @@ export function PlayerDirectory({
                       header: space.training,
                       sort: (r: Profile) => (r.training?.status === "trained" ? 0 : r.training?.status === "pending" ? 1 : 2),
                       cell: (r: Profile) => <TrainingBadge locale={locale} state={r.training} />,
+                    },
+                  ]
+                : []),
+              // H10: the keys and badges a coach still holds (a column one can hide).
+              ...(role === "coach" && data?.keyCounts
+                ? [
+                    {
+                      key: "keys",
+                      header: keysCopy[locale].column,
+                      sort: (r: Profile) => data.keyCounts?.[r.id] ?? 0,
+                      cell: (r: Profile) => (data.keyCounts?.[r.id] ? fillIn(keysCopy[locale].count, { n: String(data.keyCounts[r.id]) }) : ""),
                     },
                   ]
                 : []),

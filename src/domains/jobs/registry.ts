@@ -18,6 +18,7 @@ import { majorityTick } from "../people/service";
 import { seasonCheckTick } from "../season-check/service";
 import { authorizationTick } from "../authorizations/service";
 import { seasonPlanTick } from "../seasons/plan";
+import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { watchdog } from "./watchdog";
@@ -100,6 +101,8 @@ export const jobs = {
         authorizationReminders: await authorizationTick(db),
         // 16: what the season assistant scheduled (dues issue, data check, « Nouvelle saison » email).
         seasonPlan: await seasonPlanTick(db),
+        // H9: the planned sessions get their invitations 14 days before.
+        seasonInvites: await seasonSlotInviteTick(db),
       };
     },
   },
