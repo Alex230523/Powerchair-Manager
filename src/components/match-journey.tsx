@@ -8,6 +8,7 @@ import { journeyCopy, type JourneyCopy } from "./match-journey-copy";
 import { errors } from "./access-copy";
 import { fill } from "./fleet-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
+import { HeadToHead } from "./match-cards";
 import { ReportReview } from "./refereeing";
 import { useData } from "./use-api";
 
@@ -88,6 +89,8 @@ export function MatchJourney({ locale, id }: { locale: Locale; id: string }) {
       <p role="status" className="sr-only">
         {message}
       </p>
+      {/* 5: before a match, the last results against the same opponent. */}
+      {m.status !== "played" && <HeadToHead locale={locale} matchId={m.id} opponent={m.opponent} teamId={m.team_id} />}
       {data.manage ? (
         <>
           <Tabs

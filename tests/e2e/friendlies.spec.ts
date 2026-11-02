@@ -71,7 +71,7 @@ test("friendly between clubs: invitation, line, transport, score to confirm, tou
     await win.getByLabel("Message (facultatif)").fill("Match de préparation");
     await axe(page, "friendly window");
     await win.getByRole("button", { name: "Créer le match" }).click();
-    const row = page.locator(".ledger tbody tr").filter({ hasText: "C5 club B · Ours" });
+    const row = page.locator(".match-list > li").filter({ hasText: "C5 club B · Ours" });
     await expect(row).toContainText("Invitation envoyée");
     await expect(row).toContainText("En ordre (domicile)");
 
@@ -89,7 +89,7 @@ test("friendly between clubs: invitation, line, transport, score to confirm, tou
     await switchTo(page, mandate.B);
     await page.goto("/fr/matches");
     await page.getByRole("button", { name: "Accepter l'invitation de C5 club A" }).click();
-    const theirs = page.locator(".ledger tbody tr").filter({ hasText: "C5 club A · Aigles" });
+    const theirs = page.locator(".match-list > li").filter({ hasText: "C5 club A · Aigles" });
     await expect(theirs).toContainText("À organiser");
     await theirs.getByRole("button", { name: "Organiser le transport : C5 club A · Aigles" }).click();
     await expect(page.getByRole("status").filter({ hasText: "5 tâches de transport créées." })).toBeVisible();
@@ -104,7 +104,7 @@ test("friendly between clubs: invitation, line, transport, score to confirm, tou
     await switchTo(page, mandate.A);
     await page.goto("/fr/matches");
     await page.getByLabel("Afficher").selectOption("all");
-    const played = page.locator(".ledger tbody tr").filter({ hasText: "C5 club B · Ours" });
+    const played = page.locator(".match-list > li").filter({ hasText: "C5 club B · Ours" });
     await expect(played).toContainText("3-1");
     await expect(played).toContainText("à confirmer");
     await played.getByRole("button", { name: "Confirmer le score : C5 club B · Ours" }).click();

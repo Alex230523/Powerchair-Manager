@@ -25,6 +25,7 @@ import {
   officialKinds,
   playerTotals,
   teamRecord,
+  formOf,
   type ClubCommand,
   type FederationCommand,
   type RefereeCommand,
@@ -135,7 +136,7 @@ export async function matchesView(db: Pool, p: Principal) {
     const can = manageable(s, v.visibleTeams);
     const matches = (
       await c.query(
-        `SELECT m.id,m.team_id,t.name AS team,m.opponent,m.home,m.kind,m.competition,m.starts_at,
+        `SELECT m.id,m.team_id,t.name AS team,t.color AS team_color,m.opponent,m.home,m.kind,m.competition,m.starts_at,
                 to_char(m.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS local_start,
                 m.venue,m.calendar_event_id,m.status,m.our_score,m.their_score,m.notes,m.version,
                 m.place_id,m.linked_match_id,m.score_status,(m.score_proposed_by=$1) AS score_ours,
@@ -156,6 +157,12 @@ export async function matchesView(db: Pool, p: Principal) {
         name: t.name,
         manageable: can.has(t.id),
         record: teamRecord(matches.filter((m) => m.team_id === t.id)),
+        // 5: the team's card, its colour, its last five results and its next match.
+        color: t.color ?? null,
+        form: formOf(matches.filter((m) => m.team_id === t.id)),
+        next: ((n) => (n ? { id: n.id as string, opponent: n.opponent as string, local_start: n.local_start as string } : null))(
+          matches.filter((m) => m.team_id === t.id && m.status === "scheduled" && new Date(m.starts_at) >= new Date()).sort((a, b) => a.local_start.localeCompare(b.local_start))[0],
+        ),
       }));
     const day = brusselsToday();
     const players = all.assignments
@@ -429,7 +436,7 @@ export async function teamResults(
 ) {
   const rows = (
     await c.query(
-      "SELECT team_id,status,our_score,their_score FROM match WHERE organization_id=$1 AND team_id=ANY($2::uuid[])",
+      "SELECT team_id,status,our_score,their_score,score_status FROM match WHERE organization_id=$1 AND team_id=ANY($2::uuid[])",
       [org, teamIds],
     )
   ).rows;

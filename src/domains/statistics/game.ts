@@ -22,7 +22,7 @@ async function played(c: Db, x: StatisticsContext, from: string, to: string) {
     await c.query(
       `SELECT x.id,to_char(x.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS starts_at,t.name AS team,t.color,x.opponent,x.kind,x.our_score AS our,x.their_score AS their
          FROM match x JOIN team t ON t.id=x.team_id
-        WHERE x.organization_id=$1 AND x.status='played' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($4::text[] IS NULL OR t.name=ANY($4))
+        WHERE x.organization_id=$1 AND x.status='played' AND x.score_status<>'proposed' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($4::text[] IS NULL OR t.name=ANY($4))
         ORDER BY x.starts_at,x.id`,
       [x.org, from, to, x.teamNames],
     )
@@ -76,7 +76,7 @@ export async function gameStatistics(db: Pool, p: Principal, chart: string, q: C
           await c.query(
             `SELECT mp.profile_id,cp.full_name,t.name AS team,mp.starter,mp.minutes,mp.goals,mp.assists,mp.yellow_cards,mp.red_card
                FROM match_player mp JOIN match x ON x.id=mp.match_id AND x.organization_id=mp.organization_id JOIN team t ON t.id=x.team_id JOIN club_person cp ON cp.id=mp.profile_id
-              WHERE mp.organization_id=$1 AND x.status='played' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($4::text[] IS NULL OR t.name=ANY($4))`,
+              WHERE mp.organization_id=$1 AND x.status='played' AND x.score_status<>'proposed' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($4::text[] IS NULL OR t.name=ANY($4))`,
             [x.org, span.from, span.to, x.teamNames],
           )
         ).rows;

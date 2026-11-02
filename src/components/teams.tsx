@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { pollsCopy } from "./polls-copy";
+import { TeamMatches } from "./match-cards";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { teamsView, teamDetail, TeamCard, RosterRow } from "@/domains/teams/service";
@@ -332,6 +333,8 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
       {tab === "overview" && (
         <div role="tabpanel" id="team-panel-overview" aria-labelledby="team-tab-overview">
           <TeamBoard locale={locale} data={data} />
+          {/* 5: the team's matches, the same line as on the Matches page. */}
+          <TeamMatches locale={locale} teamIds={[team.id]} />
         </div>
       )}
       {tab === "roster" && (

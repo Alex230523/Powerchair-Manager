@@ -239,7 +239,7 @@ async function results(c: Db, x: Context, q: ClubQuery) {
               count(*) FILTER (WHERE x.our_score=x.their_score)::int AS drawn,
               count(*) FILTER (WHERE x.our_score<x.their_score)::int AS lost
          FROM match x JOIN team t ON t.id=x.team_id JOIN season s ON s.id=t.season_id
-        WHERE x.organization_id=$1 AND x.status='played' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($4::text[] IS NULL OR t.name=ANY($4))
+        WHERE x.organization_id=$1 AND x.status='played' AND x.score_status<>'proposed' AND x.starts_at>=$2::date AND x.starts_at<$3::date+1 AND ($4::text[] IS NULL OR t.name=ANY($4))
         GROUP BY t.name ORDER BY t.name`,
       [x.org, span.from, span.to, x.teamNames],
     )

@@ -28,6 +28,7 @@ import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
 import { teamsCopy } from "./teams-copy";
+import { TeamMatches } from "./match-cards";
 import { ClassificationBadge } from "./classification-badge";
 import { Badge, Tabs, EmptyState } from "./ui";
 import { undoToast } from "./toast";
@@ -643,6 +644,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
         hidden={tab !== "sport"}
         className="profile-grid"
       >
+        {/* 5: the player's matches, the same line as everywhere. */}
+        {tab === "sport" && currentTeams.length > 0 && <TeamMatches locale={locale} teamIds={currentTeams.map((a) => a.team_id)} />}
         <Card
           title={t.game}
           action={view.can.editSport ? editButton("sport", t.game) : null}
