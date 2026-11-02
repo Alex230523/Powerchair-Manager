@@ -88,6 +88,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/tasks", "tasks", "clipboardList"),
               // 33: the federation's circulars, for every member of an affiliated club.
               ...item("/circulars", "circulars", "megaphone"),
+              // H3: the polls to answer (and, for who may ask, to create).
+              ...item("/sondages", "polls", "clipboardList"),
             ],
           },
         ]
@@ -165,6 +167,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/tasks", "tasks", "clipboardList"),
                 // 33: the federation's circulars, for every member of an affiliated club.
                 ...item("/circulars", "circulars", "megaphone"),
+                // H3: the polls to answer (and, for who may ask, to create).
+                ...item("/sondages", "polls", "clipboardList"),
               ],
             },
           ]
@@ -216,6 +220,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/tasks", "tasks", "clipboardList"),
                   // 33: the federation's circulars, for every member of an affiliated club.
                   ...item("/circulars", "circulars", "megaphone"),
+                  // H3: the polls to answer (and, for who may ask, to create).
+                  ...item("/sondages", "polls", "clipboardList"),
                 ],
               },
               {
@@ -258,6 +264,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                         ]) satisfies NavItem[]),
                     // 33: the circulars (written by communication, read by the referees).
                     ...item("/circulars", "circulars", "megaphone"),
+                    // H3: the polls to answer (and, for who may ask, to create).
+                    ...item("/sondages", "polls", "clipboardList"),
                     ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
                     { route: "/venues", label: "venues", icon: "pin" },

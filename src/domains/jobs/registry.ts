@@ -25,6 +25,7 @@ import { offboardingTick } from "../offboarding/service";
 import { circularsTick } from "../circulars/service";
 import { refereeingTick } from "../referees/service";
 import { feedbackTick } from "../feedback/service";
+import { pollsTick } from "../polls/service";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -124,6 +125,8 @@ export const jobs = {
         refereeing: await refereeingTick(db),
         // 19: the remarks not yet sent leave; the issues' states are read.
         feedback: await feedbackTick(db).then((r) => r.sent + r.checked),
+        // H3: one relaunch the day before a poll closes; past polls close.
+        polls: await pollsTick(db),
       };
     },
   },

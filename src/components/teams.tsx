@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { pollsCopy } from "./polls-copy";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { teamsView, teamDetail, TeamCard, RosterRow } from "@/domains/teams/service";
@@ -316,6 +317,13 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
             {team.staff_contact_name && <span> · {sh.contact} : {team.staff_contact_name}</span>}
             <TeamPlaces locale={locale} players={team.players} capacity={team.capacity} />
           </span>
+        }
+        actions={
+          data.can.manage || data.can.convene || data.can.write ? (
+            <Link className="button secondary" href={`/${locale}/sondages?new=1&team=${team.id}`}>
+              {pollsCopy[locale].create}
+            </Link>
+          ) : null
         }
       />
       {error && <p role="alert">{error}</p>}

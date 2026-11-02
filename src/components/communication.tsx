@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { communicationView } from "@/domains/communication/service";
@@ -9,6 +10,7 @@ import {
   type Block,
 } from "@/domains/communication/schema";
 import { localAt, shiftLocal, toInstant } from "@/domains/calendar/time";
+import { pollsCopy } from "./polls-copy";
 import { communicationCopy } from "./communication-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
@@ -79,7 +81,16 @@ export function Communication({
     post({ organizationId: data.organization_id, ...body }, done);
   return (
     <main id="main" className="access communication">
-      <PageHeader title={t.title} subtitle={t.intro} />
+      <PageHeader
+        title={t.title}
+        subtitle={t.intro}
+        actions={
+          // H3: a short question to a group; from an event being prepared, the poll is linked to it.
+          <Link className="button secondary" href={`/${locale}/sondages?new=1${eventId ? `&event=${eventId}` : ""}`}>
+            {pollsCopy[locale].create}
+          </Link>
+        }
+      />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       <Tabs label={t.title} items={tabs.map((key) => ({ id: key, label: t.tabs[key] }))} value={tab} onChange={(id) => setChosen(id as typeof tab)} idPrefix="com-tab" panelId={(id) => `com-panel-${id}`} />

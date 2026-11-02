@@ -11668,3 +11668,64 @@ ul.task-page li {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
+/* H3: mini polls. */
+.poll-list {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+.poll-answer fieldset,
+.poll-form fieldset {
+  margin-block: var(--space-2);
+}
+.poll-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+.poll-choices .check,
+.poll-answer .check,
+.poll-form .check {
+  min-height: 44px;
+  align-items: center;
+}
+.poll-bars {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+}
+.poll-bars li {
+  display: grid;
+  gap: var(--space-1);
+}
+.poll-bar {
+  display: block;
+  height: 0.5rem;
+  width: calc(var(--value, 0) * 1%);
+  min-width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+}
+.poll-options {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+}
+.poll-form {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 44rem;
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.poll-form input:not([type="checkbox"], [type="radio"]),
+.poll-form select,
+.poll-form textarea {
+  width: 100%;
+}

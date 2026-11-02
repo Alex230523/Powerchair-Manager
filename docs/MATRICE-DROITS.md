@@ -112,6 +112,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/people/export` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/player-profile` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/player-profile/overview` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/polls` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/polls/answer` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/presidency` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/privacy` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/privacy/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
@@ -191,6 +193,8 @@ Notes :
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
 - `/api/onboarding` : Parcours d'accueil : ses propres parcours ; modèles et suivi pour qui gère les membres
 - `/api/player-profile/overview` : Vue d'ensemble d'une fiche (point 40) : chaque bloc selon le droit du lecteur ; jamais d'argent ni de santé pour un coach ; un parent voit celle de son enfant sans les notes du club ; 404 hors de l'organisation
+- `/api/polls` : Mini-sondages du club et de la fédération : à répondre, créés, résultats, clôture vers un événement ou une tâche (H3)
+- `/api/polls/answer` : Lien personnel d'un sondage, sans connexion, à usage unique (H3)
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/refereeing` : Arbitrage (points 25 et 36 à 39) : bureau de la fédération (compétence arbitrage : désignations, niveaux, barème, formations, notes de frais, export CSV, récapitulatif PDF) ; bureau de l'arbitre (réponses, itinéraires, rapport, notes de frais, formations) ; ?report= relecture du rapport par le club dans les 48 heures
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
@@ -296,6 +300,8 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/settings` |  |  |  |  |  |  |  |  |  |   |
 | `/settings/[category]` |  |  |  |  |  |  |  |  |  |   |
 | `/signalements` |  |  |  |  |  |  |  |  |  |   |
+| `/sondage/[token]` |  |  |  |  |  |  |  |  |  |   |
+| `/sondages` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/club` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/game` |  |  |  |  |  |  |  |  |  |   |

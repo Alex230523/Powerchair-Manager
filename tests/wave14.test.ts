@@ -31,7 +31,7 @@ describe("president menu (wave 14)", () => {
     // A2: « Subsides & sponsors » has its own entry.
     expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors"]);
     // 12: « Gestion du club » went to Réglages; Réglages is the menu's last entry, apart.
-    expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/equipment", "/incidents", "/discipline", "/contacts", "/tasks", "/circulars"]);
+    expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/equipment", "/incidents", "/discipline", "/contacts", "/tasks", "/circulars", "/sondages"]);
   });
   it("respects switched-off modules and missing rights", () => {
     const off = menuGroups(base("club_president", all, { disabled_modules: ["trips", "equipment", "fundraising"] }));
