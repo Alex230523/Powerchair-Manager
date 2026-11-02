@@ -135,13 +135,14 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await back.click();
     await expect(page).toHaveURL("/fr/settings");
 
-    // A coach without rights sees only their account and notifications; other categories say so.
+    // A coach without rights sees only their account, notifications and data; other categories say so.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(coach)]);
     await page.goto("/fr/settings");
-    await expect(cards).toHaveCount(2);
+    // Mon compte, notifications and « Mes données » (12: for everyone).
+    await expect(cards).toHaveCount(3);
     await page.getByLabel("Rechercher un réglage", { exact: true }).fill("barème");
     await expect(page.getByText("Aucun réglage ne correspond à cette recherche.")).toBeVisible();
     await page.goto("/fr/settings/money");
