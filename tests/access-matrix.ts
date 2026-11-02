@@ -98,7 +98,6 @@ export const apiRoutes: Record<string, ApiRoute> = {
   "matches": { methods: ["GET", "POST"] },
   "matches/journey": { methods: ["GET", "POST"] },
   "matches/journey/sheet": { methods: ["GET"] },
-  "messaging-archive": { methods: ["GET"], note: "PDF des anciens échanges de la messagerie, pour la présidence du club, jusqu'à la suppression des tables (point 24)" },
   "notifications": { methods: ["GET", "POST"] },
   "notifications/preview": { methods: ["POST"] },
   "open-events": { methods: ["GET", "POST"] },
