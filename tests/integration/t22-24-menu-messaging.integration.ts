@@ -3,14 +3,12 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
-import { messagingArchive, messagingRetirementTick } from "../../src/domains/messaging-archive/service";
 import { myTaskCount } from "../../src/domains/tasks/service";
 import { assertModule } from "../../src/domains/club/governance";
 
 /**
- * 22 and 24: the tasks given to a player counted for his menu; the old
- * exchanges told to the presidents once, kept as a PDF for them alone, the
- * module « messages » become « communication »; two clubs apart.
+ * 22 and 24: the tasks given to a player counted for his menu; the module
+ * « messages » become « communication »; the old exchanges' tables gone.
  */
 const schema = "t2224_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -75,21 +73,7 @@ it("counts the open tasks given to the player, late ones apart, and only his", a
   expect(await myTaskCount(db, presidentB)).toEqual({ open: 0, late: 0 });
 });
 
-it("tells each club's presidents once about their old exchanges, and gives the PDF to them alone", async () => {
-  const thread = (await db.query("INSERT INTO message_thread(organization_id,subject) VALUES($1,'Organisation du tournoi') RETURNING id", [clubA])).rows[0].id;
-  await db.query("INSERT INTO message_participant(thread_id,organization_id,user_id) VALUES($1,$2,$3)", [thread, clubA, coachA.userId]);
-  await db.query("INSERT INTO internal_message(id,thread_id,organization_id,sender_id,body) VALUES($1,$2,$3,$4,'Rendez-vous samedi')", [randomUUID(), thread, clubA, coachA.userId]);
-  expect(await messagingRetirementTick(db)).toBe(1);
-  expect(await messagingRetirementTick(db)).toBe(0);
-  const notice = (await db.query("SELECT organization_id,delete_after-CURRENT_DATE AS days FROM messaging_retirement")).rows;
-  expect(notice).toEqual([{ organization_id: clubA, days: 14 }]);
-  const mail = (await db.query("SELECT recipient_user_id FROM mail_job WHERE resource_id=$1", [`messaging-retirement:${clubA}`])).rows.map((r) => r.recipient_user_id);
-  expect(mail).toEqual([presidentA.userId]);
-  const { bytes, filename } = await messagingArchive(db, presidentA, "fr");
-  expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe("%PDF-");
-  expect(Buffer.from(bytes).toString("latin1")).toContain("Rendez-vous samedi");
-  expect(filename).toBe("messagerie-club-a.pdf");
-  await expect(messagingArchive(db, coachA, "fr")).rejects.toMatchObject({ code: "FORBIDDEN" });
-  // Club B's president gets his own club's (empty) exchanges, never A's.
-  expect(Buffer.from((await messagingArchive(db, presidentB, "fr")).bytes).toString("latin1")).not.toContain("Rendez-vous samedi");
+it("drops the old exchanges' tables", async () => {
+  const left = (await db.query("SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND relname IN ('message_thread','message_participant','internal_message','message_report','messaging_retirement')", [schema])).rows;
+  expect(left).toEqual([]);
 });
