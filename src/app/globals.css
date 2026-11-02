@@ -733,6 +733,13 @@ input[type="radio"] {
 .check > input[type="radio"] {
   margin-top: calc((1lh - var(--check-size)) / 2);
 }
+/* A form's or a table's own sizes never stretch a box (audit 23). */
+:is(.check, .dg-select, .kind-option, .invite-toggle) > input:is([type="checkbox"], [type="radio"]) {
+  width: var(--check-size);
+  height: var(--check-size);
+  min-height: 0;
+  flex: none;
+}
 :is(p, label, legend, h3, h4, .hint) + .check {
   margin-top: var(--space-2);
 }
@@ -10771,4 +10778,19 @@ ul.task-page li {
   align-items: center;
   gap: var(--space-2);
   min-height: 2.75rem;
+}
+
+/* Audit 23: the controls of one toolbar row share one height (a segmented choice next to a menu). */
+.toolbar :is(.segmented button, select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .button) {
+  min-height: var(--control-height);
+}
+/* Audit 23: a club's province, its name then its menu, never wider than the line. */
+.transfer-provinces label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.transfer-provinces select {
+  width: 100%;
+  max-width: 24rem;
 }

@@ -273,20 +273,21 @@ function Questions({
               </fieldset>
             );
           }
+          // A consent is a box with its sentence, never a stretched field under a label (audit 23).
+          if (f.type === "consent")
+            return (
+              <div key={f.key} className="consent-field">
+                <label className="check" htmlFor={fid}>
+                  <input id={fid} type="checkbox" checked={answers[f.key] === true} disabled={disabled} onChange={(e) => setAnswers({ ...answers, [f.key]: e.target.checked })} />
+                  <span>{label}</span>
+                </label>
+                {notes}
+              </div>
+            );
           return (
             <FieldLabel key={f.key} id={fid} label={label}>
               {notes}
-              {f.type === "consent" ? (
-                <input
-                  id={fid}
-                  type="checkbox"
-                  checked={answers[f.key] === true}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    setAnswers({ ...answers, [f.key]: e.target.checked })
-                  }
-                />
-              ) : f.type === "choice" ? (
+              {f.type === "choice" ? (
                 <select
                   id={fid}
                   value={String(answers[f.key] ?? "")}
