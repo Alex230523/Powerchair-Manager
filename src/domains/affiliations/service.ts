@@ -1,3 +1,4 @@
+import { autoEntry } from "../finance/auto";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
@@ -271,6 +272,22 @@ export async function clubAffiliationsExecute(db: Pool, p: Principal, command: C
           )
         ).rows[0].id;
       await s.c.query("UPDATE affiliation_due SET paid_on=$2,marked_by=$3,transaction_id=$4 WHERE id=$1", [due.id, command.paidOn, s.userId, transaction]);
+      // 35: a federation's fee paid is the federation's income (the club's name, nothing else of it).
+      if (due.owner_kind === "federation") {
+        const club = (await s.c.query("SELECT name FROM organization WHERE id=$1", [s.org])).rows[0].name as string;
+        await autoEntry(s.c, {
+          org: due.owner_id,
+          source: "affiliation",
+          ref: due.id,
+          direction: "in",
+          category: "affiliation",
+          amountCents: due.amount_cents,
+          label: `${due.name} ${due.period} · ${club}`,
+          counterparty: club,
+          occurredOn: command.paidOn,
+          by: s.userId,
+        });
+      }
       // 2: « en ordre » closes its task (and keeps the expense on it, never written twice).
       await s.c.query(
         "UPDATE task SET status='done',done_on=$2,auto_closed=true,transaction_id=COALESCE(transaction_id,$3),updated_at=now() WHERE affiliation_due_id=$1 AND organization_id=$4 AND status<>'done'",

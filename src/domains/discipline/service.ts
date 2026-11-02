@@ -4,6 +4,7 @@ import { isLocale, type Locale } from "../../lib/locale";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
 import { fedCan } from "../access/policy";
 import { publish } from "../notifications/queue";
+import { autoEntry } from "../finance/auto";
 import { appealOpen, defaultRule, disciplineCommand, nearThreshold, remainingOf, seasonOfDay, yellowTriggers, type Competition, type DisciplineCommand, type Rule } from "./schema";
 import type { z } from "zod";
 
@@ -470,8 +471,20 @@ export async function disciplineExecute(db: Pool, p: Principal, raw: z.input<typ
         }
         case "payFine": {
           if (x.kind !== "club" || x.role !== "club_president") throw new AccessError("FORBIDDEN");
-          const f = (await x.c.query("UPDATE discipline_fine SET status='paid',paid_on=$3,marked_by=$4 WHERE id=$1 AND organization_id=$2 AND status='due' RETURNING id", [cmd.id, x.org, cmd.paidOn, x.userId])).rows[0];
+          const f = (
+            await x.c.query(
+              `UPDATE discipline_fine f SET status='paid',paid_on=$3,marked_by=$4 FROM discipline_sanction s, organization fo, organization co
+                WHERE f.id=$1 AND f.organization_id=$2 AND f.status='due' AND s.id=f.sanction_id AND fo.id=f.federation_id AND co.id=f.organization_id
+                RETURNING f.id,f.federation_id,f.amount_cents,fo.name AS federation,co.name AS club,(SELECT full_name FROM club_person WHERE id=s.profile_id) AS who`,
+              [cmd.id, x.org, cmd.paidOn, x.userId],
+            )
+          ).rows[0] as { id: string; federation_id: string; amount_cents: number; federation: string; club: string; who: string | null } | undefined;
           if (!f) throw new AccessError("NOT_FOUND", 404);
+          // 35: the club's expense and the federation's income, each in its own books.
+          const about = f.who ?? f.club;
+          const entry = { source: "fine" as const, ref: f.id, category: "competition" as const, amountCents: f.amount_cents, occurredOn: cmd.paidOn, by: x.userId };
+          await autoEntry(x.c, { ...entry, org: x.org, direction: "out", label: `Amende disciplinaire · ${about}`, counterparty: f.federation });
+          await autoEntry(x.c, { ...entry, org: f.federation_id, direction: "in", label: `Amende disciplinaire · ${f.club}`, counterparty: f.club });
           await x.c.query("UPDATE task SET status='done',done_on=CURRENT_DATE,auto_closed=true,updated_at=now() WHERE organization_id=$1 AND source_key=$2 AND status<>'done'", [x.org, `discipline:fine:${cmd.id}`]);
           await audit(x.c, x.org, x.userId, "discipline.finePaid", cmd.id);
           return { id: cmd.id };

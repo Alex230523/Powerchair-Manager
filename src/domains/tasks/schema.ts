@@ -106,7 +106,16 @@ export const taskCommand = z.discriminatedUnion("action", [
     action: z.literal("applyYear"),
     year: z.number().int().min(2000).max(2100),
     items: z
-      .array(z.object({ key: z.enum(yearKeys()), title: z.string().trim().min(2).max(200), dueOn: z.iso.date().nullable(), responsibleId: id.nullable().default(null) }))
+      .array(
+        z.object({
+          key: z.enum(yearKeys()),
+          title: z.string().trim().min(2).max(200),
+          dueOn: z.iso.date().nullable(),
+          responsibleId: id.nullable().default(null),
+          /** 35: in a federation, a person with an account. */
+          responsibleUserId: z.string().min(1).max(200).nullable().default(null),
+        }),
+      )
       .min(1)
       .max(10),
   }),
@@ -116,7 +125,7 @@ export const taskCommand = z.discriminatedUnion("action", [
 export type TaskCommand = z.infer<typeof taskCommand>;
 
 function yearKeys() {
-  return ["assembly", "filing", "ubo", "tax", "insurance", "affiliation"] as const;
+  return ["assembly", "filing", "ubo", "tax", "insurance", "affiliation", "affiliationsOpen", "competitionCalendar", "classificationDays"] as const;
 }
 export type YearKey = ReturnType<typeof yearKeys>[number];
 export const yearItems = yearKeys();
@@ -149,7 +158,7 @@ function addDays(iso: string, n: number) {
  * the month after, the legal entities tax return and the insurance and
  * affiliation renewals (dates for the club to fill in).
  */
-export function yearTemplate(fiscalStart: string, year: number): { key: YearKey; category: Category; dueOn: string | null }[] {
+export function yearTemplate(fiscalStart: string, year: number, federation = false): { key: YearKey; category: Category; dueOn: string | null }[] {
   const closing = new Date(Date.UTC(year, Number(fiscalStart.slice(0, 2)) - 1, Number(fiscalStart.slice(3, 5))));
   closing.setUTCDate(closing.getUTCDate() - 1);
   // The last closing before or in `year`.
@@ -160,6 +169,18 @@ export function yearTemplate(fiscalStart: string, year: number): { key: YearKey;
     const last = new Date(Date.UTC(d.getUTCFullYear(), month + 1, 0)).getUTCDate();
     return new Date(Date.UTC(d.getUTCFullYear(), month, Math.min(d.getUTCDate(), last))).toISOString().slice(0, 10);
   })();
+  // 35: the federation's own year: the same ASBL steps, then its season's deadlines (dates to adjust).
+  if (federation)
+    return [
+      { key: "assembly", category: "fed_admin", dueOn: assembly },
+      { key: "filing", category: "fed_admin", dueOn: addDays(assembly, 30) },
+      { key: "ubo", category: "fed_admin", dueOn: addDays(assembly, 30) },
+      { key: "tax", category: "fed_finance", dueOn: null },
+      { key: "insurance", category: "fed_admin", dueOn: null },
+      { key: "affiliationsOpen", category: "fed_affiliations", dueOn: `${year}-06-01` },
+      { key: "competitionCalendar", category: "fed_competitions", dueOn: `${year}-07-15` },
+      { key: "classificationDays", category: "fed_competitions", dueOn: `${year}-09-01` },
+    ];
   return [
     { key: "assembly", category: "admin", dueOn: assembly },
     { key: "filing", category: "admin", dueOn: addDays(assembly, 30) },

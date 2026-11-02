@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
-import { permissions } from "../access/policy";
+import { moneyRights } from "../access/policy";
 import { categories } from "../finance/schema";
 import {
   assemblyDeadline,
@@ -33,11 +33,12 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
     await c.query(`SELECT id FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id]);
     const user = await account(c, p);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
-    const rights = permissions(a.role, a.grants);
-    if (!rights.includes("dues.manage") && (write || !rights.includes("dues.read"))) throw new AccessError("FORBIDDEN");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
+    // 35: the federation's annual accounts, with its finance competence.
+    const money = moneyRights(a);
+    if (!money.manage && (write || !money.read)) throw new AccessError("FORBIDDEN");
     if (!mfaSatisfied(!!user.twoFactorEnabled)) throw new AccessError("MFA_REQUIRED");
-    const out = await fn({ c, org: a.organization_id, userId: p.userId, manage: rights.includes("dues.manage") });
+    const out = await fn({ c, org: a.organization_id, userId: p.userId, manage: money.manage });
     await c.query("COMMIT");
     return out;
   } catch (e) {

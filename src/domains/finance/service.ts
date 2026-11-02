@@ -11,7 +11,7 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
-import { permissions } from "../access/policy";
+import { moneyRights } from "../access/policy";
 import { offerUndo } from "../undo/service";
 import { brusselsToday } from "../people/service";
 import {
@@ -54,21 +54,17 @@ async function scope<T>(
     const user = await account(c, p);
     if (expected && expected !== a.organization_id)
       throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
-    // dues.read opens the accounts without changing them (auditor, committee).
-    const rights = permissions(a.role, a.grants);
-    if (
-      !rights.includes("dues.manage") &&
-      (write || !rights.includes("dues.read"))
-    )
-      throw new AccessError("FORBIDDEN");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
+    // dues.read opens the accounts without changing them (auditor, committee); 35: the federation's finance competence.
+    const money = moneyRights(a);
+    if (!money.manage && (write || !money.read)) throw new AccessError("FORBIDDEN");
     if (!mfaSatisfied(!!user.twoFactorEnabled))
       throw new AccessError("MFA_REQUIRED");
     const out = await fn(
       c,
       a.organization_id,
       p.userId,
-      rights.includes("dues.manage"),
+      money.manage,
       { role: a.role, team_id: a.team_id ?? null },
     );
     await c.query("COMMIT");

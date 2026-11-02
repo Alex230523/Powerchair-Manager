@@ -25,8 +25,10 @@ const incomeHref: Record<IncomeSection, string> = { dues: "/dues", support: "/fu
 export function FinanceNav({ locale, current, income }: { locale: Locale; current: FinanceSection; income?: IncomeSection }) {
   const t = financeNavCopy[locale];
   // B8: nothing about tax receipts for a club that is not approved.
-  const { taxApproved } = useScope();
-  const sections = financeSections.filter((s) => s !== "tax" || taxApproved || current === "tax");
+  const { taxApproved, federation } = useScope();
+  // 35: the federation has neither tax receipts nor affiliations to pay; its income is grants and sponsors.
+  const sections = financeSections.filter((s) => (s !== "tax" || taxApproved || current === "tax") && !(federation && (s === "tax" || s === "affiliations")));
+  const incomes = incomeSections.filter((s) => !federation || s === "support");
   return (
     <>
       <nav className="finance-nav" aria-label={t.label}>
@@ -43,7 +45,7 @@ export function FinanceNav({ locale, current, income }: { locale: Locale; curren
       {current === "income" && (
         <nav className="finance-nav finance-subnav" aria-label={t.income}>
           <ul>
-            {incomeSections.map((s) => (
+            {incomes.map((s) => (
               <li key={s}>
                 <Link href={`/${locale}${incomeHref[s]}`} aria-current={s === income ? "page" : undefined}>
                   {t.incomes[s]}

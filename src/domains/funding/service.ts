@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { randomBytes } from "node:crypto";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { AccessError, account, active, type Principal } from "../access/service";
-import { permissions } from "../access/policy";
+import { moneyRights, permissions } from "../access/policy";
 import { ownProfiles } from "../calendar/access";
 import { brusselsToday } from "../people/service";
 import { receiptMaxBytes, receiptType } from "../finance/schema";
@@ -54,18 +54,20 @@ export async function scope<T>(
       a.organization_id,
     ]);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
     const user = await account(c, p);
     const mfa = mfaSatisfied(!!user.twoFactorEnabled);
     const rights = permissions(a.role, a.grants);
-    const has = (...r: string[]) => mfa && r.some((x) => rights.includes(x as (typeof rights)[number]));
-    const staff = a.role === "club_president" || a.role === "coach";
+    const has = (...r: string[]) => mfa && a.kind === "club" && r.some((x) => rights.includes(x as (typeof rights)[number]));
+    const staff = a.kind === "club" && (a.role === "club_president" || a.role === "coach");
+    // 35: the federation's grants and sponsors, with its finance competence.
+    const money = moneyRights(a);
     const s: Scope = {
       c,
       org: a.organization_id,
       userId: p.userId,
-      moneyRead: has("dues.read", "dues.manage"),
-      moneyManage: has("dues.manage"),
+      moneyRead: mfa && money.read,
+      moneyManage: mfa && money.manage,
       contactsRead: staff && mfa,
       contactsManage: has("mandates.manage", "people.manage", "notifications.manage"),
       own: mfa ? await ownProfiles(c, { ...a, twoFactorEnabled: !!user.twoFactorEnabled }) : new Set(),

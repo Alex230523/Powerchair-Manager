@@ -25,6 +25,8 @@ export const rulesSchema = z.object({
   majorities: z
     .object({ accounts: majority, budget: majority, discharge: majority, mandate: majority, admission: majority, exit: majority, free: majority })
     .default({ accounts: "simple", budget: "simple", discharge: "simple", mandate: "simple", admission: "simple", exit: "two_thirds", free: "simple" }),
+  /** 35: one vote per member, or (a federation's statutes) one per active licence of the club. */
+  weighting: z.enum(["equal", "licences"]).default("equal"),
   /** Proxies one member may hold. */
   maxProxies: z.number().int().min(0).max(10).default(1),
   remoteVote: z.boolean().default(false),
@@ -75,6 +77,8 @@ export const associationCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("sendInvite"), meetingId: id }),
   z.object({ action: z.literal("answer"), meetingId: id, profileId: id, answer: z.enum(["present", "absent"]) }),
   z.object({ action: z.literal("proxy"), meetingId: id, giverId: id, holderId: id.nullable() }),
+  /** 35: a federation names who represents a club at its assembly. */
+  z.object({ action: z.literal("representative"), profileId: id, userId: z.string().min(1).max(200) }),
   z.object({ action: z.literal("presence"), meetingId: id, profileId: id, present: z.boolean() }),
   z.object({ action: z.literal("vote"), itemId: id, for: z.number().int().min(0).max(10000), against: z.number().int().min(0).max(10000), abstain: z.number().int().min(0).max(10000) }),
   z.object({ action: z.literal("second"), meetingId: id, startsAt: z.iso.datetime({ offset: true }), locale: z.enum(["fr", "nl", "en"]) }),

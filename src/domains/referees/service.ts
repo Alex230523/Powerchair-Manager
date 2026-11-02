@@ -8,6 +8,7 @@ import { publish } from "../notifications/queue";
 import { fromOurSide, officialKinds } from "../competitions/schema";
 import type { IcsEvent } from "../calendar/ics";
 import { mirrorTournamentReferee } from "./mirror";
+import { autoEntry } from "../finance/auto";
 import { recordCards, type Card } from "../discipline/service";
 import type { Competition } from "../discipline/schema";
 import { expenseAmount, refereeingCommand, reviewOpen, routeLinks, type RefereeingCommand } from "./schema";
@@ -374,7 +375,15 @@ export async function refereeingExecute(db: Pool, p: Principal, raw: z.input<typ
         }
         case "paid": {
           need();
-          const r = await x.c.query("UPDATE referee_expense SET status='paid',paid_at=now() WHERE id=ANY($1::uuid[]) AND federation_id=$2 AND status='approved' RETURNING id", [cmd.ids, x.fed]);
+          const r = await x.c.query(
+            `UPDATE referee_expense e SET status='paid',paid_at=now() FROM "user" u WHERE e.id=ANY($1::uuid[]) AND e.federation_id=$2 AND e.status='approved' AND u.id=e.referee_id
+             RETURNING e.id,e.amount_cents,u.name`,
+            [cmd.ids, x.fed],
+          );
+          // 35: each claim paid is an expense in the federation's books.
+          const day = today();
+          for (const e of r.rows as { id: string; amount_cents: number; name: string }[])
+            await autoEntry(x.c, { org: x.fed, source: "refereeExpense", ref: e.id, direction: "out", category: "competition", amountCents: e.amount_cents, label: `Note de frais d'arbitrage · ${e.name}`, counterparty: e.name, occurredOn: day, by: x.userId });
           await audit(x.c, x.fed, x.userId, "referee.expenses_paid", x.fed, { count: r.rowCount });
           return { id: x.fed, count: r.rowCount };
         }

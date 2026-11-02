@@ -6,7 +6,7 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { ownProfiles } from "../calendar/access";
 import { brusselsToday } from "../people/service";
 import { publish } from "../notifications/queue";
-import { categoryOf, dueBefore, kindOf, moneyCategories, nextDue, type Category, type Status, type TaskCommand, type TaskKind, type TemplateItem } from "./schema";
+import { categoryOf, dueBefore, kindOf, moneyCategories, nextDue, yearTemplate, type Category, type Status, type TaskCommand, type TaskKind, type TemplateItem } from "./schema";
 import { syncSources } from "./sources";
 import { moneyDeadlinesIn } from "../funding/service";
 import { visibleVenue } from "../venues/schema";
@@ -625,14 +625,17 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
         return { ok: true as const, id };
       }
       if (command.action === "applyYear") {
-        if (s.federation || !s.manage) throw new AccessError("FORBIDDEN");
+        // 35: the federation applies its own year too.
+        if (!s.manage) throw new AccessError("FORBIDDEN");
+        const categoriesOf = new Map(yearTemplate("01-01", command.year, s.federation).map((i) => [i.key, i.category]));
         const ids: string[] = [];
         for (const i of command.items) {
-          const responsible = await checkResponsible(s, i.responsibleId);
+          if (!categoriesOf.has(i.key)) throw new AccessError("INVALID_INPUT", 400);
+          const responsible = s.federation ? await checkResponsible(s, null, i.responsibleUserId) : await checkResponsible(s, i.responsibleId);
           const id = (
             await insert(s, {
               kind: "other",
-              category: i.key === "affiliation" ? "affiliation" : "admin",
+              category: categoriesOf.get(i.key)!,
               title: i.title,
               detail: "",
               due: i.dueOn,

@@ -104,6 +104,13 @@ type Copy = {
   secondWithoutQuorum: string;
   maxProxies: string;
   remoteVote: string;
+  weighting: string;
+  weightings: { equal: string; licences: string };
+  weightOf: string;
+  representatives: string;
+  representativesIntro: string;
+  noRepresentative: string;
+  saveRepresentative: string;
   recordDelayDays: string;
   publicationDays: string;
   uboDays: string;
@@ -214,6 +221,13 @@ const fr: Copy = {
   secondWithoutQuorum: "Une seconde assemblée décide quel que soit le nombre de présents",
   maxProxies: "Procurations par membre",
   remoteVote: "Vote à distance autorisé",
+  weighting: "Voix de chaque club",
+  weightings: { equal: "Une voix par club", licences: "Une voix par licence active du club" },
+  weightOf: "{n} voix",
+  representatives: "Représentants des clubs",
+  representativesIntro: "La personne qui porte la voix de chaque club affilié à l'assemblée générale (une personne qui a un mandat dans le club).",
+  noRepresentative: "À choisir",
+  saveRepresentative: "Enregistrer",
   recordDelayDays: "Délai d'inscription d'une décision au registre (jours)",
   publicationDays: "Délai de publication au Moniteur belge (jours)",
   uboDays: "Délai de mise à jour du registre UBO (jours)",
@@ -334,6 +348,13 @@ const nl: Copy = {
   secondWithoutQuorum: "Een tweede vergadering beslist ongeacht het aantal aanwezigen",
   maxProxies: "Volmachten per lid",
   remoteVote: "Stemmen op afstand toegelaten",
+  weighting: "Stemmen van elke club",
+  weightings: { equal: "Eén stem per club", licences: "Eén stem per actieve licentie van de club" },
+  weightOf: "{n} stem(men)",
+  representatives: "Vertegenwoordigers van de clubs",
+  representativesIntro: "De persoon die de stem van elke aangesloten club draagt op de algemene vergadering (iemand met een mandaat in de club).",
+  noRepresentative: "Te kiezen",
+  saveRepresentative: "Opslaan",
   recordDelayDays: "Termijn om een beslissing in het register in te schrijven (dagen)",
   publicationDays: "Termijn voor publicatie in het Belgisch Staatsblad (dagen)",
   uboDays: "Termijn om het UBO-register bij te werken (dagen)",
@@ -454,6 +475,13 @@ const en: Copy = {
   secondWithoutQuorum: "A second assembly decides whatever the number present",
   maxProxies: "Proxies per member",
   remoteVote: "Remote vote allowed",
+  weighting: "Each club's votes",
+  weightings: { equal: "One vote per club", licences: "One vote per active licence of the club" },
+  weightOf: "{n} vote(s)",
+  representatives: "The clubs' representatives",
+  representativesIntro: "The person who carries each affiliated club's voice at the general assembly (someone with a mandate in the club).",
+  noRepresentative: "To choose",
+  saveRepresentative: "Save",
   recordDelayDays: "Delay to write a decision in the register (days)",
   publicationDays: "Delay for the publication in the Belgian Official Gazette (days)",
   uboDays: "Delay to update the UBO register (days)",

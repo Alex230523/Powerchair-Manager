@@ -25,7 +25,7 @@ describe("A1 to-do", () => {
   });
   it("dates the yearly duties of an ASBL from its financial year", () => {
     const calendar = yearTemplate("01-01", 2026);
-    expect(calendar.map((i) => i.key)).toEqual([...yearItems]);
+    expect(calendar.map((i) => i.key)).toEqual(yearItems.filter((k) => !["affiliationsOpen", "competitionCalendar", "classificationDays"].includes(k)));
     expect(calendar.find((i) => i.key === "assembly")!.dueOn).toBe("2026-06-30");
     expect(calendar.find((i) => i.key === "filing")!.dueOn).toBe("2026-07-30");
     // A season year from 1 July: closed on 30 June, assembly six months later.

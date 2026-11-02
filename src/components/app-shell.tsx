@@ -468,6 +468,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}
       taxApproved={state?.selected?.kind === "club" && !!state.selected.tax_approved}
+      federation={state?.selected?.kind === "federation"}
       seasons={state?.seasons ?? []}
       teams={state?.teams ?? []}
     >

@@ -190,7 +190,7 @@ export function Tasks({
       actions={
         anyAdd ? (
           <>
-            {!data.federation && data.can.manage && (
+            {data.can.manage && (
               <Button variant="secondary" icon="clipboardList" onClick={() => setYear(true)}>
                 {t.yearOpen}
               </Button>
@@ -799,7 +799,7 @@ function TaskDetail({
 function YearModel({ locale, data, busy, send, close }: { locale: Locale; data: View; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean>; close: () => void }) {
   const t = todoCopy[locale];
   const [year, setYear] = useState(Number(data.today.slice(0, 4)));
-  const items = yearTemplate(data.fiscalStart, year);
+  const items = yearTemplate(data.fiscalStart, year, data.federation);
   return (
     <Modal title={t.yearTitle} close={close}>
       <form
@@ -810,7 +810,14 @@ function YearModel({ locale, data, busy, send, close }: { locale: Locale; data: 
           void send({
             action: "applyYear",
             year,
-            items: items.map((i) => ({ key: i.key, title: f.get(`title-${i.key}`), dueOn: f.get(`due-${i.key}`) || null, responsibleId: f.get(`who-${i.key}`) || null })),
+            // 35: in a federation, the responsible is a person with an account.
+            items: items.map((i) => ({
+              key: i.key,
+              title: f.get(`title-${i.key}`),
+              dueOn: f.get(`due-${i.key}`) || null,
+              responsibleId: data.federation ? null : f.get(`who-${i.key}`) || null,
+              responsibleUserId: data.federation ? f.get(`who-${i.key}`) || null : null,
+            })),
           }).then((ok) => ok && close());
         }}
       >

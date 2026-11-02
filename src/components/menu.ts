@@ -266,6 +266,17 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     { route: "/tasks", label: "tasks", icon: "clipboardList" },
                   ],
                 },
+                // 35: the federation as an ASBL: its own books and its assembly, by the finance competence.
+                {
+                  id: "finance",
+                  label: "groupFinance",
+                  icon: "funding",
+                  items: [
+                    ...item("/funding", "finances", "funding", role !== "referee" && fed("federation.finance")),
+                    ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", role !== "referee" && fed("federation.finance")),
+                    ...item("/club/association", "association", "landmark", role !== "referee" && fed("federation.finance")),
+                  ],
+                },
               ]
             : [];
   // Modules the club switched off leave the menu (their routes refuse too).

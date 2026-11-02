@@ -61,6 +61,20 @@ export function fedCan(role: string, grants: readonly string[], competence?: Fed
   if (role !== "federation_worker") return false;
   return competence ? grants.includes(competence) : grants.some((g) => g.startsWith("federation."));
 }
+/**
+ * 35: who reads and who manages an organisation's money. A club: « Lire » or
+ * « Gérer les cotisations ». A federation: the finance competence (the
+ * presidency has it). Never one organisation's rights over another's books.
+ */
+export function moneyRights(a: { kind: string; role: string; grants: readonly string[] }) {
+  if (a.kind === "federation") {
+    const ok = fedCan(a.role, a.grants, "federation.finance");
+    return { read: ok, manage: ok };
+  }
+  if (a.kind !== "club") return { read: false, manage: false };
+  const r = permissions(a.role as Role, a.grants as never) as readonly string[];
+  return { read: r.includes("dues.read") || r.includes("dues.manage"), manage: r.includes("dues.manage") };
+}
 export type Permission =
   "organization.read" | "mandates.manage" | (typeof delegable)[number];
 export type OrganizationKind = "club" | "federation";

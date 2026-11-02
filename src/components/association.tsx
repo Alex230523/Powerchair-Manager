@@ -96,9 +96,52 @@ export function Association({ locale }: { locale: Locale }) {
           <div role="tabpanel" id={`asbl-panel-${tab}`} aria-labelledby={`asbl-tab-${tab}`}>
             {tab === "register" ? <RegisterTab locale={locale} data={data} busy={busy} send={send} /> : <MeetingsTab locale={locale} data={data} busy={busy} send={send} />}
           </div>
+          {tab === "register" && data.representatives.length > 0 && <Representatives locale={locale} data={data} busy={busy} send={send} />}
+          {data.federation && <AssociationRules locale={locale} />}
         </>
       )}
     </main>
+  );
+}
+
+/** 35: who carries each club's voice at the federation's assembly. */
+function Representatives({ locale, data, busy, send }: { locale: Locale; data: View; busy: boolean; send: Send }) {
+  const t = associationCopy[locale];
+  return (
+    <Card title={t.representatives} labelledBy="asbl-representatives" headingId="asbl-representatives">
+      <p className="muted">{t.representativesIntro}</p>
+      <ul className="plain-list asbl-representatives">
+        {data.representatives.map((k) => (
+          <li key={k.profile_id}>
+            <form
+              className="inline-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void send({ action: "representative", profileId: k.profile_id, userId: String(new FormData(e.currentTarget).get("user") ?? "") });
+              }}
+            >
+              <label htmlFor={`rep-${k.profile_id}`}>
+                {k.club}
+                <select id={`rep-${k.profile_id}`} name="user" required defaultValue={k.user_id ?? ""}>
+                  <option value="" disabled>
+                    {t.noRepresentative}
+                  </option>
+                  {k.candidates.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" variant="secondary" disabled={busy || !k.candidates.length}>
+                {t.saveRepresentative}
+                <span className="sr-only"> : {k.club}</span>
+              </Button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
@@ -448,6 +491,7 @@ function MeetingCard({ locale, m, data, busy, send }: { locale: Locale; m: Meeti
               <li key={a.profile_id}>
                 <Presence key={`${a.profile_id}-${a.present}`} id={`${base}-present-${a.profile_id}`} name={a.full_name} present={a.present} disabled={busy || !open} save={(present) => send({ action: "presence", meetingId: m.id, profileId: a.profile_id, present })} />
                 <span className="muted small">
+                  {data.rules.weighting === "licences" && `${fill(t.weightOf, { n: a.weight })} · `}
                   {t.answers[a.answer as keyof typeof t.answers]}
                   {a.holder_id && ` · ${fill(t.proxyTo, { name: name(a.holder_id) })}`}
                   {a.holds > 0 && ` · ${fill(t.holds, { n: a.holds })}`}
@@ -704,6 +748,7 @@ export function AssociationRules({ locale }: { locale: Locale }) {
       recordDelayDays: n("recordDelayDays"),
       publicationDays: n("publicationDays"),
       uboDays: n("uboDays"),
+      weighting: f.get("weighting") === "licences" ? "licences" : "equal",
     };
     void send({ action: "rules", rules }, t.saved);
   }
@@ -723,6 +768,16 @@ export function AssociationRules({ locale }: { locale: Locale }) {
         {num("recordDelayDays", 1, 60)}
         {num("publicationDays", 1, 120)}
         {num("uboDays", 1, 120)}
+        {/* 35: a federation's statutes may weigh each club's vote by its licences. */}
+        {data.federation && (
+          <label htmlFor="rules-weighting">
+            {t.weighting}
+            <select id="rules-weighting" name="weighting" defaultValue={r.weighting}>
+              <option value="equal">{t.weightings.equal}</option>
+              <option value="licences">{t.weightings.licences}</option>
+            </select>
+          </label>
+        )}
         <label className="check" htmlFor="rules-second">
           <input id="rules-second" name="secondWithoutQuorum" type="checkbox" defaultChecked={r.secondWithoutQuorum} />
           {t.secondWithoutQuorum}

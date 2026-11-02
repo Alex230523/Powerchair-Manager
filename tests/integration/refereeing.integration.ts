@@ -143,6 +143,11 @@ it("approves a claim, then pays it; validates a training", async () => {
   expect(await expensesCsv(db, president)).toContain("Arbitre Un;20;21.00;Parking");
   await run(president, { action: "paid", ids: [id] }, fed);
   expect((await db.query("SELECT status FROM referee_expense WHERE id=$1", [id])).rows[0].status).toBe("paid");
+  // 35: an expense in the federation's books, written once.
+  await run(president, { action: "paid", ids: [id] }, fed);
+  expect((await db.query("SELECT organization_id,direction,amount_cents,label FROM finance_transaction WHERE auto_source='refereeExpense' AND auto_ref=$1", [id])).rows).toEqual([
+    { organization_id: fed, direction: "out", amount_cents: 2100, label: "Note de frais d'arbitrage · Arbitre Un" },
+  ]);
   const training = (await run(r1, { action: "training", title: "Formation d'arbitre régional", doneOn: "2026-10-01", proof: null }, fed)).id as string;
   await expect(run(r1, { action: "decideTraining", id: training, approve: true }, fed)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await run(president, { action: "decideTraining", id: training, approve: true }, fed);

@@ -158,6 +158,11 @@ it("lets the club pay its fine, which closes the task", async () => {
   await run(clubPresident, { action: "payFine", id: fine.id, paidOn: "2026-10-20" }, clubA);
   expect((await proposals()).fines.find((f) => f.id === fine.id)).toMatchObject({ status: "paid", paid_on: "2026-10-20" });
   expect((await db.query("SELECT status,auto_closed FROM task WHERE source_key=$1", [`discipline:fine:${fine.id}`])).rows[0]).toEqual({ status: "done", auto_closed: true });
+  // 35: the club's expense and the federation's income.
+  expect((await db.query("SELECT organization_id,direction,amount_cents FROM finance_transaction WHERE auto_source='fine' AND auto_ref=$1 ORDER BY direction", [fine.id])).rows).toEqual([
+    { organization_id: fed, direction: "in", amount_cents: fine.amount_cents },
+    { organization_id: clubA, direction: "out", amount_cents: fine.amount_cents },
+  ]);
 });
 
 it("records a coach's sanction by hand, and shows the history to the club and the federation only", async () => {

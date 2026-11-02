@@ -5,7 +5,8 @@ import { isLocale, type Locale } from "../../lib/locale";
 import { pdfDocument } from "../../lib/pdf";
 import { storageAdapter } from "../../lib/storage-adapter";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
-import { permissions } from "../access/policy";
+import { fedCan, permissions } from "../access/policy";
+import { seasonOf } from "../finance/schema";
 import { ownProfiles } from "../calendar/access";
 import { seal } from "../notifications/crypto";
 import { publish } from "../notifications/queue";
@@ -21,7 +22,7 @@ import { adopted, assemblySteps, endingMandates, proxyAllowed, quorum, rulesOf, 
  * the mandates and the secretary prepare; an effective member reads the
  * register, answers and gives a proxy.
  */
-type Ctx = { c: PoolClient; org: string; userId: string; manage: boolean; own: Set<string>; effective: Set<string> };
+type Ctx = { c: PoolClient; org: string; userId: string; manage: boolean; own: Set<string>; effective: Set<string>; federation: boolean };
 async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (x: Ctx) => Promise<T>, expected?: string) {
   const c = await db.connect();
   try {
@@ -29,7 +30,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (x: Ctx) => 
     await c.query("SET LOCAL TIME ZONE 'Europe/Brussels'");
     const a = await active(c, p);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
     await c.query(`SELECT id FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id]);
     const user = await account(c, p);
     const mfa = mfaSatisfied(!!user.twoFactorEnabled);
@@ -38,8 +39,14 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (x: Ctx) => 
       await c.query("SELECT profile_id,status,board_role FROM association_member WHERE organization_id=$1 AND profile_id=ANY($2::uuid[])", [a.organization_id, [...own]])
     ).rows as { profile_id: string; status: string; board_role: string | null }[];
     const secretary = mine.some((m) => m.board_role === "secretary" || m.board_role === "president");
-    const manage = mfa && (a.role === "club_president" || permissions(a.role, a.grants).includes("mandates.manage") || secretary);
-    const out = await fn({ c, org: a.organization_id, userId: p.userId, manage, own, effective: new Set(mine.filter((m) => m.status === "effective").map((m) => m.profile_id)) });
+    // 35: the federation's assembly is prepared by its presidency and its treasurer (finance competence).
+    const manage =
+      mfa &&
+      (a.kind === "federation"
+        ? fedCan(a.role, a.grants, "federation.finance")
+        : a.role === "club_president" || permissions(a.role, a.grants).includes("mandates.manage") || secretary);
+    if (a.kind === "federation" && manage) await clubMembers(c, a.organization_id, p.userId);
+    const out = await fn({ c, org: a.organization_id, userId: p.userId, manage, own, effective: new Set(mine.filter((m) => m.status === "effective").map((m) => m.profile_id)), federation: a.kind === "federation" });
     await c.query("COMMIT");
     return out;
   } catch (e) {
@@ -115,6 +122,51 @@ async function meetingRow(x: Ctx, id: string, lock = false) {
   return m as { id: string; kind: "assembly" | "board"; title: string; starts_at: Date; place: string; status: string; fiscal_year_start: string | null; invite_sent_at: Date | null; second_of: string | null; minutes: string; signed_president_at: Date | null; signed_secretary_at: Date | null; created_by: string };
 }
 
+/**
+ * 35: the federation's members are its clubs. Each affiliated club has one
+ * member profile in the federation, carried by the person who represents it
+ * (its president until another is named), admitted once in the register.
+ */
+async function clubMembers(c: PoolClient, fed: string, by: string) {
+  const missing = (
+    await c.query(
+      `SELECT o.id,o.name,(SELECT pe.id FROM role_assignment r JOIN person pe ON pe.user_id=r.user_id WHERE r.organization_id=o.id AND r.role='club_president' AND r.revoked_at IS NULL ORDER BY r.valid_from LIMIT 1) AS person
+         FROM organization o WHERE o.kind='club' AND o.federation_id=$1 AND NOT EXISTS (SELECT 1 FROM club_person cp WHERE cp.organization_id=$1 AND cp.member_club_id=o.id)`,
+      [fed],
+    )
+  ).rows as { id: string; name: string; person: string | null }[];
+  for (const club of missing) {
+    const person = club.person ?? ((await c.query("INSERT INTO person DEFAULT VALUES RETURNING id")).rows[0].id as string);
+    const profile = (
+      await c.query("INSERT INTO club_person(organization_id,person_id,full_name,member_club_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING id", [fed, person, club.name.slice(0, 160), club.id])
+    ).rows[0]?.id as string | undefined;
+    if (!profile) continue;
+    await c.query("INSERT INTO association_member(organization_id,profile_id,status,admitted_on) VALUES($1,$2,'effective',CURRENT_DATE) ON CONFLICT DO NOTHING", [fed, profile]);
+    await c.query("INSERT INTO member_register(organization_id,profile_id,event,status_after,decision_body,decision_on,reason,recorded_by) VALUES($1,$2,'admission','effective','board',CURRENT_DATE,$3,$4)", [
+      fed,
+      profile,
+      "Club affilié",
+      by,
+    ]);
+  }
+}
+/** 35: one vote per member, or (if the statutes say so) one per active licence of the club this season. */
+async function weights(c: PoolClient, org: string, ids: string[], r: Rules) {
+  const out = new Map(ids.map((id) => [id, 1]));
+  if (r.weighting !== "licences" || !ids.length) return out;
+  const season = seasonOf(today()).label;
+  for (const row of (
+    await c.query(
+      `SELECT cp.id,GREATEST(1,(SELECT count(*)::int FROM license l WHERE l.organization_id=cp.member_club_id AND l.federation_id=$1 AND l.season=$3 AND l.status='active')) AS w
+         FROM club_person cp WHERE cp.organization_id=$1 AND cp.id=ANY($2::uuid[]) AND cp.member_club_id IS NOT NULL`,
+      [org, ids, season],
+    )
+  ).rows as { id: string; w: number }[])
+    out.set(row.id, row.w);
+  return out;
+}
+const total = (w: Map<string, number>, ids: string[]) => ids.reduce((n, id) => n + (w.get(id) ?? 1), 0);
+
 /** Who is called: the effective members for an assembly, the directors for the board. */
 async function invitees(c: PoolClient, org: string, kind: "assembly" | "board") {
   return (
@@ -128,16 +180,19 @@ async function invitees(c: PoolClient, org: string, kind: "assembly" | "board") 
 
 /** 9: present, represented (a proxy held by someone present for someone absent) and the quorum. */
 async function count(c: PoolClient, org: string, meetingId: string, kind: "assembly" | "board", second: boolean, r: Rules) {
-  const members = (await invitees(c, org, kind)).length;
-  const present = Number((await c.query("SELECT count(*)::int AS n FROM meeting_attendee WHERE meeting_id=$1 AND present", [meetingId])).rows[0].n);
-  const represented = Number(
-    (
-      await c.query(
-        "SELECT count(*)::int AS n FROM meeting_proxy p JOIN meeting_attendee h ON h.meeting_id=p.meeting_id AND h.profile_id=p.holder_id AND h.present LEFT JOIN meeting_attendee g ON g.meeting_id=p.meeting_id AND g.profile_id=p.giver_id WHERE p.meeting_id=$1 AND NOT COALESCE(g.present,false)",
-        [meetingId],
-      )
-    ).rows[0].n,
-  );
+  const called = await invitees(c, org, kind);
+  const presentIds = (await c.query("SELECT profile_id FROM meeting_attendee WHERE meeting_id=$1 AND present", [meetingId])).rows.map((x) => x.profile_id as string);
+  const representedIds = (
+    await c.query(
+      "SELECT p.giver_id FROM meeting_proxy p JOIN meeting_attendee h ON h.meeting_id=p.meeting_id AND h.profile_id=p.holder_id AND h.present LEFT JOIN meeting_attendee g ON g.meeting_id=p.meeting_id AND g.profile_id=p.giver_id WHERE p.meeting_id=$1 AND NOT COALESCE(g.present,false)",
+      [meetingId],
+    )
+  ).rows.map((x) => x.giver_id as string);
+  // 35: weighted votes when the statutes ask (a federation's clubs by their licences).
+  const w = await weights(c, org, [...new Set([...called, ...presentIds, ...representedIds])], r);
+  const members = total(w, called);
+  const present = total(w, presentIds);
+  const represented = total(w, representedIds);
   const percent = kind === "assembly" && !(second && r.secondWithoutQuorum) ? r.quorumPercent : 0;
   return quorum(members, present, represented, percent);
 }
@@ -238,6 +293,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
       ).rows as { profile_id: string; full_name: string; answer: string; present: boolean; holder_id: string | null; holds: number }[];
       const mine = attendees.filter((a) => x.own.has(a.profile_id));
       if (!x.manage && !mine.length) continue;
+      const w = await weights(x.c, x.org, attendees.map((a) => a.profile_id), r);
       meetings.push({
         ...m,
         items: (
@@ -246,7 +302,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
             [m.id],
           )
         ).rows as ItemRow[],
-        attendees: x.manage ? attendees : attendees.map((a) => ({ ...a, answer: x.own.has(a.profile_id) ? a.answer : "none", present: false })),
+        attendees: (x.manage ? attendees : attendees.map((a) => ({ ...a, answer: x.own.has(a.profile_id) ? a.answer : "none", present: false }))).map((a) => ({ ...a, weight: w.get(a.profile_id) ?? 1 })),
         mine: mine.map((a) => a.profile_id),
         quorum: x.manage ? await count(x.c, x.org, m.id, m.kind, !!m.second_of, r) : null,
         steps: m.kind === "assembly" ? assemblySteps(localDay(m.starts_at), r.noticeDays) : null,
@@ -257,6 +313,7 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
       organization_id: x.org,
       locale,
       can: { manage: x.manage, read: reader },
+      federation: x.federation,
       rules: r,
       members,
       register: lines,
@@ -265,8 +322,32 @@ export async function associationView(db: Pool, p: Principal, locale: Locale) {
       meetings,
       year: { ...year, planned: meetingsRaw.some((m) => m.kind === "assembly" && m.fiscal_year_start === year.from && m.status !== "cancelled") },
       endingMandates: x.manage ? endingMandates(members, today()) : [],
+      // 35: in a federation, who represents each club, and who may.
+      representatives: x.manage ? await representatives(x.c, x.org) : [],
     };
   });
+}
+async function representatives(c: PoolClient, org: string) {
+  const clubs = (
+    await c.query(
+      `SELECT cp.id AS profile_id,cp.member_club_id AS club_id,cp.full_name AS club,u.id AS user_id,u.name
+         FROM club_person cp JOIN organization o ON o.id=cp.organization_id AND o.kind='federation' LEFT JOIN person pe ON pe.id=cp.person_id LEFT JOIN "user" u ON u.id=pe.user_id
+        WHERE cp.organization_id=$1 AND cp.member_club_id IS NOT NULL ORDER BY cp.full_name`,
+      [org],
+    )
+  ).rows as { profile_id: string; club_id: string; club: string; user_id: string | null; name: string | null }[];
+  const out = [];
+  for (const k of clubs) {
+    const candidates = (
+      await c.query(
+        `SELECT DISTINCT u.id,u.name FROM role_assignment r JOIN "user" u ON u.id=r.user_id
+          WHERE r.organization_id=$1 AND r.role NOT IN ('player','guardian') AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND u.active ORDER BY u.name`,
+        [k.club_id],
+      )
+    ).rows as { id: string; name: string }[];
+    out.push({ ...k, candidates });
+  }
+  return out;
 }
 
 /** 7: the agenda an assembly starts with: accounts, budget, discharge, mandates ending, admissions and exits pending, any other business. */
@@ -486,6 +567,22 @@ export async function associationExecute(db: Pool, p: Principal, cmd: Associatio
           const done = await x.c.query("UPDATE meeting_attendee SET answer=$3 WHERE meeting_id=$1 AND profile_id=$2", [cmd.meetingId, cmd.profileId, cmd.answer]);
           if (!done.rowCount) throw new AccessError("NOT_FOUND", 404);
           return { id: cmd.meetingId };
+        }
+        case "representative": {
+          // 35: the person who carries a club's voice at the federation's assembly (one of its mandates).
+          if (!x.manage) throw new AccessError("FORBIDDEN");
+          const club = (await x.c.query("SELECT member_club_id FROM club_person WHERE id=$1 AND organization_id=$2 AND member_club_id IS NOT NULL", [cmd.profileId, x.org])).rows[0]?.member_club_id as string | undefined;
+          if (!club) throw new AccessError("NOT_FOUND", 404);
+          const person = (
+            await x.c.query(
+              `SELECT pe.id FROM role_assignment r JOIN person pe ON pe.user_id=r.user_id WHERE r.organization_id=$1 AND r.user_id=$2 AND r.role NOT IN ('player','guardian') AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) LIMIT 1`,
+              [club, cmd.userId],
+            )
+          ).rows[0]?.id as string | undefined;
+          if (!person) throw new AccessError("NOT_FOUND", 404);
+          await x.c.query("UPDATE club_person SET person_id=$3 WHERE id=$1 AND organization_id=$2", [cmd.profileId, x.org, person]);
+          await audit(x.c, x.org, x.userId, "association.representative", cmd.profileId, { club });
+          return { id: cmd.profileId };
         }
         case "proxy": {
           if (!x.manage && !x.own.has(cmd.giverId)) throw new AccessError("FORBIDDEN");
