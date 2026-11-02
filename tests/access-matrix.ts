@@ -167,6 +167,7 @@ export const pages: Record<string, PageAccess> = {
   "/access": {},
   "/attendance": {},
   "/c/[slug]": {},
+  "/classification": {},
   "/c/[slug]/widget/[kind]": {},
   "/cagnotte/[token]": {},
   "/calendar": {},

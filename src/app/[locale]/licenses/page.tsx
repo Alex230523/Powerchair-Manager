@@ -1,13 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { isLocale } from "@/lib/locale";
-import { ClubLicenses } from "@/components/licenses";
-export const metadata = { title: "Licences · Powerchair Football Manager" };
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+/** 1: the former « Licences » page of the club is « Classification ». */
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <ClubLicenses locale={locale} />;
+  redirect(`/${locale}/classification`);
 }

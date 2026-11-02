@@ -60,7 +60,9 @@ test("friendly between clubs: invitation, line, transport, score to confirm, tou
 
     // 1. Club A invites club B's team.
     await page.goto("/fr/matches");
-    await page.getByRole("button", { name: "Nouveau match amical" }).click();
+    // 1: one « Nouveau match », then « Amical ».
+    await page.getByRole("button", { name: "Nouveau match", exact: true }).click();
+    await page.getByRole("dialog", { name: "Quel match ?" }).getByRole("button", { name: /^Amical/ }).click();
     const win = page.getByRole("dialog", { name: "Nouveau match amical" });
     await win.getByLabel("Notre équipe").selectOption({ label: "Aigles" });
     await win.getByLabel("Adversaire").selectOption({ label: "Ours" });

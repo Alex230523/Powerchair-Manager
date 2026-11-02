@@ -97,6 +97,9 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
+  /* 1: one height for the fields, menus and buttons that share a row. */
+  --control-height: 2.75rem;
+  --check-size: 1.25rem;
 
   /* Text scale: nothing below 12 px. */
   --text-xs: 0.75rem;
@@ -547,7 +550,7 @@ main p[role="status"] {
   gap: var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  min-height: 2.375rem;
+  min-height: var(--control-height);
   padding: 6px 14px;
   background: var(--primary);
   color: var(--on-primary);
@@ -675,10 +678,19 @@ textarea {
     box-shadow var(--transition);
 }
 input {
-  min-height: 2.875rem;
+  min-height: var(--control-height);
   width: 100%;
   margin-top: 8px;
   padding: 8px 12px;
+}
+select {
+  min-height: var(--control-height);
+}
+/* 1: a menu under its label sits exactly like a text field (same gap, same width). */
+:where(label) > select:where(:not(.compact-select)) {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
 }
 input:hover,
 select:hover,
@@ -702,6 +714,27 @@ input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--primary);
   box-shadow: none;
+  /* 1: a fixed size everywhere, never stretched like a text field. */
+  width: var(--check-size);
+  height: var(--check-size);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  flex: none;
+}
+/* A box sits on the first line of its label, with a little room under the text above. */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-weight: 400;
+}
+.check > input[type="checkbox"],
+.check > input[type="radio"] {
+  margin-top: calc((1lh - var(--check-size)) / 2);
+}
+:is(p, label, legend, h3, h4, .hint) + .check {
+  margin-top: var(--space-2);
 }
 input[type="file"] {
   padding: 8px;
@@ -893,15 +926,16 @@ caption {
 }
 .access .check {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   min-height: 2.25rem;
   font-weight: 400;
 }
 .access .check input {
-  width: 22px;
-  min-height: 22px;
-  margin: 0;
+  width: var(--check-size);
+  height: var(--check-size);
+  min-height: 0;
+  margin: calc((1lh - var(--check-size)) / 2) 0 0;
   flex-shrink: 0;
 }
 .access fieldset {
@@ -1327,8 +1361,9 @@ caption {
 }
 .directory-filters input,
 .directory-filters select {
+  margin-top: 6px;
   border-radius: var(--radius-pill);
-  min-height: 2.375rem;
+  min-height: var(--control-height);
   padding-inline: 16px;
 }
 .directory-meta {
@@ -4622,6 +4657,22 @@ input.narrow {
   padding: 0;
   margin: 0 0 var(--card-gap);
 }
+/* 1: the cards of one grid share their size, whatever their hint; a hint stays on one line. */
+.stat-row-grid {
+  grid-auto-rows: 1fr;
+}
+.stat-row-grid > li {
+  display: flex;
+  min-width: 0;
+}
+.stat-row-grid > li > .stat-card {
+  flex: 1;
+}
+.stat-row-grid .stat-hint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .stat-row-grid[data-cols="4"] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -5337,7 +5388,7 @@ input.narrow {
 .toolbar-filters input,
 .toolbar-filters select {
   margin-top: 4px;
-  min-height: 2.375rem;
+  min-height: var(--control-height);
   padding: 6px 12px;
   font-size: var(--text-base);
   border-radius: var(--radius-sm);
@@ -7079,6 +7130,17 @@ ul.task-list {
 /* ---------- Visitor (wave 16, I1): no menu, a simple bar ---------- */
 .guest-shell {
   min-height: 100vh;
+  /* 1: the sign-in card in the middle of the page on a computer. */
+  display: flex;
+  flex-direction: column;
+}
+.guest-shell > main.access:has(> .access-card) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-6) 0;
 }
 .guest-bar {
   display: flex;
@@ -7093,6 +7155,13 @@ ul.task-list {
 }
 .guest-bar .brand {
   flex: 0 1 auto;
+  /* 1: the logo and the name never cut, centred in the bar at any text size. */
+  align-items: center;
+  overflow: visible;
+  padding-block: var(--space-1);
+}
+.guest-bar .brand-name {
+  line-height: 1.3;
 }
 .guest-tools {
   display: flex;
@@ -7103,8 +7172,37 @@ ul.task-list {
   min-height: 2.75rem;
 }
 .access-card {
+  width: 100%;
   max-width: 420px;
-  margin: var(--space-8) auto 0;
+  margin: var(--space-8) auto;
+}
+@media (max-width: 640px) {
+  .access-card {
+    max-width: none;
+    width: auto;
+    margin: var(--space-4);
+  }
+}
+/* 1: every element of the card on the same left edge and width. */
+.access-card .card-body > *,
+.access-card form > * {
+  width: 100%;
+  margin-inline: 0;
+}
+.access-card .access-links {
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+.access-card .access-links .text-button {
+  padding-inline: var(--space-2);
+}
+.access-error {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+}
+.access-error p {
+  margin: 0;
 }
 .access-card h1 {
   font-size: var(--text-xl);
@@ -7182,9 +7280,14 @@ ul.task-list {
   align-items: center;
   gap: var(--space-2);
   font-weight: 600;
+  white-space: nowrap;
 }
+/* 1: the year's menu keeps its own width, the height of the buttons beside it. */
 .year-picker select {
-  min-height: 38px;
+  display: inline-block;
+  width: auto;
+  min-width: 6.5rem;
+  min-height: var(--control-height);
   margin: 0;
   padding: 0 var(--space-3);
 }
@@ -10291,4 +10394,134 @@ ul.task-page li {
 .lang-menu a:hover,
 .lang-menu a:focus-visible {
   background: var(--surface-soft);
+}
+
+/* 1: a folded question keeps its number and title. */
+.question-title {
+  font-weight: 400;
+  color: var(--muted);
+}
+.question-fold-all {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 var(--space-2);
+}
+.question-body[hidden] {
+  display: none;
+}
+
+/* 1: an event of the calendar opens in a centred window; full screen on a phone. */
+.player-dialog.side-sheet.event-sheet.event-modal {
+  width: min(640px, calc(100% - 2 * var(--space-4)));
+  height: auto;
+  max-height: min(90dvh, 900px);
+  margin: auto;
+  border-radius: var(--radius-card);
+  border-right: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .player-dialog.side-sheet.event-sheet.event-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
+/* 1: a choice between two kinds of things to create (a friendly or a competition match). */
+.choice-cards {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.choice-card {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-4);
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.choice-card:hover {
+  border-color: var(--primary);
+}
+
+/* 1: the table's own bar: its count or filters on the left, « Colonnes » on the right. */
+.dg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.dg-toolbar .dg-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.dg-toolbar .dg-tools p {
+  margin: 0;
+}
+.dg-toolbar .dg-columns {
+  margin: 0 0 0 auto;
+}
+
+/* 1: the event's place, one search (combobox) with grouped suggestions. */
+.combo-anchor {
+  position: relative;
+}
+.combo-popup {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 4px);
+  z-index: 8;
+  max-height: 18rem;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+}
+.combo-popup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.combo-group {
+  display: block;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--muted);
+}
+.combo-option {
+  display: grid;
+  gap: 2px;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+.combo-option[aria-selected="true"],
+.combo-option:hover {
+  background: var(--surface-soft);
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.combo-create {
+  color: var(--primary);
+  font-weight: 600;
+}
+.combo-empty {
+  padding: var(--space-3);
 }

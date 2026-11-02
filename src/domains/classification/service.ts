@@ -351,7 +351,7 @@ export async function classificationExecute(db: Pool, p: Principal, command: Cla
             person: s.orgName,
             status: said.invited,
             vars: { day: dayLabel(command.day), deadline: dayLabel(command.registrationDeadline) },
-            path: "/licenses",
+            path: "/classification",
             key: `${id}:invited:${club}`,
           });
         await audit(s.c, s.fed, s.userId, "classification.session.create", id, { day: command.day, clubs: clubIds.length, classifiers: classifierIds.length });
@@ -365,7 +365,7 @@ export async function classificationExecute(db: Pool, p: Principal, command: Cla
         await s.c.query("UPDATE classification_session SET status='cancelled' WHERE id=$1", [session.id]);
         const clubs = (await s.c.query("SELECT organization_id FROM classification_session_club WHERE session_id=$1", [session.id])).rows.map((r) => r.organization_id as string);
         for (const club of clubs)
-          await tell(s.c, club, await presidents(s.c, club), { person: s.orgName, status: said.cancelled, vars: { day: dayLabel(session.day) }, path: "/licenses", key: `${session.id}:cancelled:${club}` });
+          await tell(s.c, club, await presidents(s.c, club), { person: s.orgName, status: said.cancelled, vars: { day: dayLabel(session.day) }, path: "/classification", key: `${session.id}:cancelled:${club}` });
         await audit(s.c, s.fed, s.userId, "classification.session.cancel", session.id);
         return { ok: true as const };
       }

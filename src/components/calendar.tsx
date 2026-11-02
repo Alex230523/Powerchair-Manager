@@ -8,10 +8,12 @@ import { Icon } from "./icons";
 import { movePeriod, planRange, type PlannerView } from "@/domains/calendar/planner";
 import { DeadlineChip, LayerToggle, useMoneyDeadlines, useTournamentDays } from "./money-layer";
 import { sponsorsCopy } from "./sponsors-copy";
+import { PlaceCombobox } from "./place-combobox";
 import { attendanceCopy } from "./attendance-copy";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
   type FormEvent,
@@ -276,6 +278,7 @@ export function Calendar({
     [selected, setSelected] = useState(eventId ?? ""),
     [placeDialog, setPlaceDialog] = useState(false),
     [newPlace, setNewPlace] = useState<string | null>(null),
+    [placeName, setPlaceName] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -428,10 +431,27 @@ export function Calendar({
     </>
   );
   const visible = data?.events;
+  // 1: the element that opened the event's window gets the focus back when it closes.
+  const opener = useRef<HTMLElement | null>(null);
+  /** 1: the open event travels in the address (?event=), so its link can be shared. */
+  function remember(id: string) {
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("event", id);
+    else url.searchParams.delete("event");
+    history.replaceState(null, "", url);
+  }
   function openEvent(id: string) {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setRemoving(false);
     setSelected(id);
     setEditorOpen(false);
+    remember(id);
+  }
+  function closeEvent() {
+    setSelected("");
+    remember("");
+    const back = opener.current;
+    setTimeout(() => back?.isConnected && back.focus(), 0);
   }
   function newEvent(day = anchor, hour = "") {
     setAnchor(day);
@@ -782,7 +802,7 @@ export function Calendar({
               </Modal>
             )}
             {sheetEvent && (
-              <Modal title={sheetEvent.title} close={() => setSelected("")} className="player-dialog side-sheet event-sheet">
+              <Modal title={sheetEvent.title} close={closeEvent} className="player-dialog side-sheet event-sheet event-modal">
                 <div id="event-details">
                   <p className="event-sheet-badges">
                     <Badge tone={sheetEvent.status === "cancelled" ? "neutral" : "success"} dot>{sheetEvent.status === "cancelled" ? t.cancelled : t.scheduled}</Badge>{" "}
@@ -1213,44 +1233,28 @@ export function Calendar({
                     </fieldset>
                     <fieldset className="event-section">
                       <legend>{ev.sections.place}</legend>
-                      <div className="field-with-action">
-                        <Field id="event-place" label={t.place}>
-                          {/* Wave 17 (C4): training and match places first for a training or a match. */}
-                          <select id="event-place" name="place" key={newPlace ?? "place"} defaultValue={newPlace ?? base?.place_id ?? ""}>
-                            <option value="">{t.none}</option>
-                            {[...new Set(placesFor(data.places, formFamily).map((v) => v.category as PlaceCategory))].map((c) => (
-                              <optgroup key={c} label={pc.categories[c]}>
-                                {placesFor(data.places, formFamily)
-                                  .filter((v) => v.category === c && (!v.archived || v.id === event?.place_id))
-                                  .map((v) => (
-                                    <option key={v.id} value={v.id}>
-                                      {v.name}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                        </Field>
-                        {data.manage && (
+                      {/* 1: one search for the place: our places, the shared directory, free text, « + Créer ce lieu ». */}
+                      <PlaceCombobox
+                        key={`${event?.id ?? copyOf?.id ?? requestId}:${newPlace ?? ""}:${data.places.length}`}
+                        locale={locale}
+                        places={placesFor(data.places, formFamily)
+                          .filter((v) => !v.archived || v.id === event?.place_id)
+                          .map((v) => ({ id: v.id, name: v.name, address: v.address }))}
+                        shared={data.sharedVenues.map((v) => ({ id: v.id, name: v.name, address: v.address }))}
+                        initial={{ placeId: newPlace ?? base?.place_id ?? null, sharedId: newPlace ? null : (base?.shared_venue_id ?? null), free: newPlace ? "" : (base?.free_location ?? "") }}
+                        canCreate={data.manage}
+                        create={(name) => {
+                          setPlaceName(name);
+                          setPlaceDialog(true);
+                        }}
+                      />
+                      {data.manage && (
+                        <p>
                           <Button type="button" variant="secondary" icon="plus" onClick={() => setPlaceDialog(true)}>
                             {pc.add}
                           </Button>
-                        )}
-                      </div>
-                      <p className="muted small">{extra.location}</p>
-                      <Field id="event-shared" label={extra.shared}>
-                        <select id="event-shared" name="sharedVenue" defaultValue={base?.shared_venue_id ?? ""}>
-                          <option value="">{t.none}</option>
-                          {data.sharedVenues.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name} · {v.address}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field id="event-free" label={extra.free}>
-                        <input id="event-free" name="freeLocation" maxLength={500} defaultValue={base?.free_location ?? ""} />
-                      </Field>
+                        </p>
+                      )}
                       {base && (base.place_address || base.free_location) && (
                         <a href={mapLink(base.place_address || base.free_location)} target="_blank" rel="noopener noreferrer">
                           {ev.openMap}
@@ -1383,9 +1387,14 @@ export function Calendar({
               <PlaceDialog
                 locale={locale}
                 category={placeCategory}
-                close={() => setPlaceDialog(false)}
+                initialName={placeName}
+                close={() => {
+                  setPlaceDialog(false);
+                  setPlaceName("");
+                }}
                 saved={(id) => {
                   setPlaceDialog(false);
+                  setPlaceName("");
                   setNewPlace(id);
                   void load();
                 }}

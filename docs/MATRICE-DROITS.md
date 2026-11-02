@@ -156,6 +156,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/access` |  |  |  |  |  |  |  |  |  |   |
 | `/attendance` |  |  |  |  |  |  |  |  |  |   |
 | `/c/[slug]` |  |  |  |  |  |  |  |  |  |   |
+| `/classification` |  |  |  |  |  |  |  |  |  |   |
 | `/c/[slug]/widget/[kind]` |  |  |  |  |  |  |  |  |  |   |
 | `/cagnotte/[token]` |  |  |  |  |  |  |  |  |  |   |
 | `/calendar` |  |  |  |  |  |  |  |  |  |   |

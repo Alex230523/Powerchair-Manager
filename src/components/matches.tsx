@@ -33,6 +33,7 @@ export function Matches({ locale }: { locale: Locale }) {
     [show, setShow] = useState<"upcoming" | "played" | "all">("upcoming"),
     [editing, setEditing] = useState<Match | "new" | null>(null),
     [friendly, setFriendly] = useState(false),
+    [choosing, setChoosing] = useState(false),
     [dialog, setDialog] = useState<{
       kind: "lineup" | "result";
       match: Match;
@@ -157,16 +158,8 @@ export function Matches({ locale }: { locale: Locale }) {
     <main id="main" className="access matches">
       <PageHeader title={t.title} subtitle={t.intro} actions={manageable.length > 0 && (
           <div className="directory-actions">
-            {view.can.friendly && (
-              <button type="button" className="button secondary" onClick={() => setFriendly(true)}>
-                {lc.newFriendly}
-              </button>
-            )}
-            <button
-              type="button"
-              className="button"
-              onClick={() => setEditing("new")}
-            >
+            {/* 1: one « Nouveau match »; the window asks friendly or competition first. */}
+            <button type="button" className="button" onClick={() => (view.can.friendly ? setChoosing(true) : setEditing("new"))}>
               {t.add}
             </button>
           </div>
@@ -383,6 +376,38 @@ export function Matches({ locale }: { locale: Locale }) {
       )}
 
       <TournamentMatches locale={locale} view={view} />
+      {choosing && (
+        <Modal title={t.kindTitle} close={() => setChoosing(false)}>
+          <ul className="choice-cards">
+            <li>
+              <button
+                type="button"
+                className="choice-card"
+                onClick={() => {
+                  setChoosing(false);
+                  setFriendly(true);
+                }}
+              >
+                <strong>{t.kindFriendly}</strong>
+                <span className="muted">{t.kindFriendlyHint}</span>
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="choice-card"
+                onClick={() => {
+                  setChoosing(false);
+                  setEditing("new");
+                }}
+              >
+                <strong>{t.kindCompetition}</strong>
+                <span className="muted">{t.kindCompetitionHint}</span>
+              </button>
+            </li>
+          </ul>
+        </Modal>
+      )}
       {friendly && <FriendlyDialog locale={locale} view={view} busy={busy} close={() => setFriendly(false)} send={send} />}
       {editing && (
         <Modal

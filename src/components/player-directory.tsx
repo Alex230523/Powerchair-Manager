@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { useScopedTeam, ApplyScope } from "./use-scope";
+import { useScopedTeam, ApplyScope, useScope } from "./use-scope";
+import { teamChoices } from "./team-choices";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
@@ -179,6 +180,8 @@ export function PlayerDirectory({
     // Wave 17 (J1): the departure window (reason and note), for a departure or a later change.
     [leaving, setLeaving] = useState<{ id: string; mode: "leave" | "edit" } | null>(null);
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  // 1: the team menu lists the teams of the season chosen in the top bar, each once.
+  const scope = useScope();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
     year: "numeric",
@@ -370,21 +373,32 @@ export function PlayerDirectory({
   return (
     <main id="main" className="access player-directory">
       <PageHeader title={title} subtitle={data?.context.name ?? t.intro} actions={<><div className="directory-actions">
-          <Link
-            className="button secondary"
-            href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
-          >
-            {data?.capabilities.registrationsManage
-              ? t.registrations
-              : locale === "fr"
-                ? "Mes inscriptions"
-                : locale === "nl"
-                  ? "Mijn inschrijvingen"
-                  : "My applications"}
-          </Link>
-          <Link className="button secondary" href={`/${locale}/dues`}>
-            {t.dues}
-          </Link>
+          {/* 1: the coaches' page keeps neither registrations nor dues; its export sits here, top right. */}
+          {role === "player" && (
+            <>
+              <Link
+                className="button secondary"
+                href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
+              >
+                {data?.capabilities.registrationsManage
+                  ? t.registrations
+                  : locale === "fr"
+                    ? "Mes inscriptions"
+                    : locale === "nl"
+                      ? "Mijn inschrijvingen"
+                      : "My applications"}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/dues`}>
+                {t.dues}
+              </Link>
+            </>
+          )}
+          {role === "coach" && data?.capabilities.canExport && (
+            <ExportDialog
+              locale={locale}
+              query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
+            />
+          )}
           <Link
             className="button secondary"
             href={`/${locale}/${route}${former ? "" : "/former"}`}
@@ -466,7 +480,7 @@ export function PlayerDirectory({
               <label htmlFor="directory-team">{p.team}</label>
               <select id="directory-team" value={team} onChange={(e) => setTeam(e.target.value)}>
                 <option value="">{t.all}</option>
-                {data.teams.map((v) => (
+                {teamChoices(data.teams, scope.season?.id ?? null, team).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}
                   </option>
@@ -496,18 +510,27 @@ export function PlayerDirectory({
               </label>
             )}
           </form>
-          <div className="directory-meta">
-            <p>
-              {roster.length} {t.count}
-            </p>
-            {data.capabilities.canExport && (
-              <ExportDialog
-                locale={locale}
-                query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
-              />
-            )}
-          </div>
+          {role === "player" && (
+            <div className="directory-meta">
+              <p>
+                {roster.length} {t.count}
+              </p>
+              {data.capabilities.canExport && (
+                <ExportDialog
+                  locale={locale}
+                  query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
+                />
+              )}
+            </div>
+          )}
           <DataGrid
+            tools={
+              role === "coach" ? (
+                <p>
+                  {roster.length} {t.count}
+                </p>
+              ) : undefined
+            }
             locale={locale}
             label={title}
             caption={title}

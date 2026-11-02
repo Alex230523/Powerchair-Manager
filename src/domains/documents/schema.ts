@@ -10,6 +10,12 @@ export const categories = [
   "contract",
   "accounting",
 ] as const;
+/**
+ * 1: categories no longer offered for a new document (fewer personal data):
+ * the documents already there stay readable, marked « catégorie retirée ».
+ */
+export const retiredCategories: readonly (typeof categories)[number][] = ["identity"];
+export const offeredCategories = categories.filter((c) => !retiredCategories.includes(c)) as [(typeof categories)[number], ...(typeof categories)[number][]];
 export const statuses = [
   "missing",
   "requested",
@@ -28,7 +34,7 @@ export const commandSchema = z.discriminatedUnion("action", [
     profileId: id.optional(),
     seasonId: id,
     name,
-    category: z.enum(categories),
+    category: z.enum(offeredCategories),
     sensitive: z.boolean(),
   }),
   z.object({
@@ -37,7 +43,7 @@ export const commandSchema = z.discriminatedUnion("action", [
     expectedVersion: z.number().int().positive().optional(),
     seasonId: id,
     name,
-    category: z.enum(categories),
+    category: z.enum(offeredCategories),
     sensitive: z.boolean(),
     role: z.enum(["any", "player", "coach", "assistant", "volunteer"]),
     minAge: z.number().int().min(0).max(120),
@@ -61,6 +67,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     expectedVersion: z.number().int().positive(),
   }),
   z.object({ action: z.literal("revoke"), id }),
+  /** 1: the president deletes the documents of a retired category (« Identité administrative »). */
+  z.object({ action: z.literal("purgeRetired") }),
   z.object({
     action: z.literal("template"),
     name,

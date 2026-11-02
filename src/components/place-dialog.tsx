@@ -18,11 +18,14 @@ export function PlaceDialog({
   locale,
   place,
   category = "training",
+  initialName = "",
   close,
   saved,
 }: {
   locale: Locale;
   place?: PlaceRow;
+  /** 1: the name typed in the event's place field (« + Créer ce lieu »). */
+  initialName?: string;
   category?: PlaceCategory;
   close: () => void;
   saved: (id: string) => void;
@@ -98,7 +101,7 @@ export function PlaceDialog({
       >
         <label>
           {t.name}
-          <input name="name" required minLength={2} maxLength={120} defaultValue={place?.name} />
+          <input name="name" required minLength={2} maxLength={120} defaultValue={place?.name ?? initialName} />
         </label>
         <label>
           {t.address}

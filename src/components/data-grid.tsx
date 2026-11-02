@@ -89,6 +89,7 @@ export function DataGrid<T>({
   rowState,
   pageSize = 50,
   reasons,
+  tools,
 }: {
   locale: Locale;
   label: string;
@@ -114,6 +115,8 @@ export function DataGrid<T>({
   pageSize?: number;
   /** Words for the module's own refusal codes, in the summary. */
   reasons?: Record<string, string>;
+  /** 1: what sits on the table's own bar, left of « Colonnes » (a count, a filter). */
+  tools?: ReactNode;
 }) {
   const base = tableCopy[locale];
   const t = useMemo(() => (reasons ? { ...base, reasons: { ...base.reasons, ...reasons } } : base), [base, reasons]);
@@ -201,6 +204,9 @@ export function DataGrid<T>({
 
   return (
     <div className={`data-grid ${selectable ? "selectable" : ""} ${className}`.replace(/\s+/g, " ").trim()}>
+      {(tools || (storageKey && hideable.length > 0)) && (
+      <div className="dg-toolbar">
+      {tools && <div className="dg-tools">{tools}</div>}
       {storageKey && hideable.length > 0 && (
         <details className="dg-columns" onToggle={(e) => setColumnsOpen(e.currentTarget.open)}>
           <summary className="button secondary sm">
@@ -222,6 +228,8 @@ export function DataGrid<T>({
           </fieldset>
           )}
         </details>
+      )}
+      </div>
       )}
       <DataTable label={label} caption={caption}>
         <thead>

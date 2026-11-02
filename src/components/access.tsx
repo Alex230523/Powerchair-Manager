@@ -78,7 +78,9 @@ export function Access({ locale }: { locale: Locale }) {
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
-    [failure, setFailure] = useState("");
+    [failure, setFailure] = useState(""),
+    // 1: the workspace could not be read (network, server): « Réessayer » only then, inside the card.
+    [unreachable, setUnreachable] = useState(false);
   const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">(
     "login",
   );
@@ -89,6 +91,7 @@ export function Access({ locale }: { locale: Locale }) {
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/workspace", { cache: "no-store" });
+      setUnreachable(false);
       if (response.status === 401) {
         setState(null);
         window.dispatchEvent(new Event("pfm-workspace"));
@@ -98,7 +101,7 @@ export function Access({ locale }: { locale: Locale }) {
       setState(await response.json());
       window.dispatchEvent(new Event("pfm-workspace"));
     } catch {
-      setFailure(t.unavailable);
+      setUnreachable(true);
     } finally {
       setLoading(false);
     }
@@ -115,7 +118,7 @@ export function Access({ locale }: { locale: Locale }) {
         if (!cancelled) setState(data);
       })
       .catch(() => {
-        if (!cancelled) setFailure(t.unavailable);
+        if (!cancelled) setUnreachable(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -350,7 +353,7 @@ export function Access({ locale }: { locale: Locale }) {
         <div aria-live="polite" role="status">
           {loading ? t.loading : message}
         </div>
-        {failure && (
+        {failure && state && (
           <p role="alert" className="error-message">
             {failure}
           </p>
@@ -360,6 +363,20 @@ export function Access({ locale }: { locale: Locale }) {
           <section className="access-card card" aria-labelledby="access-card-title">
             <div className="card-body">
               <h1 id="access-card-title">{t[mode]}</h1>
+              {/* 1: what went wrong, inside the card, above the form. */}
+              {unreachable && (
+                <div role="alert" className="error-message access-error">
+                  <p>{t.unreachable}</p>
+                  <Button type="button" variant="secondary" onClick={() => void load()}>
+                    {t.retry}
+                  </Button>
+                </div>
+              )}
+              {failure && (
+                <p role="alert" className="error-message access-error">
+                  {failure}
+                </p>
+              )}
               {mode === "signup" && <p className="muted">{t.invitedHint}</p>}
               <form onSubmit={(e) => submit(e, authenticate)}>
                 {mode === "signup" && (
@@ -389,7 +406,8 @@ export function Access({ locale }: { locale: Locale }) {
                 )}
                 <Button disabled={busy}>{t[mode]}</Button>
               </form>
-              <div className="actions">
+              {/* 1: one logic for the links of every mode: centred under the button. */}
+              <div className="actions access-links">
                 {(invitationToken ? (["login", "signup", "forgot"] as const) : (["login", "forgot"] as const))
                   .filter((m) => m !== mode)
                   .map((m) => (
@@ -801,11 +819,6 @@ export function Access({ locale }: { locale: Locale }) {
               </p>
             </Panel>
           </>
-        )}
-        {loading || state ? null : (
-          <button className="text-button" onClick={() => void load()}>
-            {t.retry}
-          </button>
         )}
       </main>
     </>

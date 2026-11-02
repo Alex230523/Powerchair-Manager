@@ -60,6 +60,11 @@ type Copy = {
   moveDown: string;
   drag: string;
   moved: string;
+  /** 1: each question folds; its title stays visible. */
+  fold: string;
+  unfold: string;
+  foldAll: string;
+  unfoldAll: string;
   untitled: string;
   shareTitle: string;
   publicSwitch: string;
@@ -199,6 +204,10 @@ export const formsCopy: Record<"fr" | "nl" | "en", Copy> = {
     moveDown: "Descendre la question {n}",
     drag: "Déplacer la question {n} : glisser, ou flèches haut et bas",
     moved: "Question déplacée en position {n}.",
+    fold: "Replier la question {n} : {label}",
+    unfold: "Déplier la question {n} : {label}",
+    foldAll: "Tout replier",
+    unfoldAll: "Tout déplier",
     untitled: "sans titre",
     shareTitle: "Partager {form}",
     publicSwitch: "Ouvert au public",
@@ -336,6 +345,10 @@ export const formsCopy: Record<"fr" | "nl" | "en", Copy> = {
     moveDown: "Vraag {n} omlaag",
     drag: "Vraag {n} verplaatsen: slepen, of pijltjes omhoog en omlaag",
     moved: "Vraag verplaatst naar positie {n}.",
+    fold: "Vraag {n} inklappen: {label}",
+    unfold: "Vraag {n} uitklappen: {label}",
+    foldAll: "Alles inklappen",
+    unfoldAll: "Alles uitklappen",
     untitled: "zonder titel",
     shareTitle: "{form} delen",
     publicSwitch: "Open voor het publiek",
@@ -473,6 +486,10 @@ export const formsCopy: Record<"fr" | "nl" | "en", Copy> = {
     moveDown: "Move question {n} down",
     drag: "Move question {n}: drag, or up and down arrows",
     moved: "Question moved to position {n}.",
+    fold: "Fold question {n}: {label}",
+    unfold: "Unfold question {n}: {label}",
+    foldAll: "Fold all",
+    unfoldAll: "Unfold all",
     untitled: "untitled",
     shareTitle: "Share {form}",
     publicSwitch: "Open to the public",

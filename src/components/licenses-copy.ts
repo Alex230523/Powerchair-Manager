@@ -2,6 +2,8 @@ import type { Locale } from "../lib/locale";
 
 const fr = {
   clubTitle: "Licences et classifications",
+  classificationTitle: "Classification",
+  classificationIntro: "La classification des joueurs (PF1, PF2, en attente) et les journées de classification. Les frais de licence se gèrent dans Finances, Affiliations.",
   clubIntro:
     "Demandez les licences de la saison et la validation des classifications à votre fédération.",
   fedTitle: "Licences, classifications et transferts",
@@ -92,6 +94,8 @@ const fr = {
 type Copy = typeof fr;
 const nl: Copy = {
   clubTitle: "Licenties en classificaties",
+  classificationTitle: "Classificatie",
+  classificationIntro: "De classificatie van de spelers (PF1, PF2, in afwachting) en de classificatiedagen. De licentiekosten beheert u in Financiën, Aansluitingen.",
   clubIntro:
     "Vraag de licenties van het seizoen en de validatie van de classificaties aan bij uw federatie.",
   fedTitle: "Licenties, classificaties en transfers",
@@ -182,6 +186,8 @@ const nl: Copy = {
 };
 const en: Copy = {
   clubTitle: "Licences and classifications",
+  classificationTitle: "Classification",
+  classificationIntro: "The players' classification (PF1, PF2, pending) and the classification days. Licence fees are handled in Finances, Affiliations.",
   clubIntro:
     "Ask your federation for this season's licences and for classification checks.",
   fedTitle: "Licences, classifications and transfers",

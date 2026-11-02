@@ -244,7 +244,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       seasonCoaches: { label: "Coachs", hint: "Coachs et assistants" },
       chairs: { label: "Fauteuils", hint: "Fauteuils du club" },
       trainingsDone: { label: "Entraînements faits", hint: "Cette saison" },
-      matchesPlayed: { label: "Matchs joués", hint: "Cette saison, chaque match compte" },
+      matchesPlayed: { label: "Matchs joués" },
     },
   },
   nl: {
@@ -426,7 +426,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       seasonCoaches: { label: "Coaches", hint: "Coaches en assistenten" },
       chairs: { label: "Rolstoelen", hint: "Rolstoelen van de club" },
       trainingsDone: { label: "Gegeven trainingen", hint: "Dit seizoen" },
-      matchesPlayed: { label: "Gespeelde wedstrijden", hint: "Dit seizoen, elke wedstrijd telt" },
+      matchesPlayed: { label: "Gespeelde wedstrijden" },
     },
   },
   en: {
@@ -608,7 +608,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       seasonCoaches: { label: "Coaches", hint: "Coaches and assistants" },
       chairs: { label: "Wheelchairs", hint: "The club's wheelchairs" },
       trainingsDone: { label: "Trainings held", hint: "This season" },
-      matchesPlayed: { label: "Matches played", hint: "This season, every match counts" },
+      matchesPlayed: { label: "Matches played" },
     },
   },
 };

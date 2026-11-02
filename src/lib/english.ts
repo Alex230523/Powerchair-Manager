@@ -143,6 +143,7 @@ export const english = {
     loading: "Loading…",
     unavailable: "Service unavailable. Check the connection and try again.",
     retry: "Try again",
+    unreachable: "The server cannot be reached. Check your connection.",
     memberRead: "View members",
     inviteCreate: "Create invitations",
     auditRead: "View activity log",

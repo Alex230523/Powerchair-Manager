@@ -121,6 +121,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Connexion : sans menu, langue discrète](evolutions/2026-11-02-ze-connexion-langues.md) |
 | 02/11/2026 | [13 : corrections techniques (base par aperçu, table task, pagination)](evolutions/2026-11-02-zg-13-corrections-techniques.md) |
 | 02/11/2026 | [22 et 24 : tâches dans tous les menus, fin de la messagerie](evolutions/2026-11-02-zi-22-24-taches-fin-messagerie.md) |
+| 02/11/2026 | [1 : lot de corrections d'interface et écran de connexion](evolutions/2026-11-02-zk-01-corrections-interface.md) |
 
 ## Convention
 

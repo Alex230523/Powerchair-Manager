@@ -97,6 +97,23 @@ export function InvitePicker({
       {manage && teams.filter((x) => x.id !== teamId).length > 0 && (
         <fieldset className="event-chips">
           <legend>{t.otherTeams}</legend>
+          {/* 1: every team at once; a player in two teams is invited once (the server counts people, not teams). */}
+          <label className="chip-check">
+            <input
+              type="checkbox"
+              checked={teams.filter((x) => x.id !== teamId).every((x) => has({ kind: "team", ref: x.id })) && (!teamId || has({ kind: "team", ref: null }))}
+              onChange={(e) =>
+                setState((s) => {
+                  const others = teams.filter((x) => x.id !== teamId).map((x) => ({ kind: "team", ref: x.id }) as InviteGroup);
+                  const own = teamId ? [{ kind: "team", ref: null } as InviteGroup] : [];
+                  const all = [...own, ...others];
+                  const rest = s.groups.filter((g) => !all.some((a) => key(a) === key(g)));
+                  return { ...s, groups: e.target.checked ? [...rest, ...all] : rest };
+                })
+              }
+            />
+            <strong>{t.allTeams}</strong>
+          </label>
           {teams
             .filter((x) => x.id !== teamId)
             .map((x) => {

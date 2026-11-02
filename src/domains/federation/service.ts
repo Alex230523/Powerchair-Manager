@@ -384,7 +384,7 @@ export async function federationLicensesExecute(
               rows.filter((r) => r.organization_id === club).length,
             ),
             status: command.decision,
-            path: "/licenses",
+            path: "/players",
             key:
               club +
               ":" +
@@ -410,7 +410,7 @@ export async function federationLicensesExecute(
           roles: ["club_president"],
           person: "1",
           status: "suspended",
-          path: "/licenses",
+          path: "/players",
           key: command.id,
         });
         await audit(c, fed, p.userId, "license.suspend", command.id);

@@ -26,7 +26,7 @@ import {
   type Actor,
   type Doc,
 } from "./access";
-import { commandSchema, validFile, templateText, type Command } from "./schema";
+import { commandSchema, retiredCategories, validFile, templateText, type Command } from "./schema";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
 async function transaction<T>(db: Pool, fn: (c: PoolClient) => Promise<T>) {
@@ -629,6 +629,23 @@ export async function documentExecute(
           id,
         );
         return { id };
+      }
+      if (input.action === "purgeRetired") {
+        // 1: fewer personal data; the president decides, the health right covers sensitive ones.
+        if (s.a.role !== "club_president") throw new AccessError("FORBIDDEN");
+        const docs = (
+          await s.c.query("SELECT id,sensitive FROM club_document WHERE organization_id=$1 AND category=ANY($2::text[]) FOR UPDATE", [s.a.organization_id, [...retiredCategories]])
+        ).rows as { id: string; sensitive: boolean }[];
+        health(s, docs.some((d) => d.sensitive));
+        const ids = docs.map((d) => d.id);
+        if (ids.length) {
+          await s.c.query("UPDATE club_document SET current_version_id=NULL WHERE id=ANY($1::uuid[])", [ids]);
+          for (const table of ["document_share", "document_signature", "document_task", "calendar_document", "document_history", "document_version"])
+            await s.c.query(`DELETE FROM ${table} WHERE document_id=ANY($1::uuid[])`, [ids]);
+          await s.c.query("DELETE FROM club_document WHERE id=ANY($1::uuid[]) AND organization_id=$2", [ids, s.a.organization_id]);
+          await audit(s.c, s.a.organization_id, p.userId, "document.purgeRetired", s.a.organization_id, { count: ids.length });
+        }
+        return { id: s.a.organization_id, count: ids.length };
       }
       if (input.action === "revoke") {
         const sh = (

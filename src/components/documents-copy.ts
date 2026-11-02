@@ -250,3 +250,31 @@ export const documentErrors: Record<string, [string, string, string]> = {
     englishErrors["INVALID_TEMPLATE"] ?? "Action unavailable.",
   ],
 };
+
+/** 1: a category no longer offered (« Identité administrative »): its documents stay readable until the president deletes them. */
+export const retiredCopy = {
+  fr: {
+    label: "catégorie retirée",
+    notice: "{n} document(s) de la catégorie retirée « {category} ». Ces données ne sont plus demandées : vous pouvez les supprimer.",
+    purge: "Supprimer ces documents",
+    confirm: "Supprimer définitivement {n} document(s) de la catégorie « {category} » ? Cette action ne peut pas être annulée.",
+    done: "Documents supprimés.",
+    cancel: "Annuler",
+  },
+  nl: {
+    label: "categorie ingetrokken",
+    notice: "{n} document(en) van de ingetrokken categorie « {category} ». Deze gegevens worden niet meer gevraagd: u kunt ze verwijderen.",
+    purge: "Deze documenten verwijderen",
+    confirm: "{n} document(en) van de categorie « {category} » definitief verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    done: "Documenten verwijderd.",
+    cancel: "Annuleren",
+  },
+  en: {
+    label: "category withdrawn",
+    notice: "{n} document(s) of the withdrawn category « {category} ». These data are no longer asked for: you may delete them.",
+    purge: "Delete these documents",
+    confirm: "Delete {n} document(s) of the category « {category} » for good? This cannot be undone.",
+    done: "Documents deleted.",
+    cancel: "Cancel",
+  },
+};

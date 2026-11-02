@@ -11,12 +11,13 @@ import {
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
 import type { documentView } from "@/domains/documents/service";
-import { categories, statuses } from "@/domains/documents/schema";
+import { categories, offeredCategories, retiredCategories, statuses } from "@/domains/documents/schema";
 import {
   documentCopy,
   categoryLabels,
   documentStatuses,
   documentErrors,
+  retiredCopy,
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Button, Panel, Badge, PageHeader } from "./ui";
@@ -61,7 +62,8 @@ export function Documents({ locale }: { locale: Locale }) {
     [category, setCategory] = useState(""),
     [ruleId, setRule] = useState(""),
     [templateId, setTemplate] = useState(""),
-    [moreBusy, setMoreBusy] = useState(false);
+    [moreBusy, setMoreBusy] = useState(false),
+    [purging, setPurging] = useState(false);
   // The top bar's team (wave 12) narrows the list to its members' documents.
   const scope = useScope();
   const scopedUrl = "/api/documents" + (scope.teamId ? `?team=${scope.teamId}` : "");
@@ -147,9 +149,15 @@ export function Documents({ locale }: { locale: Locale }) {
         {s.name}
       </option>
     )),
-    categoryOptions = categories.map((c) => (
+    // 1: a retired category is offered no more; the filter still finds its documents.
+    categoryOptions = offeredCategories.map((c) => (
       <option key={c} value={c}>
         {cl[c]}
+      </option>
+    )),
+    filterOptions = categories.map((c) => (
+      <option key={c} value={c}>
+        {retiredCategories.includes(c) ? `${cl[c]} (${retiredCopy[locale].label})` : cl[c]}
       </option>
     ));
   const visible =
@@ -189,24 +197,35 @@ export function Documents({ locale }: { locale: Locale }) {
             <p className="notice">{data.context.name}</p>
             {!data.mfa && <p>{t.mfa}</p>}
             <p className="muted">{t.sensitiveHint}</p>
+            {/* 1: the documents of a retired category, offered for deletion to the president. */}
+            {data.context.role === "club_president" &&
+              retiredCategories.map((c) => {
+                const n = data.documents.filter((d) => d.category === c && d.organization_id === data.context.organization_id).length;
+                if (!n) return null;
+                const rc = retiredCopy[locale],
+                  vars = (text: string) => text.replace("{n}", String(n)).replace("{category}", cl[c]);
+                return (
+                  <div key={c} className="notice retired-notice">
+                    <p>{vars(rc.notice)}</p>
+                    {purging ? (
+                      <p className="actions">
+                        <span>{vars(rc.confirm)}</span>
+                        <Button variant="danger" disabled={busy} onClick={() => void task(async () => void (await send({ action: "purgeRetired" }))).then(() => setPurging(false))}>
+                          {rc.purge}
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPurging(false)}>
+                          {rc.cancel}
+                        </Button>
+                      </p>
+                    ) : (
+                      <Button variant="secondary" onClick={() => setPurging(true)}>
+                        {rc.purge}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
             <div className="actions">
-              {/* Licences and transfers keep their own page; the documents page points to it (wave 11). */}
-              <Link className="button secondary" href={"/" + locale + "/licenses"}>
-                {locale === "fr" ? "Licences et transferts" : locale === "en" ? "Licences and transfers" : "Licenties en transfers"}
-              </Link>
-              <Button
-                onClick={() => {
-                  setCategory("training");
-                  setStatus("");
-                  setQuery("");
-                }}
-              >
-                {locale === "fr"
-                  ? "Fiches d’exercice"
-                  : locale === "en"
-                    ? "Exercise sheets"
-                    : "Oefenfiches"}
-              </Button>
               <Link href={"/" + locale + "/calendar"}>
                 {locale === "fr"
                   ? "Associer à un entraînement"
@@ -245,7 +264,7 @@ export function Documents({ locale }: { locale: Locale }) {
                   onChange={(e) => setCategory(e.target.value)}
                 >
                   <option value="">{t.all}</option>
-                  {categoryOptions}
+                  {filterOptions}
                 </select>
               </Field>
               <DataGrid
@@ -265,9 +284,12 @@ export function Documents({ locale }: { locale: Locale }) {
                     hideable: false,
                     sort: (d) => d.name,
                     cell: (d) => (
-                      <Button onClick={() => setSelected(d.id)}>
-                        {d.name} · {sl[d.status as (typeof statuses)[number]]}
-                      </Button>
+                      <>
+                        <Button onClick={() => setSelected(d.id)}>
+                          {d.name} · {sl[d.status as (typeof statuses)[number]]}
+                        </Button>
+                        {retiredCategories.includes(d.category) && <Badge tone="neutral">{retiredCopy[locale].label}</Badge>}
+                      </>
                     ),
                   },
                   { key: "owner", header: b.person, sort: (d) => d.owner_name ?? "", cell: (d) => d.owner_name ?? t.org },
