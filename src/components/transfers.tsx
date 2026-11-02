@@ -59,6 +59,8 @@ export function Transfers({ locale }: { locale: Locale }) {
             </>
           )}
           {sheet && <SheetDialog locale={locale} view={data} who={sheet} busy={busy} send={send} close={() => setSheet(null)} />}
+          {/* 24: the conversations between clubs, here since the messaging page is gone. */}
+          {data.mode === "club" && <InterclubThreads locale={locale} />}
         </>
       )}
     </main>
@@ -617,7 +619,7 @@ export function Conversation({ locale, offerId, organizationId, initial }: { loc
   );
 }
 
-/** Messages page: the conversations between clubs about transfer requests. */
+/** The conversations between clubs about transfer requests (on the transfers page since 24). */
 export function InterclubThreads({ locale }: { locale: Locale }) {
   const t = transfersCopy[locale];
   const [view, setView] = useState<Awaited<ReturnType<typeof threadsView>> | null>(null),

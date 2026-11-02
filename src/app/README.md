@@ -23,7 +23,6 @@
 | `/attendance`                                                | `attendance.tsx`                     | `api/attendance`                                  |
 | `/statistics` (bouton de l'accueil)                          | `statistics.tsx`                     | `api/attendance`                                  |
 | `/dues`                                                      | `dues.tsx`                           | `api/dues`                                        |
-| `/messages`                                                  | `messages.tsx`                       | `api/messages`                                    |
 | `/notifications`                                             | `notifications.tsx`                  | `api/notifications`                               |
 | `/funding`                                                   | page statique (financement)          | aucune                                            |
 

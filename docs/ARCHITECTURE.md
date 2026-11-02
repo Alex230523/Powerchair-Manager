@@ -48,7 +48,7 @@ Un dossier par module, toujours selon le même découpage :
 | `access.ts`  | Qui peut lire ou modifier quelle ligne (ex. `docAccess`, `canRead`, `mayRespond`)                   |
 | `service.ts` | `xView(db, principal)` pour la lecture, `xExecute(db, principal, commande, org)` pour les écritures |
 
-Modules : `access` (comptes, mandats, profils), `people` (personnes, familles, équipes), `notifications`, `registrations`, `documents`, `calendar`, `attendance`, `dues`, `messages`, `statistics`, `dashboard`, `equipment`, `player-profile`.
+Modules : `access` (comptes, mandats, profils), `people` (personnes, familles, équipes), `notifications`, `registrations`, `documents`, `calendar`, `attendance`, `dues`, `communication`, `statistics`, `dashboard`, `equipment`, `player-profile`.
 
 ### `src/lib/` : socle
 

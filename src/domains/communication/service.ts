@@ -489,7 +489,7 @@ export async function eventMailTick(db: Pool) {
     await db.query(
       `SELECT m.id,m.created_by FROM event_mail m JOIN calendar_event e ON e.id=m.event_id JOIN organization o ON o.id=m.organization_id
         WHERE m.status='scheduled' AND m.send_at<=now() AND e.status='scheduled' AND e.version=m.event_version
-          AND NOT ('messages'=ANY(o.disabled_modules)) ORDER BY m.send_at LIMIT 20`,
+          AND NOT ('communication'=ANY(o.disabled_modules)) ORDER BY m.send_at LIMIT 20`,
     )
   ).rows as { id: string; created_by: string }[];
   let sent = 0;

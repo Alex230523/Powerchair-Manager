@@ -120,3 +120,56 @@ jobs:
             playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+  audit:
+    name: Audits (display and rights)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: pfm
+          POSTGRES_USER: pfm
+          POSTGRES_PASSWORD: pfm_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pfm -d pfm"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Write .env.local
+        run: |
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "BETTER_AUTH_URL=http://127.0.0.1:3100"
+            echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
+          } > .env.local
+      - name: Build
+        run: scripts/ci-annotate.sh "Build for the audits" npm run build
+        env:
+          PFM_BUILD_DIR: .next-e2e
+          PFM_LOCAL_MAIL: "true"
+          PFM_MAIL_DIR: .local/mail-e2e
+      - name: Rights matrix (npm run audit:access)
+        run: npm run audit:access
+        env:
+          AUDIT_RECORD: "1"
+      - name: Display audit (npm run audit:ui)
+        if: always()
+        run: npm run audit:ui
+        env:
+          AUDIT_RECORD: "1"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-report
+          path: audit-report/
+          retention-days: 14
+          if-no-files-found: ignore

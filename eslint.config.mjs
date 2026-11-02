@@ -9,6 +9,7 @@ export default defineConfig([
     ".local/**",
     "playwright-report/**",
     "test-results/**",
+    "audit-report/**",
     "next-env.d.ts",
   ]),
 ]);

@@ -308,7 +308,7 @@ async function teamBoard(s: Scope, team: TeamCard, players: string[], staff: str
     ]),
   ) as Record<string, { email: string; phone: string }>;
   return {
-    can: { money: dues, sensitive, issueDues: dues && s.rights.includes("dues.manage"), convene: s.rights.includes("calendar.manage"), write: !s.disabled.includes("messages") && (s.rights.includes("notifications.manage") || s.rights.includes("calendar.manage")), matches: matchesOn },
+    can: { money: dues, sensitive, issueDues: dues && s.rights.includes("dues.manage"), convene: s.rights.includes("calendar.manage"), write: !s.disabled.includes("communication") && (s.rights.includes("notifications.manage") || s.rights.includes("calendar.manage")), matches: matchesOn },
     contacts,
     data: { season, states, events, results, record, nextMatch, tasks },
   };

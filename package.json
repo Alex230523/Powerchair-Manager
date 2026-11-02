@@ -16,6 +16,8 @@
     "test:integration": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:db": "node --env-file=.env.local scripts/e2e-db.mjs",
+    "audit:ui": "node --env-file=.env.local scripts/audit.mjs ui",
+    "audit:access": "node --env-file=.env.local scripts/audit.mjs access",
     "db:local": "node scripts/local-db.mjs",
     "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
     "db:test": "node --env-file=.env.local scripts/db-test.mjs",

@@ -355,42 +355,6 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         })
       ).status(),
     ).toBe(403);
-    await page.goto("/fr/messages");
-    await page
-      .getByLabel("Objet", { exact: true })
-      .fill("Organisation entraînement");
-    await page
-      .getByLabel("Destinataires", { exact: true })
-      .selectOption(player.id);
-    await page
-      .getByLabel("Message", { exact: true })
-      .fill("Rendez-vous à la salle à 18 h.");
-    await page.getByRole("button", { name: "Envoyer", exact: true }).click();
-    await expect(
-      page.getByText("Rendez-vous à la salle à 18 h.", { exact: true }),
-    ).toBeVisible();
-    await playerPage.goto("/fr/messages");
-    await playerPage
-      .getByRole("button", { name: "Organisation entraînement", exact: true })
-      .click();
-    await playerPage
-      .getByLabel("Message", { exact: true })
-      .fill("Merci, je serai présent.");
-    await playerPage
-      .getByRole("button", { name: "Répondre", exact: true })
-      .click();
-    await expect(
-      playerPage.getByText("Merci, je serai présent.", { exact: true }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Actualiser", exact: true }).click();
-    await expect(
-      page.getByText("Merci, je serai présent.", { exact: true }),
-    ).toBeVisible();
-    await accessible(page);
-    await page.screenshot({
-      path: "test-results/messages.png",
-      fullPage: true,
-    });
   } finally {
     await anon.close();
     await playerContext.close();

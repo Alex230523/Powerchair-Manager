@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Alex230523/Powerchair-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/Alex230523/Powerchair-Manager/actions/workflows/ci.yml)
 
-Plateforme de gestion du Powerchair Football (football en fauteuil électrique) pour les clubs puis les fédérations : joueurs et familles, inscriptions, documents, calendrier, présences, cotisations, messagerie et statistiques. Chaque club reste autonome, chaque personne ne voit que ce que son rôle autorise. Interface en français, néerlandais et anglais.
+Plateforme de gestion du Powerchair Football (football en fauteuil électrique) pour les clubs puis les fédérations : joueurs et familles, inscriptions, documents, calendrier, présences, cotisations, communication du club et statistiques. Chaque club reste autonome, chaque personne ne voit que ce que son rôle autorise. Interface en français, néerlandais et anglais.
 
 Le cahier des charges complet se trouve dans [docs/cahier-des-charges](docs/cahier-des-charges/Powerchair_Football_Manager_v2.pdf).
 
@@ -128,6 +128,6 @@ Chaque dossier principal de `src/` a son propre README qui détaille son contenu
 | 00 à 02        | Socle, comptes, mandats multi-rôles, personnes, familles, équipes, saisons                                                 | Validé                     |
 | 03 à 05        | Notifications, inscriptions, documents                                                                                     | Validé                     |
 | 06 à 08        | Calendrier, présences, cotisations, profils, langues                                                                       | Validé                     |
-| Évolutions     | Annuaire joueurs/coachs, messagerie, statistiques, charte orange, tableau de bord, PWA, matériel (fauteuils), fiche joueur | Livré, en recette          |
+| Évolutions     | Annuaire joueurs/coachs, communication du club, statistiques, charte orange, tableau de bord, PWA, matériel (fauteuils), fiche joueur | Livré, en recette          |
 | 09             | Banque, QR et rapprochement                                                                                                | En cours, hors de ce dépôt |
 | 10 et suivants | Dashboard complet, PWA hors ligne, multi-clubs, fédération, compétitions                                                   | À venir                    |

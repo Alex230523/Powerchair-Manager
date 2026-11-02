@@ -15,7 +15,6 @@ import {
   unsubscribeInfo,
 } from "../../src/domains/communication/service";
 import { emailHash } from "../../src/domains/communication/hash";
-import { messagesExecute, messagesView } from "../../src/domains/messages/service";
 import { equipmentExecute, equipmentView } from "../../src/domains/equipment/service";
 import { calendarCopyWeek, calendarExecute } from "../../src/domains/calendar/service";
 import { peopleExportGrid, filterSchema } from "../../src/domains/people/service";
@@ -33,8 +32,6 @@ let club: string,
   coach: Principal,
   treasurer: Principal,
   parent: Principal,
-  adult: Principal,
-  teen: Principal,
   lucas: string,
   adultProfile: string,
   teenProfile: string,
@@ -151,9 +148,7 @@ beforeAll(async () => {
   const par = await actor("guardian", "Nadia Parent");
   parent = par.p;
   const ad = await actor("player", "Adulte Joueur");
-  adult = ad.p;
   const tn = await actor("player", "Ado Joueur");
-  teen = tn.p;
   lucas = await profile("Lucas Peeters", "2014-04-30");
   adultProfile = await profile("Adulte Joueur", "1995-01-01", ad.person);
   teenProfile = await profile("Ado Joueur", "2011-06-01", tn.person);
@@ -374,51 +369,6 @@ it("holds an event mail when the event moves, sends it after a new reading", asy
   const sent = (await mails()).filter((m) => m.subject === "Rappel : Match amical");
   expect(sent).toHaveLength(3);
   expect(sent[0].text).toContain("Salle du club");
-});
-
-it("keeps minors out of private one-to-one talks and team threads, and lets moderators act on reports", async () => {
-  const thread = await messagesExecute(
-    db,
-    coach,
-    { action: "create", requestId: randomUUID(), subject: "Ton fauteuil", body: "On en parle ?", recipients: [teen.userId] },
-    club,
-  );
-  const people = (await messagesView(db, coach, thread.id)).participants;
-  expect(people).toContainEqual({ name: "Nadia Parent", reason: "guardian" });
-  expect((await messagesView(db, parent, thread.id)).messages).toHaveLength(1);
-  // Team threads: opened by the coach; adult players and parents read them, the teen does not.
-  const { id: teamThread } = await messagesExecute(db, coach, { action: "openTeam", teamId: team, kind: "team" }, club);
-  const { id: parentsThread } = await messagesExecute(db, coach, { action: "openTeam", teamId: team, kind: "parents" }, club);
-  await expect(messagesExecute(db, adult, { action: "openTeam", teamId: team, kind: "team" }, club)).rejects.toMatchObject({
-    code: "FORBIDDEN",
-  });
-  expect((await messagesView(db, adult)).threads.map((t) => t.id)).toContain(teamThread);
-  expect((await messagesView(db, adult)).threads.map((t) => t.id)).not.toContain(parentsThread);
-  expect((await messagesView(db, parent)).threads.map((t) => t.id)).toEqual(
-    expect.arrayContaining([teamThread, parentsThread]),
-  );
-  await expect(messagesView(db, teen, teamThread)).rejects.toMatchObject({ code: "NOT_FOUND" });
-  const { id: posted } = await messagesExecute(
-    db,
-    adult,
-    { action: "reply", requestId: randomUUID(), threadId: teamThread, body: "Message déplacé" },
-    club,
-  );
-  expect(posted).toBe(teamThread);
-  const message = (await messagesView(db, parent, teamThread)).messages[0];
-  await messagesExecute(db, parent, { action: "report", messageId: message.id, reason: "inappropriate", comment: "Pas ici" }, club);
-  await expect(
-    messagesExecute(db, parent, { action: "moderate", messageId: message.id, outcome: "hidden" }, club),
-  ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  expect((await messagesView(db, president)).reports).toHaveLength(1);
-  await messagesExecute(db, president, { action: "moderate", messageId: message.id, outcome: "hidden" }, club);
-  expect((await messagesView(db, parent, teamThread)).messages[0]).toMatchObject({ body: "", hidden: true });
-  expect((await messagesView(db, president, teamThread)).messages[0]).toMatchObject({ body: "Message déplacé", hidden: true });
-  expect((await messagesView(db, president)).reports).toHaveLength(0);
-  await messagesExecute(db, president, { action: "lock", threadId: teamThread, locked: true }, club);
-  await expect(
-    messagesExecute(db, adult, { action: "reply", requestId: randomUUID(), threadId: teamThread, body: "Encore" }, club),
-  ).rejects.toMatchObject({ code: "THREAD_LOCKED" });
 });
 
 it("lets coaches propose purchases that the treasurer validates, and tracks storage and expiry", async () => {

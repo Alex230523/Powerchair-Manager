@@ -126,7 +126,6 @@ test("new club, federation and referee pages load and pass axe", async ({
       "/fr/club/rollover",
       "/fr/communication",
       "/fr/equipment",
-      "/fr/messages",
     ])
       await check(page, path);
     // Wave 9: each Communication tab, a group, a newsletter draft and its preview.

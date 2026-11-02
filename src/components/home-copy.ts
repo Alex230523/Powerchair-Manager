@@ -11,6 +11,8 @@ type HomeCopy = {
   /** Signed in, no club yet (the dashboard answers CONTEXT_REQUIRED). */
   noClub: string;
   noClubLink: string;
+  /** 24: an old link to the messaging. */
+  messagingRemoved: string;
   chooseProfile: string;
   todo: string;
   allClear: string;
@@ -144,6 +146,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Réessayer",
     noClub: "Vous êtes connecté, mais votre compte n'est encore relié à aucun club.",
     noClubLink: "Choisir mon club ou mon profil",
+    messagingRemoved: "La messagerie a été retirée. Les nouvelles du club arrivent par la Communication du club et les notifications.",
     open: "Ouvrir",
     todos: {
       documentsExpired: {
@@ -325,6 +328,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Opnieuw proberen",
     noClub: "U bent aangemeld, maar uw account is nog aan geen enkele club gekoppeld.",
     noClubLink: "Mijn club of profiel kiezen",
+    messagingRemoved: "De berichtendienst is verwijderd. Het clubnieuws komt via de clubcommunicatie en de meldingen.",
     open: "Openen",
     todos: {
       documentsExpired: {
@@ -506,6 +510,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Try again",
     noClub: "You are signed in, but your account is not linked to any club yet.",
     noClubLink: "Choose my club or profile",
+    messagingRemoved: "The messaging has been removed. Club news arrives through the club communication and the notifications.",
     open: "Open",
     todos: {
       documentsExpired: {

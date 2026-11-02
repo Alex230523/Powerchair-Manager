@@ -16,7 +16,6 @@ import { daysBetween, isMonday } from "../src/domains/calendar/schema";
 import { crc32, xlsx, columnName } from "../src/lib/xlsx";
 import { parseXlsx } from "../src/lib/spreadsheet";
 import { communicationCopy, unsubscribeCopy } from "../src/components/communication-copy";
-import { messagesCopy } from "../src/components/messages-copy";
 import { stockCopy } from "../src/components/equipment-stock-copy";
 import { exportCopy } from "../src/components/export-copy";
 import { calendarCopyWeek } from "../src/components/calendar-copy";
@@ -231,7 +230,6 @@ describe("wave 9 texts", () => {
   it.each([
     ["communication", communicationCopy],
     ["unsubscribe", unsubscribeCopy],
-    ["messages", messagesCopy],
     ["stock", stockCopy],
     ["export", exportCopy],
     ["calendar week copy", calendarCopyWeek],
@@ -241,7 +239,7 @@ describe("wave 9 texts", () => {
     expect(shape(c.en)).toEqual(shape(c.fr));
   });
   it("uses no long dashes in the visible texts", () => {
-    const all = JSON.stringify([communicationCopy, unsubscribeCopy, messagesCopy, stockCopy, exportCopy, calendarCopyWeek]);
+    const all = JSON.stringify([communicationCopy, unsubscribeCopy, stockCopy, exportCopy, calendarCopyWeek]);
     expect(all).not.toMatch(/[–—]/);
   });
 });

@@ -507,6 +507,10 @@ main {
   padding: 12px 16px;
   color: var(--text);
 }
+/* 24: a short word above the page (an old link to the messaging). */
+.page-notice {
+  margin: var(--space-4);
+}
 .error-message,
 main [role="alert"] {
   padding: 12px 16px;

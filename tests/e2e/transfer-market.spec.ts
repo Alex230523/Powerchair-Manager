@@ -85,7 +85,7 @@ test("transfer market: consent, sheet, request, conversation, agreement, validat
     await expect(page.locator(".transfer-messages")).toContainText("Quand pouvons-nous en parler ?");
     await axe(page, "conversation");
     await switchTo(page, mandate.A);
-    await page.goto("/fr/messages");
+    await page.goto("/fr/transfers");
     const threads = page.getByRole("region", { name: "Conversations entre clubs" });
     await threads.getByRole("button", { name: /Conversation entre J3 club A et J3 club B/ }).click();
     await expect(threads).toContainText("Quand pouvons-nous en parler ?");

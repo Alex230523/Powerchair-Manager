@@ -31,7 +31,7 @@ async function newsletterAllowed(db: Db, target: Target, envelope?: Envelope) {
   return !!(
     await db.query(
       `SELECT 1 FROM newsletter_delivery d JOIN organization o ON o.id=d.organization_id
-        WHERE d.id::text=$1 AND d.organization_id=$2 AND d.email_hash=$3 AND NOT ('messages'=ANY(o.disabled_modules))
+        WHERE d.id::text=$1 AND d.organization_id=$2 AND d.email_hash=$3 AND NOT ('communication'=ANY(o.disabled_modules))
           AND NOT EXISTS(SELECT 1 FROM mail_unsubscribe u WHERE u.organization_id=d.organization_id AND u.email_hash=d.email_hash)`,
       [target.resource_id, target.organization_id, emailHash(envelope.email)],
     )

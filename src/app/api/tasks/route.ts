@@ -1,14 +1,16 @@
 import { getDb } from "@/lib/db";
-import { tasksExecute, tasksView } from "@/domains/tasks/service";
+import { myTaskCount, tasksExecute, tasksView } from "@/domains/tasks/service";
 import { taskCommand } from "@/domains/tasks/schema";
 import { principal, origin, bounded, noStore, failure } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
-/** Wave 17 (O1): the club's tasks, by type. */
+/** Wave 17 (O1): the club's tasks, by type; `?count=mine` (22): how many are mine, open and late. */
 export async function GET(request: Request) {
   try {
-    return Response.json(await tasksView(getDb(), await principal(request)), { headers: noStore });
+    const p = await principal(request);
+    if (new URL(request.url).searchParams.get("count") === "mine") return Response.json(await myTaskCount(getDb(), p), { headers: noStore });
+    return Response.json(await tasksView(getDb(), p), { headers: noStore });
   } catch (e) {
     return failure(e);
   }
