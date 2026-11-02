@@ -2,7 +2,7 @@
 -- Additive. A place says whether it must be booked: the club's home hall and
 -- the « other » places (premises, restaurant) do not, by default.
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'calendar_place' AND column_name = 'booking_needed') THEN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'calendar_place' AND column_name = 'booking_needed') THEN
     ALTER TABLE calendar_place ADD COLUMN booking_needed boolean NOT NULL DEFAULT true;
     UPDATE calendar_place SET booking_needed = false WHERE home OR category <> 'training';
   END IF;
