@@ -41,11 +41,14 @@ test("the knowledge centre: tips, quiz, search and its pages", async ({ page }) 
     await db.query("UPDATE guide_chapter SET status='published',published_version=current_version,updated_on=CURRENT_DATE WHERE federation_id=$1", [fed]);
 
     await page.goto("/fr/guide/game");
+    // The pointer away from the text, so no other tip shows on hover.
+    await page.mouse.move(0, 0);
     const tip = page.locator(".tip-term").first();
     await tip.focus();
-    await expect(page.getByRole("tooltip").first()).toBeVisible();
+    const bubble = page.locator(`[id="${await tip.getAttribute("aria-describedby")}"]`);
+    await expect(bubble).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("tooltip").first()).toBeHidden();
+    await expect(bubble).toBeHidden();
     await axe(page, "chapter with tips");
     await noSideScroll(page);
 
