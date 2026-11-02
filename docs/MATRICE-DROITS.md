@@ -25,6 +25,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/calendar/feed/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/calendar/season` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
 | `/api/calendar/types` | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
+| `/api/circulars` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/circulars/file` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/classification` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/classification/texts` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/club` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -165,6 +167,8 @@ Notes :
 - `/api/auth/[...all]` : Better Auth (connexion, inscription sur invitation) : couvert par tests/e2e/access.spec.ts
 - `/api/authorizations` : Autorisations parentales : textes du club (Réglages › Documents), demandes à toutes les familles, relances ; refus par un parent (point 28)
 - `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
+- `/api/circulars` : Circulaires : reçues par les membres et arbitres ; rédaction, envoi, suivi et export par la compétence communication de la fédération
+- `/api/circulars/file` : Pièce jointe d'une circulaire : destinataires et communication de la fédération
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
@@ -191,6 +195,8 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/access` |  |  |  |  |  |  |  |  |  |   |
 | `/attendance` |  |  |  |  |  |  |  |  |  |   |
 | `/c/[slug]` |  |  |  |  |  |  |  |  |  |   |
+| `/circulars` |  |  |  |  |  |  |  |  |  |   |
+| `/circulars/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/classification` |  |  |  |  |  |  |  |  |  |   |
 | `/c/[slug]/widget/[kind]` |  |  |  |  |  |  |  |  |  |   |
 | `/cagnotte/[token]` |  |  |  |  |  |  |  |  |  |   |
@@ -228,6 +234,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/courses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/referees` |  |  |  |  |  |  |  |  |  |   |
+| `/federation/team` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/teams` |  |  |  |  |  |  |  |  |  |   |
 | `/funding` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/affiliations` |  |  |  |  |  |  |  |  |  |   |

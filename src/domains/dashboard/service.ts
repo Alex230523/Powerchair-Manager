@@ -1,5 +1,6 @@
 import { coachFocus, federationFocus, memberFocus } from "./focus";
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { myTasksCount } from "../tasks/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -274,7 +275,7 @@ export async function computeFor(
       [org],
     );
   // Federation: club requests waiting for a decision.
-  if (!club && ["federation_president", "federation_worker"].includes(a.role)) {
+  if (!club && fedCan(a.role, a.grants, "federation.courses")) {
     scopes.push("courses");
     counts.courseRequests = await count(
       c,
@@ -548,8 +549,15 @@ export async function computeFor(
       ? await memberFocus(c, org, own)
       : club && a.role === "coach"
         ? await coachFocus(c, org, own)
-        : !club && (a.role === "federation_president" || a.role === "federation_worker")
-          ? await federationFocus(c, org)
+        : !club && fedCan(a.role, a.grants)
+          ? await federationFocus(c, org, {
+              licences: fedCan(a.role, a.grants, "federation.licences"),
+              competitions: fedCan(a.role, a.grants, "federation.competitions"),
+              referees: fedCan(a.role, a.grants, "federation.referees"),
+              classification: fedCan(a.role, a.grants, "federation.classification"),
+              courses: fedCan(a.role, a.grants, "federation.courses"),
+              communication: fedCan(a.role, a.grants, "federation.communication"),
+            })
           : undefined;
   // Getting started of a new club (wave 15, C3): for the president, until done or hidden.
   const setup = club && a.role === "club_president" && has("mandates.manage") ? await setupState(c, org) : null;

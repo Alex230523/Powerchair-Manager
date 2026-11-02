@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { createHash, randomBytes } from "node:crypto";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
@@ -68,8 +69,8 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Ctx) => 
       kind: a.kind,
       fed,
       players: mfa && club && rights.includes("people.manage"),
-      read: mfa && ((club && rights.includes("people.read")) || (federation && ["federation_president", "federation_worker"].includes(a.role))),
-      federation: mfa && federation && ["federation_president", "federation_worker"].includes(a.role),
+      read: mfa && ((club && rights.includes("people.read")) || (federation && fedCan(a.role, a.grants, "federation.licences"))),
+      federation: mfa && federation && fedCan(a.role, a.grants, "federation.licences"),
       today: brusselsToday(),
     });
     await c.query("COMMIT");

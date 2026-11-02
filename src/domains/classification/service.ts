@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -63,7 +64,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Ctx) => 
       orgName: a.organization_name,
       userId: p.userId,
       fed,
-      manage: mfa && federation && ["federation_president", "federation_worker"].includes(a.role),
+      manage: mfa && federation && fedCan(a.role, a.grants, "federation.classification"),
       referee: mfa && federation && a.role === "referee",
       club: mfa && a.kind === "club" && (rights.includes("people.manage") || rights.includes("teams.manage")),
     });

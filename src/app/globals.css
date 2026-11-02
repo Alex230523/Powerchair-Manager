@@ -11485,3 +11485,41 @@ ul.task-page li {
 .tip-link {
   color: inherit;
 }
+
+/* 32: the federation's home, licence holders by season. */
+.focus-bars li {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.focus-bars li > span:last-child {
+  grid-column: 1 / -1;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.focus-bar {
+  display: block;
+  height: 0.5rem;
+  width: calc(var(--value, 0) * 1%);
+  min-width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+}
+
+/* 33: circulars. */
+.circular-list > li {
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.circular-body {
+  max-width: 48rem;
+  margin-bottom: var(--space-4);
+}
+.file-button {
+  cursor: pointer;
+}
+.file-button:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

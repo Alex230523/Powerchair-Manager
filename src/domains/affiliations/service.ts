@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { offerUndo } from "../undo/service";
@@ -291,9 +292,9 @@ async function federationScope<T>(db: Pool, p: Principal, write: boolean, fn: (s
     const a = await active(c, p);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "federation") throw new AccessError("FEDERATION_ONLY");
-    if (!["federation_president", "federation_worker"].includes(a.role)) throw new AccessError("FORBIDDEN");
+    if (!fedCan(a.role, a.grants, "federation.licences") && !fedCan(a.role, a.grants, "federation.finance")) throw new AccessError("FORBIDDEN");
     await account(c, p);
-    const manage = a.role === "federation_president";
+    const manage = fedCan(a.role, a.grants, "federation.licences");
     if (write && !manage) throw new AccessError("FORBIDDEN");
     await c.query("SELECT id FROM organization WHERE id=$1 FOR UPDATE", [a.organization_id]);
     const clubs = (await c.query("SELECT id FROM organization WHERE kind='club' AND federation_id=$1 ORDER BY id", [a.organization_id])).rows.map((r) => r.id as string);

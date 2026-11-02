@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -115,7 +116,7 @@ export async function scope<T>(
       manage:
         mfaSatisfied(a.twoFactorEnabled) &&
         (federation
-          ? ["federation_president", "federation_worker"].includes(a.role)
+          ? fedCan(a.role, a.grants, "federation.competitions")
           : permissions(a.role, a.grants).includes("equipment.manage")),
     });
     await c.query("COMMIT");

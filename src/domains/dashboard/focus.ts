@@ -38,10 +38,17 @@ export type CoachFocus = {
 };
 export type FederationFocus = {
   kind: "federation";
+  /** 32: the cards follow the person's competences (all of them for the presidency). */
+  can: { licences: boolean; competitions: boolean; referees: boolean; classification: boolean; courses: boolean; communication: boolean };
   lateClubs: number;
+  clubs: { affiliated: number; pending: number };
+  licences: { season: string; category: string; n: number }[];
+  classificationsToDo: number;
+  matchesWithoutReferee: number;
+  reportsPending: number;
   classificationDays: { id: string; day: string; place: string | null }[];
   tournamentDays: { id: string; tournamentId: string; name: string; day: string; place: string }[];
-  pending: { places: number; models: number };
+  pending: { places: number; models: number; courses: number };
 };
 export type Focus = MemberFocus | CoachFocus | FederationFocus;
 
@@ -124,7 +131,41 @@ export async function coachFocus(c: PoolClient, org: string, own: string[]): Pro
   return { kind: "coach", teams: out, callToday: await today(["training"]), matchToday: match };
 }
 
-export async function federationFocus(c: PoolClient, fed: string): Promise<FederationFocus> {
+export async function federationFocus(c: PoolClient, fed: string, can: FederationFocus["can"]): Promise<FederationFocus> {
+  const n = async (sql: string, on: boolean) => (on ? Number((await c.query(sql, [fed])).rows[0].n) : 0);
+  const clubs = can.licences
+    ? ((
+        await c.query(
+          `SELECT count(*)::int AS affiliated,
+                  count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM role_assignment r WHERE r.organization_id=o.id AND r.role='club_president' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now())))::int AS pending
+             FROM organization o WHERE o.federation_id=$1 AND o.kind='club'`,
+          [fed],
+        )
+      ).rows[0] as { affiliated: number; pending: number })
+    : { affiliated: 0, pending: 0 };
+  // Licensees by season and category (player or coach), over the last seasons.
+  const licences = can.licences
+    ? ((
+        await c.query(
+          `SELECT l.season,CASE WHEN 'coach'=ANY(cp.directory_roles) AND NOT 'player'=ANY(cp.directory_roles) THEN 'coach' ELSE 'player' END AS category,count(*)::int AS n
+             FROM license l JOIN club_person cp ON cp.id=l.profile_id WHERE l.federation_id=$1 AND l.status='active'
+            GROUP BY 1,2 ORDER BY 1 DESC,2 LIMIT 20`,
+          [fed],
+        )
+      ).rows as FederationFocus["licences"])
+    : [];
+  const classificationsToDo = await n("SELECT count(*)::int AS n FROM player_sport_profile s JOIN organization o ON o.id=s.organization_id WHERE o.federation_id=$1 AND s.classification_status='requested'", can.classification);
+  const matchesWithoutReferee = await n(
+    `SELECT count(*)::int AS n FROM match m JOIN organization o ON o.id=m.organization_id WHERE o.federation_id=$1 AND m.kind IN ('league','cup') AND m.status='scheduled' AND m.starts_at>now()
+       AND NOT EXISTS (SELECT 1 FROM referee_assignment a WHERE a.match_id=m.id AND a.status='accepted')`,
+    can.referees,
+  );
+  const reportsPending = await n(
+    `SELECT count(*)::int AS n FROM match m JOIN organization o ON o.id=m.organization_id WHERE o.federation_id=$1 AND m.kind IN ('league','cup') AND m.starts_at<now()
+       AND EXISTS (SELECT 1 FROM referee_assignment a WHERE a.match_id=m.id AND a.status='accepted') AND NOT EXISTS (SELECT 1 FROM match_report r WHERE r.match_id=m.id)`,
+    can.referees,
+  );
+  const courses = await n("SELECT count(*)::int AS n FROM training_request q JOIN training_course k ON k.id=q.course_id WHERE k.federation_id=$1 AND q.status='requested'", can.courses);
   const lateClubs = (
     await c.query(
       "SELECT count(DISTINCT d.organization_id)::int AS n FROM affiliation_due d JOIN affiliation_fee f ON f.id=d.fee_id AND f.organization_id=$1 AND NOT f.archived WHERE d.paid_on IS NULL AND d.due_on<(now() AT TIME ZONE 'Europe/Brussels')::date",
@@ -148,5 +189,17 @@ export async function federationFocus(c: PoolClient, fed: string): Promise<Feder
     await c.query("SELECT count(*)::int AS n FROM calendar_place p JOIN organization o ON o.id=p.organization_id WHERE o.federation_id=$1 AND p.share_status='pending'", [fed])
   ).rows[0].n as number;
   const models = (await c.query("SELECT count(*)::int AS n FROM chair_model WHERE federation_id=$1 AND status='proposed'", [fed])).rows[0].n as number;
-  return { kind: "federation", lateClubs, classificationDays, tournamentDays, pending: { places, models } };
+  return {
+    kind: "federation",
+    can,
+    lateClubs: can.licences ? lateClubs : 0,
+    clubs,
+    licences,
+    classificationsToDo,
+    matchesWithoutReferee,
+    reportsPending,
+    classificationDays: can.classification ? classificationDays : [],
+    tournamentDays: can.competitions ? tournamentDays : [],
+    pending: { places: can.competitions ? places : 0, models: can.competitions ? models : 0, courses },
+  };
 }

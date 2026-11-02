@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -78,8 +79,7 @@ async function scope<T>(
     const edit =
       mfa &&
       (a.role === "club_president" ||
-        a.role === "federation_president" ||
-        a.role === "federation_worker" ||
+        (a.kind === "federation" && fedCan(a.role, a.grants, "federation.competitions")) ||
         rights.includes("calendar.manage"));
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
     if (write && !edit) throw new AccessError(mfa ? "FORBIDDEN" : "MFA_REQUIRED");

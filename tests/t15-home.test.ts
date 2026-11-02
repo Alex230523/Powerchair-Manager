@@ -12,7 +12,8 @@ describe("home by role", () => {
     const s = readFileSync("src/domains/dashboard/service.ts", "utf8");
     expect(s).toContain('club && (a.role === "player" || a.role === "guardian")\n      ? await memberFocus(c, org, own)');
     expect(s).toContain('club && a.role === "coach"\n        ? await coachFocus(c, org, own)');
-    expect(s).toContain('!club && (a.role === "federation_president" || a.role === "federation_worker")');
+    // 32: the federation's home follows the person's competences.
+    expect(s).toContain("!club && fedCan(a.role, a.grants)\n          ? await federationFocus(c, org, {");
   });
   it("answers « Présent / Absent » from the home and keeps lists short", () => {
     const f = readFileSync("src/components/home-focus.tsx", "utf8");

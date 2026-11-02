@@ -50,7 +50,8 @@ describe("rights by module", () => {
     ]);
     expect(new Set(listed).size).toBe(listed.length);
     // B8: tax.identity is given from the tax receipts page, shown only to an approved club.
-    expect([...listed].sort()).toEqual(delegable.filter((d) => d !== "tax.identity").sort());
+    // 32: the federation's competences are given by its delegated roles, not in a club's module grid.
+    expect([...listed].sort()).toEqual(delegable.filter((d) => d !== "tax.identity" && !d.startsWith("federation.")).sort());
   });
 
   it("builds ready-made profiles from real permissions only", () => {

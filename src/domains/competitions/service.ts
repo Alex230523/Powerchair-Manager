@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -7,7 +8,6 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
-import { permissions } from "../access/policy";
 import {
   peopleScope,
   peopleRecords,
@@ -471,10 +471,8 @@ async function federationScope<T>(
       fed: a.organization_id,
       userId: p.userId,
       role: a.role,
-      manage:
-        mfa &&
-        (permissions(a.role, a.grants).includes("mandates.manage") ||
-          a.role === "federation_worker"),
+      // 32: appointing referees belongs to the « arbitrage » competence.
+      manage: mfa && fedCan(a.role, a.grants, "federation.referees"),
     });
     await c.query("COMMIT");
     return out;

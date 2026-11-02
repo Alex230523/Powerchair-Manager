@@ -386,7 +386,8 @@ describe("settings and copy", () => {
     const listed = grantGroups.flatMap((g) => g.grants);
     expect(new Set(listed).size).toBe(listed.length);
     // B8: tax.identity is given from the tax receipts page, shown only to an approved club.
-    expect([...listed].sort()).toEqual(delegable.filter((d) => d !== "tax.identity").sort());
+    // 32: the federation's competences are given by its delegated roles, not in a club's grid.
+    expect([...listed].sort()).toEqual(delegable.filter((d) => d !== "tax.identity" && !d.startsWith("federation.")).sort());
     for (const p of Object.values(presets))
       for (const g of p) expect(delegable).toContain(g);
   });

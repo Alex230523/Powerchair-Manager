@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { AccessError, audit } from "../access/service";
 import { permissions } from "../access/policy";
 import { brusselsToday } from "../people/service";
@@ -101,7 +102,7 @@ async function managers(c: PoolClient, org: string) {
   ).rows as (Recipient & { kind: string; role: string; grants: string[] })[];
   const out = new Map<string, Recipient>();
   for (const r of rows)
-    if (r.kind === "federation" ? ["federation_president", "federation_worker"].includes(r.role) : permissions(r.role as never, r.grants ?? []).includes("equipment.manage"))
+    if (r.kind === "federation" ? fedCan(r.role, r.grants ?? [], "federation.competitions") : permissions(r.role as never, r.grants ?? []).includes("equipment.manage"))
       out.set(r.id, { id: r.id, email: r.email, name: r.name, locale: (["fr", "nl", "en"].includes(r.locale) ? r.locale : "fr") as Lang, organization: r.organization });
   return [...out.values()];
 }

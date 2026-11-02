@@ -440,7 +440,7 @@ export async function execute(
         const token = randomBytes(32).toString("hex");
         const staffRoleIds = [...new Set(command.staffRoleIds ?? [])];
         if (staffRoleIds.length) {
-          if (command.role !== "coach") throw new AccessError("INVALID_ROLE", 400);
+          if (command.role !== (context.kind === "federation" ? "federation_worker" : "coach")) throw new AccessError("INVALID_ROLE", 400);
           const found = await client.query("SELECT id FROM staff_role WHERE organization_id=$1 AND id=ANY($2::uuid[]) AND NOT archived", [context.organization_id, staffRoleIds]);
           if (found.rowCount !== staffRoleIds.length) throw new AccessError("NOT_FOUND", 404);
         }

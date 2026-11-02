@@ -1,8 +1,9 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { isLocale, type Locale } from "../../lib/locale";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
-import { isAdmin, permissions } from "../access/policy";
+import { permissions } from "../access/policy";
 import { publish } from "../notifications/queue";
 import { drafts } from "./drafts";
 import { draftQuizzes, draftTerms, moreDrafts } from "./drafts-more";
@@ -29,7 +30,8 @@ export async function guideScope<T>(db: Pool, p: Principal, write: boolean, fn: 
     const federation = a.kind === "federation";
     const fed = federation ? a.organization_id : (((await c.query("SELECT federation_id FROM organization WHERE id=$1", [a.organization_id])).rows[0]?.federation_id as string | null) ?? null);
     // The federation writes: its presidency, or its staff in charge of communication.
-    const manage = federation && mfa && (isAdmin(a.role) || (a.role === "federation_worker" && rights.includes("notifications.manage")));
+    // 32: the guide is the « communication » competence's.
+    const manage = federation && mfa && fedCan(a.role, a.grants, "federation.communication");
     const note = !federation && mfa && (a.role === "club_president" || rights.includes("mandates.manage"));
     const out = await fn({ c, org: a.organization_id, kind: a.kind, role: a.role, userId: p.userId, fed, manage, note });
     await c.query("COMMIT");

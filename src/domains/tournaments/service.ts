@@ -1,4 +1,5 @@
 import { emitWebhook } from "../integrations/webhooks";
+import { fedCan } from "../access/policy";
 import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { account, active, audit, AccessError, validImage, type Principal } from "../access/service";
@@ -54,7 +55,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
   }
 }
 
-const isPresident = (a: Ctx) => (a.kind === "club" && a.role === "club_president") || (a.kind === "federation" && a.role === "federation_president");
+const isPresident = (a: Ctx) => (a.kind === "club" && a.role === "club_president") || (a.kind === "federation" && fedCan(a.role, a.grants, "federation.competitions"));
 /** SQL condition: tournament t is visible to org $1 (federation $2, user $3). */
 const visible = `(t.organization_id=$1
   OR EXISTS(SELECT 1 FROM tournament_club tc WHERE tc.tournament_id=t.id AND tc.organization_id=$1)

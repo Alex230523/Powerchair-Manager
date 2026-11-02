@@ -50,6 +50,8 @@ export type NavGroup = {
 export function menuGroups(state: Workspace | null): NavGroup[] {
   const perms = new Set(state?.permissions ?? []);
   const has = (...p: string[]) => p.some((x) => perms.has(x));
+  // 32: the federation's presidency holds every competence; a delegate, those of his roles.
+  const fed = (...p: string[]) => role === "federation_president" || has(...p);
   const manager = perms.has("registrations.manage");
   const kind = state?.selected?.kind;
   const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
@@ -84,6 +86,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/transfers", "transfers", "handshake"),
               // 22: the tasks given to them (A1 sends reminders that lead here).
               ...item("/tasks", "tasks", "clipboardList"),
+              // 33: the federation's circulars, for every member of an affiliated club.
+              ...item("/circulars", "circulars", "megaphone"),
             ],
           },
         ]
@@ -157,6 +161,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
+                // 33: the federation's circulars, for every member of an affiliated club.
+                ...item("/circulars", "circulars", "megaphone"),
               ],
             },
           ]
@@ -204,6 +210,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/incidents", "incidents", "alert", role === "coach" || has("people.manage")),
                   // A1: everyone has a to-do (only one's own tasks unless one plans).
                   ...item("/tasks", "tasks", "clipboardList"),
+                  // 33: the federation's circulars, for every member of an affiliated club.
+                  ...item("/circulars", "circulars", "megaphone"),
                 ],
               },
               {
@@ -228,18 +236,22 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     ...((role === "referee"
                       ? [{ route: "/referee", label: "refereeSpace", icon: "whistle" }]
                       : [
-                          // Wave 16 (I3): the order of the federation president's day.
-                          { route: "/federation/clubs", label: "federationClubs", icon: "club" },
-                          { route: "/federation/teams", label: "federationTeams", icon: "players" },
-                          { route: "/tournaments", label: "tournaments", icon: "trophy" },
-                          { route: "/federation/referees", label: "designations", icon: "whistle" },
-                          { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
-                          { route: "/transfers", label: "transfers", icon: "handshake" },
-                          { route: "/federation/affiliations", label: "affiliations", icon: "landmark" },
-                          { route: "/federation/courses", label: "courses", icon: "team" },
+                          // Wave 16 (I3): the order of the federation president's day; 32: each entry by competence.
+                          ...item("/federation/clubs", "federationClubs", "club", fed("federation.licences")),
+                          ...item("/federation/teams", "federationTeams", "players", fed("federation.licences")),
+                          ...item("/tournaments", "tournaments", "trophy", fed("federation.competitions")),
+                          ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
+                          ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
+                          ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
+                          ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),
+                          ...item("/federation/courses", "courses", "team", fed("federation.courses")),
                           // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
-                          { route: "/equipment", label: "equipment", icon: "wheelchair" },
+                          ...item("/equipment", "equipment", "wheelchair", fed("federation.competitions")),
+                          // 32: the presidency's delegates and their roles.
+                          ...item("/federation/team", "federationTeam", "userPlus", role === "federation_president"),
                         ]) satisfies NavItem[]),
+                    // 33: the circulars (written by communication, read by the referees).
+                    ...item("/circulars", "circulars", "megaphone"),
                     ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
                     { route: "/venues", label: "venues", icon: "pin" },

@@ -22,6 +22,7 @@ import { bookingsTick } from "../venues/bookings";
 import { associationTick } from "../association/service";
 import { onboardingTick } from "../onboarding/service";
 import { offboardingTick } from "../offboarding/service";
+import { circularsTick } from "../circulars/service";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -115,6 +116,8 @@ export const jobs = {
         onboarding: await onboardingTick(db),
         // Fin de coach: departures checked; at the end date the rights end, the president told of what is left.
         offboarding: await offboardingTick(db),
+        // 33: the circulars whose date came leave.
+        circulars: await circularsTick(db),
       };
     },
   },

@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -8,7 +9,6 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
-import { permissions } from "../access/policy";
 import {
   peopleScope,
   peopleRecords,
@@ -277,12 +277,10 @@ async function federationScope<T>(
     if (expected && expected !== a.organization_id)
       throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "federation") throw new AccessError("FEDERATION_ONLY");
-    if (a.role !== "federation_president" && a.role !== "federation_worker")
+    // 32: the licences (and the classification requests on the same page) belong to their competences.
+    if (!fedCan(a.role, a.grants, "federation.licences") && !fedCan(a.role, a.grants, "federation.classification"))
       throw new AccessError("FORBIDDEN");
-    const manage =
-      mfaSatisfied(!!user.twoFactorEnabled) &&
-      (permissions(a.role, a.grants).includes("mandates.manage") ||
-        a.role === "federation_worker");
+    const manage = mfaSatisfied(!!user.twoFactorEnabled) && fedCan(a.role, a.grants, "federation.licences");
     if (write && !manage) throw new AccessError("FORBIDDEN");
     const out = await fn(c, a.organization_id, manage);
     await c.query("COMMIT");

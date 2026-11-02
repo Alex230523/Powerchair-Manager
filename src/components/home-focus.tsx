@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { CoachFocus, EventFocus, FederationFocus, Focus, MemberFocus } from "@/domains/dashboard/focus";
 import { focusCopy } from "./home-focus-copy";
+import { cssVars } from "./css-vars";
 import { Button, Card, EmptyState } from "./ui";
 
 /**
@@ -162,12 +163,66 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
   const pending = [
     ...(focus.pending.places ? [{ text: fill(t.pendingPlaces, { n: focus.pending.places }), route: "/venues" }] : []),
     ...(focus.pending.models ? [{ text: fill(t.pendingModels, { n: focus.pending.models }), route: "/equipment" }] : []),
+    ...(focus.pending.courses ? [{ text: fill(t.pendingCourses, { n: focus.pending.courses }), route: "/federation/courses" }] : []),
   ];
+  // 32: what this person handles, each line leading to its list.
+  const toDo = [
+    ...(focus.classificationsToDo ? [{ text: fill(t.classificationsToDo, { n: focus.classificationsToDo }), route: "/federation/licenses" }] : []),
+    ...(focus.matchesWithoutReferee ? [{ text: fill(t.matchesWithoutReferee, { n: focus.matchesWithoutReferee }), route: "/federation/referees" }] : []),
+    ...(focus.reportsPending ? [{ text: fill(t.reportsPending, { n: focus.reportsPending }), route: "/federation/referees" }] : []),
+  ];
+  const seasons = [...new Set(focus.licences.map((l) => l.season))].slice(0, 4);
   return (
     <div className="dash-section focus-grid">
-      <Card title={t.lateClubs} labelledBy="focus-late" headingId="focus-late" actions={<Link href={href("/federation/affiliations")}>{t.seeAll}</Link>}>
-        {focus.lateClubs ? <p className="focus-figure">{focus.lateClubs}</p> : <p className="muted">{t.lateClubsNone}</p>}
-      </Card>
+      {focus.can.licences && (
+        <Card title={t.clubs} labelledBy="focus-clubs" headingId="focus-clubs" actions={<Link href={href("/federation/clubs")}>{t.seeAll}</Link>}>
+          <p>{fill(t.clubsLine, { affiliated: focus.clubs.affiliated, pending: focus.clubs.pending })}</p>
+        </Card>
+      )}
+      {focus.can.licences && (
+        <Card title={t.licences} labelledBy="focus-licences" headingId="focus-licences" actions={<Link href={href("/federation/licenses")}>{t.seeAll}</Link>}>
+          {seasons.length ? (
+            <ul className="focus-list focus-bars">
+              {seasons.map((season) => {
+                const rows = focus.licences.filter((l) => l.season === season);
+                const total = rows.reduce((a, r) => a + r.n, 0);
+                const max = Math.max(1, ...seasons.map((x) => focus.licences.filter((l) => l.season === x).reduce((a, r) => a + r.n, 0)));
+                return (
+                  <li key={season}>
+                    <span>{season}</span>
+                    <span className="focus-bar" style={cssVars({ value: Math.round((total * 100) / max) })} aria-hidden="true" />
+                    <span>
+                      {total} ({rows.map((r) => `${r.n} ${t.licenceCategories[r.category] ?? r.category}`).join(", ")})
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="muted">{t.licencesNone}</p>
+          )}
+        </Card>
+      )}
+      {focus.can.licences && (
+        <Card title={t.lateClubs} labelledBy="focus-late" headingId="focus-late" actions={<Link href={href("/federation/affiliations")}>{t.seeAll}</Link>}>
+          {focus.lateClubs ? <p className="focus-figure">{focus.lateClubs}</p> : <p className="muted">{t.lateClubsNone}</p>}
+        </Card>
+      )}
+      {(focus.can.classification || focus.can.referees) && (
+        <Card title={t.toDo} labelledBy="focus-todo" headingId="focus-todo">
+          {toDo.length ? (
+            <ul className="focus-list">
+              {toDo.map((x) => (
+                <li key={x.text}>
+                  <Link href={href(x.route)}>{x.text}</Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">{t.nothingToDo}</p>
+          )}
+        </Card>
+      )}
       <Card title={t.pending} labelledBy="focus-pending" headingId="focus-pending">
         {pending.length ? (
           <ul className="focus-list">

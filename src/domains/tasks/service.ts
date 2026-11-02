@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -46,7 +47,7 @@ export async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: S
     const rights = permissions(a.role, a.grants);
     const has = (...r: string[]) => mfa && r.some((x) => rights.includes(x as (typeof rights)[number]));
     const off = ((await c.query("SELECT disabled_modules FROM organization WHERE id=$1", [a.organization_id])).rows[0]?.disabled_modules ?? []) as string[];
-    const fedManage = mfa && federation && ["federation_president", "federation_worker"].includes(a.role);
+    const fedManage = mfa && federation && fedCan(a.role, a.grants);
     const out = await fn({
       c,
       org: a.organization_id,

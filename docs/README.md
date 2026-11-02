@@ -139,6 +139,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Guide du powerchair football : deux pages à lire](evolutions/2026-11-02-zx-guide-du-jeu.md) |
 | 02/11/2026 | [Guide : un petit centre de connaissances (G1 à G12)](evolutions/2026-11-02-zy-centre-de-connaissances.md) |
 | 02/11/2026 | [Rôles de staff](evolutions/2026-11-02-zz-roles-de-staff.md) |
+| 02/11/2026 | [Fédération : rôles délégués, tableau de bord et circulaires](evolutions/2026-11-02-zza-federation-delegues-circulaires.md) |
 
 ## Convention
 

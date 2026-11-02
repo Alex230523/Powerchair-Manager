@@ -42,6 +42,27 @@ type Copy = {
   formationsCount: string;
   formationOn: string;
   noFormation: string;
+  competences: string;
+  until: string;
+  noEnd: string;
+  end: string;
+  ended: string;
+  presidencyOnly: string;
+  appoint: string;
+  appointIntro: string;
+  appointed: string;
+  person: string;
+  untilLabel: string;
+  untilHelp: string;
+  inviteTitle: string;
+  invited: string;
+  email: string;
+  link: string;
+  journal: string;
+  noJournal: string;
+  actions: Record<string, string>;
+  teamTitle: string;
+  teamIntro: string;
 };
 const fr: Copy = {
   title: "Rôles",
@@ -84,6 +105,27 @@ const fr: Copy = {
   formationsCount: "{n} validée(s)",
   formationOn: "{title} ({date})",
   noFormation: "Aucune formation validée",
+  competences: "Compétences",
+  until: "Jusqu'au {date}",
+  noEnd: "Jusqu'à nouvel ordre",
+  end: "Mettre fin",
+  ended: "Délégation terminée.",
+  presidencyOnly: "Cette page est réservée à la présidence de la fédération.",
+  appoint: "Désigner une personne",
+  appointIntro: "Un arbitre, ou le président ou un coach d'un club affilié. La personne garde ses autres rôles et choisit son profil dans la barre du haut.",
+  appointed: "Personne désignée.",
+  person: "Personne",
+  untilLabel: "Jusqu'au",
+  untilHelp: "Vide : jusqu'à nouvel ordre.",
+  inviteTitle: "Inviter par email",
+  invited: "Invitation créée.",
+  email: "Email",
+  link: "Lien d'invitation",
+  journal: "Journal des changements",
+  noJournal: "Aucun changement pour l'instant.",
+  actions: { "mandate.grants": "droits modifiés", "mandate.roles": "rôles attribués", "staff_role.created": "rôle créé", "staff_role.changed": "rôle modifié", "delegate.appointed": "personne désignée", "delegate.ended": "délégation terminée" },
+  teamTitle: "Équipe fédérale",
+  teamIntro: "Les délégués de la présidence et leurs rôles : chacun ne voit que ce que ses compétences lui ouvrent.",
 };
 const nl: Copy = {
   title: "Rollen",
@@ -126,6 +168,27 @@ const nl: Copy = {
   formationsCount: "{n} goedgekeurd",
   formationOn: "{title} ({date})",
   noFormation: "Geen goedgekeurde opleiding",
+  competences: "Bevoegdheden",
+  until: "Tot {date}",
+  noEnd: "Tot nader bericht",
+  end: "Beëindigen",
+  ended: "Delegatie beëindigd.",
+  presidencyOnly: "Deze pagina is voorbehouden aan het voorzitterschap van de federatie.",
+  appoint: "Iemand aanduiden",
+  appointIntro: "Een scheidsrechter, of de voorzitter of een coach van een aangesloten club. De persoon houdt zijn andere rollen en kiest zijn profiel bovenaan.",
+  appointed: "Persoon aangeduid.",
+  person: "Persoon",
+  untilLabel: "Tot",
+  untilHelp: "Leeg: tot nader bericht.",
+  inviteTitle: "Uitnodigen per e-mail",
+  invited: "Uitnodiging aangemaakt.",
+  email: "E-mail",
+  link: "Uitnodigingslink",
+  journal: "Logboek van de wijzigingen",
+  noJournal: "Nog geen wijziging.",
+  actions: { "mandate.grants": "rechten gewijzigd", "mandate.roles": "rollen toegekend", "staff_role.created": "rol aangemaakt", "staff_role.changed": "rol gewijzigd", "delegate.appointed": "persoon aangeduid", "delegate.ended": "delegatie beëindigd" },
+  teamTitle: "Federaal team",
+  teamIntro: "De gedelegeerden van het voorzitterschap en hun rollen: elk ziet alleen wat zijn bevoegdheden openen.",
 };
 const en: Copy = {
   title: "Roles",
@@ -168,5 +231,26 @@ const en: Copy = {
   formationsCount: "{n} validated",
   formationOn: "{title} ({date})",
   noFormation: "No validated course",
+  competences: "Competences",
+  until: "Until {date}",
+  noEnd: "Until further notice",
+  end: "End",
+  ended: "Delegation ended.",
+  presidencyOnly: "This page is for the federation's presidency.",
+  appoint: "Appoint someone",
+  appointIntro: "A referee, or the president or a coach of an affiliated club. The person keeps his other roles and picks his profile in the top bar.",
+  appointed: "Person appointed.",
+  person: "Person",
+  untilLabel: "Until",
+  untilHelp: "Empty: until further notice.",
+  inviteTitle: "Invite by email",
+  invited: "Invitation created.",
+  email: "Email",
+  link: "Invitation link",
+  journal: "Log of changes",
+  noJournal: "No change yet.",
+  actions: { "mandate.grants": "rights changed", "mandate.roles": "roles given", "staff_role.created": "role created", "staff_role.changed": "role changed", "delegate.appointed": "person appointed", "delegate.ended": "delegation ended" },
+  teamTitle: "Federation team",
+  teamIntro: "The presidency's delegates and their roles: each sees only what his competences open.",
 };
 export const staffRolesCopy: Record<Locale, Copy> = { fr, nl, en };

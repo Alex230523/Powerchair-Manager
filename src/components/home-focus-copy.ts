@@ -30,6 +30,17 @@ export const focusCopy: Record<
     pending: string;
     pendingPlaces: string;
     pendingModels: string;
+    pendingCourses: string;
+    clubs: string;
+    clubsLine: string;
+    licences: string;
+    licencesNone: string;
+    licenceCategories: Record<string, string>;
+    toDo: string;
+    classificationsToDo: string;
+    matchesWithoutReferee: string;
+    reportsPending: string;
+    nothingToDo: string;
     nothingPending: string;
     seeAll: string;
     saved: string;
@@ -63,6 +74,17 @@ export const focusCopy: Record<
     pending: "À valider",
     pendingPlaces: "{n} lieux proposés au répertoire",
     pendingModels: "{n} modèles de fauteuil proposés",
+    pendingCourses: "{n} demandes de formation",
+    clubs: "Clubs affiliés",
+    clubsLine: "{affiliated} clubs · {pending} sans présidence active",
+    licences: "Licenciés par saison",
+    licencesNone: "Aucune licence active.",
+    licenceCategories: { player: "joueurs", coach: "coachs" },
+    toDo: "À traiter",
+    classificationsToDo: "{n} classifications demandées",
+    matchesWithoutReferee: "{n} matchs sans arbitre désigné",
+    reportsPending: "{n} rapports de match en attente",
+    nothingToDo: "Rien à traiter.",
     nothingPending: "Rien à faire, tout est en ordre.",
     seeAll: "Voir tout",
     saved: "Réponse enregistrée.",
@@ -95,6 +117,17 @@ export const focusCopy: Record<
     pending: "Te valideren",
     pendingPlaces: "{n} voorgestelde locaties voor het register",
     pendingModels: "{n} voorgestelde rolstoelmodellen",
+    pendingCourses: "{n} opleidingsaanvragen",
+    clubs: "Aangesloten clubs",
+    clubsLine: "{affiliated} clubs · {pending} zonder actief voorzitterschap",
+    licences: "Licentiehouders per seizoen",
+    licencesNone: "Geen actieve licentie.",
+    licenceCategories: { player: "spelers", coach: "coaches" },
+    toDo: "Te behandelen",
+    classificationsToDo: "{n} aangevraagde classificaties",
+    matchesWithoutReferee: "{n} wedstrijden zonder scheidsrechter",
+    reportsPending: "{n} wedstrijdverslagen in afwachting",
+    nothingToDo: "Niets te behandelen.",
     nothingPending: "Niets te doen, alles is in orde.",
     seeAll: "Alles bekijken",
     saved: "Antwoord opgeslagen.",
@@ -127,6 +160,17 @@ export const focusCopy: Record<
     pending: "To validate",
     pendingPlaces: "{n} places proposed for the directory",
     pendingModels: "{n} chair models proposed",
+    pendingCourses: "{n} training requests",
+    clubs: "Affiliated clubs",
+    clubsLine: "{affiliated} clubs · {pending} without an active presidency",
+    licences: "Licence holders by season",
+    licencesNone: "No active licence.",
+    licenceCategories: { player: "players", coach: "coaches" },
+    toDo: "To handle",
+    classificationsToDo: "{n} classifications asked",
+    matchesWithoutReferee: "{n} matches without a referee",
+    reportsPending: "{n} match reports pending",
+    nothingToDo: "Nothing to handle.",
     nothingPending: "Nothing to do, all in order.",
     seeAll: "See all",
     saved: "Answer saved.",
