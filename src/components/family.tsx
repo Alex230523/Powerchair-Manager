@@ -186,7 +186,7 @@ export function Family({ locale }: { locale: Locale }) {
                                                 className="text-button"
                                                 aria-pressed={i.response === v}
                                                 disabled={busy}
-                                                onClick={() => void inClub(club, () => send("/api/attendance", { action: "respond", id: i.id, expectedVersion: i.version, response: v, comment: i.comment ?? "" }))}
+                                                onClick={() => void inClub(club, () => send("/api/attendance", { organizationId: club.organizationId, action: "respond", id: i.id, expectedVersion: i.version, response: v, comment: i.comment ?? "" }))}
                                               >
                                                 {v === "present" ? t.present : t.absent}
                                                 <span className="sr-only"> {fill(t.forChild, { name: who?.first ?? "" })}</span>
@@ -212,6 +212,7 @@ export function Family({ locale }: { locale: Locale }) {
                                     onClick={() =>
                                       void inClub(club, () =>
                                         send("/api/attendance", {
+                                          organizationId: club.organizationId,
                                           action: "respondMany",
                                           items: open.map((k) => ({ id: k.invitation!.id, expectedVersion: k.invitation!.version })),
                                           response: v,
@@ -320,7 +321,7 @@ export function Family({ locale }: { locale: Locale }) {
                   void inClub(
                     club,
                     async () => {
-                      const v = await send("/api/calendar", { action: "feed", name: t.feedName, teamId: null, family: true });
+                      const v = await send("/api/calendar", { organizationId: club.organizationId, action: "feed", name: t.feedName, teamId: null, family: true });
                       setFeedUrl(v.url);
                     },
                     "",
