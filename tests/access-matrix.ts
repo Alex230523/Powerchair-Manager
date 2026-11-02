@@ -122,6 +122,7 @@ export const apiRoutes: Record<string, ApiRoute> = {
   "registrations/public/[id]": { methods: ["GET"] },
   "reminders": { methods: ["GET", "POST"] },
   "search": { methods: ["GET"] },
+  "season-check": { methods: ["GET", "POST"], note: "Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)" },
   "seasons/rollover": { methods: ["GET", "POST"] },
   "setup": { methods: ["GET", "POST"] },
   "statistics/awards": { methods: ["GET", "POST"] },

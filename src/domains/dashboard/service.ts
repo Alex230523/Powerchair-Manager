@@ -252,6 +252,10 @@ export async function computeFor(
       [org],
     );
 
+  // 8: active minor players with no representative at all (declared or verified).
+  if (club && has("people.manage"))
+    counts.minorsWithoutGuardian = await count(c, minorsWithoutGuardianSql, [org]);
+
   // Equipment: chairs in maintenance or due for service within 14 days.
   if (club && on("equipment") && has("equipment.manage")) {
     scopes.push("equipment");
@@ -579,6 +583,10 @@ export async function computeFor(
   };
 }
 
+/** 8: the minor players of a club whom no representative answers for. */
+export const minorsWithoutGuardianSql = `SELECT count(*) FROM club_person cp WHERE cp.organization_id=$1 AND cp.status='active' AND 'player'=ANY(cp.directory_roles)
+  AND cp.birth_date>CURRENT_DATE-interval '18 years'
+  AND NOT EXISTS (SELECT 1 FROM guardian_relationship g WHERE g.organization_id=cp.organization_id AND g.subject_profile_id=cp.id AND g.revoked_at IS NULL AND g.kind IN ('declared','legal_verified') AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE))`;
 async function count(c: PoolClient, sql: string, values: unknown[]) {
   return Number((await c.query(sql, values)).rows[0]?.count ?? 0) || 0;
 }

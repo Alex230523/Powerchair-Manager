@@ -146,6 +146,7 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   documentsMissing: "document",
   documentsExpiring: "document",
   teamsOverCapacity: "team",
+  minorsWithoutGuardian: "players",
 };
 /** The four figures read first; the rest unfolds behind "Tous les chiffres". */
 const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendingResponses", "waitingList"];

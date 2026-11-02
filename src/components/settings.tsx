@@ -42,6 +42,7 @@ import { AccountPanels } from "./account-settings";
 import { ClubIdentity } from "./club-identity";
 import { Privacy } from "./privacy";
 import { People } from "./people";
+import { SeasonCheckPanel } from "./season-check";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
@@ -409,6 +410,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "data" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />}
           {/* 12: seasons, teams and the season's passage (the former « Gestion du club »). */}
           {shown && category === "seasons" && <People locale={locale} management embedded />}
+          {/* 8: the start-of-season check, launched and followed here. */}
+          {shown && category === "seasons" && <SeasonCheckPanel locale={locale} />}
           {shown && category === "seasons" && (
             <Card title={h.rolloverTitle} labelledBy="settings-rollover" headingId="settings-rollover">
               <p className="muted">{h.rolloverText}</p>

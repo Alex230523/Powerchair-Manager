@@ -13,6 +13,7 @@ import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
 import { defaultSeasonId, ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
+import { SeasonCheckPrompt } from "./season-check";
 import { bottomNav, menuGroups, settingsItem, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
@@ -686,6 +687,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           <ToastHost locale={locale} />
         </div>
         {signedIn && <FirstSteps locale={locale} role={role} />}
+        {/* 8: « Vos informations sont-elles toujours exactes ? » once a season, at sign-in. */}
+        {signedIn && club && <SeasonCheckPrompt locale={locale} contextId={selectedId} />}
         {bottom.length > 0 && (
           <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
             {bottom.map((i) => {

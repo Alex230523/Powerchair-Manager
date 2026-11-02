@@ -3,6 +3,19 @@ const id = z.uuid();
 const text = (n: number) => z.string().trim().max(n);
 export const date = z.iso.date();
 const email = z.union([z.email().max(254), z.literal("")]);
+/** 8: the relation a representative has with the player. */
+export const representativeRelations = ["mother", "father", "guardian", "administrator", "carer", "other"] as const;
+export const representativeSchema = z.object({
+  /** A person the club already knows (a sibling's parent), or a new one. */
+  existingId: z.uuid().optional(),
+  fullName: z.string().trim().max(120).optional(),
+  relation: z.enum(representativeRelations),
+  email: z.union([z.literal(""), z.email().max(254)]).optional(),
+  phone: z.string().trim().max(40).optional(),
+  locale: z.enum(["fr", "nl", "en"]).optional(),
+  /** Legal representative (the child's whole file) or delegated carer (seeing, not deciding). */
+  rights: z.enum(["legal", "aid"]),
+});
 const profileFields = {
   fullName: text(120).min(2),
   birthDate: date.nullable(),
@@ -103,6 +116,15 @@ export const peopleCommand = z.discriminatedUnion("action", [
     invite: z.boolean().optional(),
     guardianName: text(120).optional(),
     guardianEmail: email.optional(),
+    /**
+     * 8: the player's representatives, one or two, given with the player:
+     * required for a minor, asked for an adult who has one (an administrator,
+     * a carer), never imposed on an autonomous adult.
+     */
+    hasRepresentative: z.boolean().optional(),
+    representatives: z.array(representativeSchema).max(2).optional(),
+    /** « Inviter maintenant » (checked by default): an email to each representative who has one. */
+    inviteRepresentatives: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("updatePerson"),

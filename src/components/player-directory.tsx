@@ -19,6 +19,8 @@ import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { setupCopy } from "./setup-copy";
 import { InviteFields, isMinor } from "./invite-fields";
+import { RepresentativeFields, readRepresentatives } from "./representative-fields";
+import { representativeCopy } from "./representative-copy";
 import { coachSpaceCopy } from "./coach-space-copy";
 import type { TrainingState } from "@/domains/licences/schema";
 
@@ -154,6 +156,7 @@ export function PlayerDirectory({
   former = false,
   create = false,
   importing = false,
+  missingGuardian = false,
 }: {
   locale: Locale;
   role?: "player" | "coach";
@@ -162,6 +165,8 @@ export function PlayerDirectory({
   create?: boolean;
   /** Opens the Excel import at once (Ctrl+K action, wave 15). */
   importing?: boolean;
+  /** 8: only the minors whom no representative answers for (from the home's to-do). */
+  missingGuardian?: boolean;
 }) {
   const t = copy[locale],
     p = peopleCopy[locale],
@@ -173,6 +178,8 @@ export function PlayerDirectory({
     [creating, setCreating] = useState(create),
     [inviting, setInviting] = useState(true),
     [newBirth, setNewBirth] = useState(""),
+    [newName, setNewName] = useState(""),
+    [onlyUnguarded, setOnlyUnguarded] = useState(missingGuardian),
     [importKey, setImportKey] = useState(0),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
@@ -266,9 +273,24 @@ export function PlayerDirectory({
     );
   const teamName = (id: string) =>
     data?.teams.find((t) => t.id === id)?.name ?? "—";
+  // 8: the minor players whom no representative (declared or verified) answers for.
+  const unguarded = new Set(
+    role === "player" && !former && data
+      ? data.profiles
+          .filter(
+            (r) =>
+              sporting(r) &&
+              !isFormer(r) &&
+              isMinor(r.birth_date ?? "") &&
+              !data.relationships.some((g) => g.subject_profile_id === r.id && !g.revoked_at && (g.kind === "declared" || g.kind === "legal_verified")),
+          )
+          .map((r) => r.id)
+      : [],
+  );
   const roster =
     data?.profiles.filter(
       (r) =>
+        (!onlyUnguarded || unguarded.has(r.id)) &&
         sporting(r) &&
         isFormer(r) === former &&
         r.full_name.toLocaleLowerCase().includes(q.toLocaleLowerCase()) &&
@@ -461,6 +483,14 @@ export function PlayerDirectory({
                     ? "Mijn ruimte"
                     : "My space"}
               </Link>
+            </p>
+          )}
+          {(unguarded.size > 0 || onlyUnguarded) && (
+            <p className="notice" role="status">
+              {representativeCopy[locale].missing.replace("{n}", String(unguarded.size))}{" "}
+              <button type="button" className="text-button" aria-pressed={onlyUnguarded} onClick={() => setOnlyUnguarded(!onlyUnguarded)}>
+                {onlyUnguarded ? representativeCopy[locale].showAll : representativeCopy[locale].showThem}
+              </button>
             </p>
           )}
           <form
@@ -747,6 +777,7 @@ export function PlayerDirectory({
             onChange={(e) => {
               const field = e.target;
               if (field instanceof HTMLInputElement && field.name === "birthDate") setNewBirth(field.value);
+              if (field instanceof HTMLInputElement && field.name === "fullName") setNewName(field.value);
             }}
             onSubmit={(e) =>
               submit(e, (f) => {
@@ -756,7 +787,8 @@ export function PlayerDirectory({
                   ...personal(f),
                   directoryRoles: [role],
                   invite,
-                  ...(invite && f.get("guardianEmail") ? { guardianName: f.get("guardianName"), guardianEmail: f.get("guardianEmail") } : {}),
+                  // 8: a player's representatives come with him (required for a minor); a coach keeps the former invitation.
+                  ...(role === "player" ? readRepresentatives(f) : invite && f.get("guardianEmail") ? { guardianName: f.get("guardianName"), guardianEmail: f.get("guardianEmail") } : {}),
                 }).then((r) => {
                   if (r?.id) {
                     setCreating(false);
@@ -768,7 +800,15 @@ export function PlayerDirectory({
           >
             <h3>{t.personal}</h3>
             {personalFields()}
-            {data?.capabilities.invite && <InviteFields locale={locale} on={inviting} setOn={setInviting} minor={role === "player" && isMinor(newBirth)} />}
+            {role === "player" && (
+              <RepresentativeFields
+                locale={locale}
+                minor={isMinor(newBirth)}
+                playerName={newName}
+                known={(data?.profiles ?? []).filter((r) => r.status === "active" && !(r.directory_roles ?? []).includes("player")).map((r) => ({ id: r.id, full_name: r.full_name }))}
+              />
+            )}
+            {data?.capabilities.invite && <InviteFields locale={locale} on={inviting} setOn={setInviting} minor={false} />}
             <Button disabled={busy}>{p.create}</Button>
           </form>
         </Modal>

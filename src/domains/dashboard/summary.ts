@@ -22,6 +22,7 @@ export const todoKeys = [
   "documentsMissing",
   "documentsExpiring",
   "teamsOverCapacity",
+  "minorsWithoutGuardian",
 ] as const;
 export type TodoKey = (typeof todoKeys)[number];
 export type Todo = { key: TodoKey; count: number; href: string; tone: Tone };
@@ -44,6 +45,8 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   documentsMissing: { href: "/documents", tone: "info" },
   documentsExpiring: { href: "/documents", tone: "info" },
   teamsOverCapacity: { href: "/teams", tone: "warning" },
+  // 8: minors nobody answers for.
+  minorsWithoutGuardian: { href: "/players?missing=guardian", tone: "danger" },
 };
 /**
  * Keeps only actionable items (count > 0) that the caller computed under the

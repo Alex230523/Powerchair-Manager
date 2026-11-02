@@ -220,6 +220,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Équipes au-delà de leurs places",
         text: "Plus de joueurs que de places : revoyez les places ou les affectations",
       },
+      minorsWithoutGuardian: {
+        title: "Joueurs mineurs sans responsable",
+        text: "Ajoutez un parent ou un responsable légal à leur fiche",
+      },
       documentsExpiring: {
         title: "Expirent sous 30 jours",
         text: "À anticiper",
@@ -403,6 +407,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Teams boven hun plaatsen",
         text: "Meer spelers dan plaatsen: herzie de plaatsen of de toewijzingen",
       },
+      minorsWithoutGuardian: {
+        title: "Minderjarige spelers zonder verantwoordelijke",
+        text: "Voeg een ouder of wettelijke vertegenwoordiger toe aan hun fiche",
+      },
       documentsExpiring: {
         title: "Verlopen binnen 30 dagen",
         text: "Tijdig opvolgen",
@@ -585,6 +593,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       teamsOverCapacity: {
         title: "Teams over their places",
         text: "More players than places: review the places or the assignments",
+      },
+      minorsWithoutGuardian: {
+        title: "Minor players without a guardian",
+        text: "Add a parent or legal guardian to their record",
       },
       documentsExpiring: {
         title: "Expiring within 30 days",

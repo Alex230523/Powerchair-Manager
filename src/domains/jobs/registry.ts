@@ -14,6 +14,8 @@ import { affiliationTick } from "../affiliations/service";
 import { equipmentLoanTick } from "../equipment/loans";
 import { taskSourcesTick } from "../tasks/sources";
 import { runAutomations } from "../automations/engine";
+import { majorityTick } from "../people/service";
+import { seasonCheckTick } from "../season-check/service";
 import { messagingRetirementTick } from "../messaging-archive/service";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -89,6 +91,10 @@ export const jobs = {
         loans: await equipmentLoanTick(db),
         // B5: claims close to their deadline, first-aid items about to expire.
         incidents: await incidentTick(db),
+        // 8: a player who turns 18 is invited to manage his own account.
+        majority: await majorityTick(db),
+        // 8: a season that starts opens its check.
+        seasonChecks: await seasonCheckTick(db),
         // 24: the presidents of clubs with old exchanges are told once, 14 days before they go.
         messagingNotices: await messagingRetirementTick(db),
       };

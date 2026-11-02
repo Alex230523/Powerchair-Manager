@@ -108,6 +108,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/registrations/public/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/reminders` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/search` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/season-check` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/seasons/rollover` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/setup` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/statistics/awards` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -147,6 +148,7 @@ Notes :
 - `/api/auth/[...all]` : Better Auth (connexion, inscription sur invitation) : couvert par tests/e2e/access.spec.ts
 - `/api/messaging-archive` : PDF des anciens échanges de la messagerie, pour la présidence du club, jusqu'à la suppression des tables (point 24)
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
+- `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 
 ## Pages
 
