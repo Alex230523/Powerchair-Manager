@@ -116,7 +116,7 @@ export function TransportSection({ locale, d, list, busy, send, name }: { locale
       {d.can.manage && d.vehicles.length > 0 && (
         <>
           <label className="check trip-tasks-toggle">
-            <input type="checkbox" checked={tasks} onChange={(e) => setTasks(e.target.checked)} aria-controls="trip-tasks" />
+            <input type="checkbox" checked={tasks} onChange={(e) => setTasks(e.target.checked)} aria-controls={tasks ? "trip-tasks" : undefined} />
             {tt.createTasks}
           </label>
           {tasks && <TaskList locale={locale} d={d} people={people} busy={busy} send={send} />}
