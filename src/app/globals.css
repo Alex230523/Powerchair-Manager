@@ -11018,3 +11018,47 @@ ul.task-page li {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* 17: the ASBL's life. */
+.asbl-members li,
+.asbl-history li,
+.asbl-attendees li,
+.asbl-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+.asbl-history form,
+.asbl-agenda form {
+  flex-basis: 100%;
+}
+.asbl-agenda {
+  display: grid;
+  gap: var(--space-3);
+  padding-inline-start: var(--space-5);
+}
+.asbl-vote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.asbl-vote label {
+  width: 7rem;
+}
+.asbl-answer {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-3) 0;
+}
+.asbl-meeting h3 {
+  font-size: var(--text-md);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.asbl-meeting textarea {
+  width: 100%;
+}

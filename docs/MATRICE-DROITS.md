@@ -15,6 +15,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/accounts` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/accounts/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/affiliations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/association` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/attendance` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/auth/[...all]` | · | · | · | · | · | · | · | · | · | · |
 | `/api/authorizations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -152,6 +153,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 
 Notes :
 
+- `/api/association` : Vie de l'ASBL : registre des membres, assemblée générale et conseil (point 17)
 - `/api/auth/[...all]` : Better Auth (connexion, inscription sur invitation) : couvert par tests/e2e/access.spec.ts
 - `/api/authorizations` : Autorisations parentales : textes du club (Réglages › Documents), demandes à toutes les familles, relances ; refus par un parent (point 28)
 - `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
@@ -180,6 +182,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/calendar/season` |  |  |  |  |  |  |  |  |  |   |
 | `/club` |  |  |  |  |  |  |  |  |  |   |
 | `/club/manage` |  |  |  |  |  |  |  |  |  |   |
+| `/club/association` |  |  |  |  |  |  |  |  |  |   |
 | `/club/public` |  |  |  |  |  |  |  |  |  |   |
 | `/club/rollover` |  |  |  |  |  |  |  |  |  |   |
 | `/club/season-plan` |  |  |  |  |  |  |  |  |  |   |

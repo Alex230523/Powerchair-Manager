@@ -285,6 +285,30 @@ export async function accountsExecute(db: Pool, p: Principal, cmd: AccountsComma
   );
 }
 
+/**
+ * 17: the general assembly approved the accounts. Verified accounts become
+ * approved (frozen as the assembly saw them); the filing task follows from
+ * accountsDeadlines. Returns whether they were approved.
+ */
+export async function approveAtAssembly(c: PoolClient, org: string, yearStart: string, on: string, userId: string) {
+  const start = await fiscalStart(c, org);
+  const year = fiscalYear(start, yearStart);
+  const r = await live(c, org, year.from);
+  if (!r || r.status !== "verified" || on < year.to) return false;
+  const snapshot = { ...(await compute(c, org, year.from, year.to, r.manual)), manual: r.manual, commitments: r.commitments };
+  await c.query("UPDATE annual_accounts SET status='approved',approved_on=$2,snapshot=$3,updated_at=now(),row_version=row_version+1 WHERE id=$1", [r.id, on, JSON.stringify(snapshot)]);
+  await audit(c, org, userId, "accounts.approve", r.id, { by: "assembly" });
+  return true;
+}
+
+/** The last closed financial year and the date its assembly must be held by. */
+export async function lastClosedYear(c: PoolClient, org: string) {
+  const start = await fiscalStart(c, org);
+  const last = previousYear(start, fiscalYear(start, brusselsToday()).from);
+  const r = await live(c, org, last.from);
+  return { ...last, deadline: assemblyDeadline(last.to), status: r?.status ?? null };
+}
+
 /** The accounts' deadlines for the calendar layer and the home: the assembly, then the filing. */
 export async function accountsDeadlines(c: PoolClient, org: string) {
   const start = await fiscalStart(c, org);

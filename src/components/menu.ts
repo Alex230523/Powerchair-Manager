@@ -149,6 +149,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               items: [
                 // B6: the public page, widgets, API keys and webhooks.
                 ...item("/club/public", "publicPage", "globe"),
+                // 17: the register of members and the assemblies, for the presidency (the secretary reaches it from the invitation).
+                ...item("/club/association", "association", "landmark", president || has("mandates.manage")),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 // B5: incidents and their insurance declaration.
                 ...item("/incidents", "incidents", "alert", has("people.manage", "mandates.manage")),

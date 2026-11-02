@@ -1,5 +1,6 @@
 "use client";
 import { TripSettings } from "./trip-settings";
+import { AssociationRules } from "./association";
 import { TutorialSettings } from "./first-steps";
 import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
@@ -385,6 +386,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && <ClubObligations locale={locale} />}
+          {/* 17: the statutes' rules for the assembly and the register. */}
+          {shown && category === "club" && <AssociationRules locale={locale} />}
           {shown && category === "club" && <TaxApproval locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}

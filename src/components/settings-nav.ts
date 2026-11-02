@@ -69,6 +69,7 @@ export const settingsEntries = [
   { id: "setup", category: "club", anchor: "settings-setup" },
   { id: "identity", category: "club", anchor: "club-identity-title" },
   { id: "obligations", category: "club", anchor: "settings-obligations" },
+  { id: "assemblyRules", category: "club", anchor: "settings-assembly-rules" },
   { id: "tax", category: "club", anchor: "settings-tax" },
   { id: "appearance", category: "club", anchor: "settings-appearance" },
   { id: "hallOfFame", category: "club", anchor: "settings-hall-of-fame" },
