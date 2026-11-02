@@ -39,6 +39,8 @@ test("a coach's departure, from the button to its steps", async ({ page }) => {
     }, mandate);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/fr/coaches/${coach}`);
+    // 40: the presidency lands on « Vue d'ensemble ».
+    await page.getByRole("tab", { name: "Profil" }).click();
     const card = page.locator("#departure");
     await card.getByRole("button", { name: "Fin de coach" }).click();
     await card.getByLabel("Raison").selectOption("moved");

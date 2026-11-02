@@ -56,6 +56,8 @@ test("the season planned on a phone, and a coach's keys", async ({ page }) => {
 
     // H10: the keys in the coach's profile.
     await page.goto(`/fr/coaches/${coach}`);
+    // 40: the presidency lands on « Vue d'ensemble ».
+    await page.getByRole("tab", { name: "Profil" }).click();
     await expect(page.getByRole("heading", { name: "Clés et badges" })).toBeVisible();
     await page.getByLabel("Clé ou badge").fill("Local du club");
     await page.getByRole("button", { name: "Ajouter", exact: true }).click();

@@ -3551,6 +3551,21 @@ input.narrow {
   padding: 0;
   margin: 0 0 14px;
 }
+/* 40: « Vue d'ensemble » of a person's sheet. */
+.person-overview {
+  display: grid;
+  gap: var(--space-4);
+}
+.overview-blocking {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.overview-blocking h2 {
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-2);
+}
 /* 20: « Nouveautés » (the list, the menu's badge, the small window). */
 .news-list {
   display: grid;

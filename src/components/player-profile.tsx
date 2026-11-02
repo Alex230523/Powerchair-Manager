@@ -1,4 +1,6 @@
 "use client";
+import { PersonOverview, useOverview } from "./person-overview";
+import { overviewCopy } from "./person-overview-copy";
 import { DisciplineHistory } from "./discipline";
 import { disciplineCopy } from "./discipline-copy";
 import { workshopCopy } from "./workshop-copy";
@@ -35,7 +37,7 @@ import { toastCopy } from "./toast-copy";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
-type Tab = "personal" | "sport";
+type Tab = "overview" | "personal" | "sport";
 type Editing = "" | "support" | "confidential" | "sport" | "identity" | "game";
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
@@ -54,8 +56,11 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [tab, setTab] = useState<Tab>("personal"),
+    [chosenTab, setTab] = useState<Tab | null>(null),
     [editing, setEditing] = useState<Editing>("");
+  // 40: the overview, and the first tab it decides (the overview for the presidency, « Personnel » otherwise).
+  const { data: overview } = useOverview(id);
+  const tab: Tab = chosenTab ?? (overview?.overviewFirst ? "overview" : "personal");
   const failure = (code: string) =>
     t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
   const day = (d: string | null | undefined) =>
@@ -223,15 +228,22 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <Tabs label={p.full_name} items={(["personal", "sport"] as const).map((key) => ({
+      <Tabs label={p.full_name} items={(overview ? (["overview", "personal", "sport"] as const) : (["personal", "sport"] as const)).map((key) => ({
           id: key,
           label: (
             <>
-              <Icon name={key === "personal" ? "user" : "chart"} />
-              {key === "personal" ? t.personalTab : t.sportTab}
+              <Icon name={key === "overview" ? "eye" : key === "personal" ? "user" : "chart"} />
+              {key === "overview" ? overviewCopy[locale].tab : key === "personal" ? t.personalTab : t.sportTab}
             </>
           ),
-        }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
+        }))} value={tab} onChange={(id) => setTab(id as Tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
+
+      {/* 40: « Vue d'ensemble », first for the presidency and those who manage the players. */}
+      {overview && (
+        <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={tab !== "overview"}>
+          {tab === "overview" && <PersonOverview locale={locale} data={overview} go={(to) => setTab(to === "todo" ? "personal" : to)} />}
+        </section>
+      )}
 
       <section
         id="panel-personal"

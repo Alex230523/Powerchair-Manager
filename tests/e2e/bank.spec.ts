@@ -105,6 +105,8 @@ test("bank statement import, reconciliation and the transfer QR", async ({ page 
 
     // 5. The player's sheet: the QR of the next instalment, which proves nothing.
     await page.goto(`/fr/players/${ana}`);
+    // 40: the presidency lands on « Vue d'ensemble »; the fees are in « Vue personnelle ».
+    await page.getByRole("tab", { name: "Vue personnelle" }).click();
     await page.getByText("Payer par virement").click();
     const qr = page.locator(".bank-qr");
     await expect(qr.getByRole("img", { name: /^QR de virement de/ })).toBeVisible();

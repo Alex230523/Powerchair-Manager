@@ -1,4 +1,6 @@
 "use client";
+import { PersonOverview, useOverview } from "./person-overview";
+import { overviewCopy } from "./person-overview-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -51,8 +53,10 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
     [busy, setBusy] = useState(false),
     // 7: « #todo » (from the coaches' list) opens the person's to-do, until a tab is chosen.
     fromList = useSyncExternalStore(subscribeHash, () => window.location.hash === "#todo", () => false),
-    [chosen, setTab] = useState<"profile" | "todo" | null>(null);
-  const tab = chosen ?? (fromList ? "todo" : "profile");
+    [chosen, setTab] = useState<"overview" | "profile" | "todo" | null>(null);
+  // 40: « Vue d'ensemble », first for the presidency and those who manage the people.
+  const { data: overview } = useOverview(id);
+  const tab = chosen ?? (fromList ? "todo" : overview?.overviewFirst ? "overview" : "profile");
   const space = coachSpaceCopy[locale];
   const failure = useCallback(
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
@@ -190,25 +194,30 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      {view.can.tasks && (
+      {(view.can.tasks || overview) && (
         <Tabs
           label={space.tabs}
           items={[
+            ...(overview ? [{ id: "overview", label: overviewCopy[locale].tab }] : []),
             { id: "profile", label: space.profile },
-            { id: "todo", label: space.todo },
+            ...(view.can.tasks ? [{ id: "todo", label: space.todo }] : []),
           ]}
           value={tab}
-          onChange={(v) => setTab(v as "profile" | "todo")}
+          onChange={(v) => setTab(v as "overview" | "profile" | "todo")}
           idPrefix={`coach-tab-${id}`}
           panelId={(v) => `coach-panel-${id}-${v}`}
         />
       )}
-      {view.can.tasks && tab === "todo" ? (
+      {overview && tab === "overview" ? (
+        <div role="tabpanel" id={`coach-panel-${id}-overview`} aria-labelledby={`coach-tab-${id}-overview`}>
+          <PersonOverview locale={locale} data={overview} go={(to) => setTab(to === "todo" && view.can.tasks ? "todo" : "profile")} />
+        </div>
+      ) : view.can.tasks && tab === "todo" ? (
         <div role="tabpanel" id={`coach-panel-${id}-todo`} aria-labelledby={`coach-tab-${id}-todo`}>
           <Tasks locale={locale} embedded responsibleId={view.can.self ? undefined : id} />
         </div>
       ) : (
-      <div className="profile-grid" {...(view.can.tasks ? { role: "tabpanel", id: `coach-panel-${id}-profile`, "aria-labelledby": `coach-tab-${id}-profile` } : {})}>
+      <div className="profile-grid" {...(view.can.tasks || overview ? { role: "tabpanel", id: `coach-panel-${id}-profile`, "aria-labelledby": `coach-tab-${id}-profile` } : {})}>
         <Card title={t.identity} icon="user">
           {view.details ? (
             <dl className="facts">

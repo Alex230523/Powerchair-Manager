@@ -111,6 +111,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/people` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/people/export` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/player-profile` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/player-profile/overview` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/presidency` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/privacy` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/privacy/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
@@ -189,6 +190,7 @@ Notes :
 - `/api/news` : Nouveautés (point 20) : chaque compte, filtrées sur le rôle du profil utilisé ; lu ou non lu et fenêtre désactivable par compte
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
 - `/api/onboarding` : Parcours d'accueil : ses propres parcours ; modèles et suivi pour qui gère les membres
+- `/api/player-profile/overview` : Vue d'ensemble d'une fiche (point 40) : chaque bloc selon le droit du lecteur ; jamais d'argent ni de santé pour un coach ; un parent voit celle de son enfant sans les notes du club ; 404 hors de l'organisation
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/refereeing` : Arbitrage (points 25 et 36 à 39) : bureau de la fédération (compétence arbitrage : désignations, niveaux, barème, formations, notes de frais, export CSV, récapitulatif PDF) ; bureau de l'arbitre (réponses, itinéraires, rapport, notes de frais, formations) ; ?report= relecture du rapport par le club dans les 48 heures
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)

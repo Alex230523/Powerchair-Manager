@@ -145,6 +145,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [La fédération comme ASBL](evolutions/2026-11-02-zzd-federation-asbl.md) |
 | 02/11/2026 | [Signaler un problème : application et fauteuil](evolutions/2026-11-02-zze-signalements.md) |
 | 02/11/2026 | [Page « Nouveautés »](evolutions/2026-11-02-zzf-nouveautes.md) |
+| 02/11/2026 | [Fiche de la personne : « Vue d'ensemble »](evolutions/2026-11-02-zzg-vue-ensemble.md) |
 
 ## Convention
 

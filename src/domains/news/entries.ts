@@ -36,6 +36,7 @@ import e33 from "../../../content/changelog/2026-11-02-discipline.json";
 import e34 from "../../../content/changelog/2026-11-02-federation-asbl.json";
 import e35 from "../../../content/changelog/2026-11-02-nouveautes.json";
 import e36 from "../../../content/changelog/2026-11-02-signalements.json";
+import e37 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -75,4 +76,5 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-02-federation-asbl", data: e34 },
   { id: "2026-11-02-nouveautes", data: e35 },
   { id: "2026-11-02-signalements", data: e36 },
+  { id: "2026-11-02-vue-ensemble", data: e37 },
 ];
