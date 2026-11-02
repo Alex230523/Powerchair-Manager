@@ -46,13 +46,13 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(president)]);
 
-    // The home: seven category cards, three per row on a wide screen.
+    // The home: nine category cards (12: personal data, seasons and teams), three per row on a wide screen.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
     const cards = page.locator(".settings-grid > li");
-    await expect(cards).toHaveCount(7);
-    for (const name of ["Mon compte", "Notifications et résumé", "Club", "Membres et droits", "Activités", "Finances", "Journaux et confidentialité"])
+    await expect(cards).toHaveCount(9);
+    for (const name of ["Mon compte", "Notifications et résumé", "Données personnelles", "Club", "Membres et droits", "Saisons et équipes", "Activités", "Finances", "Journaux et confidentialité"])
       await expect(page.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
     await axe(page, "settings home");
 
