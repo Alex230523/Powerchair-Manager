@@ -23,7 +23,7 @@ type Copy = {
   priority: string;
   priorities: Record<"normal" | "high", string>;
   recurrence: string;
-  recurrences: Record<"none" | "monthly" | "yearly", string>;
+  recurrences: Record<"none" | "weekly" | "monthly" | "yearly", string>;
   status: string;
   statusOf: string;
   tickOf: string;
@@ -106,7 +106,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     priority: "Priorité",
     priorities: { normal: "Normale", high: "Haute" },
     recurrence: "Répétition",
-    recurrences: { none: "Une fois", monthly: "Chaque mois", yearly: "Chaque année" },
+    recurrences: { none: "Une fois", weekly: "Chaque semaine", monthly: "Chaque mois", yearly: "Chaque année" },
     status: "Statut",
     statusOf: "Statut de la tâche : {title}",
     tickOf: "Marquer comme faite : {title}",
@@ -136,6 +136,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Supprimer la tâche : {title}",
     sources: {
       grantDeadline: "Déposer le dossier de subside : {about}",
+      affiliationDue: "Payer l'affiliation : {about}",
       grantOpening: "L'appel est ouvert, préparer le dossier : {about}",
       partnerRenewal: "Renouveler le sponsoring : {about}",
       partnerContact: "Reprendre contact avec le sponsor : {about}",
@@ -211,7 +212,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     priority: "Prioriteit",
     priorities: { normal: "Normaal", high: "Hoog" },
     recurrence: "Herhaling",
-    recurrences: { none: "Eén keer", monthly: "Elke maand", yearly: "Elk jaar" },
+    recurrences: { none: "Eén keer", weekly: "Elke week", monthly: "Elke maand", yearly: "Elk jaar" },
     status: "Status",
     statusOf: "Status van de taak: {title}",
     tickOf: "Als gedaan markeren: {title}",
@@ -241,6 +242,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "De taak verwijderen: {title}",
     sources: {
       grantDeadline: "Het subsidiedossier indienen: {about}",
+      affiliationDue: "De aansluiting betalen: {about}",
       grantOpening: "De oproep is open, het dossier voorbereiden: {about}",
       partnerRenewal: "De sponsoring vernieuwen: {about}",
       partnerContact: "Opnieuw contact opnemen met de sponsor: {about}",
@@ -316,7 +318,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     priority: "Priority",
     priorities: { normal: "Normal", high: "High" },
     recurrence: "Repeat",
-    recurrences: { none: "Once", monthly: "Every month", yearly: "Every year" },
+    recurrences: { none: "Once", weekly: "Every week", monthly: "Every month", yearly: "Every year" },
     status: "Status",
     statusOf: "Status of the task: {title}",
     tickOf: "Mark as done: {title}",
@@ -346,6 +348,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Delete the task: {title}",
     sources: {
       grantDeadline: "File the grant application: {about}",
+      affiliationDue: "Pay the affiliation: {about}",
       grantOpening: "The call is open, prepare the application: {about}",
       partnerRenewal: "Renew the sponsorship: {about}",
       partnerContact: "Get back in touch with the sponsor: {about}",

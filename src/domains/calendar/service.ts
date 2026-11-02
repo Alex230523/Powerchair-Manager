@@ -694,6 +694,16 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
             )
           ).rows
         : [{ id: s.p.userId, name: (await account(s.c, s.p)).name }],
+      // 2: the meetings of the tasks given to me in this period (« a lieu le »).
+      meetings: (
+        await s.c.query(
+          `SELECT DISTINCT t.id,t.title,t.meeting_starts_at,t.meeting_ends_at,COALESCE(pl.name,sv.name,NULLIF(t.free_location,'')) AS place FROM task t JOIN task_assignee a ON a.task_id=t.id
+             LEFT JOIN calendar_place pl ON pl.id=t.place_id LEFT JOIN shared_venue sv ON sv.id=t.shared_venue_id
+            WHERE t.organization_id=$1 AND t.status<>'done' AND t.meeting_starts_at IS NOT NULL AND t.meeting_starts_at<$4::date AND COALESCE(t.meeting_ends_at,t.meeting_starts_at)>=$3::date
+              AND (a.user_id=$2 OR a.profile_id=ANY($5::uuid[])) ORDER BY t.meeting_starts_at LIMIT 50`,
+          [s.a.organization_id, s.p.userId, range.from, range.to, [...own]],
+        )
+      ).rows as { id: string; title: string; meeting_starts_at: string; meeting_ends_at: string | null; place: string | null }[],
       feeds: (
         await s.c.query(
           "SELECT id,name,team_id,only_mine,include_money,created_at,expires_at,revoked_at FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 ORDER BY created_at DESC",
@@ -1476,6 +1486,20 @@ export async function calendarFeed(db: Pool, token: string) {
     for (const e of rows)
       if (await canRead(c, a, e))
         if (!f.only_mine || e.responsible_user_id === a.user_id || (await concerns(c, e, own))) allowed.push(e);
+    // 2: the meetings of the tasks given to me (« a lieu le »), in my own feed only.
+    if (f.only_mine) {
+      const meetings = (
+        await c.query(
+          `SELECT DISTINCT t.id,t.title,t.meeting_starts_at AS starts_at,COALESCE(t.meeting_ends_at,t.meeting_starts_at+interval '1 hour') AS ends_at,t.updated_at,1 AS version,
+                  'scheduled' AS status,concat_ws(', ',COALESCE(pl.name,sv.name,NULLIF(t.free_location,'')),COALESCE(pl.address,sv.address)) AS location
+             FROM task t JOIN task_assignee a ON a.task_id=t.id LEFT JOIN calendar_place pl ON pl.id=t.place_id LEFT JOIN shared_venue sv ON sv.id=t.shared_venue_id
+            WHERE t.organization_id=$1 AND t.meeting_starts_at IS NOT NULL AND t.meeting_starts_at>now()-interval '30 days' AND t.meeting_starts_at<now()+interval '366 days'
+              AND (a.user_id=$2 OR a.profile_id=ANY($3::uuid[]))`,
+          [f.organization_id, a.user_id, own],
+        )
+      ).rows as (Event & { location: string })[];
+      allowed.push(...meetings.map((m) => ({ ...m, id: "task-" + m.id })));
+    }
     // Wave 15: money deadlines, when asked and while the person keeps money rights.
     let days: { uid: string; date: string; title: string }[] = [];
     if (f.include_money) {

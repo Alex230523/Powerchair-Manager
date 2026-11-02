@@ -148,6 +148,8 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
     case "affiliationPaid": {
       const p = payload as Payloads["affiliationPaid"];
       await one("UPDATE affiliation_due SET paid_on=NULL,marked_by=NULL,transaction_id=NULL WHERE id=$1 AND organization_id=$2 AND paid_on IS NOT NULL", [target, org]);
+      // 2: its task opens again.
+      await c.query("UPDATE task SET status='todo',done_on=NULL,auto_closed=false,transaction_id=NULL,updated_at=now() WHERE affiliation_due_id=$1 AND organization_id=$2 AND status='done'", [target, org]);
       if (p.transaction)
         await c.query(
           "UPDATE finance_transaction SET cancelled_at=now(),cancelled_by=$3,cancel_reason='Annulé juste après le marquage en ordre' WHERE id=$1 AND organization_id=$2 AND cancelled_at IS NULL",

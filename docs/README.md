@@ -129,6 +129,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [27 à 29 : parents (vue famille, autorisations signées, deux foyers)](evolutions/2026-11-02-zo-27-29-parents.md) |
 | 02/11/2026 | [16 : assistant de fin de saison](evolutions/2026-11-02-zp-16-fin-de-saison.md) |
 | 02/11/2026 | [H9 et H10 : saison type en un clic, clés dans le profil du coach](evolutions/2026-11-02-zq-h9-h10-saison-type-cles.md) |
+| 02/11/2026 | [2 : to-do à plusieurs responsables, modèles à la demande, vue de l'année](evolutions/2026-11-02-zr-02-todo-enrichie.md) |
 
 ## Convention
 

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
 import {
   clubCategories,
@@ -11,6 +11,8 @@ import {
   ownKinds,
   recurrences,
   suggestedTemplates,
+  progressOf,
+  recurrenceText,
   thisWeek,
   yearTemplate,
   type Category,
@@ -19,7 +21,9 @@ import {
   type TaskKind,
   type TemplateItem,
 } from "@/domains/tasks/schema";
-import type { TaskRow } from "@/domains/tasks/service";
+import type { TaskRow, YearItem } from "@/domains/tasks/service";
+import { todoMoreCopy } from "./todo-more-copy";
+import { PlaceCombobox } from "./place-combobox";
 import { tasksCopy } from "./tasks-copy";
 import { fill, todoCopy } from "./todo-copy";
 import { errors } from "./access-copy";
@@ -51,9 +55,17 @@ type View = {
   people: Person[];
   teams: { id: string; name: string }[];
   tasks: TaskRow[];
-  templates: { id: string; kind: TaskKind; name: string; items: TemplateItem[] }[];
+  places: { id: string; name: string; address: string }[];
+  sharedVenues: { id: string; name: string; address: string }[];
+  templates: { id: string; kind: TaskKind; name: string; items: TemplateItem[]; archived: boolean; category: Category | null }[];
 };
-type Filter = "all" | "mine" | "late" | "week";
+type Filter = "all" | "mine" | "late" | "week" | "recurring";
+/** 2: given to me: one of my profiles, or my account, among the people in charge. */
+const isMine = (data: Pick<View, "own" | "userId">, x: TaskRow) =>
+  (x.assignees ?? []).some((a) => (!!a.profile_id && data.own.includes(a.profile_id)) || a.user_id === data.userId) ||
+  (!!x.responsible_id && data.own.includes(x.responsible_id)) ||
+  x.responsible_user_id === data.userId;
+const namesOf = (x: TaskRow) => ((x.assignees ?? []).length ? x.assignees.map((a) => a.name).join(", ") : x.responsible_name);
 const dayLabel = (locale: Locale, d: string) =>
   new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
 const isMoney = (c: Category) => moneyCategories.includes(c);
@@ -112,6 +124,9 @@ export function Tasks({
     [editing, setEditing] = useState<null | { category: Category } | TaskRow>(null),
     [detail, setDetail] = useState<string | null>(openTask ?? null),
     [year, setYear] = useState(false),
+    [yearView, setYearView] = useState(false),
+    [fromTemplate, setFromTemplate] = useState(false),
+    [after, setAfter] = useState<TaskRow | null>(null),
     [asked, setAsked] = useState(create),
     [lastCreate, setLastCreate] = useState(create);
   // Ctrl+K on the tasks page itself: the same page gets « ?new=1 » without remounting.
@@ -130,24 +145,31 @@ export function Tasks({
         {error ? <p role="alert">{error}</p> : <p role="status">…</p>}
       </Wrapper>
     );
-  const own = new Set(data.own);
-  const mineTask = (x: TaskRow) => (!!x.responsible_id && own.has(x.responsible_id)) || x.responsible_user_id === data.userId;
+  const mineTask = (x: TaskRow) => isMine(data, x);
+  const more = todoMoreCopy[locale];
   // « Mes tâches » by default for whoever does not plan for others.
   const view: Filter = embedded || linked ? (filter ?? "all") : (filter ?? (data.can.manage || data.can.money ? "all" : "mine"));
   const linkedAbout = linked ? data.tasks.find((x) => (linked.grant && x.grant_id === linked.grant) || (linked.partner && x.partner_id === linked.partner))?.about : undefined;
   const rows = data.tasks.filter(
     (x) =>
-      (responsibleId ? x.responsible_id === responsibleId : true) &&
+      (responsibleId ? x.responsible_id === responsibleId || (x.assignees ?? []).some((a) => a.profile_id === responsibleId) : true) &&
       (!linked?.grant || x.grant_id === linked.grant) &&
       (!linked?.partner || x.partner_id === linked.partner) &&
       (embedded && !responsibleId ? mineTask(x) : true) &&
       (showDone || x.status !== "done") &&
       (category === "all" || x.category === category) &&
-      (!who || x.responsible_id === who || x.responsible_user_id === who) &&
-      (view === "mine" ? mineTask(x) : view === "late" ? isLate(x, data.today) : view === "week" ? thisWeek(x, data.today) : true),
+      (!who || x.responsible_id === who || x.responsible_user_id === who || (x.assignees ?? []).some((a) => a.profile_id === who || a.user_id === who)) &&
+      (view === "mine" ? mineTask(x) : view === "late" ? isLate(x, data.today) : view === "week" ? thisWeek(x, data.today) : view === "recurring" ? x.recurrence !== "none" : true),
   );
   const groups = groupTasks(rows, data.federation).filter((g) => (category === "all" || g.category === category) && (!(embedded || linked) || g.tasks.length > 0));
   const send = (body: Record<string, unknown>) => post({ ...body, organizationId: data.organization_id }, t.saved);
+  /** 2: once ticked, a task with an amount proposes its expense, an affiliation its « en ordre ». */
+  const tick = async (x: TaskRow, done: boolean) => {
+    const ok = await send({ action: "done", id: x.id, done });
+    const money = isMoney(x.category) ? data.can.moneyManage : data.can.manage;
+    if (ok && done && !data.federation && ((x.affiliation_due_id && data.can.moneyManage) || (x.amount_cents !== null && !x.transaction_id && money))) setAfter(x);
+    return ok;
+  };
   const canAdd = (c: Category) => !embedded && (isMoney(c) ? data.can.moneyManage || data.can.manage : data.can.manage);
   const canWork = (x: TaskRow) => mineTask(x) || (isMoney(x.category) ? data.can.moneyManage : data.can.manage);
   const all = (data.federation ? federationCategories : clubCategories) as readonly Category[];
@@ -164,6 +186,16 @@ export function Tasks({
             {!data.federation && data.can.manage && (
               <Button variant="secondary" icon="clipboardList" onClick={() => setYear(true)}>
                 {t.yearOpen}
+              </Button>
+            )}
+            {data.can.manage && (
+              <Button variant="secondary" icon="calendar" onClick={() => setYearView(true)}>
+                {more.year}
+              </Button>
+            )}
+            {!data.federation && data.can.manage && (
+              <Button variant="secondary" icon="copy" onClick={() => setFromTemplate(true)}>
+                {more.fromTemplate}
               </Button>
             )}
             <Button icon="plus" onClick={() => setEditing({ category: category !== "all" && canAdd(category) ? category : all.find(canAdd)! })}>
@@ -185,7 +217,12 @@ export function Tasks({
       )}
       {!embedded && (
         <Toolbar label={t.filters}>
-          <Segmented label={t.filters} items={(["all", "mine", "late", "week"] as const).map((id) => ({ id, label: t.views[id] }))} value={view} onChange={(v) => setFilter(v as Filter)} />
+          <Segmented
+            label={t.filters}
+            items={(["all", "mine", "late", "week", "recurring"] as const).map((id) => ({ id, label: id === "recurring" ? more.recurringFilter : t.views[id] }))}
+            value={view}
+            onChange={(v) => setFilter(v as Filter)}
+          />
           <label className="toolbar-field">
             {t.category}
             <select value={category} onChange={(e) => setCategory(e.target.value as Category | "all")}>
@@ -253,6 +290,7 @@ export function Tasks({
                       work={canWork(x)}
                       remove={data.can.manage && !embedded && x.kind !== "sponsor" && x.kind !== "grant" && !x.source_kind}
                       send={send}
+                      tick={tick}
                       details={() => setDetail(x.id)}
                     />
                   ))}
@@ -287,11 +325,15 @@ export function Tasks({
           busy={busy}
           work={canWork(current)}
           edit={canWork(current) && (canAdd(current.category) || mineTask(current)) ? () => setEditing(current) : undefined}
+          saveAsTemplate={!data.federation && data.can.manage}
           send={send}
           close={() => setDetail(null)}
         />
       )}
       {year && <YearModel locale={locale} data={data} busy={busy} send={send} close={() => setYear(false)} />}
+      {yearView && <YearView locale={locale} close={() => setYearView(false)} />}
+      {fromTemplate && <FromTemplate locale={locale} data={data} busy={busy} send={send} close={() => setFromTemplate(false)} />}
+      {after && <AfterDone locale={locale} task={after} today={data.today} organizationId={data.organization_id} send={send} reload={reload} close={() => setAfter(null)} />}
     </Wrapper>
   );
 }
@@ -304,6 +346,7 @@ function TaskItem({
   work,
   remove,
   send,
+  tick,
   details,
 }: {
   locale: Locale;
@@ -313,9 +356,13 @@ function TaskItem({
   work: boolean;
   remove: boolean;
   send: (b: Record<string, unknown>) => Promise<boolean>;
+  tick: (x: TaskRow, done: boolean) => Promise<boolean>;
   details: () => void;
 }) {
   const t = todoCopy[locale];
+  const more = todoMoreCopy[locale];
+  const progress = x.completion === "each" && (x.assignees ?? []).length > 1 ? progressOf(x.assignees) : null;
+  const rule = recurrenceText(locale, x.recurrence, x.due_on, x.recurrence_until);
   const title = titleOf(locale, x);
   const link = href(locale, x);
   const ticked = x.checklist.filter((i) => i.done).length;
@@ -327,7 +374,7 @@ function TaskItem({
           checked={x.status === "done"}
           disabled={busy || !work}
           aria-label={fill(x.status === "done" ? t.untickOf : t.tickOf, { title })}
-          onChange={(e) => void send({ action: "done", id: x.id, done: e.target.checked })}
+          onChange={(e) => void tick(x, e.target.checked)}
         />
         <span className="task-title">{title}</span>
       </label>
@@ -349,7 +396,19 @@ function TaskItem({
           </Badge>
         )}
         {" · "}
-        {t.responsible} : {x.responsible_name ?? t.nobody}
+        {t.responsible} : {namesOf(x) ?? t.nobody}
+        {progress && ` · ${fill(more.progress, { done: progress.done, total: progress.total })}`}
+        {rule && (
+          <>
+            {" · "}
+            <span className="task-rule">
+              <Icon name="clock" size={14} /> {rule}
+            </span>
+          </>
+        )}
+        {x.meeting_starts_at && ` · ${more.meeting} ${new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(x.meeting_starts_at))}`}
+        {(x.place_name || x.free_location) && ` · ${x.place_name ?? x.free_location}`}
+        {x.amount_cents !== null && ` · ${new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { style: "currency", currency: "EUR" }).format(x.amount_cents / 100)}`}
         {x.checklist.length > 0 && ` · ${t.checklist} ${ticked}/${x.checklist.length}`}
         {x.comments.length > 0 && ` · ${t.comments} ${x.comments.length}`}
         {x.auto_closed ? ` · ${t.autoClosed}` : x.source_kind && !x.source_kind.startsWith("year_") ? ` · ${t.auto}` : ""}
@@ -423,8 +482,8 @@ function TaskForm({
   send: (b: Record<string, unknown>) => Promise<boolean>;
 }) {
   const t = todoCopy[locale];
+  const more = todoMoreCopy[locale];
   const choices = categories.includes(category) ? categories : [category, ...categories];
-  const responsible = task ? (task.responsible_user_id ?? task.responsible_id ?? "") : "";
   return (
     <Modal title={task ? `${t.edit} · ${titleOf(locale, task)}` : t.newTask} close={close}>
       <form
@@ -432,16 +491,26 @@ function TaskForm({
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
-          const who = String(f.get("responsible") ?? "") || null;
+          const crew = f.getAll("assignee").map(String);
+          const at = (v: FormDataEntryValue | null) => (v ? new Date(String(v)).toISOString() : null);
+          const amount = String(f.get("amount") ?? "").trim();
           const body = {
             category: f.get("category"),
             title: f.get("title"),
             detail: f.get("detail") ?? "",
             dueOn: f.get("due") || null,
-            responsibleId: data.federation ? null : who,
-            responsibleUserId: data.federation ? who : null,
+            ...(data.federation ? { assigneeUserIds: crew } : { assignees: crew }),
+            completion: f.get("completion") ?? "any",
+            meetingStartsAt: at(f.get("meetingStart")),
+            meetingEndsAt: at(f.get("meetingEnd")),
+            placeId: f.get("place") || null,
+            sharedVenueId: f.get("sharedVenue") || null,
+            freeLocation: String(f.get("freeLocation") ?? ""),
+            linkUrl: String(f.get("link") ?? "").trim(),
+            amountCents: amount ? Math.round(Number(amount.replace(",", ".")) * 100) : null,
             priority: f.get("priority"),
             recurrence: f.get("recurrence"),
+            recurrenceUntil: f.get("until") || null,
             teamId: f.get("team") || null,
           };
           const checklist = String(f.get("checklist") ?? "")
@@ -493,21 +562,43 @@ function TaskForm({
             ))}
           </select>
         </label>
-        {data.people.length > 0 ? (
-          <label htmlFor="task-responsible">
-            {t.responsible}
-            <select id="task-responsible" name="responsible" defaultValue={responsible}>
-              <option value="">{t.nobody}</option>
-              {data.people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.full_name}
-                </option>
-              ))}
-            </select>
+        <label htmlFor="task-until">
+          {more.until}
+          <input id="task-until" name="until" type="date" defaultValue={task?.recurrence_until ?? ""} />
+        </label>
+        <fieldset className="task-meeting">
+          <legend>{more.meeting}</legend>
+          <label htmlFor="task-meeting-start">
+            {more.meetingStart}
+            <input id="task-meeting-start" name="meetingStart" type="datetime-local" defaultValue={localInput(task?.meeting_starts_at ?? null)} />
           </label>
-        ) : (
-          <input type="hidden" name="responsible" value={responsible || (data.federation ? data.userId : (data.own[0] ?? ""))} />
-        )}
+          <label htmlFor="task-meeting-end">
+            {more.meetingEnd}
+            <input id="task-meeting-end" name="meetingEnd" type="datetime-local" defaultValue={localInput(task?.meeting_ends_at ?? null)} />
+          </label>
+          {!data.federation && (
+            <div className="field">
+              <span>{more.place}</span>
+              <PlaceCombobox
+                locale={locale}
+                places={data.places}
+                shared={data.sharedVenues}
+                initial={{ placeId: task?.place_id ?? null, sharedId: task?.shared_venue_id ?? null, free: task?.free_location ?? "" }}
+                canCreate={false}
+                create={() => undefined}
+              />
+            </div>
+          )}
+        </fieldset>
+        <label htmlFor="task-link">
+          {more.link}
+          <input id="task-link" name="link" type="url" maxLength={500} placeholder="https://" defaultValue={task?.link_url ?? ""} />
+        </label>
+        <label htmlFor="task-amount">
+          {more.amount}
+          <input id="task-amount" name="amount" inputMode="decimal" defaultValue={task?.amount_cents != null ? String(task.amount_cents / 100) : ""} />
+        </label>
+        <Assignees locale={locale} data={data} task={task} />
         {data.teams.length > 0 && (
           <label htmlFor="task-team">
             {t.team}
@@ -550,6 +641,7 @@ function TaskDetail({
   edit,
   send,
   close,
+  saveAsTemplate = false,
 }: {
   locale: Locale;
   task: TaskRow;
@@ -557,6 +649,7 @@ function TaskDetail({
   busy: boolean;
   work: boolean;
   edit?: () => void;
+  saveAsTemplate?: boolean;
   send: (b: Record<string, unknown>) => Promise<boolean>;
   close: () => void;
 }) {
@@ -574,15 +667,52 @@ function TaskDetail({
             </Badge>
           )}
           {" · "}
-          {t.responsible} : {x.responsible_name ?? t.nobody} · {t.priority} : {t.priorities[x.priority]} · {t.recurrence} : {t.recurrences[x.recurrence]}
+          {t.responsible} : {namesOf(x) ?? t.nobody} · {t.priority} : {t.priorities[x.priority]} · {t.recurrence} :{" "}
+          {recurrenceText(locale, x.recurrence, x.due_on, x.recurrence_until) || t.recurrences[x.recurrence]}
         </p>
+        {x.completion === "each" && (x.assignees ?? []).length > 1 && (
+          <ul className="plain-list task-parts">
+            {x.assignees.map((a) => (
+              <li key={a.profile_id ?? a.user_id}>
+                <Badge tone={a.done_on ? "success" : "neutral"}>{a.done_on ? todoMoreCopy[locale].states.done : todoMoreCopy[locale].states.upcoming}</Badge> {a.name}
+              </li>
+            ))}
+          </ul>
+        )}
         {x.detail && <p>{x.detail}</p>}
+        {x.link_url && (
+          <p>
+            <a href={x.link_url} target="_blank" rel="noopener noreferrer">
+              {todoMoreCopy[locale].linkOpen}
+            </a>
+          </p>
+        )}
         {link && x.about && (
           <p>
             <Link href={link} className="button secondary sm">
               {fill(t.openOf, { about: x.about })}
             </Link>
           </p>
+        )}
+        {saveAsTemplate && (
+          <details className="task-save-template">
+            <summary>{todoMoreCopy[locale].saveAsTemplate}</summary>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
+                if (name.length >= 2) void send({ action: "saveAsTemplate", id: x.id, name });
+              }}
+            >
+              <label htmlFor={`template-name-${x.id}`}>
+                {todoMoreCopy[locale].templateName}
+                <input id={`template-name-${x.id}`} name="name" required minLength={2} maxLength={120} defaultValue={title.slice(0, 120)} />
+              </label>
+              <Button size="sm" disabled={busy}>
+                {todoMoreCopy[locale].saveAsTemplate}
+              </Button>
+            </form>
+          </details>
         )}
         <h3>{t.checklist}</h3>
         {x.checklist.length > 0 && (
@@ -735,7 +865,9 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.none, [locale, t.none]);
   const { data, error, setError, reload } = useData<View>("/api/tasks", failure);
   const { busy, message, post } = usePost("/api/tasks", reload, setError, failure);
-  const [editing, setEditing] = useState<null | "new" | { id: string; kind: OwnKind; name: string; items: TemplateItem[] }>(null);
+  const [editing, setEditing] = useState<null | "new" | { id: string; kind: OwnKind; name: string; items: TemplateItem[]; category: Category | null }>(null);
+  const more = todoMoreCopy[locale];
+  const cats = todoCopy[locale].categories;
   if (!data?.can.manage) return null;
   const send = (body: Record<string, unknown>) => post({ ...body, organizationId: data.organization_id }, t.saved);
   const suggested = suggestedTemplates[locale].filter((s) => !data.templates.some((x) => x.name === s.name));
@@ -759,8 +891,18 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
                 <p className="muted small">{x.items.map((i) => `${i.title} (${fill(t.daysBefore, { n: i.daysBefore })})`).join(" · ")}</p>
               </div>
               <div className="row-actions">
+                {x.archived && <Badge tone="neutral">{more.archived}</Badge>}
                 <Button variant="secondary" size="sm" aria-label={fill(t.editTemplate, { name: x.name })} onClick={() => setEditing({ ...x, kind: x.kind as OwnKind })}>
                   {t.edit}
+                </Button>
+                {/* 2: duplicated, archived (kept) or restored rather than lost. */}
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => void send({ action: "duplicateTemplate", id: x.id, name: fill(more.copyOf, { name: x.name }).slice(0, 120) })}>
+                  {more.duplicate}
+                  <span className="sr-only"> : {x.name}</span>
+                </Button>
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => void send({ action: "archiveTemplate", id: x.id, archived: !x.archived })}>
+                  {x.archived ? more.restore : more.archive}
+                  <span className="sr-only"> : {x.name}</span>
                 </Button>
                 <button type="button" className="icon-button sm" aria-label={fill(t.deleteTemplate, { name: x.name })} title={fill(t.deleteTemplate, { name: x.name })} disabled={busy} onClick={() => void send({ action: "deleteTemplate", id: x.id })}>
                   <Icon name="trash" size={16} />
@@ -798,7 +940,7 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
                   const [title, days] = l.split("|").map((x) => x.trim());
                   return { title, detail: "", daysBefore: Math.max(0, Math.min(365, Number.parseInt(days ?? "0", 10) || 0)) };
                 });
-              void send({ action: "saveTemplate", id: current?.id, kind: f.get("kind"), name: f.get("name"), items }).then((ok) => ok && setEditing(null));
+              void send({ action: "saveTemplate", id: current?.id, kind: f.get("kind"), category: f.get("category") || undefined, name: f.get("name"), items }).then((ok) => ok && setEditing(null));
             }}
           >
             <label htmlFor="template-kind">
@@ -807,6 +949,17 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
                 {ownKinds.map((k) => (
                   <option key={k} value={k}>
                     {t.kinds[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="template-category">
+              {more.category}
+              <select id="template-category" name="category" defaultValue={current?.category ?? ""}>
+                <option value="">{t.kind}</option>
+                {clubCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {cats[c]}
                   </option>
                 ))}
               </select>
@@ -839,5 +992,274 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
         </Modal>
       )}
     </section>
+  );
+}
+
+/** « 2026-11-02T18:30 » for a datetime-local field, in Brussels time. */
+function localInput(iso: string | null) {
+  if (!iso) return "";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Brussels", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour === "24" ? "00" : parts.hour}:${parts.minute}`;
+}
+
+/** 2: the people in charge, one or several, found by name; the mode of completion when several. */
+function Assignees({ locale, data, task }: { locale: Locale; data: View; task: TaskRow | null }) {
+  const more = todoMoreCopy[locale];
+  const start = task ? (task.assignees ?? []).map((a) => a.profile_id ?? a.user_id ?? "").filter(Boolean) : [];
+  const [chosen, setChosen] = useState<string[]>(start),
+    [query, setQuery] = useState("");
+  // Someone who does not plan gives a task to himself only.
+  if (!data.people.length) {
+    const me = data.federation ? data.userId : (data.own[0] ?? "");
+    return me ? <input type="hidden" name="assignee" value={start[0] ?? me} /> : null;
+  }
+  const q = query.trim().toLocaleLowerCase();
+  const shown = data.people.filter((p) => !q || p.full_name.toLocaleLowerCase().includes(q) || chosen.includes(p.id)).slice(0, 40);
+  return (
+    <fieldset className="task-assignees">
+      <legend>{more.assignees}</legend>
+      <p className="muted small" id="task-assignees-hint">
+        {more.assigneesHint}
+      </p>
+      <label htmlFor="task-assignee-search">
+        {more.search}
+        <input id="task-assignee-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} aria-describedby="task-assignees-hint" />
+      </label>
+      <div className="task-assignee-list">
+        {shown.map((p) => (
+          <label key={p.id} className="check">
+            <input type="checkbox" name="assignee" value={p.id} checked={chosen.includes(p.id)} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, p.id] : c.filter((x) => x !== p.id)))} />
+            {p.full_name}
+          </label>
+        ))}
+      </div>
+      {!chosen.length && <p className="muted small">{more.nobody}</p>}
+      {chosen.length > 1 && (
+        <fieldset>
+          <legend>{more.completion}</legend>
+          {(["any", "each"] as const).map((m) => (
+            <label key={m} className="check">
+              <input type="radio" name="completion" value={m} defaultChecked={(task?.completion ?? "any") === m} />
+              {m === "any" ? more.completionAny : more.completionEach}
+            </label>
+          ))}
+        </fieldset>
+      )}
+    </fieldset>
+  );
+}
+
+/** 2 (4): « Depuis un modèle »: a template, a reference date, each line's people, then the tasks. */
+function FromTemplate({ locale, data, busy, send, close }: { locale: Locale; data: View; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean>; close: () => void }) {
+  const more = todoMoreCopy[locale];
+  const live = data.templates.filter((x) => !x.archived);
+  const [templateId, setTemplateId] = useState(live[0]?.id ?? ""),
+    [date, setDate] = useState(data.today);
+  const tpl = live.find((x) => x.id === templateId);
+  const due = (days: number) => {
+    const d = new Date(date + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString().slice(0, 10);
+  };
+  return (
+    <Modal title={more.fromTemplate} close={close}>
+      {!live.length ? (
+        <p className="muted">{more.noTemplate}</p>
+      ) : (
+        <form
+          className="stack-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            const assignments: Record<string, string[]> = {};
+            const excluded: number[] = [];
+            tpl?.items.forEach((_, n) => {
+              assignments[String(n)] = f.getAll(`line-${n}`).map(String);
+              if (f.get(`skip-${n}`) === "on") excluded.push(n);
+            });
+            void send({ action: "fromTemplate", templateId, date, assignments, excluded }).then((ok) => ok && close());
+          }}
+        >
+          <p className="muted">{more.templateIntro}</p>
+          <label htmlFor="from-template">
+            {more.template}
+            <select id="from-template" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+              {live.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="from-template-date">
+            {more.referenceDate}
+            <input id="from-template-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          {tpl?.items.map((item, n) => (
+            <fieldset key={`${templateId}-${n}`} className="template-line">
+              <legend>{fill(more.line, { title: item.title, date: dayLabel(locale, due(item.daysBefore)) })}</legend>
+              {data.people.length > 0 && (
+                <div className="task-assignee-list">
+                  {data.people.map((p) => (
+                    <label key={p.id} className="check">
+                      <input type="checkbox" name={`line-${n}`} value={p.id} />
+                      {p.full_name}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <label className="check">
+                <input type="checkbox" name={`skip-${n}`} />
+                {more.skipLine}
+              </label>
+            </fieldset>
+          ))}
+          <div className="actions">
+            <Button disabled={busy || !tpl}>{more.createTasks}</Button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
+/** 2 (6): the next twelve months, a line per category, each date with its state in words (not by colour only). */
+function YearView({ locale, close }: { locale: Locale; close: () => void }) {
+  const more = todoMoreCopy[locale];
+  const t = todoCopy[locale];
+  const [data, setData] = useState<{ items: YearItem[]; federation: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/tasks?year=1", { cache: "no-store" })
+      .then(async (r) => (r.ok ? r.json() : { items: [], federation: false }))
+      .then((v) => {
+        if (live) setData(v);
+      })
+      .catch(() => {
+        if (live) setData({ items: [], federation: false });
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const months = data ? [...new Set(data.items.map((i) => i.date.slice(0, 7)))] : [];
+  const monthName = (m: string) => new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(m + "-15T12:00:00Z"));
+  const icon = (s: YearItem["state"]) => (s === "done" ? "check" : s === "late" ? "alert" : "clock");
+  return (
+    <Modal title={more.yearTitle} close={close} className="task-year-window">
+      <p className="muted">{more.yearIntro}</p>
+      <p>
+        <a className="button secondary" href={`/api/tasks?year=pdf&locale=${locale}`}>
+          <Icon name="download" size={16} /> {more.yearPdf}
+        </a>
+      </p>
+      {!data ? (
+        <p role="status">…</p>
+      ) : !data.items.length ? (
+        <p className="muted">{more.yearEmpty}</p>
+      ) : (
+        <ol className="task-year">
+          {months.map((m) => (
+            <li key={m}>
+              <h3>{monthName(m)}</h3>
+              <ul className="plain-list">
+                {data.items
+                  .filter((i) => i.date.startsWith(m))
+                  .map((i, n) => (
+                    <li key={n} className="task-year-item" data-state={i.state}>
+                      <Icon name={icon(i.state)} size={16} />
+                      <span>
+                        {dayLabel(locale, i.date)} · <strong>{t.categories[i.category]}</strong> · {i.title}
+                        {i.recurring && ` · ${more.recurring}`} · {more.states[i.state]}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Modal>
+  );
+}
+
+/** 2 (7, 8): after « fait », the expense to record once, or the affiliation to mark as settled. */
+function AfterDone({
+  locale,
+  task: x,
+  today,
+  organizationId,
+  send,
+  reload,
+  close,
+}: {
+  locale: Locale;
+  task: TaskRow;
+  today: string;
+  organizationId: string;
+  send: (b: Record<string, unknown>) => Promise<boolean>;
+  reload: () => void;
+  close: () => void;
+}) {
+  const more = todoMoreCopy[locale];
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const affiliation = !!x.affiliation_due_id;
+  return (
+    <Modal title={affiliation ? more.affiliationTitle : more.expenseTitle} close={close}>
+      <p className="muted">{affiliation ? more.affiliationText : more.expenseText}</p>
+      <form
+        className="stack-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          setBusy(true);
+          setError("");
+          const done = affiliation
+            ? fetch("/api/affiliations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "markPaid", id: x.affiliation_due_id, paidOn: f.get("date"), createExpense: true, method: "transfer", organizationId }),
+              }).then(async (r) => {
+                if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "");
+                reload();
+                return true;
+              })
+            : send({ action: "expense", id: x.id, occurredOn: f.get("date"), amountCents: Math.round(Number(String(f.get("amount")).replace(",", ".")) * 100), label: f.get("label") });
+          void done
+            .then((ok) => ok && close())
+            .catch((err: Error) => setError(more.errors[err.message] ?? err.message))
+            .finally(() => setBusy(false));
+        }}
+      >
+        <label htmlFor="after-date">
+          {more.expenseDate}
+          <input id="after-date" name="date" type="date" required defaultValue={today} max={today} />
+        </label>
+        {!affiliation && (
+          <>
+            <label htmlFor="after-amount">
+              {more.amount}
+              <input id="after-amount" name="amount" inputMode="decimal" required defaultValue={String((x.amount_cents ?? 0) / 100)} />
+            </label>
+            <label htmlFor="after-label">
+              {more.expenseLabel}
+              <input id="after-label" name="label" required minLength={2} maxLength={160} defaultValue={x.title.slice(0, 160)} />
+            </label>
+          </>
+        )}
+        {error && <p role="alert">{error}</p>}
+        <div className="actions">
+          <Button disabled={busy}>{affiliation ? more.affiliationSave : more.expenseSave}</Button>
+          <Button type="button" variant="secondary" onClick={close}>
+            {more.expenseLater}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

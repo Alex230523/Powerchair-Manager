@@ -38,7 +38,7 @@ describe("wave 17, O1: tasks", () => {
     expect(taskCommand.safeParse({ action: "saveTemplate", kind: "grant", name: "Dossier", items: [{ title: "Budget", daysBefore: 3 }] }).success).toBe(false);
   });
   it("proposes the Transport and « Préparer un entraînement » templates in three languages", () => {
-    for (const l of ["fr", "nl", "en"] as const) expect(suggestedTemplates[l].map((t) => t.key)).toEqual(["transport", "training"]);
+    for (const l of ["fr", "nl", "en"] as const) expect(suggestedTemplates[l].map((t) => t.key)).toEqual(["transport", "training", "tournament", "season", "recruit", "grant", "dinner"]);
     expect(suggestedTemplates.fr[1].items.map((i) => i.title)).toEqual(["Choisir les fiches exercices", "Confirmer la salle", "Vérifier le matériel"]);
   });
 });

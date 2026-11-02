@@ -916,7 +916,8 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
   const out: MoneyDeadline[] = [];
   const tasks = (
     await c.query(
-      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
+      // 2 (7): a task with an amount is a money deadline too (« Échéances à 30 jours »).
+      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.amount_cents,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND (t.kind IN ('sponsor','grant') OR (t.amount_cents IS NOT NULL AND t.transaction_id IS NULL AND $4)) AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
       [org, from, to, all, own],
     )
   ).rows;
@@ -926,8 +927,8 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
       date: t.due_on,
       kind: t.partner_id ? "condition" : "task",
       source: t.partner_id ? "partner" : "grant",
-      title: `${t.file} · ${t.title}`,
-      href: all ? (t.partner_id ? `/funding/grants-sponsors?vue=sponsoring&partner=${t.partner_id}` : `/funding/grants-sponsors?vue=subsides&grant=${t.grant_id}`) : "/tasks",
+      title: [t.file, t.title, t.amount_cents !== null ? new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(t.amount_cents / 100) : null].filter(Boolean).join(" · "),
+      href: !t.partner_id && !t.grant_id ? `/tasks?task=${t.id}` : all ? (t.partner_id ? `/funding/grants-sponsors?vue=sponsoring&partner=${t.partner_id}` : `/funding/grants-sponsors?vue=subsides&grant=${t.grant_id}`) : "/tasks",
     });
   if (all) {
     for (const p of (
@@ -1053,10 +1054,11 @@ export async function fundingTaskTick(db: Pool, parts: FundingTickParts = {}) {
   const tomorrow = eve.toISOString().slice(0, 10);
   const tasks = !(all || parts.tasks) ? [] : (
     await db.query(
-      `SELECT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
-         FROM task t JOIN organization o ON o.id=t.organization_id
-         LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
-         JOIN "user" u ON u.id=COALESCE(t.responsible_user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
+      // 2: each person in charge, once (in « each » mode, not those who did their part).
+      `SELECT DISTINCT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
+         FROM task t JOIN organization o ON o.id=t.organization_id JOIN task_assignee a ON a.task_id=t.id AND a.done_on IS NULL
+         LEFT JOIN club_person cp ON cp.id=a.profile_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
+         JOIN "user" u ON u.id=COALESCE(a.user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
          LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
         WHERE t.status<>'done' AND t.due_on IN ($1::date,$2::date) AND u.active AND (t.category NOT IN ('sponsors','grants','fundraising') OR NOT ('finance'=ANY(o.disabled_modules)))`,
       [week, tomorrow],

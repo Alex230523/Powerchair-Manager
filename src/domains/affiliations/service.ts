@@ -89,7 +89,52 @@ export async function ensureDues(c: PoolClient, club: string, today = brusselsTo
     );
     created.push(due);
   }
+  await affiliationTasks(c, club);
   return created;
+}
+
+/**
+ * 2 (8): each open due of the club is a task « Affiliation et fédération »
+ * with its amount (« 12 × 10,00 € »), its deadline and the president in
+ * charge (reminders at J-7 and J-1). Once per due; « en ordre » closes it,
+ * and the next period brings the next one.
+ */
+async function affiliationTasks(c: PoolClient, club: string) {
+  const dues = (
+    await c.query(
+      `SELECT d.id,d.period,d.due_on::text AS due_on,d.players,d.amount_cents,f.name,f.basis,f.amount_cents AS unit,f.created_by FROM affiliation_due d JOIN affiliation_fee f ON f.id=d.fee_id
+        WHERE d.organization_id=$1 AND d.paid_on IS NULL AND NOT EXISTS(SELECT 1 FROM task t WHERE t.affiliation_due_id=d.id)`,
+      [club],
+    )
+  ).rows as { id: string; period: string; due_on: string; players: number | null; amount_cents: number; name: string; basis: "player" | "club"; unit: number; created_by: string }[];
+  if (!dues.length) return;
+  const president = (
+    await c.query(
+      `SELECT cp.id,r.user_id FROM role_assignment r JOIN person pe ON pe.user_id=r.user_id JOIN club_person cp ON cp.person_id=pe.id AND cp.organization_id=r.organization_id
+        WHERE r.organization_id=$1 AND r.role='club_president' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND cp.status='active' ORDER BY r.valid_from LIMIT 1`,
+      [club],
+    )
+  ).rows[0] as { id: string; user_id: string } | undefined;
+  const euro = (cents: number) => new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
+  for (const d of dues) {
+    const about = `${d.name} ${d.period}`.slice(0, 160);
+    await c.query(
+        `INSERT INTO task(organization_id,kind,category,title,detail,due_on,responsible_id,origin,created_by,source_key,source_kind,source_params,amount_cents,affiliation_due_id)
+         VALUES($1,'other','affiliation',$2,$3,$4,$5,'template',$6,$7,'affiliationDue',$8,$9,$10) ON CONFLICT DO NOTHING RETURNING id`,
+        [
+          club,
+          about,
+          d.basis === "player" && d.players !== null ? `${d.players} × ${euro(d.unit)}` : euro(d.amount_cents),
+          d.due_on,
+          president?.id ?? null,
+          president?.user_id ?? d.created_by,
+          `affiliation:${d.id}`,
+          JSON.stringify({ about }),
+          d.amount_cents,
+          d.id,
+        ],
+      );
+  }
 }
 
 const dueColumns = `d.id,d.fee_id,d.organization_id,d.period,d.opens_on::text AS opens_on,d.due_on::text AS due_on,d.players,d.amount_cents,d.paid_on::text AS paid_on,d.transaction_id,
@@ -225,6 +270,11 @@ export async function clubAffiliationsExecute(db: Pool, p: Principal, command: C
           )
         ).rows[0].id;
       await s.c.query("UPDATE affiliation_due SET paid_on=$2,marked_by=$3,transaction_id=$4 WHERE id=$1", [due.id, command.paidOn, s.userId, transaction]);
+      // 2: « en ordre » closes its task (and keeps the expense on it, never written twice).
+      await s.c.query(
+        "UPDATE task SET status='done',done_on=$2,auto_closed=true,transaction_id=COALESCE(transaction_id,$3),updated_at=now() WHERE affiliation_due_id=$1 AND organization_id=$4 AND status<>'done'",
+        [due.id, command.paidOn, transaction, s.org],
+      );
       await audit(s.c, s.org, s.userId, "affiliation.paid", due.id);
       return { ok: true as const, transaction, undo: await offerUndo(s.c, s.org, s.userId, "affiliationPaid", due.id, { transaction }) };
     },

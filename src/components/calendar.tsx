@@ -1,6 +1,7 @@
 "use client";
 import { useClubChildFilter } from "./child-switcher";
 import { seasonScheduleCopy } from "./season-schedule-copy";
+import { todoMoreCopy } from "./todo-more-copy";
 import Link from "next/link";
 import { EventList, MonthBoard, WeekGrid, colorAttrs, dayName, kindName, type ColorBy } from "./calendar-board";
 import { SubscribePanel } from "./calendar-subscribe";
@@ -149,6 +150,8 @@ type View = {
   profiles: { id: string; full_name: string }[];
   documentOptions: { id: string; name: string; category: string }[];
   responsibles: { id: string; name: string }[];
+  /** 2: the meetings of the tasks given to me. */
+  meetings: { id: string; title: string; meeting_starts_at: string; meeting_ends_at: string | null; place: string | null }[];
   feeds: {
     id: string;
     name: string;
@@ -556,6 +559,23 @@ export function Calendar({
           }
         />
         {family.node}
+        {/* 2: the meetings of the tasks given to me, in my calendar. */}
+        {data && (data.meetings ?? []).length > 0 && (
+          <Card title={todoMoreCopy[locale].myMeetings} className="calendar-meetings">
+            <ul className="plain-list">
+              {data.meetings.map((m) => (
+                <li key={m.id}>
+                  <Link href={`/${locale}/tasks?task=${m.id}`}>{m.title}</Link>
+                  <span className="muted small">
+                    {" · "}
+                    {new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(m.meeting_starts_at))}
+                    {m.place && ` · ${m.place}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
           <p role="alert" className="error-message">
