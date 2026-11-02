@@ -118,30 +118,28 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
     [locale, t.unavailable],
   );
   const load = useCallback(async () => {
-    const [w, p, gv] = await Promise.all([
-      fetch("/api/workspace", { cache: "no-store" }),
-      fetch("/api/people", { cache: "no-store" }),
-      fetch("/api/governance", { cache: "no-store" }),
-    ]);
+    const w = await fetch("/api/workspace", { cache: "no-store" });
     if (!w.ok) throw new Error("UNAVAILABLE");
     const wv = (await w.json()) as WorkspaceState;
+    // Audit 23: the club's people and governance are asked by a club only.
+    const club = wv.selected?.kind === "club";
+    const [p, gv] = club ? await Promise.all([fetch("/api/people", { cache: "no-store" }), fetch("/api/governance", { cache: "no-store" })]) : [null, null];
     setWs(wv);
     setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));
-    setPeople(p.ok ? await p.json() : null);
-    setGov(gv.ok ? await gv.json() : null);
+    setPeople(p?.ok ? await p.json() : null);
+    setGov(gv?.ok ? await gv.json() : null);
   }, []);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      fetch("/api/workspace", { cache: "no-store" }),
-      fetch("/api/people", { cache: "no-store" }),
-      fetch("/api/governance", { cache: "no-store" }),
-    ])
-      .then(async ([w, p, gv]) => {
+    fetch("/api/workspace", { cache: "no-store" })
+      .then(async (w) => {
         if (!w.ok) throw new Error("UNAVAILABLE");
         const wv = (await w.json()) as WorkspaceState;
-        const pv = p.ok ? ((await p.json()) as PeopleState) : null;
-        const gov = gv.ok ? ((await gv.json()) as Governance) : null;
+        // Audit 23: the club's people and governance are asked by a club only.
+        const club = wv.selected?.kind === "club";
+        const [p, gv] = club ? await Promise.all([fetch("/api/people", { cache: "no-store" }), fetch("/api/governance", { cache: "no-store" })]) : [null, null];
+        const pv = p?.ok ? ((await p.json()) as PeopleState) : null;
+        const gov = gv?.ok ? ((await gv.json()) as Governance) : null;
         if (cancelled) return;
         setWs(wv);
         setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));

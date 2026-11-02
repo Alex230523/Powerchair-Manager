@@ -157,15 +157,12 @@ jobs:
           PFM_BUILD_DIR: .next-e2e
           PFM_LOCAL_MAIL: "true"
           PFM_MAIL_DIR: .local/mail-e2e
+      # 23 and 26: the matrix is filled and the findings reviewed; any difference now fails.
       - name: Rights matrix (npm run audit:access)
         run: npm run audit:access
-        env:
-          AUDIT_RECORD: "1"
       - name: Display audit (npm run audit:ui)
         if: always()
         run: npm run audit:ui
-        env:
-          AUDIT_RECORD: "1"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

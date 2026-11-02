@@ -10,143 +10,143 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 
 | Route | Visiteur | Président | Coach | Joueur | Parent | Fédération | Arbitre | Permanent fédéral | Président club B | Fédération B |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/api/absences` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/account/avatar` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/accounts` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/accounts/export` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/affiliations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/attendance` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/absences` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/account/avatar` | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/accounts` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/accounts/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/affiliations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/attendance` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/auth/[...all]` | · | · | · | · | · | · | · | · | · | · |
-| `/api/authorizations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/automations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/bank` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/calendar` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/calendar/feed/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/calendar/season` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/calendar/types` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/classification` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/classification/texts` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/club` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/club/logo` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/club/obligations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/coach-profile` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/communication` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/contacts` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/courses` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/courses/proof` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/authorizations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/automations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/bank` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/calendar` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/calendar/feed/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/calendar/season` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
+| `/api/calendar/types` | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
+| `/api/classification` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/classification/texts` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/club` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/club/logo` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/club/obligations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/coach-profile` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/communication` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/courses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/courses/proof` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/cron/[job]` | · | · | · | · | · | · | · | · | · | · |
-| `/api/dashboard` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/designations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/documents` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/documents/file/[id]` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/dashboard` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/designations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/documents` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/documents/file/[id]` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/documents/sign/[id]` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
-| `/api/dues` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/dues/attestations` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/dues/split` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/equipment` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/equipment/workshop` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/equipment/workshop/report` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/exercises` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/exercises/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/exercises/[id]/diagram` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/exercises/program/[eventId]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/dues` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/dues/attestations` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/dues/split` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/equipment` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/equipment/workshop` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/equipment/workshop/report` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/exercises` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/exercises/[id]` | connexion | introuvable | introuvable | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
+| `/api/exercises/[id]/diagram` | connexion | introuvable | introuvable | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
+| `/api/exercises/program/[eventId]` | connexion | introuvable | introuvable | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/exports` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
-| `/api/family` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/federal-calendar` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/federation/affiliations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/federation/clubs` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/federation/licenses` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/federation/referees` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/federation/teams` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/finance` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/finance/operations` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/finance/receipt/[id]` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/finance/report` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/finance/statements` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/finance/statements/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding/deadlines` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding/grants/[id]/chairs` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding/proof/[id]` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding/report` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding/report/proof` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/funding/tasks` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/fundraising` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/fundraising/public` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/governance` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/governance/journal` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/hall-of-fame/[widget]/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/health` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/incidents` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/incidents/care` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/incidents/file` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/incidents/pdf` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/integrations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/keys` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/licences` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/licences/copy` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/licenses` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/matches` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/matches/journey` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/matches/journey/sheet` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/notifications` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/family` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/federal-calendar` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/federation/affiliations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/federation/clubs` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/federation/referees` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/federation/teams` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/finance/operations` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/finance/receipt/[id]` (+ écriture) | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
+| `/api/finance/report` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/finance/statements` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/finance/statements/[id]` | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
+| `/api/funding` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/funding/deadlines` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/funding/grants/[id]/chairs` | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
+| `/api/funding/proof/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
+| `/api/funding/report` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/funding/report/proof` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/funding/tasks` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/fundraising` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/fundraising/public` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/governance` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/governance/journal` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/hall-of-fame/[widget]/[id]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/health` | oui | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/incidents` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/incidents/care` | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/incidents/file` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/incidents/pdf` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/integrations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/keys` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/licences` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/licences/copy` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/licenses` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/matches` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/matches/journey` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/notifications` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
-| `/api/open-events` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/open-events/export` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/open-events/public` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/people` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/people/export` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/player-profile` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/presidency` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/privacy` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/privacy/export` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/privacy/mine` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/public/club/[slug]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/public/ics/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/push` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/open-events` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/open-events/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/open-events/public` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/people` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/people/export` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/player-profile` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/presidency` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/privacy` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/privacy/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/privacy/mine` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/public/club/[slug]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/public/ics/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/push` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/push/respond` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
-| `/api/referee` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/registrations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/registrations/file/[id]` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/referee` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | oui | refusé | refusé | refusé |
+| `/api/registrations` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/registrations/file/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/registrations/guest` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
-| `/api/registrations/public/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/reminders` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/search` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/season-check` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/seasons/plan` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/seasons/rollover` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/setup` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/statistics/awards` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/statistics/awards/[id]/photo` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/statistics/club` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/statistics/game` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/statistics/report` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tasks` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tax` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tax/export` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tax/identity` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tax/receipt/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tax/receipts/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/teams` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tournaments` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tournaments/[id]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tournaments/days` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tournaments/trophies` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tournaments/trophies/[id]/photo` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/transfers` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/transfers/threads` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/trips` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/tutorial` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/registrations/public/[id]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/reminders` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/search` | oui | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/season-check` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/seasons/plan` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/seasons/rollover` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/setup` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/statistics/awards` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/statistics/awards/[id]/photo` | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
+| `/api/statistics/club` | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/statistics/game` | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/statistics/report` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/tasks` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/tax` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
+| `/api/tax/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/tax/identity` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/tax/receipt/[token]` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/tax/receipts/[id]` | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
+| `/api/teams` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/tournaments` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/tournaments/[id]` | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/tournaments/days` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/tournaments/trophies` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/tournaments/trophies/[id]/photo` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/transfers` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/transfers/threads` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/trips` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/tutorial` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/undo` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
-| `/api/unsubscribe` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/v1/events` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/v1/matches` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/v1/openapi.json` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/v1/teams` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/v1/tournaments` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/venues` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/welcome/[token]` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/workspace` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/unsubscribe` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/v1/events` | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion |
+| `/api/v1/matches` | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion |
+| `/api/v1/openapi.json` | oui | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/v1/teams` | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion |
+| `/api/v1/tournaments` | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion | connexion |
+| `/api/venues` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/welcome/[token]` (+ écriture) | oui | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/workspace` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 
 Notes :
 

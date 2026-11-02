@@ -124,6 +124,7 @@ type View = {
     name: string;
     user_id: string;
     role: string;
+    kind?: string;
   };
   /** 13.3: in the list of every event, the cursor of the next page. */
   next: string | null;
@@ -306,7 +307,7 @@ export function Calendar({
     if (value >= "2000-01-01" && value <= "2099-12-31") setAnchorState(value);
   }
   const range = planRange(anchor, view),
-    money = useMoneyDeadlines(range.from, range.to, moneyLayer),
+    money = useMoneyDeadlines(range.from, range.to, moneyLayer, data?.context.kind === "club"),
     tournamentDays = useTournamentDays(range.from, range.to),
     dayChips = [...tournamentDays, ...money.items],
     params =
