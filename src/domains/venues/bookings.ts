@@ -240,6 +240,27 @@ export async function bookingsTick(db: Pool) {
   return n;
 }
 
+type BookingRow = {
+  id: string;
+  place_id: string;
+  season_id: string | null;
+  status: "to_request" | "requested" | "confirmed" | "refused" | "cancelled";
+  reference: string;
+  billing: Billing;
+  rate_label: string | null;
+  planned_cost_cents: number;
+  notes: string;
+  requested_at: string | null;
+  answered_at: string | null;
+  confirmation_filename: string | null;
+  version: number;
+  place: string;
+  address: string;
+  season: string | null;
+  contact: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+};
 /** 6: each hall's bookings of the season: status, sessions, planned and paid, invoices; the cost per team. */
 export async function bookingsView(db: Pool, p: Principal, locale: Locale) {
   return scope(db, p, true, async (x) => {
@@ -254,7 +275,7 @@ export async function bookingsView(db: Pool, p: Principal, locale: Locale) {
           WHERE b.organization_id=$1 ORDER BY pl.name,s.starts_on DESC NULLS LAST`,
         [x.org],
       )
-    ).rows;
+    ).rows as BookingRow[];
     const out = [];
     for (const b of rows) {
       const sessions = (
