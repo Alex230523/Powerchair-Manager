@@ -5,7 +5,8 @@ import { AccessError, account, active, audit, type Principal } from "../access/s
 import { isAdmin, permissions } from "../access/policy";
 import { publish } from "../notifications/queue";
 import { drafts } from "./drafts";
-import { chapterContent, guideCommand, inLocale, readerAudiences, type ChapterContent, type GuideCommand } from "./schema";
+import { draftQuizzes, draftTerms, moreDrafts } from "./drafts-more";
+import { chapterContent, guideCommand, inLocale, quizSchema, readerAudiences, t3, type ChapterContent, type GuideCommand, type Quiz, type Text3 } from "./schema";
 import type { z } from "zod";
 
 /**
@@ -15,8 +16,8 @@ import type { z } from "zod";
  * « Chez nous » under a chapter, seen by its own members only. Reading a
  * chapter ticks a welcome journey's « À lire » step that points to it.
  */
-type Ctx = { c: PoolClient; org: string; kind: string; role: string; userId: string; fed: string | null; manage: boolean; note: boolean };
-async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (x: Ctx) => Promise<T>, expected?: string) {
+export type GuideCtx = { c: PoolClient; org: string; kind: string; role: string; userId: string; fed: string | null; manage: boolean; note: boolean };
+export async function guideScope<T>(db: Pool, p: Principal, write: boolean, fn: (x: GuideCtx) => Promise<T>, expected?: string) {
   const c = await db.connect();
   try {
     await c.query("BEGIN");
@@ -68,9 +69,50 @@ async function chapters(c: PoolClient, fed: string, edit: boolean, slug?: string
   ).rows as ChapterRow[];
 }
 
+/** G5: the gallery images a chapter shows (« [[image:…]] »), with their text alternative. */
+export async function imagesOf(c: PoolClient | Pool, fed: string, content: ChapterContent) {
+  const ids = [...new Set([content.fr.body, content.nl?.body ?? "", content.en?.body ?? ""].join("\n").match(/\[\[image:([0-9a-f-]{36})\]\]/gi) ?? [])].map((m) => m.slice(8, -2).toLowerCase());
+  if (!ids.length) return [];
+  return (await c.query("SELECT id,alt,caption FROM guide_image WHERE federation_id=$1 AND id=ANY($2::uuid[])", [fed, ids])).rows as { id: string; alt: Text3; caption: Partial<Text3> }[];
+}
+
+/** G12: the federation's lexicon (all languages; the page picks its own). */
+export async function terms(c: PoolClient, fed: string | null) {
+  if (!fed) return [];
+  return (await c.query("SELECT id,term,definition FROM guide_term WHERE federation_id=$1 ORDER BY position,term->>'fr'", [fed])).rows as { id: string; term: Text3; definition: Text3 }[];
+}
+
+/** 2: full-text search in the published chapters (every language) and the lexicon. */
+export async function guideSearch(db: Pool, p: Principal, q: string, locale: Locale) {
+  return guideScope(db, p, false, async (x) => {
+    const needle = q.trim().slice(0, 80);
+    if (!x.fed || needle.length < 2) return { chapters: [], terms: [] };
+    const like = `%${needle.replace(/[\\%_]/g, (m) => "\\" + m)}%`;
+    const rows = (
+      await x.c.query(
+        `SELECT g.slug,v.content FROM guide_chapter g JOIN guide_version v ON v.chapter_id=g.id AND v.version=g.published_version
+          WHERE g.federation_id=$1 AND g.status='published' AND v.content::text ILIKE $2 ORDER BY g.position LIMIT 20`,
+        [x.fed, like],
+      )
+    ).rows as { slug: string; content: ChapterContent }[];
+    const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const n = fold(needle);
+    const chapters = rows.map((r) => {
+      const t = inLocale(r.content, locale);
+      const flat = t.body.replace(/\[\[[^\]]*\]\]|[#>|*-]/g, " ").replace(/\s+/g, " ");
+      const at = fold(flat).indexOf(n);
+      return { slug: r.slug, title: t.title, snippet: at < 0 ? t.summary : (at > 40 ? "… " : "") + flat.slice(Math.max(0, at - 40), at + 120).trim() + " …" };
+    });
+    const lex = (await terms(x.c, x.fed))
+      .filter((t) => fold(`${t3(t.term, locale)} ${t3(t.definition, locale)}`).includes(n))
+      .map((t) => ({ id: t.id, term: t3(t.term, locale), definition: t3(t.definition, locale) }));
+    return { chapters, terms: lex };
+  });
+}
+
 /** The guide's table of contents: the chapters for the reader's role first (« Tout voir » shows the others). */
 export async function guideIndex(db: Pool, p: Principal, locale: Locale) {
-  return scope(db, p, false, async (x) => {
+  return guideScope(db, p, false, async (x) => {
     const mine = readerAudiences(x.role, x.kind);
     const base = { organization_id: x.org, can: { manage: x.manage, note: x.note }, audiences: mine };
     if (!x.fed) return { ...base, federation: null, chapters: [], drafts: 0 };
@@ -103,7 +145,7 @@ export async function guideIndex(db: Pool, p: Principal, locale: Locale) {
 
 /** One chapter: the published text (or, for the federation, the one being written), its versions and the club's note. */
 export async function guideChapter(db: Pool, p: Principal, slug: string, draft: boolean) {
-  return scope(db, p, false, async (x) => {
+  return guideScope(db, p, false, async (x) => {
     if (!x.fed) throw new AccessError("NOT_FOUND", 404);
     const edit = draft && x.manage;
     const r = (await chapters(x.c, x.fed, edit, slug))[0];
@@ -114,12 +156,19 @@ export async function guideChapter(db: Pool, p: Principal, slug: string, draft: 
           await x.c.query('SELECT v.version,v.created_at,u.name AS author FROM guide_version v JOIN "user" u ON u.id=v.author WHERE v.chapter_id=$1 ORDER BY v.version DESC LIMIT 50', [r.id])
         ).rows as { version: number; created_at: string; author: string }[])
       : [];
+    const quiz = (await x.c.query("SELECT questions FROM guide_quiz WHERE chapter_id=$1", [r.id])).rows[0]?.questions as Quiz | undefined;
+    const images = await imagesOf(x.c, x.fed, r.content);
+    const passed = !!(await x.c.query("SELECT 1 FROM guide_quiz_pass WHERE chapter_id=$1 AND user_id=$2", [r.id, x.userId])).rowCount;
     return {
       organization_id: x.org,
       can: { manage: x.manage, note: x.note },
       chapter: { ...r, draft: edit },
       note: note?.body ?? "",
       versions,
+      quiz: quiz ?? null,
+      passed,
+      images,
+      terms: await terms(x.c, x.fed),
     };
   });
 }
@@ -134,7 +183,7 @@ export async function guidePublic(db: Pool, federationId: string, slug: string) 
     )
   ).rows[0] as { id: string; slug: string; updated_on: string | null; content: ChapterContent; sources: string; federation: string } | undefined;
   if (!r) throw new AccessError("NOT_FOUND", 404);
-  return r;
+  return { ...r, images: await imagesOf(db, federationId, r.content) };
 }
 
 /** 6: a published chapter changed: the coaches of the clubs and the referees are told. */
@@ -172,7 +221,7 @@ async function tellUpdate(c: PoolClient, fed: string, chapterId: string, version
 
 export async function guideExecute(db: Pool, p: Principal, raw: z.input<typeof guideCommand>, expected: string) {
   const cmd: GuideCommand = guideCommand.parse(raw);
-  return scope(
+  return guideScope(
     db,
     p,
     true,
@@ -191,7 +240,7 @@ export async function guideExecute(db: Pool, p: Principal, raw: z.input<typeof g
         case "adopt": {
           need();
           let added = 0;
-          for (const d of drafts) {
+          for (const d of [...drafts, ...moreDrafts]) {
             const id = (
               await x.c.query("INSERT INTO guide_chapter(federation_id,slug,position,audiences,created_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT (federation_id,slug) DO NOTHING RETURNING id", [
                 x.org,
@@ -203,8 +252,15 @@ export async function guideExecute(db: Pool, p: Principal, raw: z.input<typeof g
             ).rows[0]?.id as string | undefined;
             if (!id) continue;
             await x.c.query("INSERT INTO guide_version(chapter_id,version,content,sources,author) VALUES($1,1,$2,$3,$4)", [id, JSON.stringify(chapterContent.parse(d.content)), d.sources, x.userId]);
+            // G7: the rules chapters come with their quiz.
+            const quiz = draftQuizzes[d.slug];
+            if (quiz) await x.c.query("INSERT INTO guide_quiz(chapter_id,questions,updated_by) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [id, JSON.stringify(quizSchema.parse(quiz)), x.userId]);
             added++;
           }
+          // G12: the proposed lexicon, when the federation has none yet.
+          if (!(await x.c.query("SELECT 1 FROM guide_term WHERE federation_id=$1", [x.org])).rowCount)
+            for (const [i, t] of draftTerms.entries())
+              await x.c.query("INSERT INTO guide_term(federation_id,term,definition,position,updated_by) VALUES($1,$2,$3,$4,$5)", [x.org, JSON.stringify(t.term), JSON.stringify(t.definition), i, x.userId]);
           await audit(x.c, x.org, x.userId, "guide.adopted", x.org, { added });
           return { id: x.org, added };
         }
@@ -276,11 +332,11 @@ export async function guideExecute(db: Pool, p: Principal, raw: z.input<typeof g
   );
 }
 
-/** For the welcome journeys: has this person read the chapter « guide:<slug> » of the federation his organization belongs to? */
-export async function guideReadBy(c: PoolClient, organizationId: string, userId: string, slug: string) {
+/** For the welcome journeys: has this person read the chapter « guide:<slug> » (or passed its quiz, « quiz:<slug> ») of the federation his organization belongs to? */
+export async function guideReadBy(c: PoolClient, organizationId: string, userId: string, slug: string, what: "read" | "quiz" = "read") {
   return !!(
     await c.query(
-      `SELECT 1 FROM guide_read r JOIN guide_chapter g ON g.id=r.chapter_id JOIN organization o ON o.id=$1
+      `SELECT 1 FROM ${what === "quiz" ? "guide_quiz_pass" : "guide_read"} r JOIN guide_chapter g ON g.id=r.chapter_id JOIN organization o ON o.id=$1
         WHERE r.user_id=$2 AND g.slug=$3 AND g.federation_id=COALESCE(o.federation_id,CASE WHEN o.kind='federation' THEN o.id END)`,
       [organizationId, userId, slug],
     )

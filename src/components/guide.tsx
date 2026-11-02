@@ -3,7 +3,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { guideChapter, guideIndex, guidePublic } from "@/domains/guide/service";
-import { guideAudiences, inLocale, parseBody, type ChapterContent, type GuideAudience } from "@/domains/guide/schema";
+import { guideAudiences, inLocale, parseBody, t3, type ChapterContent, type GuideAudience, type Text3 } from "@/domains/guide/schema";
+import { ChapterQuiz, GuideSearch, KnowledgeLinks, LexText, QuizEditor, type Term } from "./knowledge";
+import { knowledgeCopy } from "./knowledge-copy";
 import { guideCopy } from "./guide-copy";
 import { GuideFigure } from "./guide-figures";
 import { errors } from "./access-copy";
@@ -98,6 +100,8 @@ export function GuideIndex({ locale }: { locale: Locale }) {
               )}
             </Card>
           )}
+          <GuideSearch locale={locale} />
+          <KnowledgeLinks locale={locale} />
           {!data.can.manage && data.chapters.some((c) => !c.forMe) && (
             <Segmented
               label={t.title}
@@ -136,29 +140,64 @@ export function GuideIndex({ locale }: { locale: Locale }) {
   );
 }
 
-/** The chapter's text, read as blocks (never as HTML), with its figures. */
-export function ChapterBody({ locale, content }: { locale: Locale; content: ChapterContent }) {
+/** The chapter's text, read as blocks (never as HTML), with its figures, its gallery images and the lexicon's tips. */
+type ChapterImage = { id: string; alt: Text3; caption: Partial<Text3> };
+export function ChapterBody({ locale, content, terms = [], images = [] }: { locale: Locale; content: ChapterContent; terms?: Term[]; images?: ChapterImage[] }) {
   const text = inLocale(content, locale);
+  const blocks = parseBody(text.body);
+  // G12: one tip per term on the page, at its first occurrence.
+  const seen = new Set<string>();
+  const lex = (x: string) => <LexText text={x} terms={terms} seen={seen} locale={locale} />;
+  const headings = blocks.flatMap((b, i) => (b.type === "heading" ? [{ i, text: b.text }] : []));
   return (
     <div className="guide-body">
-      {parseBody(text.body).map((b, i) => {
-        if (b.type === "heading") return <h2 key={i}>{b.text}</h2>;
-        if (b.type === "paragraph") return <p key={i}>{b.text}</p>;
+      {/* 2: the table of contents of a longer chapter. */}
+      {headings.length >= 4 && (
+        <nav className="guide-toc no-print" aria-label={knowledgeCopy[locale].toc}>
+          <p className="small muted">{knowledgeCopy[locale].toc}</p>
+          <ol>
+            {headings.map((h) => (
+              <li key={h.i}>
+                <a href={`#part-${h.i}`}>{h.text}</a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      {blocks.map((b, i) => {
+        if (b.type === "heading")
+          return (
+            <h2 key={i} id={`part-${i}`}>
+              {b.text}
+            </h2>
+          );
+        if (b.type === "paragraph") return <p key={i}>{lex(b.text)}</p>;
         if (b.type === "list")
           return (
             <ul key={i}>
               {b.items.map((x, j) => (
-                <li key={j}>{x}</li>
+                <li key={j}>{lex(x)}</li>
               ))}
             </ul>
           );
         if (b.type === "note")
           return (
             <aside key={i} className="guide-note">
-              {b.text}
+              {lex(b.text)}
             </aside>
           );
         if (b.type === "figure") return <GuideFigure key={i} locale={locale} figure={b.figure} />;
+        if (b.type === "image") {
+          const img = images.find((x) => x.id === b.id);
+          if (!img) return null;
+          return (
+            <figure key={i} className="guide-figure">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="guide-photo" src={`/api/guide/image?id=${img.id}`} alt={t3(img.alt, locale)} loading="lazy" />
+              {t3(img.caption as Text3, locale) && <figcaption>{t3(img.caption as Text3, locale)}</figcaption>}
+            </figure>
+          );
+        }
         const [head, ...rows] = b.rows;
         return (
           <div key={i} className="table-wrap">
@@ -178,10 +217,10 @@ export function ChapterBody({ locale, content }: { locale: Locale; content: Chap
                     {r.map((cell, k) =>
                       k === 0 ? (
                         <th key={k} scope="row">
-                          {cell}
+                          {lex(cell)}
                         </th>
                       ) : (
-                        <td key={k}>{cell}</td>
+                        <td key={k}>{lex(cell)}</td>
                       ),
                     )}
                   </tr>
@@ -264,7 +303,8 @@ export function GuideChapterPage({ locale, slug }: { locale: Locale; slug: strin
         {c.updated_on && fill(t.updated, { date: dayText(locale, c.updated_on) })} · {c.audiences.map((a) => t.audiences[a as GuideAudience]).join(", ")}
       </p>
       {text.fallback && <p className="notice">{t.fallback}</p>}
-      <ChapterBody locale={locale} content={c.content} />
+      <ChapterBody locale={locale} content={c.content} terms={data.terms} images={data.images} />
+      {data.quiz && c.status === "published" && <ChapterQuiz locale={locale} quiz={data.quiz} chapterId={c.id} organizationId={data.organization_id} passed={data.passed} />}
       {c.sources && (
         <p className="guide-sources small">
           <strong>{t.sources} :</strong> {c.sources}
@@ -310,6 +350,11 @@ export function GuideChapterPage({ locale, slug }: { locale: Locale; slug: strin
               }}
             />
           )}
+          {/* G7: the chapter's quiz, written by the federation. */}
+          <details>
+            <summary>{knowledgeCopy[locale].quiz.title}</summary>
+            <QuizEditor locale={locale} chapterId={c.id} organizationId={data.organization_id} quiz={data.quiz} onSaved={() => setVersion((n) => n + 1)} />
+          </details>
           {data.versions.length > 0 && (
             <details>
               <summary>{t.write.versions}</summary>
@@ -478,7 +523,7 @@ export function GuidePublicPage({ locale, federation, slug }: { locale: Locale; 
       />
       {data.updated_on && <p className="small muted">{fill(t.updated, { date: dayText(locale, data.updated_on) })}</p>}
       {text.fallback && <p className="notice">{t.fallback}</p>}
-      <ChapterBody locale={locale} content={data.content} />
+      <ChapterBody locale={locale} content={data.content} images={data.images} />
       {data.sources && (
         <p className="guide-sources small">
           <strong>{t.sources} :</strong> {data.sources}

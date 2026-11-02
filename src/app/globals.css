@@ -11305,3 +11305,165 @@ ul.task-page li {
     break-inside: avoid;
   }
 }
+.gf-tier {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+/* Soft tiers, so the dark text keeps its contrast in both themes. */
+.gf-tier-1 {
+  fill: var(--accent-soft);
+}
+.gf-tier-2 {
+  fill: var(--info-soft);
+}
+.gf-tier-3 {
+  fill: var(--success-soft);
+}
+.gf-tier-4 {
+  fill: var(--warning-soft);
+}
+
+/* Knowledge centre: search, lexicon and its tips, gallery, catalogue, quiz, how-to. */
+.guide-search {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.guide-parts {
+  margin-bottom: var(--space-4);
+}
+.guide-toc ol {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+.guide-toc a {
+  display: inline-block;
+  min-height: 1.5rem;
+}
+.guide-lexicon {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 48rem;
+}
+.guide-lexicon dt {
+  font-weight: 700;
+}
+.guide-lexicon dd {
+  margin: 0;
+}
+.tip {
+  position: relative;
+}
+.tip-term {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+.tip-term:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.tip-bubble {
+  display: none;
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + var(--space-1));
+  z-index: 20;
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+.tip:hover .tip-bubble,
+.tip:focus-within .tip-bubble {
+  display: block;
+}
+.tip[data-hidden] .tip-bubble {
+  display: none;
+}
+@media print {
+  .tip-term {
+    text-decoration: none;
+  }
+}
+.guide-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.guide-gallery figure {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.guide-gallery img,
+.guide-photo,
+.guide-capture,
+.guide-model img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.guide-photo,
+.guide-capture {
+  max-width: 34rem;
+}
+.guide-model img {
+  max-height: 10rem;
+  object-fit: cover;
+}
+.guide-quiz {
+  max-width: 48rem;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.guide-quiz h2 {
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-2);
+}
+.guide-quiz fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+.guide-quiz legend {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+.guide-steps {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 48rem;
+}
+.quiz-edit-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.quiz-edit-choice input[type="radio"] {
+  width: var(--check-size);
+  height: var(--check-size);
+  flex: none;
+}
+.quiz-edit-choice input:not([type="radio"]) {
+  flex: 1;
+  min-width: 0;
+}

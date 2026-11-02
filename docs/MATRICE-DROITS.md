@@ -78,6 +78,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/governance` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/governance/journal` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/guide` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/guide/image` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/guide/knowledge` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/guide/public` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/hall-of-fame/[widget]/[id]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/health` | oui | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -167,6 +169,8 @@ Notes :
 - `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
 - `/api/guide` : Guide du jeu : chapitres publiés de sa fédération ; rédaction par la fédération ; note « Chez nous » du club
+- `/api/guide/image` : Image de la galerie ou photo d'un modèle : lecteurs de la fédération ; sans compte seulement si un chapitre public la montre
+- `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
 - `/api/guide/public` : Public : chapitre ouvert par la fédération, sans compte
 - `/api/keys` : Clés et badges d'un coach ou d'un membre du staff (H10)
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
@@ -237,6 +241,12 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/funding/tax` |  |  |  |  |  |  |  |  |  |   |
 | `/guide` |  |  |  |  |  |  |  |  |  |   |
 | `/guide/[slug]` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/chairs` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/chairs/[id]` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/gallery` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/help` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/help/[id]` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/lexicon` |  |  |  |  |  |  |  |  |  |   |
 | `/guide/public/[federation]/[slug]` |  |  |  |  |  |  |  |  |  |   |
 | `/fundraising` |  |  |  |  |  |  |  |  |  |   |
 | `/hall-of-fame-widget/[id]` |  |  |  |  |  |  |  |  |  |   |

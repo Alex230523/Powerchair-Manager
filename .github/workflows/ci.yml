@@ -163,6 +163,11 @@ jobs:
       - name: Display audit (npm run audit:ui)
         if: always()
         run: npm run audit:ui
+      # G10: the how-to captures; a changed screen is reported (never fails the run), new captures land in the report.
+      - name: How-to captures (npm run audit:help)
+        if: always()
+        continue-on-error: true
+        run: npm run audit:help
       - uses: actions/upload-artifact@v4
         if: always()
         with:

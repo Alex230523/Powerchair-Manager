@@ -3,6 +3,7 @@ import {
   Archive,
   Ban,
   CheckCheck,
+  CircleHelp,
   ArrowDown,
   ArrowUp,
   Copy,
@@ -73,6 +74,8 @@ import {
  * earlier hand-drawn set are kept so existing calls keep working.
  */
 const icons = {
+  /** G10: « Aide », the how-to sheet of a page. */
+  help: CircleHelp,
   /** Wave 17 (J2): « Tout présent » and « Non pointé ». */
   checkAll: CheckCheck,
   ban: Ban,

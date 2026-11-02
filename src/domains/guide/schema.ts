@@ -10,7 +10,7 @@ import { z } from "zod";
 export const guideAudiences = ["player", "guardian", "coach", "staff", "referee", "president", "federation"] as const;
 export type GuideAudience = (typeof guideAudiences)[number];
 /** The drawn figures a text may place (each has its own text alternative). */
-export const figures = ["pitch", "two-v-one", "three-in-area", "chair-profile", "chair-top"] as const;
+export const figures = ["pitch", "two-v-one", "three-in-area", "chair-profile", "chair-top", "pyramid"] as const;
 export type Figure = (typeof figures)[number];
 
 const one = z.object({
@@ -23,7 +23,12 @@ export const chapterContent = z.object({ fr: one, nl: one.partial().default({}),
 export type ChapterContent = z.infer<typeof chapterContent>;
 
 const id = z.uuid();
-const slug = z.string().regex(/^[a-z0-9-]{2,40}$/);
+/** Addresses taken by the guide's own pages. */
+export const reservedSlugs = ["lexicon", "chairs", "gallery", "help", "public"];
+const slug = z
+  .string()
+  .regex(/^[a-z0-9-]{2,40}$/)
+  .refine((x) => !reservedSlugs.includes(x), "RESERVED");
 export const guideCommand = z.discriminatedUnion("action", [
   /** The federation: the proposed drafts added as its own drafts (to read, change, then publish). */
   z.object({ action: z.literal("adopt") }),
@@ -51,7 +56,9 @@ export type Block =
   | { type: "list"; items: string[] }
   | { type: "table"; rows: string[][] }
   | { type: "note"; text: string }
-  | { type: "figure"; figure: Figure };
+  | { type: "figure"; figure: Figure }
+  /** A photo or diagram of the federation's gallery (G5), with its own text alternative. */
+  | { type: "image"; id: string };
 
 /** The text read as blocks; an unknown figure is left out, nothing is ever read as HTML. */
 export function parseBody(body: string): Block[] {
@@ -69,7 +76,11 @@ export function parseBody(body: string): Block[] {
       continue;
     }
     const fig = /^\[\[figure:([a-z-]+)\]\]$/.exec(line);
-    if (fig) {
+    const img = /^\[\[image:([0-9a-f-]{36})\]\]$/i.exec(line);
+    if (img) {
+      flush();
+      out.push({ type: "image", id: img[1].toLowerCase() });
+    } else if (fig) {
       flush();
       if ((figures as readonly string[]).includes(fig[1])) out.push({ type: "figure", figure: fig[1] as Figure });
     } else if (line.startsWith("## ")) {
@@ -116,4 +127,85 @@ export function readerAudiences(role: string, kind: string): GuideAudience[] {
     guardian: ["guardian"],
   };
   return map[role] ?? ["staff"];
+}
+
+/* ---------- Knowledge centre: lexicon, gallery, quiz, catalogue ---------- */
+export const text3 = z.object({ fr: z.string().trim().min(1).max(300), nl: z.string().trim().max(300).default(""), en: z.string().trim().max(300).default("") });
+export type Text3 = { fr: string; nl?: string; en?: string };
+/** A text in the reader's language, French where it is missing. */
+export const t3 = (x: Text3 | null | undefined, locale: "fr" | "nl" | "en") => (x ? (locale === "fr" ? x.fr : x[locale] || x.fr) : "");
+
+export const quizQuestion = z.object({
+  question: text3,
+  choices: z.array(text3).min(2).max(4),
+  answer: z.number().int().min(0).max(3),
+  explanation: text3,
+});
+export const quizSchema = z.array(quizQuestion).length(5).refine((qs) => qs.every((q) => q.answer < q.choices.length), "ANSWER_OUT_OF_RANGE");
+export type Quiz = z.infer<typeof quizSchema>;
+/** Four right answers out of five pass; nothing is shown to anyone else. */
+export const quizPassed = (quiz: { answer: number }[], answers: number[]) => quiz.filter((q, i) => answers[i] === q.answer).length >= 4;
+
+export const imageCategories = ["court", "goals", "ball", "guard", "speed", "chair", "other"] as const;
+const mediaType = z.enum(["image/png", "image/jpeg", "image/webp"]);
+const alt = text3.refine((x) => x.fr.length >= 5, "ALT_REQUIRED");
+const money = z.number().int().min(0).max(10000000);
+export const knowledgeCommand = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("adoptTerms") }),
+  z.object({ action: z.literal("saveTerm"), id: z.uuid().optional(), term: text3, definition: text3 }),
+  z.object({ action: z.literal("deleteTerm"), id: z.uuid() }),
+  z.object({ action: z.literal("saveQuiz"), chapterId: z.uuid(), questions: quizSchema }),
+  /** The reader's answers, checked on the server; a pass ticks the journey's step. */
+  z.object({ action: z.literal("answerQuiz"), chapterId: z.uuid(), answers: z.array(z.number().int().min(0).max(3)).length(5) }),
+  z.object({
+    action: z.literal("addImage"),
+    category: z.enum(imageCategories),
+    conform: z.enum(["yes", "no"]).nullable().default(null),
+    alt,
+    caption: text3.partial().default({}),
+    peopleVisible: z.boolean(),
+    imageRights: z.boolean(),
+    mediaType,
+    data: z.string().max(2800000),
+  }),
+  z.object({ action: z.literal("deleteImage"), id: z.uuid() }),
+  z.object({
+    action: z.literal("saveSheet"),
+    modelId: z.uuid(),
+    manufacturer: z.string().trim().max(120).default(""),
+    priceCents: money.nullable().default(null),
+    priceOn: z.iso.date().nullable().default(null),
+    speedKmh: z.number().min(0).max(30).nullable().default(null),
+    weightKg: z.number().min(0).max(500).nullable().default(null),
+    protections: text3.partial().default({}),
+    strengths: text3.partial().default({}),
+    limits: text3.partial().default({}),
+    suppliers: z.array(z.uuid()).max(10).default([]),
+  }),
+  z.object({ action: z.literal("addPhoto"), modelId: z.uuid(), alt, mediaType, data: z.string().max(2800000) }),
+  z.object({ action: z.literal("deletePhoto"), id: z.uuid() }),
+]);
+export type KnowledgeCommand = z.infer<typeof knowledgeCommand>;
+
+/** G12: the first occurrence of each term in a text, longest terms first, whole words only. */
+export function findTerms(text: string, terms: { id: string; term: string }[], seen: Set<string> = new Set()) {
+  const parts: ({ text: string } | { text: string; id: string })[] = [];
+  const sorted = [...terms].filter((t) => t.term.trim().length > 1 && !seen.has(t.id)).sort((a, b) => b.term.length - a.term.length);
+  let rest = text;
+  for (;;) {
+    let best: { at: number; len: number; id: string } | null = null;
+    for (const t of sorted) {
+      if (seen.has(t.id)) continue;
+      const escaped = t.term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const m = new RegExp(`(^|[^\\p{L}\\p{N}])(${escaped})(?![\\p{L}\\p{N}])`, "iu").exec(rest);
+      if (m && (!best || m.index + m[1].length < best.at)) best = { at: m.index + m[1].length, len: m[2].length, id: t.id };
+    }
+    if (!best) break;
+    if (best.at) parts.push({ text: rest.slice(0, best.at) });
+    parts.push({ text: rest.slice(best.at, best.at + best.len), id: best.id });
+    seen.add(best.id);
+    rest = rest.slice(best.at + best.len);
+  }
+  if (rest) parts.push({ text: rest });
+  return parts;
 }

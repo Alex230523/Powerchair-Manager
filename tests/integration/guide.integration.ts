@@ -54,13 +54,14 @@ afterAll(async () => {
 
 it("adds the drafts for the federation only; nothing reaches the clubs before publication", async () => {
   await expect(run(presidentA, { action: "adopt" }, clubA)).rejects.toMatchObject({ code: "FORBIDDEN" });
-  expect((await run(fedPresident, { action: "adopt" }, fed)).added).toBe(2);
+  expect((await run(fedPresident, { action: "adopt" }, fed)).added).toBe(7);
   expect((await run(fedPresident, { action: "adopt" }, fed)).added).toBe(0);
   const mine = await guideIndex(db, fedPresident, "fr");
-  expect(mine.chapters.map((c) => [c.slug, c.status])).toEqual([
+  expect(mine.chapters.map((c) => [c.slug, c.status]).slice(0, 2)).toEqual([
     ["game", "draft"],
     ["chair", "draft"],
   ]);
+  expect(mine.chapters.every((c) => c.status === "draft")).toBe(true);
   [game, chair] = mine.chapters.map((c) => c.id);
   expect((await guideIndex(db, coachA, "fr")).chapters).toEqual([]);
   await expect(guideChapter(db, coachA, "game", false)).rejects.toMatchObject({ code: "NOT_FOUND" });

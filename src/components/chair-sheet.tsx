@@ -16,6 +16,7 @@ import { LoanActions, loanTone } from "./fleet";
 import { ChairWorkshop, ReportBreakdown } from "./workshop";
 import { workshopCopy } from "./workshop-copy";
 import { ChairCompliance } from "./chair-compliance";
+import { knowledgeCopy } from "./knowledge-copy";
 
 export type View = Awaited<ReturnType<typeof equipmentView>>;
 export type Chair = View["chairs"][number];
@@ -82,6 +83,13 @@ export function ChairSheet({ locale, view, chair, busy, send, reload }: { locale
           <dt>{f.cols.model}</dt>
           <dd>
             <ModelCell locale={locale} chair={chair} />
+            {/* G4: the model's sheet in the guide's catalogue. */}
+            {chair.model_id && chair.model_status === "validated" && (
+              <>
+                {" "}
+                <Link href={`/${locale}/guide/chairs/${chair.model_id}`}>{knowledgeCopy[locale].chairs.modelLink}</Link>
+              </>
+            )}
           </dd>
         </div>
         <div>

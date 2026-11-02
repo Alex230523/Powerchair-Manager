@@ -8,6 +8,7 @@ import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
 import { languageNames, shellCopy } from "./shell-copy";
+import { helpFor, helpRole } from "@/domains/guide/help";
 import { CommandPalette, scopeFocusEvent } from "./command-palette";
 import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
@@ -40,7 +41,7 @@ export function contextChanged() {
 }
 // Runs before paint (see layout) so the stored theme never flashes.
 // Text size and contrast (wave 15, C4) are applied the same way.
-export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast");if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
+export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast"),x=localStorage.getItem("pfm-lexicon");if(x==="off")d.dataset.lexicon="off";if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
 const darkQuery = "(prefers-color-scheme: dark)";
 function subscribeTheme(change: () => void) {
   const media = window.matchMedia(darkQuery);
@@ -453,6 +454,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   const shownSettings = state?.selected
     ? visibleCategories({ kind: state.selected.kind, role, permissions: state.permissions ?? [], disabled: state.selected.disabled_modules })
     : [];
+  const sheet = helpFor(path, helpRole(role));
+  const helpHref = sheet ? `/${locale}/guide/help/${sheet.id}` : `/${locale}/guide/help`;
   const settingsPages = [
     ...shownSettings.map((c) => ({ route: `/settings/${c}`, label: `${t.settings} · ${h.categories[c].title}` })),
     ...settingsEntries
@@ -632,6 +635,12 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 </Link>
               )}
               {club && !member && <ScopeBar t={t} />}
+              {/* G10: « Aide », the how-to sheet of this page for the reader's role (or all the sheets). */}
+              {state?.selected && (
+                <Link className="icon-button help-link" href={helpHref} aria-label={t.help} title={t.help}>
+                  <Icon name="help" size={18} />
+                </Link>
+              )}
               {state?.selected && (
                 <div className="bell">
                   <button

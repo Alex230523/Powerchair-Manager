@@ -135,6 +135,31 @@ export function GuideFigure({ locale, figure }: { locale: Locale; figure: Figure
             </text>
           </>,
         )}
+      {figure === "pyramid" &&
+        svg(
+          "0 0 300 190",
+          <>
+            <polygon className="gf-tier gf-tier-1" points="150,10 180,50 120,50" />
+            <polygon className="gf-tier gf-tier-2" points="120,52 180,52 205,92 95,92" />
+            <polygon className="gf-tier gf-tier-3" points="95,94 205,94 230,134 70,134" />
+            <polygon className="gf-tier gf-tier-4" points="70,136 230,136 255,176 45,176" />
+            <text className="gf-text" x="150" y="44" textAnchor="middle">
+              FIPFA
+            </text>
+            <text className="gf-text" x="150" y="76" textAnchor="middle">
+              {l.epfa}
+            </text>
+            <text className="gf-text" x="150" y="118" textAnchor="middle">
+              {l.bpcf}
+            </text>
+            <text className="gf-text" x="150" y="160" textAnchor="middle">
+              {l.clubs}
+            </text>
+            <text className="gf-text" x="150" y="188" textAnchor="middle">
+              {l.beside}
+            </text>
+          </>,
+        )}
       <figcaption>
         <strong>{f.title}.</strong> {f.desc}
       </figcaption>

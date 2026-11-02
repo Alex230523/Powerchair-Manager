@@ -137,6 +137,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Parcours d'accueil personnalisables (club et fédération)](evolutions/2026-11-02-zv-parcours-accueil.md) |
 | 02/11/2026 | [Fin de coach : le parcours de départ](evolutions/2026-11-02-zw-fin-de-coach.md) |
 | 02/11/2026 | [Guide du powerchair football : deux pages à lire](evolutions/2026-11-02-zx-guide-du-jeu.md) |
+| 02/11/2026 | [Guide : un petit centre de connaissances (G1 à G12)](evolutions/2026-11-02-zy-centre-de-connaissances.md) |
 
 ## Convention
 

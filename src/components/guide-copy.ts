@@ -56,7 +56,7 @@ type Copy = {
     toCheck: string;
   };
   figures: Record<Figure, { title: string; desc: string }>;
-  labels: Record<"court" | "goalArea" | "goal" | "penalty" | "ball" | "us" | "them" | "keeper" | "foul" | "guard" | "rearGuard" | "belt" | "number" | "height" | "lowEdge" | "reach" | "width" | "front", string>;
+  labels: Record<"fipfa" | "epfa" | "bpcf" | "clubs" | "beside" | "court" | "goalArea" | "goal" | "penalty" | "ball" | "us" | "them" | "keeper" | "foul" | "guard" | "rearGuard" | "belt" | "number" | "height" | "lowEdge" | "reach" | "width" | "front", string>;
   compliance: {
     title: string;
     intro: string;
@@ -131,9 +131,10 @@ const fr: Copy = {
     "two-v-one": { title: "Le 2 contre 1", desc: "Autour du ballon, un cercle de 3 m. Un adversaire y est, avec deux joueurs de la même équipe : c'est une faute, sanctionnée d'un coup franc indirect." },
     "three-in-area": { title: "Trois dans la zone de but", desc: "Le ballon est dans la moitié de l'équipe. Trois de ses joueurs sont dans sa zone de but : c'est une faute, sanctionnée d'un coup franc indirect." },
     "chair-profile": { title: "Le fauteuil vu de profil", desc: "Protection avant entre 20 et 45 cm du sol, bord inférieur entre 5 et 10 cm du sol, protection arrière, ceinture abdominale et numéro à l'arrière." },
+    pyramid: { title: "La pyramide du powerchair football", desc: "De haut en bas : la FIPFA (monde), l'EPFA (Europe), la fédération belge, puis les clubs. À côté : Sportéa, l'ADEPS, la Ligue Handisport Francophone et les pouvoirs subsidiants." },
     "chair-top": { title: "Le fauteuil vu de dessus", desc: "La protection avant avance d'au plus 33 cm devant les roues avant et n'est pas plus étroite que les roulettes ; le fauteuil n'est pas plus large que son châssis ou ses roues motrices ; numéro à l'avant." },
   },
-  labels: { court: "28 m × 15 m", goalArea: "Zone de but 8 × 5 m", goal: "But 6 m", penalty: "Penalty 3,5 m", ball: "Ballon", us: "Équipe A", them: "Équipe B", keeper: "Gardien", foul: "Faute", guard: "Protection avant", rearGuard: "Protection arrière", belt: "Ceinture", number: "Numéro", height: "20 à 45 cm", lowEdge: "5 à 10 cm", reach: "33 cm max", width: "Pas plus large", front: "Avant" },
+  labels: { fipfa: "FIPFA · monde", epfa: "EPFA · Europe", bpcf: "Fédération belge", clubs: "Clubs", beside: "À côté : Sportéa, ADEPS, Ligue Handisport, pouvoirs subsidiants", court: "28 m × 15 m", goalArea: "Zone de but 8 × 5 m", goal: "But 6 m", penalty: "Penalty 3,5 m", ball: "Ballon", us: "Équipe A", them: "Équipe B", keeper: "Gardien", foul: "Faute", guard: "Protection avant", rearGuard: "Protection arrière", belt: "Ceinture", number: "Numéro", height: "20 à 45 cm", lowEdge: "5 à 10 cm", reach: "33 cm max", width: "Pas plus large", front: "Avant" },
   compliance: {
     title: "Conforme pour un match",
     intro: "Les points de « Le fauteuil de match », cochés lors de l'entretien.",
@@ -216,9 +217,10 @@ const nl: Copy = {
     "two-v-one": { title: "Twee tegen één", desc: "Rond de bal een cirkel van 3 m. Er is een tegenstander, met twee spelers van dezelfde ploeg: dat is een fout, bestraft met een onrechtstreekse vrije trap." },
     "three-in-area": { title: "Drie in het doelgebied", desc: "De bal is op de helft van de ploeg. Drie van haar spelers staan in haar doelgebied: dat is een fout, bestraft met een onrechtstreekse vrije trap." },
     "chair-profile": { title: "De rolstoel van opzij", desc: "Voorste bescherming tussen 20 en 45 cm van de grond, onderrand tussen 5 en 10 cm van de grond, achterste bescherming, heupgordel en nummer achteraan." },
+    pyramid: { title: "De piramide van powerchair football", desc: "Van boven naar onder: de FIPFA (wereld), de EPFA (Europa), de Belgische federatie, dan de clubs. Ernaast: Sportéa, ADEPS, Ligue Handisport Francophone en de subsidiërende overheden." },
     "chair-top": { title: "De rolstoel van boven", desc: "De voorste bescherming steekt hoogstens 33 cm voor de voorwielen uit en is niet smaller dan de voorwieltjes; de rolstoel is niet breder dan zijn chassis of aandrijfwielen; nummer vooraan." },
   },
-  labels: { court: "28 m × 15 m", goalArea: "Doelgebied 8 × 5 m", goal: "Doel 6 m", penalty: "Strafschop 3,5 m", ball: "Bal", us: "Ploeg A", them: "Ploeg B", keeper: "Doelman", foul: "Fout", guard: "Voorste bescherming", rearGuard: "Achterste bescherming", belt: "Gordel", number: "Nummer", height: "20 tot 45 cm", lowEdge: "5 tot 10 cm", reach: "max. 33 cm", width: "Niet breder", front: "Voorkant" },
+  labels: { fipfa: "FIPFA · wereld", epfa: "EPFA · Europa", bpcf: "Belgische federatie", clubs: "Clubs", beside: "Ernaast: Sportéa, ADEPS, Ligue Handisport, overheden", court: "28 m × 15 m", goalArea: "Doelgebied 8 × 5 m", goal: "Doel 6 m", penalty: "Strafschop 3,5 m", ball: "Bal", us: "Ploeg A", them: "Ploeg B", keeper: "Doelman", foul: "Fout", guard: "Voorste bescherming", rearGuard: "Achterste bescherming", belt: "Gordel", number: "Nummer", height: "20 tot 45 cm", lowEdge: "5 tot 10 cm", reach: "max. 33 cm", width: "Niet breder", front: "Voorkant" },
   compliance: {
     title: "Wedstrijdklaar",
     intro: "De punten van « De wedstrijdrolstoel », afgevinkt bij het onderhoud.",
@@ -301,9 +303,10 @@ const en: Copy = {
     "two-v-one": { title: "Two on one", desc: "Around the ball, a 3 m circle. An opponent is in it, with two players of the same team: that is a foul, punished by an indirect free kick." },
     "three-in-area": { title: "Three in the goal area", desc: "The ball is in the team's half. Three of its players are in its goal area: that is a foul, punished by an indirect free kick." },
     "chair-profile": { title: "The chair from the side", desc: "Front guard between 20 and 45 cm from the floor, lower edge between 5 and 10 cm from the floor, rear guard, lap belt and number at the back." },
+    pyramid: { title: "The powerchair football pyramid", desc: "From top to bottom: FIPFA (world), EPFA (Europe), the Belgian federation, then the clubs. Beside it: Sportéa, ADEPS, Ligue Handisport Francophone and the funding authorities." },
     "chair-top": { title: "The chair from above", desc: "The front guard reaches 33 cm at most in front of the front wheels and is no narrower than the castors; the chair is no wider than its frame or drive wheels; number at the front." },
   },
-  labels: { court: "28 m × 15 m", goalArea: "Goal area 8 × 5 m", goal: "Goal 6 m", penalty: "Penalty 3.5 m", ball: "Ball", us: "Team A", them: "Team B", keeper: "Keeper", foul: "Foul", guard: "Front guard", rearGuard: "Rear guard", belt: "Belt", number: "Number", height: "20 to 45 cm", lowEdge: "5 to 10 cm", reach: "33 cm max", width: "No wider", front: "Front" },
+  labels: { fipfa: "FIPFA · world", epfa: "EPFA · Europe", bpcf: "Belgian federation", clubs: "Clubs", beside: "Beside: Sportéa, ADEPS, Ligue Handisport, authorities", court: "28 m × 15 m", goalArea: "Goal area 8 × 5 m", goal: "Goal 6 m", penalty: "Penalty 3.5 m", ball: "Ball", us: "Team A", them: "Team B", keeper: "Keeper", foul: "Foul", guard: "Front guard", rearGuard: "Rear guard", belt: "Belt", number: "Number", height: "20 to 45 cm", lowEdge: "5 to 10 cm", reach: "33 cm max", width: "No wider", front: "Front" },
   compliance: {
     title: "Fit for a match",
     intro: "The points of « The match chair », ticked at a service.",

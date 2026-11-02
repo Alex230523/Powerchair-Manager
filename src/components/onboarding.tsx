@@ -126,9 +126,9 @@ function StepLine({ locale, runId, s, today, busy, send }: { locale: Locale; run
         {s.done_at ? <Badge tone="success">{t.done}</Badge> : late ? <Badge tone="warning">{t.late}</Badge> : null}
       </p>
       {s.body && <p className="small pre-line">{s.body}</p>}
-      {kind === "read" && s.link.startsWith("guide:") && (
+      {kind === "read" && /^(guide|quiz):/.test(s.link) && (
         <p className="small">
-          <Link href={`/${locale}/guide/${s.link.slice(6)}`}>
+          <Link href={`/${locale}/guide/${s.link.replace(/^(guide|quiz):/, "")}`}>
             {t.openGuide}
             <span className="sr-only"> : {s.title}</span>
           </Link>
@@ -407,6 +407,11 @@ function TemplateEditor({ locale, tpl, data, busy, close, send }: { locale: Loca
                         {(["game", "chair"] as const).map((g) => (
                           <option key={g} value={`guide:${g}`}>
                             {t.guideChapters[g]}
+                          </option>
+                        ))}
+                        {(["game", "chair"] as const).map((g) => (
+                          <option key={`quiz-${g}`} value={`quiz:${g}`}>
+                            {t.quizOf} {t.guideChapters[g]}
                           </option>
                         ))}
                       </select>
