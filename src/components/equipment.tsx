@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
 import { chairStatuses, serviceState } from "@/domains/equipment/schema";
@@ -155,6 +156,10 @@ export function Equipment({ locale }: { locale: Locale }) {
       {message && <p role="status">{message}</p>}
       {!view && !error && <p>{t.loading}</p>}
       {view && !view.manage && <p className="notice">{t.readOnly}</p>}
+      {/* 19: « Signaler un problème sur un fauteuil » from the equipment page. */}
+      {view?.kind === "club" && view.chairs.some((c) => c.status !== "retired") && (
+        <ReportChooser locale={locale} chairs={view.chairs.filter((c) => c.status !== "retired").map((c) => ({ id: c.id, name: c.name }))} />
+      )}
       {view && (
         <>
           {tabs.length > 1 && <Tabs label={f.tabsLabel} items={tabs.map((k) => ({ id: k, label: k === "workshop" ? workshopCopy[locale].tab : f.tabs[k] }))} value={tab} onChange={(v) => setTab(v as Tab)} panelId="equipment-panel" idPrefix="equipment-tab" />}
@@ -317,5 +322,36 @@ export function Equipment({ locale }: { locale: Locale }) {
         </>
       )}
     </main>
+  );
+}
+
+function ReportChooser({ locale, chairs }: { locale: Locale; chairs: { id: string; name: string }[] }) {
+  const t = workshopCopy[locale];
+  const router = useRouter();
+  return (
+    <form
+      id="report"
+      className="inline-form report-chooser"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const id = String(new FormData(e.currentTarget).get("chair") ?? "");
+        if (id) router.push(`/${locale}/equipment/${id}?report=1`);
+      }}
+    >
+      <label htmlFor="report-chair">
+        {t.reportWhich}
+        <select id="report-chair" name="chair" required defaultValue="">
+          <option value="" disabled>
+            {t.reportWhich}
+          </option>
+          {chairs.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button className="button secondary">{t.reportButton}</button>
+    </form>
   );
 }

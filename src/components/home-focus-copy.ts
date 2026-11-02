@@ -40,6 +40,9 @@ export const focusCopy: Record<
     classificationsToDo: string;
     matchesWithoutReferee: string;
     disciplineProposed: string;
+    chairs: string;
+    reportChair: string;
+    reportChairs: string;
     disciplineAppeals: string;
     reportsPending: string;
     nothingToDo: string;
@@ -86,6 +89,9 @@ export const focusCopy: Record<
     classificationsToDo: "{n} classifications demandées",
     matchesWithoutReferee: "{n} matchs sans arbitre désigné",
     disciplineProposed: "{n} sanction(s) à décider",
+    chairs: "Fauteuils",
+    reportChair: "Signaler un problème",
+    reportChairs: "Signaler un problème sur un fauteuil",
     disciplineAppeals: "{n} recours ouvert(s)",
     reportsPending: "{n} rapports de match en attente",
     nothingToDo: "Rien à traiter.",
@@ -131,6 +137,9 @@ export const focusCopy: Record<
     classificationsToDo: "{n} aangevraagde classificaties",
     matchesWithoutReferee: "{n} wedstrijden zonder scheidsrechter",
     disciplineProposed: "{n} sanctie(s) te beslissen",
+    chairs: "Rolstoelen",
+    reportChair: "Een probleem melden",
+    reportChairs: "Een probleem met een rolstoel melden",
     disciplineAppeals: "{n} open beroep(en)",
     reportsPending: "{n} wedstrijdverslagen in afwachting",
     nothingToDo: "Niets te behandelen.",
@@ -176,6 +185,9 @@ export const focusCopy: Record<
     classificationsToDo: "{n} classifications asked",
     matchesWithoutReferee: "{n} matches without a referee",
     disciplineProposed: "{n} sanction(s) to decide",
+    chairs: "Chairs",
+    reportChair: "Report a problem",
+    reportChairs: "Report a problem with a chair",
     disciplineAppeals: "{n} open appeal(s)",
     reportsPending: "{n} match reports pending",
     nothingToDo: "Nothing to handle.",

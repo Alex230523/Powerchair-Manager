@@ -24,6 +24,7 @@ import { onboardingTick } from "../onboarding/service";
 import { offboardingTick } from "../offboarding/service";
 import { circularsTick } from "../circulars/service";
 import { refereeingTick } from "../referees/service";
+import { feedbackTick } from "../feedback/service";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -121,6 +122,8 @@ export const jobs = {
         circulars: await circularsTick(db),
         // 39: proposals left unanswered, the eve's reminder, reports validated after 48 hours.
         refereeing: await refereeingTick(db),
+        // 19: the remarks not yet sent leave; the issues' states are read.
+        feedback: await feedbackTick(db).then((r) => r.sent + r.checked),
       };
     },
   },

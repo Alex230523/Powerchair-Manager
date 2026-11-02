@@ -13,7 +13,7 @@ import { errors } from "./access-copy";
 import { Badge, EmptyState, PageHeader, Tabs } from "./ui";
 import { Icon } from "./icons";
 import { LoanActions, loanTone } from "./fleet";
-import { ChairWorkshop, ReportBreakdown } from "./workshop";
+import { ChairQr, ChairWorkshop, ReportBreakdown } from "./workshop";
 import { workshopCopy } from "./workshop-copy";
 import { ChairCompliance } from "./chair-compliance";
 import { knowledgeCopy } from "./knowledge-copy";
@@ -165,6 +165,7 @@ export function ChairSheet({ locale, view, chair, busy, send, reload }: { locale
         {tab === "facts" && view.kind === "club" && chair.status !== "retired" && (
           <ReportBreakdown locale={locale} chairId={chair.id} chairName={chair.name} organizationId={view.context.organization_id} done={() => void reload?.()} />
         )}
+        {tab === "facts" && view.kind === "club" && view.manage && chair.status !== "retired" && <ChairQr locale={locale} chairId={chair.id} chairName={chair.name} />}
         {/* Guide, Le fauteuil de match: « Conforme pour un match », ticked at a service. */}
         {tab === "facts" && view.kind === "club" && chair.status !== "retired" && <ChairCompliance locale={locale} chairId={chair.id} today={today} />}
         {tab === "workshop" && <ChairWorkshop locale={locale} chairId={chair.id} />}

@@ -94,6 +94,22 @@ function Member({ locale, focus, organizationId, href, reload }: { locale: Local
           )}
         </Card>
       ))}
+      {/* 19: a breakdown reported from the home, chair by chair. */}
+      {!!focus.chairs?.length && (
+        <Card title={t.chairs} labelledBy="focus-chairs" headingId="focus-chairs">
+          <ul className="focus-list">
+            {focus.chairs.map((c) => (
+              <li key={c.id}>
+                <strong>{c.name}</strong>{" "}
+                <Link className="button secondary sm" href={href(`/equipment/${c.id}?report=1`)}>
+                  {t.reportChair}
+                  <span className="sr-only"> : {c.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <p className="sr-only" role="status" aria-live="polite">
         {status}
       </p>
@@ -129,6 +145,12 @@ function Coach({ locale, focus, href }: { locale: Locale; focus: CoachFocus; hre
           )}
         </p>
       )}
+      {/* 19: a chair's breakdown, from the equipment of the coach's players. */}
+      <p className="actions">
+        <Link className="button secondary" href={href("/equipment#report")}>
+          {t.reportChairs}
+        </Link>
+      </p>
       {focus.teams.map((team) => (
         <Card key={team.id} title={fill(t.team, { name: team.name })} labelledBy={`focus-team-${team.id}`} headingId={`focus-team-${team.id}`} actions={<Link href={href(`/teams/${team.id}`)}>{t.seeAll}</Link>}>
           {(

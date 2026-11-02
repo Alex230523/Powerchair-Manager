@@ -27,6 +27,8 @@ export type MemberFocus = {
     next: null | { eventId: string; title: string; startsAt: string; place: string | null; invitationId: string; version: number; response: string; open: boolean };
     results: { id: string; opponent: string; ours: number; theirs: number; date: string }[];
   }[];
+  /** 19: the chairs of the person or the children, to report a breakdown from the home. */
+  chairs?: { id: string; name: string }[];
 };
 export type CoachFocus = {
   kind: "coach";
@@ -89,7 +91,13 @@ export async function memberFocus(c: PoolClient, org: string, own: string[]): Pr
       results: results.map((m) => ({ id: m.id, opponent: m.opponent, ours: m.our_score, theirs: m.their_score, date: new Date(m.starts_at).toISOString() })),
     });
   }
-  return { kind: "member", people: out };
+  const chairs = (
+    await c.query(
+      "SELECT DISTINCT ch.id,ch.name FROM equipment_chair_assignment a JOIN equipment_chair ch ON ch.id=a.chair_id WHERE a.organization_id=$1 AND a.profile_id=ANY($2::uuid[]) AND a.ends_on IS NULL AND ch.status<>'retired' ORDER BY ch.name LIMIT 6",
+      [org, own],
+    )
+  ).rows as { id: string; name: string }[];
+  return { kind: "member", people: out, chairs };
 }
 
 async function eventFocus(c: PoolClient, org: string, team: string, kinds: string[]): Promise<EventFocus | null> {

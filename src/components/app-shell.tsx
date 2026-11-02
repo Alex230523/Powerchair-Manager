@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
 import { languageNames, shellCopy } from "./shell-copy";
 import { helpFor, helpRole } from "@/domains/guide/help";
+import { FeedbackDialog } from "./feedback";
 import { CommandPalette, scopeFocusEvent } from "./command-palette";
 import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
@@ -245,7 +246,9 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     [brief, setBrief] = useState<Brief | null>(null),
     [drawer, setDrawer] = useState(false),
     [bell, setBell] = useState(false),
-    [typing, setTyping] = useState(false);
+    [typing, setTyping] = useState(false),
+    // 19: « Signaler un problème », over the page the person is on.
+    [feedback, setFeedback] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     aside = useRef<HTMLElement>(null),
@@ -568,6 +571,17 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                   <Icon name="document" size={16} /> {t.guide}
                 </Link>
               )}
+              {/* 19: a remark on the application, for every profile; its follow-up in « Mes signalements ». */}
+              {state && (
+                <button type="button" className="menu-link" onClick={() => setFeedback(true)}>
+                  <Icon name="alert" size={16} /> {t.feedback}
+                </button>
+              )}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/signalements`}>
+                  <Icon name="clipboardList" size={16} /> {t.myReports}
+                </Link>
+              )}
               {/* Wave 16 (M1): one line per setting, label left, compact control right. */}
               <hr className="menu-separator" />
               <div className="menu-row">
@@ -617,7 +631,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, { route: "/signalements?new=1", label: t.feedback }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
                 actions={paletteActions({
                   kind: state?.selected?.kind,
                   role,
@@ -733,6 +747,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           </nav>
         )}
       </div>
+      {feedback && <FeedbackDialog locale={locale} close={() => setFeedback(false)} />}
     </ScopeProvider>
   );
 }

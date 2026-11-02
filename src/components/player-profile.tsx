@@ -1,6 +1,7 @@
 "use client";
 import { DisciplineHistory } from "./discipline";
 import { disciplineCopy } from "./discipline-copy";
+import { workshopCopy } from "./workshop-copy";
 import { BillingSplit } from "./billing-split";
 import { CareCard } from "./care-card";
 import Link from "next/link";
@@ -841,6 +842,11 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
                         &gt; 10 km/h
                       </Badge>
                     )}
+                    {/* 19: a breakdown reported from the player's sheet. */}
+                    <Link className="button secondary sm" href={`/${locale}/equipment/${c.id}?report=1`}>
+                      {workshopCopy[locale].reportButton}
+                      <span className="sr-only"> : {c.name}</span>
+                    </Link>
                   </li>
                 );
               })}

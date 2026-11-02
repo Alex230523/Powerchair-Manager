@@ -63,6 +63,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/referees` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/teams` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/feedback` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/feedback/shot/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/finance/operations` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/finance/receipt/[id]` (+ écriture) | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
@@ -176,6 +178,8 @@ Notes :
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
+- `/api/feedback` : Signaler un problème dans l'application (point 19) : chaque compte, ses propres signalements et leur état ; 10 par jour ; envoi vers GitHub par le serveur, jeton jamais exposé
+- `/api/feedback/shot/[token]` : Capture d'un signalement (déjà masquée), par jeton imprévisible, liée depuis l'issue d'un dépôt privé ; 404 sans jeton valide
 - `/api/guide` : Guide du jeu : chapitres publiés de sa fédération ; rédaction par la fédération ; note « Chez nous » du club
 - `/api/guide/image` : Image de la galerie ou photo d'un modèle : lecteurs de la fédération ; sans compte seulement si un chapitre public la montre
 - `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
@@ -286,6 +290,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/reminders` |  |  |  |  |  |  |  |  |  |   |
 | `/settings` |  |  |  |  |  |  |  |  |  |   |
 | `/settings/[category]` |  |  |  |  |  |  |  |  |  |   |
+| `/signalements` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/club` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/game` |  |  |  |  |  |  |  |  |  |   |

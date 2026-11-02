@@ -4,7 +4,8 @@ import { AccessError, audit, type Principal } from "../access/service";
 import { publish } from "../notifications/queue";
 import { brusselsToday } from "../people/service";
 import { scope, readableProfiles, log, type Scope } from "./service";
-import { interventionKinds, serviceState } from "./schema";
+import { breakdownCategories, breakdownSeverities, interventionKinds, serviceState } from "./schema";
+import type { Locale } from "../../lib/locale";
 export { interventionKinds };
 
 /**
@@ -56,6 +57,9 @@ export const workshopCommand = z.discriminatedUnion("action", [
     action: z.literal("report"),
     chairId: id,
     description: text(1000).min(3),
+    /** 19: what broke and how serious it is (« inutilisable » takes the chair out of service). */
+    category: z.enum(breakdownCategories).default("other"),
+    severity: z.enum(breakdownSeverities).default("unusable"),
     photo: z.object({ type: z.enum(["image/jpeg", "image/png", "image/webp"]), data: z.string().max(1400000) }).nullable().default(null),
   }),
   z.object({ action: z.literal("closeReport"), id }),
@@ -276,56 +280,92 @@ export async function workshopExecute(db: Pool, p: Principal, cmd: WorkshopComma
       const today = brusselsToday();
       // A breakdown may be reported by whoever uses the chair; the rest is the material managers'.
       if (cmd.action === "report") {
-        const ch = await chairOf(s, cmd.chairId, true);
+        // 19: a chair lent to this club is reported to its owner too (the chair stays in the owner's books).
+        const own = (await s.c.query("SELECT id FROM equipment_chair WHERE id=$1 AND organization_id=$2", [cmd.chairId, org])).rowCount;
+        const loan = (
+          await s.c.query(
+            own
+              ? "SELECT l.lender_id,l.borrower_id FROM equipment_loan l WHERE l.chair_id=$1 AND l.lender_id=$2 AND l.status='ongoing' LIMIT 1"
+              : "SELECT l.lender_id,l.borrower_id FROM equipment_loan l WHERE l.chair_id=$1 AND l.borrower_id=$2 AND l.status='ongoing' LIMIT 1",
+            [cmd.chairId, org],
+          )
+        ).rows[0] as { lender_id: string; borrower_id: string } | undefined;
+        if (!own && !loan) throw new AccessError("NOT_FOUND", 404);
+        const owner = own ? org : loan!.lender_id;
+        const ch = (await s.c.query("SELECT * FROM equipment_chair WHERE id=$1 AND organization_id=$2 FOR UPDATE", [cmd.chairId, owner])).rows[0] as { id: string; name: string; status: string };
         const mine = (await s.c.query("SELECT 1 FROM equipment_chair_assignment WHERE chair_id=$1 AND ends_on IS NULL AND profile_id=ANY($2::uuid[])", [ch.id, [...(await readableProfiles(s.c, s.a))]])).rowCount;
         if (!s.manage && !mine) throw new AccessError("NOT_FOUND", 404);
         const photo = cmd.photo ? Buffer.from(cmd.photo.data, "base64") : null;
         if (photo && (photo.length > 1048576 || !validPhoto(cmd.photo!.type, photo))) throw new AccessError("INVALID_IMAGE", 400);
-        // Out of service at once: the next sessions see it, its bookings are released.
-        if (usable(ch.status)) {
-          await s.c.query("UPDATE equipment_chair SET status='out_of_service',version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2", [ch.id, org]);
-          await log(s, ch.id, "breakdown", { status: ch.status }, { status: "out_of_service", description: cmd.description });
+        const unusable = cmd.severity === "unusable";
+        // « Inutilisable »: out of service at once, its coming bookings released.
+        if (unusable && usable(ch.status)) {
+          await s.c.query("UPDATE equipment_chair SET status='out_of_service',version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2", [ch.id, owner]);
+          if (own) await log(s, ch.id, "breakdown", { status: ch.status }, { status: "out_of_service", description: cmd.description });
         }
-        await releaseFuture(s, ch.id, "breakdown");
+        if (unusable && own) await releaseFuture(s, ch.id, "breakdown");
+        // The breakdown in the chair's history.
+        const intervention = (
+          await s.c.query("INSERT INTO chair_intervention(organization_id,chair_id,occurred_on,kind,diagnosis,created_by) VALUES($1,$2,$3,'breakdown',$4,$5) RETURNING id", [
+            owner,
+            ch.id,
+            today,
+            `${reportWords.fr.categories[cmd.category]} · ${reportWords.fr.severities[cmd.severity]} · ${cmd.description}`.slice(0, 1000),
+            s.p.userId,
+          ])
+        ).rows[0].id as string;
+        // The task goes to the club's material manager (a staff role with the right), else the presidency.
+        const responsible = (
+          await s.c.query(
+            `SELECT r.user_id FROM role_assignment r WHERE r.organization_id=$1 AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now())
+              ORDER BY ('equipment.manage'=ANY(r.grants)) DESC,(r.role='club_president') DESC,r.valid_from LIMIT 1`,
+            [owner],
+          )
+        ).rows[0]?.user_id as string | undefined;
         const task = (
           await s.c.query(
-            "INSERT INTO task(organization_id,kind,category,title,detail,due_on,chair_id,origin,created_by) VALUES($1,'equipment','equipment',$2,$3,$4::date,$5,'manual',$6) RETURNING id",
-            [org, `Panne : ${ch.name}`.slice(0, 200), cmd.description, today, ch.id, s.p.userId],
+            "INSERT INTO task(organization_id,kind,category,title,detail,due_on,chair_id,origin,created_by,responsible_user_id) VALUES($1,'equipment','equipment',$2,$3,$4::date,$5,'manual',$6,$7) RETURNING id",
+            [owner, `Panne : ${ch.name}`.slice(0, 200), cmd.description, today, ch.id, s.p.userId, responsible ?? null],
           )
         ).rows[0].id as string;
         const report = (
-          await s.c.query("INSERT INTO chair_report(organization_id,chair_id,reporter_id,description,photo,photo_type,task_id) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id", [
-            org,
-            ch.id,
-            s.p.userId,
-            cmd.description,
-            photo,
-            cmd.photo?.type ?? null,
-            task,
-          ])
-        ).rows[0].id as string;
-        // The material managers are told at once (application and e-mail).
-        for (const u of (
           await s.c.query(
-            `SELECT DISTINCT u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id AND m.active
-               JOIN "user" u ON u.id=r.user_id LEFT JOIN person pe ON pe.user_id=u.id
-              WHERE r.organization_id=$1 AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND u.active AND (r.role='club_president' OR 'equipment.manage'=ANY(r.grants))`,
-            [org],
+            "INSERT INTO chair_report(organization_id,chair_id,reporter_id,description,photo,photo_type,task_id,category,severity,intervention_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
+            [owner, ch.id, s.p.userId, cmd.description, photo, cmd.photo?.type ?? null, task, cmd.category, cmd.severity, intervention],
           )
-        ).rows)
-          await publish(s.c, {
-            organizationId: org,
-            userId: u.id,
-            email: u.email,
-            kind: "automation",
-            category: "administrative",
-            resourceType: "automation",
-            resourceId: report,
-            eventKey: `chair_report:${report}:${u.id}`,
-            locale: u.locale,
-            variables: { name: u.name, organization: s.orgName, url: `${process.env.BETTER_AUTH_URL ?? ""}/${u.locale}/equipment/${ch.id}`, title: words[u.locale as "fr"].title.replace("{chair}", ch.name), message: `${words[u.locale as "fr"].message.replace("{chair}", ch.name)}\n${cmd.description}` },
-          });
-        await audit(s.c, org, s.p.userId, "equipment.report", ch.id, { report });
+        ).rows[0].id as string;
+        const about = (l: Locale) => `${reportWords[l].categories[cmd.category]} · ${reportWords[l].severities[cmd.severity]}\n${cmd.description}`;
+        // The material managers are told at once, and the other club of a loan.
+        for (const club of [...new Set([owner, ...(loan ? [loan.lender_id, loan.borrower_id] : [])])])
+          for (const u of await managers(s, club))
+            await tell(s, club, u, `chair_report:${report}`, words[u.locale].title.replace("{chair}", ch.name), `${words[u.locale].message.replace("{chair}", ch.name)}\n${about(u.locale)}`, `/equipment/${ch.id}`);
+        // A player of this chair expected within 7 days: his coaches are told, with a chair to lend instead.
+        if (unusable) {
+          const spare = (
+            await s.c.query(
+              "SELECT name FROM equipment_chair c WHERE c.organization_id=$1 AND c.status='available' AND c.id<>$2 AND NOT EXISTS (SELECT 1 FROM equipment_chair_assignment a WHERE a.chair_id=c.id AND a.ends_on IS NULL) ORDER BY c.name LIMIT 1",
+              [owner, ch.id],
+            )
+          ).rows[0]?.name as string | undefined;
+          const coaches = (
+            await s.c.query(
+              `SELECT DISTINCT u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale,cp.full_name AS player,e.title AS event
+                 FROM equipment_chair_assignment a JOIN club_person cp ON cp.id=a.profile_id
+                 JOIN attendance_invitation i ON i.profile_id=a.profile_id AND i.withdrawn_at IS NULL JOIN attendance_register r ON r.id=i.register_id
+                 JOIN calendar_event e ON e.id=r.event_id AND e.starts_at BETWEEN now() AND now()+interval '7 days' AND e.team_id IS NOT NULL
+                 JOIN team_membership k ON k.team_id=e.team_id AND k.role='coach' AND NOT k.cancelled AND k.closed_at IS NULL
+                 JOIN club_person kp ON kp.id=k.profile_id JOIN person pe ON pe.id=kp.person_id JOIN "user" u ON u.id=pe.user_id AND u.active
+                WHERE a.chair_id=$1 AND a.ends_on IS NULL`,
+              [ch.id],
+            )
+          ).rows as { id: string; email: string; name: string; locale: string; player: string; event: string }[];
+          for (const k of coaches) {
+            const l = (["fr", "nl", "en"].includes(k.locale) ? k.locale : "fr") as Locale;
+            const w = reportWords[l];
+            await tell(s, owner, { ...k, locale: l }, `chair_report:${report}:coach`, w.coachTitle.replace("{player}", k.player), `${w.coachMessage.replace("{player}", k.player).replace("{chair}", ch.name).replace("{event}", k.event)} ${spare ? w.spare.replace("{spare}", spare) : w.noSpare}`, `/equipment/${ch.id}`);
+          }
+        }
+        await audit(s.c, org, s.p.userId, "equipment.report", ch.id, { report, severity: cmd.severity });
         return { id: report };
       }
       if (cmd.action === "book" || cmd.action === "release") {
@@ -386,7 +426,10 @@ export async function workshopExecute(db: Pool, p: Principal, cmd: WorkshopComma
           if (cmd.backInService && (ch.status === "maintenance" || ch.status === "out_of_service")) {
             const assigned = (await s.c.query("SELECT 1 FROM equipment_chair_assignment WHERE chair_id=$1 AND ends_on IS NULL", [ch.id])).rowCount;
             await s.c.query("UPDATE equipment_chair SET status=$3,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2", [ch.id, org, assigned ? "in_use" : "available"]);
-            await s.c.query("UPDATE chair_report SET status='closed',closed_at=now(),closed_by=$3 WHERE chair_id=$1 AND organization_id=$2 AND status='open'", [ch.id, org, s.p.userId]);
+            await tellReporters(
+              s,
+              (await s.c.query("UPDATE chair_report SET status='closed',closed_at=now(),closed_by=$3 WHERE chair_id=$1 AND organization_id=$2 AND status='open' RETURNING id", [ch.id, org, s.p.userId])).rows.map((x) => x.id as string),
+            );
           }
           await log(s, ch.id, "intervention", null, { kind: cmd.kind, on: cmd.occurredOn, cost, daysOut: cmd.daysOut, speed: cmd.speedKmh });
           return { id: iid };
@@ -479,6 +522,7 @@ export async function workshopExecute(db: Pool, p: Principal, cmd: WorkshopComma
         case "closeReport": {
           const r = (await s.c.query("UPDATE chair_report SET status='closed',closed_at=now(),closed_by=$3 WHERE id=$1 AND organization_id=$2 AND status='open' RETURNING id", [cmd.id, org, s.p.userId])).rows[0];
           if (!r) throw new AccessError("NOT_FOUND", 404);
+          await tellReporters(s, [cmd.id]);
           return { id: cmd.id };
         }
       }
@@ -486,6 +530,82 @@ export async function workshopExecute(db: Pool, p: Principal, cmd: WorkshopComma
     expected,
   );
 }
+
+type Recipient = { id: string; email: string; name: string; locale: Locale };
+async function managers(s: Scope, org: string) {
+  return (
+    await s.c.query(
+      `SELECT DISTINCT u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id AND m.active
+         JOIN "user" u ON u.id=r.user_id LEFT JOIN person pe ON pe.user_id=u.id
+        WHERE r.organization_id=$1 AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND u.active AND (r.role='club_president' OR 'equipment.manage'=ANY(r.grants))`,
+      [org],
+    )
+  ).rows.map((u) => ({ ...u, locale: (["fr", "nl", "en"].includes(u.locale) ? u.locale : "fr") as Locale })) as Recipient[];
+}
+async function tell(s: Scope, org: string, u: Recipient, key: string, title: string, message: string, path: string) {
+  const name = (await s.c.query("SELECT name FROM organization WHERE id=$1", [org])).rows[0]?.name as string;
+  await publish(s.c, {
+    organizationId: org,
+    userId: u.id,
+    email: u.email,
+    kind: "automation",
+    category: "administrative",
+    resourceType: "automation",
+    // The report's id, as the notification of a breakdown always had.
+    resourceId: key.split(":")[1],
+    eventKey: `${key}:${u.id}`,
+    locale: u.locale,
+    variables: { name: u.name, organization: name, url: `${process.env.BETTER_AUTH_URL ?? ""}/${u.locale}${path}`, title, message },
+  });
+}
+/** 19: whoever reported a breakdown is told when it is repaired. */
+async function tellReporters(s: Scope, ids: string[]) {
+  if (!ids.length) return;
+  const rows = (
+    await s.c.query(
+      `UPDATE chair_report r SET reporter_told_at=now() FROM equipment_chair c, "user" u LEFT JOIN person pe ON pe.user_id=u.id
+        WHERE r.id=ANY($1::uuid[]) AND r.reporter_told_at IS NULL AND c.id=r.chair_id AND u.id=r.reporter_id AND u.active
+        RETURNING r.id,r.organization_id,c.id AS chair,c.name AS chair_name,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale`,
+      [ids],
+    )
+  ).rows as { id: string; organization_id: string; chair: string; chair_name: string; user_id: string; email: string; name: string; locale: string }[];
+  for (const r of rows) {
+    const l = (["fr", "nl", "en"].includes(r.locale) ? r.locale : "fr") as Locale;
+    await tell(s, r.organization_id, { id: r.user_id, email: r.email, name: r.name, locale: l }, `chair_report:${r.id}:repaired`, reportWords[l].repairedTitle.replace("{chair}", r.chair_name), reportWords[l].repairedMessage.replace("{chair}", r.chair_name), `/equipment/${r.chair}`);
+  }
+}
+const reportWords = {
+  fr: {
+    categories: { battery: "Batterie", motor: "Moteur", wheels: "Roues ou pneus", joystick: "Joystick ou commande", safety: "Ceinture ou sécurité", body: "Carrosserie", other: "Autre" },
+    severities: { usable: "utilisable", watch: "à surveiller", unusable: "inutilisable" },
+    coachTitle: "Fauteuil inutilisable : {player}",
+    coachMessage: "Le fauteuil {chair} de {player} est signalé inutilisable avant « {event} ».",
+    spare: "Fauteuil disponible pour le remplacer : {spare}.",
+    noSpare: "Aucun autre fauteuil du club n'est libre pour l'instant.",
+    repairedTitle: "Fauteuil réparé : {chair}",
+    repairedMessage: "La panne que vous avez signalée sur le fauteuil {chair} est réglée. Merci !",
+  },
+  nl: {
+    categories: { battery: "Batterij", motor: "Motor", wheels: "Wielen of banden", joystick: "Joystick of bediening", safety: "Gordel of veiligheid", body: "Carrosserie", other: "Andere" },
+    severities: { usable: "bruikbaar", watch: "op te volgen", unusable: "onbruikbaar" },
+    coachTitle: "Rolstoel onbruikbaar: {player}",
+    coachMessage: "De rolstoel {chair} van {player} is als onbruikbaar gemeld vóór « {event} ».",
+    spare: "Beschikbare rolstoel als vervanging: {spare}.",
+    noSpare: "Er is momenteel geen andere rolstoel van de club vrij.",
+    repairedTitle: "Rolstoel hersteld: {chair}",
+    repairedMessage: "Het defect dat u meldde aan rolstoel {chair} is opgelost. Bedankt!",
+  },
+  en: {
+    categories: { battery: "Battery", motor: "Motor", wheels: "Wheels or tyres", joystick: "Joystick or controls", safety: "Belt or safety", body: "Body", other: "Other" },
+    severities: { usable: "usable", watch: "to watch", unusable: "unusable" },
+    coachTitle: "Chair unusable: {player}",
+    coachMessage: "The chair {chair} of {player} is reported unusable before « {event} ».",
+    spare: "Chair available to replace it: {spare}.",
+    noSpare: "No other chair of the club is free right now.",
+    repairedTitle: "Chair repaired: {chair}",
+    repairedMessage: "The breakdown you reported on the chair {chair} is fixed. Thank you!",
+  },
+};
 
 /** The chair's bookings for future events are released when it breaks down. */
 async function releaseFuture(s: Scope, chairId: string, reason: string) {
@@ -499,7 +619,7 @@ function validPhoto(type: string, b: Buffer) {
   if (type === "image/jpeg") return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
   return b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP";
 }
-const words = {
+const words: Record<Locale, { title: string; message: string }> = {
   fr: { title: "Panne signalée : {chair}", message: "Une panne a été signalée sur le fauteuil {chair}. Il est mis hors service en attendant votre contrôle." },
   nl: { title: "Defect gemeld: {chair}", message: "Er werd een defect gemeld aan rolstoel {chair}. Hij is buiten dienst tot uw controle." },
   en: { title: "Breakdown reported: {chair}", message: "A breakdown was reported on the chair {chair}. It is out of service until you check it." },

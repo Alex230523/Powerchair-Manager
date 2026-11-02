@@ -11,6 +11,9 @@ export const chairStatuses = [
 ] as const;
 /** FIPFA Laws of the Game: a powerchair must not exceed 10 km/h in play. */
 export const MAX_MATCH_SPEED_KMH = 10;
+/** 19: what a breakdown is about, and how serious it is. */
+export const breakdownCategories = ["battery", "motor", "wheels", "joystick", "safety", "body", "other"] as const;
+export const breakdownSeverities = ["usable", "watch", "unusable"] as const;
 export const itemCategories = [
   "ball",
   "cone",

@@ -3551,6 +3551,41 @@ input.narrow {
   padding: 0;
   margin: 0 0 14px;
 }
+/* 19: « Signaler un problème » (the screenshot to mask) and the chair's label. */
+.feedback-preview {
+  display: grid;
+  gap: var(--space-2);
+}
+.feedback-shot-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+.feedback-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.capture-hidden {
+  display: inline-block;
+}
+.report-severity {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-width: 0;
+}
+.chair-qr figcaption {
+  max-width: 28rem;
+  font-size: var(--text-sm);
+}
+.report-chooser {
+  margin-block: var(--space-3);
+}
 /* 34: discipline (the figures of a sanction, a decision's form, a player's history). */
 .discipline-figures {
   display: block;
