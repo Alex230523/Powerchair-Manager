@@ -51,7 +51,7 @@ test("the season planned on a phone, and a coach's keys", async ({ page }) => {
     await axe(page, "season planner preview");
     await page.getByLabel("Envoyer l'email « Calendrier de la saison » aux familles des équipes").uncheck();
     await page.getByRole("button", { name: "Créer les séances" }).click();
-    await expect(page.locator(".records").filter({ hasText: "Aigles · mercredi" })).toBeVisible();
+    await expect(page.locator(".records").filter({ hasText: /Aigles · mercredi \d{2}:\d{2}/ }).first()).toBeVisible();
     expect(Number((await db.query("SELECT count(*)::int AS n FROM calendar_event WHERE organization_id=$1", [club])).rows[0].n)).toBeGreaterThan(4);
 
     // H10: the keys in the coach's profile.
