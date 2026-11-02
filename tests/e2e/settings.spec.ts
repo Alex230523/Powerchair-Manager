@@ -123,7 +123,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     // Phone: the home is the list of categories, a sub-page has a back link and no side column.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/settings");
-    await expect(cards).toHaveCount(7);
+    await expect(cards).toHaveCount(10);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     await page.locator("main").getByRole("link", { name: /^Finances/ }).click();
     await expect(page).toHaveURL("/fr/settings/money");
