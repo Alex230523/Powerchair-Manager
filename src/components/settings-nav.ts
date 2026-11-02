@@ -87,6 +87,7 @@ export const settingsEntries = [
   { id: "privacy", category: "data", anchor: "settings-club-data" },
   { id: "presidency", category: "club", anchor: "settings-presidency" },
   { id: "seasons", category: "seasons", anchor: "settings-seasons" },
+  { id: "seasonPlan", category: "seasons", anchor: "settings-season-plan" },
   { id: "rollover", category: "seasons", anchor: "settings-rollover" },
   { id: "authorizations", category: "documents", anchor: "settings-authorizations" },
 ] as const satisfies readonly { id: string; category: SettingsCategory; anchor: string }[];

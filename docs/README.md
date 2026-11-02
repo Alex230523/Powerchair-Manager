@@ -127,6 +127,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [15 : accueil par rôle](evolutions/2026-11-02-zm-15-accueil-par-role.md) |
 | 02/11/2026 | [8 : joueurs et familles, représentant dès l'ajout, vérification de début de saison](evolutions/2026-11-02-zn-08-joueurs-familles.md) |
 | 02/11/2026 | [27 à 29 : parents (vue famille, autorisations signées, deux foyers)](evolutions/2026-11-02-zo-27-29-parents.md) |
+| 02/11/2026 | [16 : assistant de fin de saison](evolutions/2026-11-02-zp-16-fin-de-saison.md) |
 
 ## Convention
 

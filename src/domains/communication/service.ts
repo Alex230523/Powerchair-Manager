@@ -525,6 +525,82 @@ export async function eventMailTick(db: Pool) {
   return sent;
 }
 
+/**
+ * Sends a draft newsletter to its groups now (the « Envoyer » button, and 16:
+ * the « Nouvelle saison » email the season assistant scheduled). Returns the
+ * number of recipients.
+ */
+export async function sendNewsletterNow(c: PoolClient, org: string, orgName: string, userId: string, n: { id: string; blocks: unknown; group_ids: string[]; include_alumni: boolean; subject: string }) {
+  const blocks = n.blocks as Block[];
+  if (!hasContent(blocks)) throw new AccessError("EMPTY_NEWSLETTER", 400);
+  const profiles = new Set<string>();
+  for (const gid of n.group_ids as string[]) {
+    const g = (
+      await c.query(
+        "SELECT * FROM recipient_group WHERE id=$1 AND organization_id=$2 AND NOT archived",
+        [gid, org],
+      )
+    ).rows[0];
+    if (g) for (const id of await groupProfiles(c, org, g)) profiles.add(id);
+  }
+  if (n.include_alumni)
+    for (const id of await groupProfiles(c, org, {
+      audiences: ["alumni"],
+      team_ids: [],
+      profile_ids: [],
+    }))
+      profiles.add(id);
+  const stop = await unsubscribed(c, org);
+  const contacts = (await contactsFor(c, org, [...profiles])).filter(
+    (x) => !stop.has(emailHash(x.email)),
+  );
+  if (!contacts.length) throw new AccessError("NO_RECIPIENT", 409);
+  if (contacts.length > MAX_RECIPIENTS)
+    throw new AccessError("TOO_MANY_RECIPIENTS", 409);
+  const ids = blocks.flatMap((b) => (b.type === "events" ? b.eventIds : []));
+  const base = process.env.BETTER_AUTH_URL ?? "";
+  const cache: Record<string, NewsEvent[]> = {};
+  for (const to of contacts) {
+    cache[to.locale] ??= await newsEvents(c, org, ids, to.locale);
+    const delivery = (
+      await c.query(
+        "INSERT INTO newsletter_delivery(newsletter_id,organization_id,email_hash,user_id) VALUES($1,$2,$3,$4) RETURNING id",
+        [n.id, org, emailHash(to.email), to.userId],
+      )
+    ).rows[0].id as string;
+    const url = `${base}/${to.locale}/desinscription/${delivery}`;
+    const rendered = renderNewsletter(blocks, cache[to.locale], {
+      organization: orgName,
+      locale: to.locale,
+      unsubscribeUrl: url,
+    });
+    await publish(c, {
+      organizationId: org,
+      userId: to.userId,
+      email: to.email,
+      kind: "club_newsletter",
+      category: "sport",
+      resourceType: "newsletter",
+      resourceId: delivery,
+      eventKey: "newsletter:" + n.id,
+      locale: to.locale,
+      variables: {
+        name: to.name,
+        organization: orgName,
+        url,
+        title: n.subject,
+        message: rendered.message,
+      },
+      html: rendered.html,
+      inApp: false,
+    });
+  }
+  await c.query(
+    "UPDATE newsletter SET status='sent',sent_at=now(),sent_by=$2,recipients=$3,version=version+1,updated_at=now() WHERE id=$1",
+    [n.id, userId, contacts.length],
+  );
+  return contacts.length;
+}
 export async function communicationExecute(
   db: Pool,
   p: Principal,
@@ -646,76 +722,9 @@ export async function communicationExecute(
         if (n.status !== "draft") throw new AccessError("ALREADY_SENT", 409);
         if (n.version !== input.expectedVersion)
           throw new AccessError("STALE_VERSION", 409);
-        const blocks = n.blocks as Block[];
-        if (!hasContent(blocks)) throw new AccessError("EMPTY_NEWSLETTER", 400);
-        const profiles = new Set<string>();
-        for (const gid of n.group_ids as string[]) {
-          const g = (
-            await c.query(
-              "SELECT * FROM recipient_group WHERE id=$1 AND organization_id=$2 AND NOT archived",
-              [gid, org],
-            )
-          ).rows[0];
-          if (g) for (const id of await groupProfiles(c, org, g)) profiles.add(id);
-        }
-        if (n.include_alumni)
-          for (const id of await groupProfiles(c, org, {
-            audiences: ["alumni"],
-            team_ids: [],
-            profile_ids: [],
-          }))
-            profiles.add(id);
-        const stop = await unsubscribed(c, org);
-        const contacts = (await contactsFor(c, org, [...profiles])).filter(
-          (x) => !stop.has(emailHash(x.email)),
-        );
-        if (!contacts.length) throw new AccessError("NO_RECIPIENT", 409);
-        if (contacts.length > MAX_RECIPIENTS)
-          throw new AccessError("TOO_MANY_RECIPIENTS", 409);
-        const ids = blocks.flatMap((b) => (b.type === "events" ? b.eventIds : []));
-        const base = process.env.BETTER_AUTH_URL ?? "";
-        const cache: Record<string, NewsEvent[]> = {};
-        for (const to of contacts) {
-          cache[to.locale] ??= await newsEvents(c, org, ids, to.locale);
-          const delivery = (
-            await c.query(
-              "INSERT INTO newsletter_delivery(newsletter_id,organization_id,email_hash,user_id) VALUES($1,$2,$3,$4) RETURNING id",
-              [n.id, org, emailHash(to.email), to.userId],
-            )
-          ).rows[0].id as string;
-          const url = `${base}/${to.locale}/desinscription/${delivery}`;
-          const rendered = renderNewsletter(blocks, cache[to.locale], {
-            organization: s.orgName,
-            locale: to.locale,
-            unsubscribeUrl: url,
-          });
-          await publish(c, {
-            organizationId: org,
-            userId: to.userId,
-            email: to.email,
-            kind: "club_newsletter",
-            category: "sport",
-            resourceType: "newsletter",
-            resourceId: delivery,
-            eventKey: "newsletter:" + n.id,
-            locale: to.locale,
-            variables: {
-              name: to.name,
-              organization: s.orgName,
-              url,
-              title: n.subject,
-              message: rendered.message,
-            },
-            html: rendered.html,
-            inApp: false,
-          });
-        }
-        await c.query(
-          "UPDATE newsletter SET status='sent',sent_at=now(),sent_by=$2,recipients=$3,version=version+1,updated_at=now() WHERE id=$1",
-          [n.id, s.userId, contacts.length],
-        );
+        const recipients = await sendNewsletterNow(c, org, s.orgName, s.userId, n);
         await done("newsletter.sent", n.id);
-        return { id: n.id as string, recipients: contacts.length };
+        return { id: n.id as string, recipients };
       }
       if (input.action === "eventMail") {
         const e = await eventFor(s, input.eventId);

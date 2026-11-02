@@ -10685,3 +10685,71 @@ ul.task-page li {
 .billing-split {
   margin-block-start: var(--space-4);
 }
+
+/* 16: « Préparer la saison suivante ». */
+.season-plan-steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.season-plan-step {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.season-plan-step-title {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.season-plan-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.season-plan-number {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: var(--text-sm);
+}
+.season-plan-step[data-state="done"] .season-plan-number {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.season-plan-body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+.season-plan-review {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+}
+.season-plan-review dt {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.season-plan-review dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.season-plan-team {
+  margin-block-end: var(--space-3);
+}

@@ -111,6 +111,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/reminders` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/search` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/season-check` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/seasons/plan` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/seasons/rollover` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/setup` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/statistics/awards` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -153,6 +154,7 @@ Notes :
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
+- `/api/seasons/plan` : Préparer la saison suivante : l'assistant annuel, réservé à la présidence du club (point 16)
 
 ## Pages
 
@@ -172,6 +174,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/club/manage` |  |  |  |  |  |  |  |  |  |   |
 | `/club/public` |  |  |  |  |  |  |  |  |  |   |
 | `/club/rollover` |  |  |  |  |  |  |  |  |  |   |
+| `/club/season-plan` |  |  |  |  |  |  |  |  |  |   |
 | `/coaches` |  |  |  |  |  |  |  |  |  |   |
 | `/coaches/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/coaches/former` |  |  |  |  |  |  |  |  |  |   |

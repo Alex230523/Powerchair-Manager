@@ -39,7 +39,7 @@ const feeColumns =
   "f.id,f.organization_id,f.name,f.description,f.contact_id,f.basis,f.frequency,f.amount_cents,f.opens_month,f.opens_day,f.due_days,f.due_month,f.due_day,f.all_clubs,f.archived,f.created_by";
 
 /** The fees a club owes: its own, and its federation's for all clubs or for it. */
-async function feesOf(c: PoolClient, club: string) {
+export async function feesOf(c: PoolClient, club: string) {
   return (
     await c.query(
       `SELECT ${feeColumns} FROM affiliation_fee f JOIN organization club ON club.id=$1

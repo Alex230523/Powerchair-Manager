@@ -1,4 +1,5 @@
 "use client";
+import { SeasonPlanCard } from "./season-plan";
 import { plannerCopy } from "./calendar-planner-copy";
 import { CollectionBar } from "./collection-bar";
 import Link from "next/link";
@@ -248,6 +249,8 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {t.noContext} <Link href={href("/access")}>{t.chooseProfile}</Link>
         </p>
       )}
+      {/* 16: from 45 days before the end of the season, the yearly assistant. */}
+      {data.context?.role === "club_president" && <SeasonPlanCard locale={locale} />}
       {data.start && !data.start.calendarSubscribed && <StartCard locale={locale} href={href("/calendar?subscribe=1")} />}
       {data.setup && organizationId && !setupClosed && (
         <SetupCard locale={locale} organizationId={organizationId} state={data.setup} where="home" changed={(next) => setSetupClosed(next.hidden)} />

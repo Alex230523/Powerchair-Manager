@@ -17,6 +17,7 @@ import { runAutomations } from "../automations/engine";
 import { majorityTick } from "../people/service";
 import { seasonCheckTick } from "../season-check/service";
 import { authorizationTick } from "../authorizations/service";
+import { seasonPlanTick } from "../seasons/plan";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { watchdog } from "./watchdog";
@@ -97,6 +98,8 @@ export const jobs = {
         seasonChecks: await seasonCheckTick(db),
         // 28: the parental authorizations still unsigned after three days are recalled.
         authorizationReminders: await authorizationTick(db),
+        // 16: what the season assistant scheduled (dues issue, data check, « Nouvelle saison » email).
+        seasonPlan: await seasonPlanTick(db),
       };
     },
   },

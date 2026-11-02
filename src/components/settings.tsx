@@ -44,6 +44,7 @@ import { Privacy } from "./privacy";
 import { People } from "./people";
 import { SeasonCheckPanel } from "./season-check";
 import { AuthorizationSettings } from "./authorization-settings";
+import { seasonPlanCopy } from "./season-plan-copy";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
@@ -413,6 +414,17 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "seasons" && <People locale={locale} management embedded />}
           {/* 8: the start-of-season check, launched and followed here. */}
           {shown && category === "seasons" && <SeasonCheckPanel locale={locale} />}
+          {/* 16: the yearly assistant, for the presidency. */}
+          {shown && category === "seasons" && ws?.selected?.role === "club_president" && (
+            <Card title={seasonPlanCopy[locale].settingsTitle} labelledBy="settings-season-plan" headingId="settings-season-plan">
+              <p className="muted">{seasonPlanCopy[locale].settingsText}</p>
+              <p>
+                <Link className="button" href={`/${locale}/club/season-plan`}>
+                  {seasonPlanCopy[locale].settingsTitle}
+                </Link>
+              </p>
+            </Card>
+          )}
           {shown && category === "seasons" && (
             <Card title={h.rolloverTitle} labelledBy="settings-rollover" headingId="settings-rollover">
               <p className="muted">{h.rolloverText}</p>
