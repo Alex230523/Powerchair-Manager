@@ -101,7 +101,7 @@ async function scope<T>(
   }
 }
 
-const placeColumns = `p.id,p.name,p.address,p.category,p.contact,p.contact_id,c.full_name AS contact_name,c.phone AS contact_phone,c.email AS contact_email,p.capacity,p.accessible,p.toilets,p.parking,p.storage,p.charging,p.home,p.food_policy,p.logistics AS notes,p.archived,p.version,p.share_status,p.share_reason,p.shared_venue_id`;
+const placeColumns = `p.id,p.name,p.address,p.category,p.contact,p.contact_id,c.full_name AS contact_name,c.phone AS contact_phone,c.email AS contact_email,p.capacity,p.accessible,p.toilets,p.parking,p.storage,p.charging,p.home,p.booking_needed,p.food_policy,p.logistics AS notes,p.archived,p.version,p.share_status,p.share_reason,p.shared_venue_id`;
 
 export async function venuesView(db: Pool, p: Principal) {
   return scope(db, p, false, async ({ c, org, kind, edit, federation }) => {
@@ -290,21 +290,22 @@ async function placeExecute(c: Db, org: string, kind: string, userId: string, in
           userId,
         ])
       ).rows[0].id as string;
-    const values = [input.name, input.address, input.category, contact, input.capacity, input.accessible, input.toilets, input.parking, input.storage, input.charging, input.home, input.foodPolicy, input.notes, input.archived];
+    const values = [input.name, input.address, input.category, contact, input.capacity, input.accessible, input.toilets, input.parking, input.storage, input.charging, input.home, input.foodPolicy, input.notes, input.archived, input.bookingNeeded ?? (!input.home && input.category === "training")];
     if (input.id) {
       const before = (await c.query("SELECT * FROM calendar_place WHERE id=$1 AND organization_id=$2 FOR UPDATE", [input.id, org])).rows[0];
       if (!before) throw new AccessError("NOT_FOUND", 404);
       if (input.expectedVersion !== undefined && before.version !== input.expectedVersion) throw new AccessError("STALE_VERSION", 409);
       await c.query(
-        `UPDATE calendar_place SET name=$3,address=$4,category=$5,contact_id=$6,capacity=$7,accessible=$8,toilets=$9,parking=$10,storage=$11,charging=$12,home=$13,food_policy=$14,logistics=$15,archived=$16,version=version+1 WHERE id=$1 AND organization_id=$2`,
-        [input.id, org, ...values],
+        `UPDATE calendar_place SET name=$3,address=$4,category=$5,contact_id=$6,capacity=$7,accessible=$8,toilets=$9,parking=$10,storage=$11,charging=$12,home=$13,food_policy=$14,logistics=$15,archived=$16,
+                booking_needed=CASE WHEN $18::boolean THEN $17 ELSE booking_needed END,version=version+1 WHERE id=$1 AND organization_id=$2`,
+        [input.id, org, ...values, input.bookingNeeded !== undefined],
       );
       await audit(c, org, userId, "place.updated", input.id);
       return { id: input.id };
     }
     const id = (
       await c.query(
-        `INSERT INTO calendar_place(organization_id,name,address,category,contact_id,capacity,accessible,toilets,parking,storage,charging,home,food_policy,logistics,archived) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+        `INSERT INTO calendar_place(organization_id,name,address,category,contact_id,capacity,accessible,toilets,parking,storage,charging,home,food_policy,logistics,archived,booking_needed) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
         [org, ...values],
       )
     ).rows[0].id as string;

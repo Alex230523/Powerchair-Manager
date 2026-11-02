@@ -25,6 +25,7 @@ type Copy = {
   accessibility: string;
   access: Record<"accessible" | "toilets" | "parking" | "storage" | "charging", string>;
   home: string;
+  bookingNeeded: string;
   homeBadge: string;
   food: string;
   notes: string;
@@ -94,6 +95,7 @@ export const placesCopy: Record<"fr" | "nl" | "en", Copy> = {
     accessibility: "Accessibilité",
     access: { accessible: "Accès PMR", toilets: "Toilettes adaptées", parking: "Parking", storage: "Rangement", charging: "Recharge" },
     home: "Notre salle d'entraînement (domicile)",
+    bookingNeeded: "Réservation nécessaire (salle extérieure à réserver)",
     homeBadge: "Domicile",
     food: "Nourriture et boissons",
     notes: "Notes",
@@ -161,6 +163,7 @@ export const placesCopy: Record<"fr" | "nl" | "en", Copy> = {
     accessibility: "Toegankelijkheid",
     access: { accessible: "Toegankelijk", toilets: "Aangepaste toiletten", parking: "Parking", storage: "Opslag", charging: "Opladen" },
     home: "Onze trainingszaal (thuis)",
+    bookingNeeded: "Reservatie nodig (externe zaal om te reserveren)",
     homeBadge: "Thuis",
     food: "Eten en drinken",
     notes: "Notities",
@@ -228,6 +231,7 @@ export const placesCopy: Record<"fr" | "nl" | "en", Copy> = {
     accessibility: "Accessibility",
     access: { accessible: "Step-free access", toilets: "Adapted toilets", parking: "Parking", storage: "Storage", charging: "Charging" },
     home: "Our training hall (home)",
+    bookingNeeded: "Booking needed (outside hall to book)",
     homeBadge: "Home",
     food: "Food and drinks",
     notes: "Notes",

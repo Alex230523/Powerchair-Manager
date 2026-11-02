@@ -74,6 +74,7 @@ export function PlaceDialog({
           storage: f.has("storage"),
           charging: f.has("charging"),
           home: f.has("home"),
+          bookingNeeded: f.has("bookingNeeded"),
           foodPolicy: s("food"),
           notes: s("notes"),
           archived: f.has("archived"),
@@ -174,6 +175,11 @@ export function PlaceDialog({
         <label className="check">
           <input type="checkbox" name="home" defaultChecked={place?.home} />
           {t.home}
+        </label>
+        {/* 18: the hall's bookings are worked out from the calendar when it must be booked. */}
+        <label className="check">
+          <input type="checkbox" name="bookingNeeded" defaultChecked={place ? place.booking_needed : true} />
+          {t.bookingNeeded}
         </label>
         <label>
           {t.food}

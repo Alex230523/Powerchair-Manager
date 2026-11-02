@@ -131,6 +131,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [H9 et H10 : saison type en un clic, clés dans le profil du coach](evolutions/2026-11-02-zq-h9-h10-saison-type-cles.md) |
 | 02/11/2026 | [2 : to-do à plusieurs responsables, modèles à la demande, vue de l'année](evolutions/2026-11-02-zr-02-todo-enrichie.md) |
 | 02/11/2026 | [3 : déplacements repensés en logistique de transport](evolutions/2026-11-02-zs-03-deplacements-transport.md) |
+| 02/11/2026 | [18 : réservations de salles et factures, calculées depuis l'agenda](evolutions/2026-11-02-zt-18-reservations-salles.md) |
 
 ## Convention
 

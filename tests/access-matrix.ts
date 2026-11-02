@@ -159,6 +159,8 @@ export const apiRoutes: Record<string, ApiRoute> = {
   "v1/teams": { methods: ["GET"] },
   "v1/tournaments": { methods: ["GET"] },
   "venues": { methods: ["GET", "POST"] },
+  "venues/bookings": { methods: ["GET", "POST"] },
+  "venues/bookings/file": { methods: ["GET", "POST"] },
   "welcome/[token]": { methods: ["GET", "POST"] },
   "workspace": { methods: ["GET", "POST"] },
 };

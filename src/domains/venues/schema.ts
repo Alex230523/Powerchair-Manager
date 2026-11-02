@@ -32,6 +32,8 @@ export const placeCommand = z.discriminatedUnion("action", [
     storage: z.boolean().default(false),
     charging: z.boolean().default(false),
     home: z.boolean().default(false),
+    /** 18: the hall must be booked (absent: not the home hall and a training place). */
+    bookingNeeded: z.boolean().optional(),
     foodPolicy: text(1000).default(""),
     notes: text(2000).default(""),
     archived: z.boolean().default(false),
@@ -99,6 +101,7 @@ export type PlaceRow = {
   storage: boolean;
   charging: boolean;
   home: boolean;
+  booking_needed: boolean;
   food_policy: string;
   notes: string;
   archived: boolean;

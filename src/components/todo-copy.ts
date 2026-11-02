@@ -137,6 +137,10 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     sources: {
       grantDeadline: "Déposer le dossier de subside : {about}",
       affiliationDue: "Payer l'affiliation : {about}",
+      venueRequest: "Demander la réservation : {about}",
+      venueRemind: "Relancer la salle : {about}",
+      venuePay: "Payer la facture de salle : {about}",
+      venueNotify: "Prévenir la salle : {about}",
       grantOpening: "L'appel est ouvert, préparer le dossier : {about}",
       partnerRenewal: "Renouveler le sponsoring : {about}",
       partnerContact: "Reprendre contact avec le sponsor : {about}",
@@ -243,6 +247,10 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     sources: {
       grantDeadline: "Het subsidiedossier indienen: {about}",
       affiliationDue: "De aansluiting betalen: {about}",
+      venueRequest: "De reservatie aanvragen: {about}",
+      venueRemind: "De zaal opnieuw contacteren: {about}",
+      venuePay: "De zaalfactuur betalen: {about}",
+      venueNotify: "De zaal verwittigen: {about}",
       grantOpening: "De oproep is open, het dossier voorbereiden: {about}",
       partnerRenewal: "De sponsoring vernieuwen: {about}",
       partnerContact: "Opnieuw contact opnemen met de sponsor: {about}",
@@ -349,6 +357,10 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     sources: {
       grantDeadline: "File the grant application: {about}",
       affiliationDue: "Pay the affiliation: {about}",
+      venueRequest: "Request the booking: {about}",
+      venueRemind: "Follow up with the hall: {about}",
+      venuePay: "Pay the hall's invoice: {about}",
+      venueNotify: "Tell the hall: {about}",
       grantOpening: "The call is open, prepare the application: {about}",
       partnerRenewal: "Renew the sponsorship: {about}",
       partnerContact: "Get back in touch with the sponsor: {about}",

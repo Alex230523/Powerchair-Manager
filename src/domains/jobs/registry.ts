@@ -18,6 +18,7 @@ import { majorityTick } from "../people/service";
 import { seasonCheckTick } from "../season-check/service";
 import { authorizationTick } from "../authorizations/service";
 import { seasonPlanTick } from "../seasons/plan";
+import { bookingsTick } from "../venues/bookings";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -103,6 +104,8 @@ export const jobs = {
         seasonPlan: await seasonPlanTick(db),
         // H9: the planned sessions get their invitations 14 days before.
         seasonInvites: await seasonSlotInviteTick(db),
+        // 18: the halls' bookings follow the calendar (ask, follow up, pay, tell the hall).
+        bookings: await bookingsTick(db),
       };
     },
   },

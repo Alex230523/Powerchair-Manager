@@ -90,6 +90,7 @@ type Item = {
   status: string;
   version: number;
   is_exception: boolean;
+  bookingMissing?: boolean;
   canEdit: boolean;
   starts_at: string;
   ends_at: string;
@@ -854,6 +855,13 @@ export function Calendar({
                       </span>
                     )}
                     {sheetEvent.is_exception && <Badge tone="info">{t.exception}</Badge>}
+                    {/* 18: the hall must be booked and the booking is not confirmed yet. */}
+                    {sheetEvent.bookingMissing && (
+                      <>
+                        {" "}
+                        <Badge tone="warning">{plannerCopy[locale].bookingMissing}</Badge> <Link href={`/${locale}/venues#bookings`}>{plannerCopy[locale].bookingOpen}</Link>
+                      </>
+                    )}
                   </p>
                   <section aria-labelledby="event-sheet-details">
                     <h3 id="event-sheet-details">{p.details}</h3>

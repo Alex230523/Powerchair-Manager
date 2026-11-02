@@ -1,4 +1,5 @@
 import { mfaSatisfied } from "../../lib/security-policy";
+import { bookingMissing } from "../venues/bookings";
 import { decodeCursor, encodeCursor, PAGE_SIZE } from "../../lib/cursor";
 import { Pool, type PoolClient } from "pg";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
@@ -543,6 +544,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
               reminder_sent_at: string | null;
             } | null)
           : null,
+        // 18: a session in a hall that must be booked, without a confirmed booking.
+        bookingMissing: staff && e.status === "scheduled" ? await bookingMissing(s.c, s.a.organization_id, e.id, e.place_id) : false,
         trip: ((
           await s.c.query(
             `SELECT t.id,t.title,t.status,t.departure_at,t.meeting_point,
