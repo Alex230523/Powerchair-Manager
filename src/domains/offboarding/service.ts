@@ -245,7 +245,8 @@ async function steps(c: PoolClient, runId: string) {
 export async function offboardingView(db: Pool, p: Principal, profileId: string) {
   return scope(db, p, true, async (x) => {
     const self = x.own.has(profileId);
-    if (!x.manage && !self) throw new AccessError("NOT_FOUND", 404);
+    // Someone else's file, seen without the right to manage it: nothing of the departure (no error for the page).
+    if (!x.manage && !self) return { organization_id: x.org, today: today(), can: { manage: false, self: false }, run: null, people: [], skip: [] as string[] };
     if (!(await x.c.query("SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2", [profileId, x.org])).rowCount) throw new AccessError("NOT_FOUND", 404);
     const id = (await x.c.query("SELECT id FROM offboarding_run WHERE organization_id=$1 AND profile_id=$2 ORDER BY (status='active') DESC,created_at DESC LIMIT 1", [x.org, profileId])).rows[0]?.id as string | undefined;
     if (id) await autoCheck(x.c, id);
