@@ -18,7 +18,6 @@ Un dossier par module. Les routes API appellent ces fonctions ; l'interface n'y 
 | `calendar/`       | Lieux, séries d'événements, visibilité, flux ICS                                                         |
 | `attendance/`     | Invitations, réponses, pointage, relances                                                               |
 | `dues/`           | Barèmes, créances, échéanciers (paiements rapprochés par `bank/`, B1)                                    |
-| `messages/`       | Messagerie interne                                                                                       |
 | `statistics/`     | Synthèse des présences (fonctions pures)                                                                 |
 | `equipment/`      | Fauteuils de sport, révisions, liens fauteuil ↔ joueurs                                                  |
 | `player-profile/` | Fiche joueur : vue personnelle (accompagnement, données confidentielles chiffrées) et vue sportive       |

@@ -84,7 +84,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/matches/journey` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/matches/journey/sheet` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/messages` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/messaging-archive` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/open-events` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -144,6 +144,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 Notes :
 
 - `/api/auth/[...all]` : Better Auth (connexion, inscription sur invitation) : couvert par tests/e2e/access.spec.ts
+- `/api/messaging-archive` : PDF des anciens échanges de la messagerie, pour la présidence du club, jusqu'à la suppression des tables (point 24)
 
 ## Pages
 

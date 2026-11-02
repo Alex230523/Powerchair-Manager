@@ -80,6 +80,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               registrations,
               // Wave 17 (J3): « Visible par les autres clubs », the player's or the parent's choice.
               ...item("/transfers", "transfers", "handshake"),
+              // 22: the tasks given to them (A1 sends reminders that lead here).
+              ...item("/tasks", "tasks", "clipboardList"),
             ],
           },
         ]
@@ -292,8 +294,9 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
  * modules apply), then "Plus" opens the whole menu.
  * President: calendar, players, dues. Coach: calendar, attendance, players.
  * Player or parent: calendar, my file (or the child's), dues.
+ * With a task of one's own open (22), « Tâches » replaces the third.
  */
-export function bottomNav(state: Workspace | null): NavItem[] {
+export function bottomNav(state: Workspace | null, openTasks = 0): NavItem[] {
   if (!state?.selected) return [];
   const all = menuGroups(state).flatMap((g) => g.items);
   const role = state.contexts.find((c) => c.id === state.selected?.id)?.role;
@@ -308,6 +311,9 @@ export function bottomNav(state: Workspace | null): NavItem[] {
   const items = wanted
     ? wanted.map((route) => all.find((i) => i.route === route)).filter((i): i is NavItem => !!i)
     : all.filter((i) => i.route !== "/settings").slice(0, 3);
+  // 22: with a task open, « Tâches » takes the last shortcut.
+  const tasks = all.find((i) => i.route === "/tasks");
+  if (openTasks > 0 && tasks && !items.includes(tasks)) items.splice(Math.min(items.length, 2), 1, tasks);
   const home: NavItem = { route: "", label: "home", icon: "home" };
   return [home, ...items].slice(0, 4);
 }

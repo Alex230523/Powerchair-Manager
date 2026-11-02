@@ -28,7 +28,7 @@ export function paletteActions(c: PaletteContext): PaletteAction[] {
     { id: "addPlayer", icon: "userPlus", route: "/players?create=1", allowed: has("people.manage") },
     { id: "importPlayers", icon: "players", route: "/players?import=1", allowed: has("people.manage") },
     { id: "recordExpense", icon: "funding", route: "/funding?create=1", allowed: on("finance") && has("dues.manage") },
-    { id: "mailTeam", icon: "megaphone", route: "/communication?create=1", allowed: on("messages") && has("notifications.manage", "calendar.manage") },
+    { id: "mailTeam", icon: "megaphone", route: "/communication?create=1", allowed: on("communication") && has("notifications.manage", "calendar.manage") },
     { id: "collectDues", icon: "dues", route: "/dues", allowed: on("dues") && has("dues.manage") },
     { id: "attendanceToday", icon: "attendance", route: "/attendance", allowed: has("attendance.manage", "calendar.manage") },
     // A1: a task in a few keys.

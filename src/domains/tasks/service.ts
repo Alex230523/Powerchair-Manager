@@ -128,6 +128,23 @@ const select = `SELECT t.id,t.kind,t.category,t.title,t.detail,t.due_on::text AS
    LEFT JOIN fundraising_pot pot ON pot.id=t.pot_id LEFT JOIN club_document doc ON doc.id=t.document_id
    LEFT JOIN contact ct ON ct.id=t.contact_id AND ct.organization_id=t.organization_id`;
 
+/**
+ * 22: the tasks given to me, still open, and how many are late: the
+ * counter of « Tâches » in the menu and the phone's shortcut.
+ */
+export async function myTaskCount(db: Pool, p: Principal) {
+  return scope(db, p, false, async (s) => {
+    const rows = (
+      await s.c.query(
+        "SELECT t.category,t.responsible_id,t.responsible_user_id,(t.due_on<CURRENT_DATE) AS late FROM task t WHERE t.organization_id=$1 AND t.status<>'done' AND (t.responsible_user_id=$2 OR t.responsible_id=ANY($3::uuid[]))",
+        [s.org, s.userId, [...s.own]],
+      )
+    ).rows as { category: Category; responsible_id: string | null; responsible_user_id: string | null; late: boolean | null }[];
+    const open = rows.filter((t) => mine(s, t) && !(s.financeOff && isMoney(t.category)));
+    return { open: open.length, late: open.filter((t) => t.late).length };
+  });
+}
+
 export async function tasksView(db: Pool, p: Principal) {
   return scope(db, p, false, async (s) => {
     // The application's own tasks are brought up to date first (idempotent).

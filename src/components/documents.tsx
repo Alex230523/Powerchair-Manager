@@ -214,13 +214,6 @@ export function Documents({ locale }: { locale: Locale }) {
                     ? "Attach to training"
                     : "Aan training koppelen"}
               </Link>
-              <Link href={"/" + locale + "/messages"}>
-                {locale === "fr"
-                  ? "Messagerie"
-                  : locale === "en"
-                    ? "Messages"
-                    : "Berichten"}
-              </Link>
             </div>
             <Panel title={t.library}>
               <p className="muted">{t.limits}</p>

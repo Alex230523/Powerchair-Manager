@@ -22,7 +22,6 @@ describe("undo", () => {
       ["src/domains/people/service.ts", "endAssignment"],
       ["src/domains/teams/service.ts", '"move"'],
       ["src/domains/equipment/service.ts", '"chairRetire"'],
-      ["src/domains/messages/service.ts", '"messageHide"'],
       ["src/domains/dues/service.ts", '"payment"'],
     ])
       expect(readFileSync(file, "utf8"), file).toMatch(new RegExp(`offerUndo\\([^)]*${kind}`));

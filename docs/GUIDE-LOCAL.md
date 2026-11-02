@@ -215,7 +215,7 @@ Le lot 09 bancaire reste à implémenter.
 
 ### Calendrier, documents et messagerie (19 octobre 2026)
 
-Vues liste/mois/semaine, lieux partagés ou ponctuels, fiches d’exercice et présences accessibles depuis le calendrier. Messagerie interne disponible sur `/fr/messages` (également NL/EN). Migrations additives 0016–0017. Périmètre, permissions, commandes et limites : [2026-10-19-b-calendrier-messagerie.md](evolutions/2026-10-19-b-calendrier-messagerie.md).
+Vues liste/mois/semaine, lieux partagés ou ponctuels, fiches d’exercice et présences accessibles depuis le calendrier. La messagerie interne a été retirée le 2 novembre 2026 (point 24). Migrations additives 0016–0017. Périmètre, permissions, commandes et limites : [2026-10-19-b-calendrier-messagerie.md](evolutions/2026-10-19-b-calendrier-messagerie.md).
 
 ### Statistiques et calendrier simplifié
 

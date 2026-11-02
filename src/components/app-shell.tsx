@@ -239,6 +239,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [todos, setTodos] = useState<Todo[]>([]),
+    [myTasks, setMyTasks] = useState({ open: 0, late: 0 }),
     [brief, setBrief] = useState<Brief | null>(null),
     [drawer, setDrawer] = useState(false),
     [bell, setBell] = useState(false),
@@ -303,6 +304,15 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
         })
         .catch(() => {
           if (!cancelled) setBrief(null);
+        });
+      // 22: the tasks given to me, for the menu's counter and the phone's shortcut.
+      fetch("/api/tasks?count=mine", { cache: "no-store" })
+        .then(async (r) => (r.ok ? ((await r.json()) as { open: number; late: number }) : { open: 0, late: 0 }))
+        .then((c) => {
+          if (!cancelled) setMyTasks(c);
+        })
+        .catch(() => {
+          if (!cancelled) setMyTasks({ open: 0, late: 0 });
         });
     };
     load();
@@ -383,8 +393,11 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     return undefined;
   }
   const counts = new Map(todos.map((x) => [x.key, x]));
+  /** The counter of a menu entry: the dashboard's figures, and my open tasks (22). */
+  const badgeOf = (route: string): { count: number; tone: string } | undefined =>
+    route === "/tasks" ? { count: myTasks.open, tone: myTasks.late ? "danger" : "warning" } : counterRoutes[route] ? counts.get(counterRoutes[route]) : undefined;
   function item({ route, label, icon }: NavItem) {
-    const todo = counterRoutes[route] ? counts.get(counterRoutes[route]) : undefined;
+    const todo = badgeOf(route);
     return (
       <Link key={route} href={`/${locale}${route}`} aria-current={current(route)}>
         <span className="nav-icon">
@@ -433,7 +446,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   const unread = brief?.unread ?? 0;
   const unreadText = unread === 0 ? t.noUnread : unread === 1 ? t.unreadOne : t.unreadCount.replace("{n}", String(unread));
   const groups = menuGroups(state);
-  const bottom = bottomNav(state);
+  const bottom = bottomNav(state, myTasks.open);
   // Settings are found by Ctrl+K too (wave 15): each category and each setting it holds.
   const h = settingsHubCopy[locale];
   const shownSettings = state?.selected
@@ -674,7 +687,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
         {bottom.length > 0 && (
           <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
             {bottom.map((i) => {
-              const todo = counterRoutes[i.route] ? counts.get(counterRoutes[i.route]) : undefined;
+              const todo = badgeOf(i.route);
               return (
                 <Link key={i.route} href={`/${locale}${i.route}`} aria-current={current(i.route)}>
                   <span className="bottom-icon">

@@ -12,7 +12,7 @@ import { isAdmin, permissions, type Permission } from "../access/policy";
  * server, with the rights of the action checked again, once, and leaves a
  * line in the audit log. Definitive deletions and sent emails offer none.
  */
-export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "messageHide", "payment", "eventCancel", "registrationDecision", "affiliationPaid", "operationDelete", "attendanceMark"] as const;
+export const undoKinds = ["teamArchive", "seasonArchive", "endAssignment", "move", "chairRetire", "payment", "eventCancel", "registrationDecision", "affiliationPaid", "operationDelete", "attendanceMark"] as const;
 export type UndoKind = (typeof undoKinds)[number];
 /** Server window; the message on screen lasts 8 seconds (longer while hovered). */
 export const undoSeconds = 120;
@@ -23,7 +23,6 @@ type Payloads = {
   endAssignment: { ends_on: string | null; closed_at: string | null };
   move: { created: string; previous: { id: string; ends_on: string | null; closed_at: string | null; cancelled: boolean } | null };
   chairRetire: { status: string; links: string[] };
-  messageHide: { hidden_at: string | null; hidden_by: string | null; reports: string[] };
   payment: { receivable: string | null; plan: string | null };
   /** Wave 16 (E1): the events a cancellation touched. */
   eventCancel: { ids: string[] };
@@ -60,8 +59,6 @@ function allowed(kind: UndoKind, role: Parameters<typeof permissions>[0], grants
       return has("teams.manage");
     case "chairRetire":
       return has("equipment.manage");
-    case "messageHide":
-      return mfa && (isAdmin(role) || rights.includes("members.read"));
     case "payment":
       return has("dues.manage");
     case "eventCancel":
@@ -99,7 +96,7 @@ export async function undoExecute(db: Pool, p: Principal, input: z.infer<typeof 
     if (row.expired) throw new AccessError("UNDO_EXPIRED", 410);
     if (!allowed(row.kind, a.role, a.grants, mfaSatisfied(!!user.twoFactorEnabled))) throw new AccessError("FORBIDDEN");
     // A module switched off since: nothing comes back through it.
-    const owner = ({ payment: "dues", chairRetire: "equipment", messageHide: "messages", affiliationPaid: "finance", operationDelete: "finance" } as Record<string, string>)[row.kind];
+    const owner = ({ payment: "dues", chairRetire: "equipment", affiliationPaid: "finance", operationDelete: "finance" } as Record<string, string>)[row.kind];
     if (owner && (a.disabled_modules ?? []).includes(owner)) throw new AccessError("MODULE_OFF");
     await revert(c, a.organization_id, p.userId, row.kind, row.target_id, row.payload as never);
     await c.query("UPDATE undo_action SET used_at=now() WHERE id=$1", [row.id]);
@@ -190,12 +187,6 @@ async function revert<K extends UndoKind>(c: PoolClient, org: string, userId: st
         JSON.stringify({ status: before.status }),
         JSON.stringify({ status: p.status }),
       ]);
-      return;
-    }
-    case "messageHide": {
-      const p = payload as Payloads["messageHide"];
-      await one("UPDATE internal_message SET hidden_at=$3,hidden_by=$4 WHERE id=$1 AND organization_id=$2", [target, org, p.hidden_at, p.hidden_by]);
-      if (p.reports.length) await c.query("UPDATE message_report SET resolved_at=NULL,resolved_by=NULL,outcome=NULL WHERE id=ANY($1::uuid[]) AND message_id=$2", [p.reports, target]);
       return;
     }
     case "eventCancel": {

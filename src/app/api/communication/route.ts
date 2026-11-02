@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     return Response.json(
-      await communicationView(getDb(), await principalIn(request, "messages")),
+      await communicationView(getDb(), await principalIn(request, "communication")),
       { headers: noStore },
     );
   } catch (e) {
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     origin(request);
-    const p = await principalIn(request, "messages"),
+    const p = await principalIn(request, "communication"),
       body = JSON.parse(new TextDecoder().decode(await bounded(request, 120000)));
     return Response.json(
       await communicationExecute(
