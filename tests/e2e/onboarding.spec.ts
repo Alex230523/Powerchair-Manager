@@ -45,11 +45,12 @@ test("a welcome journey, from the template to the home card", async ({ page }) =
     await page.goto("/fr");
     const welcome = page.locator(".journey-card");
     await expect(welcome.getByRole("heading", { name: "Bienvenue : Nouveau coach" })).toBeVisible();
-    await expect(welcome.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+    // A step may already tick by itself (the tour seen, a profile field filled): reading adds one.
+    const before = Number(await welcome.getByRole("progressbar").getAttribute("aria-valuenow"));
     await expect(welcome.getByText("Prochaine étape : Mot de bienvenue du président")).toBeVisible();
     await welcome.getByText("Toutes les étapes").click();
     await welcome.getByRole("button", { name: "J'ai lu : Mot de bienvenue du président" }).click();
-    await expect(welcome.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    await expect(welcome.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(before + 1));
     await axe(page, "welcome card");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: "test-results/onboarding-390.png", fullPage: true });
