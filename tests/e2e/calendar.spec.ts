@@ -148,7 +148,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     await editor.getByRole("combobox", { name: "Équipe", exact: true }).selectOption(team);
     // 1: one search for the place.
     await editor.getByRole("combobox", { name: "Lieu", exact: true }).fill("Salle pil");
-    await page.getByRole("option", { name: /^Salle pilote/ }).click();
+    await page.locator("li[role=option]").filter({ hasText: /^Salle pilote/ }).click();
     // Wave 16 (E1): responsible, visibility and attachments live in « Avancé ».
     await editor.locator("summary", { hasText: "Avancé" }).click();
     await editor.getByRole("combobox", { name: "Visibilité", exact: true }).selectOption("team");
@@ -324,7 +324,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       }),
     });
     await fresh.getByRole("combobox", { name: "Lieu", exact: true }).fill("Salle pil");
-    await page.getByRole("option", { name: /^Salle pilote/ }).click();
+    await page.locator("li[role=option]").filter({ hasText: /^Salle pilote/ }).click();
     await fresh
       .getByRole("button", { name: "Enregistrer l’événement", exact: true })
       .click();
