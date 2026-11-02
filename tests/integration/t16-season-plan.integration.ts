@@ -95,7 +95,7 @@ it("is left halfway and resumed with its choices", async () => {
 });
 
 it("launches once: launching again creates nothing twice", async () => {
-  const first = await seasonPlanExecute(db, presidentA, { action: "launch", expectedVersion: await version() });
+  const first = (await seasonPlanExecute(db, presidentA, { action: "launch", expectedVersion: await version() })) as { season: boolean; plans: number; tasks: number; actions: number };
   expect(first).toMatchObject({ season: true, plans: 1 });
   const again = await seasonPlanExecute(db, presidentA, { action: "launch", expectedVersion: await version() });
   expect(again).toEqual({ season: false, plans: 0, tasks: 0, actions: 0 });
