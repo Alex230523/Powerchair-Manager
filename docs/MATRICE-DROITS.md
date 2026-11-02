@@ -92,6 +92,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/notifications` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
+| `/api/offboarding` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/onboarding` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/open-events` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/open-events/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
@@ -162,6 +163,7 @@ Notes :
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
 - `/api/keys` : Clés et badges d'un coach ou d'un membre du staff (H10)
+- `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
 - `/api/onboarding` : Parcours d'accueil : ses propres parcours ; modèles et suivi pour qui gère les membres
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)

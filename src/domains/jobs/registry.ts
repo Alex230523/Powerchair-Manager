@@ -21,6 +21,7 @@ import { seasonPlanTick } from "../seasons/plan";
 import { bookingsTick } from "../venues/bookings";
 import { associationTick } from "../association/service";
 import { onboardingTick } from "../onboarding/service";
+import { offboardingTick } from "../offboarding/service";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -112,6 +113,8 @@ export const jobs = {
         association: await associationTick(db),
         // Parcours d'accueil: steps checked by themselves, a gentle reminder for the late ones.
         onboarding: await onboardingTick(db),
+        // Fin de coach: departures checked; at the end date the rights end, the president told of what is left.
+        offboarding: await offboardingTick(db),
       };
     },
   },

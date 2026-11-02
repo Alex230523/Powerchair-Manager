@@ -135,6 +135,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [18 : réservations de salles et factures, calculées depuis l'agenda](evolutions/2026-11-02-zt-18-reservations-salles.md) |
 | 02/11/2026 | [17 : registre des membres et assemblée générale, automatisés](evolutions/2026-11-02-zu-17-registre-ag.md) |
 | 02/11/2026 | [Parcours d'accueil personnalisables (club et fédération)](evolutions/2026-11-02-zv-parcours-accueil.md) |
+| 02/11/2026 | [Fin de coach : le parcours de départ](evolutions/2026-11-02-zw-fin-de-coach.md) |
 
 ## Convention
 

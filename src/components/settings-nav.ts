@@ -78,6 +78,7 @@ export const settingsEntries = [
   { id: "coachRights", category: "members", anchor: "settings-access-title" },
   { id: "rightProfiles", category: "members", anchor: "settings-profiles" },
   { id: "onboarding", category: "members", anchor: "settings-onboarding" },
+  { id: "offboarding", category: "members", anchor: "settings-offboarding" },
   { id: "presence", category: "activities", anchor: "settings-presence" },
   { id: "teamPlaces", category: "activities", anchor: "settings-team-places" },
   { id: "eventTypes", category: "activities", anchor: "settings-event-types" },

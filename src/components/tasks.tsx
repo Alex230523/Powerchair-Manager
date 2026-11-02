@@ -86,6 +86,8 @@ function href(locale: Locale, t: TaskRow) {
   if (t.source_kind === "accountsAssembly" || t.source_kind === "accountsFiling") return at(`/funding/annual-accounts`);
   // 18: a hall's booking, its follow-up, its invoice, a change to tell.
   if (t.source_kind?.startsWith("venue")) return at(`/venues#bookings`);
+  // « Fin de coach »: a step of a departure opens the coach's file.
+  if (t.source_kind === "offboarding" && t.source_params?.profile) return at(`/coaches/${t.source_params.profile}#departure`);
   return null;
 }
 /** The application's own tasks read in the reader's language. */

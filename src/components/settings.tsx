@@ -2,6 +2,7 @@
 import { TripSettings } from "./trip-settings";
 import { AssociationRules } from "./association";
 import { OnboardingSettings } from "./onboarding";
+import { OffboardingSettings } from "./offboarding";
 import { TutorialSettings } from "./first-steps";
 import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
@@ -653,6 +654,7 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           })()}
           {/* Parcours d'accueil: the templates and the follow-up (a club's people, a federation's referees and staff). */}
           {shown && category === "members" && <OnboardingSettings locale={locale} />}
+          {shown && category === "members" && ws?.selected?.kind === "club" && <OffboardingSettings locale={locale} />}
           {shown && category === "members" && gov && (gov.can.profiles || gov.profiles.length > 0) && (
             <ProfilesPanel
               locale={locale}

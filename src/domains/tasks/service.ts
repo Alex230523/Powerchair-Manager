@@ -99,7 +99,7 @@ export type TaskRow = {
   /** A4: a contact's next action. */
   contact_id: string | null;
   source_kind: string;
-  source_params: { about?: string };
+  source_params: { about?: string; profile?: string };
   auto_closed: boolean;
   about: string | null;
   comments: { id: string; body: string; author: string; created_at: string }[];

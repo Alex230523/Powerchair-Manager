@@ -13,6 +13,7 @@ import { Card, Stat } from "./player-profile";
 import { StaffKeys } from "./staff-keys";
 import { Badge, EmptyState, Tabs } from "./ui";
 import { DriverLicence } from "./driver-licence";
+import { CoachDeparture } from "./offboarding";
 import { Tasks } from "./tasks";
 import { coachSpaceCopy } from "./coach-space-copy";
 
@@ -402,6 +403,8 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
             ))}
         </Card>
         {view.can.licence && <DriverLicence locale={locale} profileId={id} />}
+        {/* « Fin de coach »: the departure, for who manages the members and for the coach himself. */}
+        {!embedded && <CoachDeparture locale={locale} profileId={id} />}
       </div>
       )}
     </Root>
