@@ -118,13 +118,13 @@ it("takes a report contested, then confirmed: the stats follow", async () => {
   expect((await refereeingView(db, r1)).mine!.toReport[0].lineup).toEqual([{ id: player, name: "Joueur Buteur", number: null }]);
   await run(
     r1,
-    { action: "report", matchId: played, homeScore: 2, awayScore: 1, events: [{ kind: "goal", side: "home", player: "Joueur Buteur", profileId: player, minute: 12 }, { kind: "yellow", side: "away", player: "N° 7", minute: 30 }], reserves: "" },
+    { action: "report", matchId: played, homeScore: 2, awayScore: 1, events: [{ kind: "goal", side: "home", player: "Joueur Buteur", profileId: player, minute: 12 }, { kind: "red", side: "home", player: "", profileId: player, minute: 40 }, { kind: "yellow", side: "away", player: "N° 7", minute: 30 }], reserves: "" },
     fed,
   );
   await run(coach, { action: "review", matchId: played, decision: "contested", comment: "Le but est à notre numéro 9." }, clubA);
   expect((await db.query("SELECT validated_at FROM match_report WHERE match_id=$1", [played])).rows[0].validated_at).toBeNull();
   await run(coach, { action: "review", matchId: played, decision: "confirmed" }, clubA);
-  expect((await db.query("SELECT goals FROM match_player WHERE match_id=$1 AND profile_id=$2", [played, player])).rows[0].goals).toBe(1);
+  expect((await db.query("SELECT goals,red_card FROM match_player WHERE match_id=$1 AND profile_id=$2", [played, player])).rows[0]).toEqual({ goals: 1, red_card: true });
   // Validated, it no longer changes: the goal would count twice.
   await expect(run(r1, { action: "report", matchId: played, homeScore: 3, awayScore: 1, events: [] }, fed)).rejects.toMatchObject({ code: "REPORT_VALIDATED" });
   expect((await db.query("SELECT goals FROM match_player WHERE match_id=$1 AND profile_id=$2", [played, player])).rows[0].goals).toBe(1);

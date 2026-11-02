@@ -424,8 +424,8 @@ async function validate(c: PoolClient, matchId: string) {
   const m = (await c.query("SELECT home,organization_id FROM match WHERE id=$1", [matchId])).rows[0] as { home: boolean; organization_id: string };
   const ours = m.home ? "home" : "away";
   for (const e of r.events.filter((e) => e.side === ours && e.profileId)) {
-    const col = e.kind === "goal" ? "goals" : e.kind === "yellow" ? "yellow_cards" : "red_cards";
-    await c.query(`UPDATE match_player SET ${col}=LEAST(${col}+1,${col === "goals" ? 50 : col === "yellow_cards" ? 2 : 1}) WHERE match_id=$1 AND organization_id=$2 AND profile_id=$3`, [matchId, m.organization_id, e.profileId]);
+    const set = e.kind === "goal" ? "goals=LEAST(goals+1,50)" : e.kind === "yellow" ? "yellow_cards=LEAST(yellow_cards+1,2)" : "red_card=true";
+    await c.query(`UPDATE match_player SET ${set} WHERE match_id=$1 AND organization_id=$2 AND profile_id=$3`, [matchId, m.organization_id, e.profileId]);
   }
 }
 
