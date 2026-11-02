@@ -623,6 +623,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
         name: s.name,
         user_id: s.p.userId,
         role: s.a.role,
+        // Audit 23: a federation or a referee does not probe the club's money layer.
+        kind: (s.a as { kind?: string }).kind ?? null,
       },
       manage: manager(s.a),
       canPlan,

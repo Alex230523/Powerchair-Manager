@@ -120,6 +120,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [B6 : pages publiques, widgets, API et webhooks](evolutions/2026-10-22-zd-b6-pages-publiques-api.md) |
 | 02/11/2026 | [Connexion : sans menu, langue discrète](evolutions/2026-11-02-ze-connexion-langues.md) |
 | 02/11/2026 | [13 : corrections techniques (base par aperçu, table task, pagination)](evolutions/2026-11-02-zg-13-corrections-techniques.md) |
+| 02/11/2026 | [23 et 26 : audits d'affichage et de droits, matrice remplie et constats corrigés](evolutions/2026-11-02-zh-23-26-audits.md) |
 | 02/11/2026 | [22 et 24 : tâches dans tous les menus, fin de la messagerie](evolutions/2026-11-02-zi-22-24-taches-fin-messagerie.md) |
 | 02/11/2026 | [24 (suite) : suppression des données de la messagerie](evolutions/2026-11-02-zj-24b-messagerie-donnees.md) |
 | 02/11/2026 | [1 : lot de corrections d'interface et écran de connexion](evolutions/2026-11-02-zk-01-corrections-interface.md) |
