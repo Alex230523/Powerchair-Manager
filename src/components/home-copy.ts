@@ -242,6 +242,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       acceptedRecently: { label: "Acceptées", hint: "14 derniers jours" },
       treasury: { label: "Trésorerie", hint: "Solde du grand livre" },
       available: { label: "Disponible", hint: "Trésorerie moins les fonds réservés" },
+      forecastLow: { label: "Trésorerie prévue sous le seuil", hint: "Dans les 3 prochains mois : voir les prévisions" },
       duesNext30: {
         label: "Échéances à 30 jours",
         hint: "Montant prévu, paiements suivis au lot bancaire",
@@ -430,6 +431,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       acceptedRecently: { label: "Aanvaard", hint: "Laatste 14 dagen" },
       treasury: { label: "Kas", hint: "Saldo van het grootboek" },
       available: { label: "Beschikbaar", hint: "Kas min de bestemde fondsen" },
+      forecastLow: { label: "Verwachte kas onder de drempel", hint: "In de komende 3 maanden: zie de prognose" },
       duesNext30: {
         label: "Vervaldagen binnen 30 dagen",
         hint: "Gepland bedrag, betalingen volgen in de bankfase",
@@ -618,6 +620,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       acceptedRecently: { label: "Accepted", hint: "Last 14 days" },
       treasury: { label: "Treasury", hint: "Ledger balance" },
       available: { label: "Available", hint: "Cash minus the reserved funds" },
+      forecastLow: { label: "Forecast cash under the threshold", hint: "In the next 3 months: see the forecast" },
       duesNext30: {
         label: "Due within 30 days",
         hint: "Scheduled amount, payments tracked with the bank module",

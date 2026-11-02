@@ -1,5 +1,6 @@
 import { coachFocus, federationFocus, memberFocus } from "./focus";
 import { reservedTotal } from "../finance/allocations";
+import { forecastAlertOf } from "../finance/forecast";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { myTasksCount } from "../tasks/service";
@@ -320,7 +321,7 @@ export async function computeFor(
     );
     metrics.push(
       ...(on("finance")
-        ? [metric("treasury", treasury, { format: "cents", href: "/funding" }), metric("available", treasury - (await reservedTotal(c, org)), { format: "cents", href: "/funding/reserved" })]
+        ? [metric("treasury", treasury, { format: "cents", href: "/funding" }), metric("available", treasury - (await reservedTotal(c, org)), { format: "cents", href: "/funding/reserved" }), ...(await forecastAlertOf(c, org).then((a) => (a ? [metric("forecastLow", a.balance, { format: "cents", href: "/funding/forecast" })] : [])))]
         : []),
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );

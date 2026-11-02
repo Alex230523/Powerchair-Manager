@@ -148,6 +148,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Fiche de la personne : « Vue d'ensemble »](evolutions/2026-11-02-zzg-vue-ensemble.md) |
 | 02/11/2026 | [Mini-sondages du club et de la fédération](evolutions/2026-11-02-zzh-sondages.md) |
 | 02/11/2026 | [Argent : fonds réservés, attestations, levée de fonds, rappels annuels](evolutions/2026-11-02-zzi-argent.md) |
+| 02/11/2026 | [Trésorerie prévisionnelle sur 12 mois](evolutions/2026-11-02-zzj-previsions.md) |
 
 ## Convention
 

@@ -156,6 +156,7 @@ export function LineChart({
   categories,
   series,
   max = 100,
+  min = 0,
   format,
   height = 240,
   tickEvery,
@@ -167,6 +168,8 @@ export function LineChart({
   categories: string[];
   series: ChartSeries[];
   max?: number;
+  /** H4: a bottom below zero (a forecast balance can go negative). */
+  min?: number;
   format: (v: number) => string;
   height?: number;
   /** A label every n categories at least (weeks: every 4), more apart if the width asks. */
@@ -181,7 +184,7 @@ export function LineChart({
     ph = height - m.t - m.b,
     n = categories.length;
   const x = (i: number) => (n <= 1 ? m.l + pw / 2 : m.l + (i * pw) / (n - 1));
-  const y = (v: number) => m.t + ph - (Math.min(Math.max(v, 0), max) / max) * ph;
+  const y = (v: number) => m.t + ph - ((Math.min(Math.max(v, min), max) - min) / (max - min || 1)) * ph;
   const { active, setActive, onPointerMove, onKeyDown } = usePointer(n, (px) => (n <= 1 ? 0 : Math.round(((px - m.l) * (n - 1)) / pw)));
   const fit = Math.max(1, Math.ceil((n * 64) / pw));
   const step = tickEvery ? tickEvery * Math.ceil(fit / tickEvery) : fit;
@@ -206,9 +209,9 @@ export function LineChart({
       <svg width={width} height={height} aria-hidden="true" onPointerMove={onPointerMove} onPointerLeave={() => setActive(null)}>
         {[0, 0.25, 0.5, 0.75, 1].map((f) => (
           <g key={f}>
-            <line x1={m.l} x2={m.l + pw} y1={y(f * max)} y2={y(f * max)} stroke="var(--grid-line)" strokeWidth={1} />
-            <text x={m.l - 8} y={y(f * max)} dy="0.32em" textAnchor="end" className="chart-axis">
-              {format(f * max)}
+            <line x1={m.l} x2={m.l + pw} y1={y(min + f * (max - min))} y2={y(min + f * (max - min))} stroke="var(--grid-line)" strokeWidth={1} />
+            <text x={m.l - 8} y={y(min + f * (max - min))} dy="0.32em" textAnchor="end" className="chart-axis">
+              {format(min + f * (max - min))}
             </text>
           </g>
         ))}

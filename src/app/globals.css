@@ -11850,3 +11850,18 @@ ul.task-page li {
   min-height: 44px;
   align-items: center;
 }
+
+/* H4: the cash forecast. */
+.forecast tr[data-low] th,
+.forecast tr[data-low] td {
+  color: var(--danger);
+  font-weight: 600;
+}
+.forecast-month summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.forecast-line {
+  max-width: 40rem;
+}

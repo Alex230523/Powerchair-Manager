@@ -70,6 +70,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/feedback/shot/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/finance/allocations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/finance/forecast` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/finance/operations` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/finance/receipt/[id]` (+ écriture) | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/finance/report` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -192,6 +193,7 @@ Notes :
 - `/api/feedback` : Signaler un problème dans l'application (point 19) : chaque compte, ses propres signalements et leur état ; 10 par jour ; envoi vers GitHub par le serveur, jeton jamais exposé
 - `/api/feedback/shot/[token]` : Capture d'un signalement (déjà masquée), par jeton imprévisible, liée depuis l'issue d'un dépôt privé ; 404 sans jeton valide
 - `/api/finance/allocations` : Fonds réservés : affectations, opérations rattachées, export justificatif (point 9)
+- `/api/finance/forecast` : Trésorerie prévisionnelle sur 12 mois, simulations et seuil, export PDF (H4)
 - `/api/guide` : Guide du jeu : chapitres publiés de sa fédération ; rédaction par la fédération ; note « Chez nous » du club
 - `/api/guide/image` : Image de la galerie ou photo d'un modèle : lecteurs de la fédération ; sans compte seulement si un chapitre public la montre
 - `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
@@ -266,6 +268,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/funding/affiliations` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/annual-accounts` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/budget` |  |  |  |  |  |  |  |  |  |   |
+| `/funding/forecast` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/grants` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/grants-sponsors` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/operations` |  |  |  |  |  |  |  |  |  |   |

@@ -15,6 +15,7 @@ const href: Record<FinanceSection, string> = {
   overview: "/funding",
   operations: "/funding/operations",
   budget: "/funding/budget",
+  forecast: "/funding/forecast",
   reserved: "/funding/reserved",
   affiliations: "/funding/affiliations",
   statements: "/funding/statements",

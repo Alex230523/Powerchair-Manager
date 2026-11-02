@@ -92,6 +92,8 @@ function href(locale: Locale, t: TaskRow) {
   if (t.source_kind === "disciplineFine") return at(`/discipline#fines`);
   // 9: reserved funds whose use-by date comes.
   if (t.source_kind === "allocationDeadline") return at(`/funding/reserved`);
+  // H4: the cash forecast under the threshold.
+  if (t.source_kind === "forecastLow") return at(`/funding/forecast`);
   return null;
 }
 /** The application's own tasks read in the reader's language. */

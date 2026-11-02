@@ -154,7 +154,7 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
 /** The four figures read first; the rest unfolds behind "Tous les chiffres". */
 const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendingResponses", "waitingList"];
 /** The president's key figures (wave 16, A), in this order, the treasury first and full width. */
-const presidentMetrics: Metric["key"][] = ["treasury", "available", "seasonPlayers", "seasonTeams", "seasonCoaches", "chairs", "trainingsDone", "matchesPlayed"];
+const presidentMetrics: Metric["key"][] = ["treasury", "available", "forecastLow", "seasonPlayers", "seasonTeams", "seasonCoaches", "chairs", "trainingsDone", "matchesPlayed"];
 const mondayOf = (iso: string) => {
   const d = new Date(iso.slice(0, 10) + "T12:00:00Z");
   const day = (d.getUTCDay() + 6) % 7;
@@ -486,6 +486,7 @@ const metricIcons: Record<Metric["key"], IconName> = {
   duesNext30: "dues",
   treasury: "funding",
   available: "check",
+  forecastLow: "alert",
   myNextDue: "dues",
   seasonPlayers: "players",
   seasonTeams: "team",

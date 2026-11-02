@@ -126,6 +126,8 @@ export const metricKeys = [
   "treasury",
   // 9: the cash minus the reserved funds.
   "available",
+  // H4: the certain forecast under the threshold within three months.
+  "forecastLow",
   "myNextDue",
   // The president's key figures (wave 16, A), for the season in view.
   "seasonPlayers",

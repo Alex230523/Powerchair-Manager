@@ -42,7 +42,7 @@ test("finance tabs, add and delete an operation with undo, bank statements", asy
     await page.goto("/fr/funding");
     await expect(page.locator("nav summary").filter({ hasText: "Finances" })).toHaveCount(1);
     const tabs = page.getByRole("navigation", { name: "Sections des finances" });
-    await expect(tabs.getByRole("link")).toHaveText(["Vue d'ensemble", "Opérations", "Budget", "Fonds réservés", "Affiliations", "Relevés de compte", "Comptes annuels et rapports"]);
+    await expect(tabs.getByRole("link")).toHaveText(["Vue d'ensemble", "Opérations", "Budget", "Prévisions", "Fonds réservés", "Affiliations", "Relevés de compte", "Comptes annuels et rapports"]);
     await expect(tabs.getByRole("link", { name: "Vue d'ensemble" })).toHaveAttribute("aria-current", "page");
     await axe(page, "overview");
     // 9: grants and sponsors are in the menu; their page has no row of finance tabs.
