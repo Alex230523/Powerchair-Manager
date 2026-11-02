@@ -64,7 +64,7 @@ test("the game guide, from the federation's drafts to a club's chair", async ({ 
     await context(clubMandate);
     await page.goto("/fr/guide/chair");
     await expect(page.getByRole("heading", { name: "Le fauteuil de match", level: 1 })).toBeVisible();
-    await page.getByLabel("Chez nous").fill("Les chargeurs sont dans l'armoire du local 2.");
+    await page.getByRole("textbox", { name: "Chez nous" }).fill("Les chargeurs sont dans l'armoire du local 2.");
     await page.getByRole("button", { name: "Enregistrer la note" }).click();
     await expect(page.locator(".guide-ours p").first()).toHaveText("Les chargeurs sont dans l'armoire du local 2.");
     await axe(page, "club note");

@@ -74,7 +74,8 @@ test("a rental's round, its tasks and the road sheet on a phone", async ({ page 
     await page.getByRole("checkbox", { name: /Paul Fauteuil/ }).check();
     await axe(page, "vehicle form");
     await noScroll(page);
-    await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+    // The vehicle form, not another card of the page.
+    await page.locator("form").filter({ has: page.getByLabel("Adresse de retrait") }).getByRole("button", { name: "Enregistrer", exact: true }).click();
     const card = page.locator(".vehicle-card").filter({ hasText: "Camionnette louée" });
     await expect(card.getByText("Retrait du véhicule")).toBeVisible();
     await expect(card.getByText("Retour du véhicule")).toBeVisible();

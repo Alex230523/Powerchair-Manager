@@ -35,7 +35,7 @@ test("a welcome journey, from the template to the home card", async ({ page }) =
     await page.goto("/fr/settings/members");
     const card = page.locator("section").filter({ has: page.getByRole("heading", { name: "Parcours d'accueil" }) }).last();
     await card.getByRole("button", { name: "Ajouter le modèle « Nouveau coach »" }).click();
-    await expect(card.getByText("Nouveau coach", { exact: true })).toBeVisible();
+    await expect(card.locator(".onboarding-templates").getByText("Nouveau coach", { exact: true })).toBeVisible();
     await axe(page, "onboarding settings");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     await card.getByLabel("Personne").selectOption({ label: "Présidente Accueil" });
