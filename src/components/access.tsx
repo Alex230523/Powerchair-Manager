@@ -17,6 +17,7 @@ import {
 import type { Locale } from "@/lib/locale";
 import { accessCopy, errors, auditLabels } from "./access-copy";
 import { Panel, Button } from "./ui";
+import { InviteRoleRights } from "./staff-roles";
 type Member = {
   id: string;
   user_id: string;
@@ -584,6 +585,7 @@ export function Access({ locale }: { locale: Locale }) {
                           email: data.get("email"),
                           role: data.get("role"),
                           grants: data.getAll("grants"),
+                          staffRoleIds: data.getAll("staffRoleIds").filter(Boolean),
                           ...(data.get("from")
                             ? {
                                 validFrom: new Date(
@@ -636,23 +638,14 @@ export function Access({ locale }: { locale: Locale }) {
                           ))}
                       </select>
                     </label>
-                    <fieldset>
-                      <legend>{t.grants}</legend>
-                      {Object.entries(grantLabels)
-                        .filter(([value]) =>
-                          state.permissions.includes(value as Permission),
-                        )
-                        .map(([value, label]) => (
-                          <label className="check" key={value}>
-                            <input
-                              type="checkbox"
-                              name="grants"
-                              value={value}
-                            />
-                            {label}
-                          </label>
-                        ))}
-                    </fieldset>
+                    {/* 7: a staff role first, its rights prefilled. */}
+                    <InviteRoleRights
+                      locale={locale}
+                      labels={Object.entries(grantLabels) as [string, string][]}
+                      allowed={(value) => state.permissions.includes(value as Permission)}
+                      club={state.selected.kind === "club"}
+                      legend={t.grants}
+                    />
                     <label>
                       {t.from}
                       <input name="from" type="date" />

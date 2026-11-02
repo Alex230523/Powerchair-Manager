@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { coachProfileView } from "@/domains/coaches/service";
 import { rate } from "@/domains/player-profile/schema";
@@ -36,6 +36,10 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** Coach profile: details, teams, upcoming sessions, attendance and courses. */
 /** Wave 17 (J1): also shown in a window from the directory (`embedded`). */
+function subscribeHash(change: () => void) {
+  window.addEventListener("hashchange", change);
+  return () => window.removeEventListener("hashchange", change);
+}
 export function CoachProfile({ locale, id, embedded = false }: { locale: Locale; id: string; embedded?: boolean }) {
   const Root = embedded ? "div" : "main";
   const rootId = embedded ? undefined : "main";
@@ -45,7 +49,10 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [tab, setTab] = useState<"profile" | "todo">("profile");
+    // 7: « #todo » (from the coaches' list) opens the person's to-do, until a tab is chosen.
+    fromList = useSyncExternalStore(subscribeHash, () => window.location.hash === "#todo", () => false),
+    [chosen, setTab] = useState<"profile" | "todo" | null>(null);
+  const tab = chosen ?? (fromList ? "todo" : "profile");
   const space = coachSpaceCopy[locale];
   const failure = useCallback(
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
@@ -306,7 +313,7 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
           )}
         </Card>
 
-        <Card title={t.formations} icon="check" wide>
+        <Card title={t.formations} icon="check" wide id="formations">
           <p className="muted">{t.formationsHint}</p>
           {view.formations.length ? (
             <ul className="records">

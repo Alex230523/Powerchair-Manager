@@ -178,6 +178,9 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
         [invite.organization_id, invite.profile_id, invite.guardian_of, invite.created_by],
       );
   }
+  // 7: the staff roles chosen with the invitation.
+  const { rolesOnAccept } = await import("./staff-roles");
+  await rolesOnAccept(c, invite.organization_id, invite.id, mandate, invite.created_by);
   await audit(c, invite.organization_id, user.id, "invitation.accepted", mandate);
   // Parcours d'accueil: the journeys written for this role start now.
   await assignOnAccept(c, invite.organization_id, user.id, invite.role, invite.created_by);

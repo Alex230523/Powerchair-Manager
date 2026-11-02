@@ -648,6 +648,8 @@ async function readPeople(s: Scope, filters: Filters) {
     ownProfileId: v.own?.id ?? null,
     // H10: the keys each person still holds, for those who may see them (president, equipment, members).
     keyCounts: seesAllKeys(s.context.role, s.rights) ? await keyCounts(s.client, s.context.organization_id) : null,
+    // 7: the coaches' list for the president and who manages the members: roles, tasks, validated courses.
+    coachExtras: coachIds.length && (s.context.role === "club_president" || s.rights.includes("mandates.manage")) ? await coachExtras(s.client, s.context.organization_id, coachIds, courses) : null,
     capabilities: {
       peopleManage: managers,
       registrationsManage: s.rights.includes("registrations.manage"),
@@ -697,6 +699,37 @@ async function readPeople(s: Scope, filters: Filters) {
     total: profiles.length,
   };
 }
+/** 7: per coach, his staff roles, his open and late tasks, his validated courses (title and date). */
+async function coachExtras(c: PoolClient, org: string, ids: string[], courses: { profile_id: string; status: string; title: string; completed_on: string | null; decided_on: string | null }[]) {
+  const roles = (
+    await c.query(
+      `SELECT cp.id AS profile_id,r.id,r.name FROM club_person cp JOIN person pe ON pe.id=cp.person_id JOIN role_assignment a ON a.user_id=pe.user_id AND a.organization_id=cp.organization_id
+         JOIN mandate_staff_role m ON m.mandate_id=a.id JOIN staff_role r ON r.id=m.role_id AND NOT r.archived
+        WHERE cp.organization_id=$1 AND cp.id=ANY($2::uuid[]) AND a.revoked_at IS NULL AND (a.valid_until IS NULL OR a.valid_until>now()) ORDER BY r.created_at`,
+      [org, ids],
+    )
+  ).rows as { profile_id: string; id: string; name: { fr: string; nl?: string; en?: string } }[];
+  const tasks = (
+    await c.query(
+      `SELECT p.id AS profile_id,count(DISTINCT t.id)::int AS open,count(DISTINCT t.id) FILTER (WHERE t.due_on<CURRENT_DATE)::int AS late
+         FROM unnest($2::uuid[]) AS p(id) JOIN task t ON t.organization_id=$1 AND t.status<>'done'
+          AND (t.responsible_id=p.id OR EXISTS(SELECT 1 FROM task_assignee a WHERE a.task_id=t.id AND a.profile_id=p.id AND a.done_on IS NULL))
+        GROUP BY p.id`,
+      [org, ids],
+    )
+  ).rows as { profile_id: string; open: number; late: number }[];
+  return Object.fromEntries(
+    ids.map((id) => [
+      id,
+      {
+        roles: roles.filter((r) => r.profile_id === id).map((r) => ({ id: r.id, name: r.name })),
+        tasks: tasks.find((t) => t.profile_id === id) ?? { open: 0, late: 0 },
+        formations: courses.filter((x) => x.profile_id === id && x.status === "approved").map((x) => ({ title: x.title, on: x.completed_on ?? x.decided_on })),
+      },
+    ]),
+  );
+}
+
 export async function peopleView(
   db: Pool,
   p: Principal,

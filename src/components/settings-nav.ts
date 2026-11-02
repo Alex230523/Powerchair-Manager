@@ -76,6 +76,7 @@ export const settingsEntries = [
   { id: "hallOfFame", category: "club", anchor: "settings-hall-of-fame" },
   { id: "modules", category: "club", anchor: "settings-modules" },
   { id: "coachRights", category: "members", anchor: "settings-access-title" },
+  { id: "staffRoles", category: "members", anchor: "settings-roles" },
   { id: "rightProfiles", category: "members", anchor: "settings-profiles" },
   { id: "onboarding", category: "members", anchor: "settings-onboarding" },
   { id: "offboarding", category: "members", anchor: "settings-offboarding" },

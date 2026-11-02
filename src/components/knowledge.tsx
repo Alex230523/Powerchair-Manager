@@ -98,14 +98,22 @@ export function LexiconChoice({ locale }: { locale: Locale }) {
 }
 
 /** A term with its definition, on hover and on keyboard focus; Escape hides it. */
-export function Tip({ children, definition }: { children: ReactNode; definition: string }) {
+export function Tip({ children, definition, href }: { children: ReactNode; definition: string; href?: string }) {
   const id = useId();
   const [hidden, setHidden] = useState(false);
+  const keys = { "aria-describedby": id, onKeyDown: (e: { key: string }) => e.key === "Escape" && setHidden(true), onBlur: () => setHidden(false) };
   return (
     <span className="tip" data-hidden={hidden || undefined} onMouseLeave={() => setHidden(false)}>
-      <button type="button" className="tip-term" aria-describedby={id} onKeyDown={(e) => e.key === "Escape" && setHidden(true)} onBlur={() => setHidden(false)}>
-        {children}
-      </button>
+      {/* 7: a tip may also lead somewhere (a click opens the page it sums up). */}
+      {href ? (
+        <Link href={href} className="tip-term tip-link" {...keys}>
+          {children}
+        </Link>
+      ) : (
+        <button type="button" className="tip-term" {...keys}>
+          {children}
+        </button>
+      )}
       <span role="tooltip" id={id} className="tip-bubble">
         {definition}
       </span>

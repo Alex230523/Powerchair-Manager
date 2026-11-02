@@ -975,6 +975,7 @@ export function Card({
   action,
   wide,
   children,
+  id,
 }: {
   title: string;
   icon?: IconName;
@@ -982,9 +983,12 @@ export function Card({
   action?: ReactNode;
   wide?: boolean;
   children: ReactNode;
+  /** An anchor for links to this card (7: the coach's courses). */
+  id?: string;
 }) {
   return (
     <article
+      id={id}
       className="profile-card"
       data-tone={tone}
       data-wide={wide || undefined}

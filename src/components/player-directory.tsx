@@ -23,6 +23,8 @@ import { InviteFields, isMinor } from "./invite-fields";
 import { RepresentativeFields, readRepresentatives } from "./representative-fields";
 import { representativeCopy } from "./representative-copy";
 import { coachSpaceCopy } from "./coach-space-copy";
+import { staffRolesCopy } from "./staff-roles-copy";
+import { Tip } from "./knowledge";
 import type { TrainingState } from "@/domains/licences/schema";
 
 /** Wave 17 (O1): « Formé » (course and date in the tooltip), « En attente de validation » or « Non formé ». */
@@ -397,6 +399,12 @@ export function PlayerDirectory({
     <main id="main" className="access player-directory">
       <PageHeader title={title} subtitle={data?.context.name ?? t.intro} actions={<><div className="directory-actions">
           {/* 1: the coaches' page keeps neither registrations nor dues; its export sits here, top right. */}
+          {/* 7: « Créer un rôle » leads to the staff roles (Réglages › Membres et droits). */}
+          {role === "coach" && !former && data?.coachExtras && (
+            <Link className="button secondary" href={`/${locale}/settings/members#settings-roles`}>
+              {staffRolesCopy[locale].create}
+            </Link>
+          )}
           {role === "player" && (
             <>
               <Link
@@ -620,7 +628,50 @@ export function PlayerDirectory({
                     { key: "number", header: t.number, sort: (r: Profile) => r.jersey_number, cell: (r: Profile) => r.jersey_number ?? "—" },
                   ]
                 : []),
-              ...(role === "coach" && !former
+              // 7: the coach's roles, his tasks and his validated courses (president and who manages the members).
+              ...(role === "coach" && !former && data?.coachExtras
+                ? [
+                    {
+                      key: "roles",
+                      header: staffRolesCopy[locale].column,
+                      sort: (r: Profile) => (data.coachExtras?.[r.id]?.roles ?? []).map((x) => x.name.fr).join(", "),
+                      cell: (r: Profile) =>
+                        (data.coachExtras?.[r.id]?.roles ?? []).map((x) => (
+                          <Badge key={x.id} tone="info">
+                            {locale === "fr" ? x.name.fr : x.name[locale] || x.name.fr}
+                          </Badge>
+                        )),
+                    },
+                    {
+                      key: "tasks",
+                      header: staffRolesCopy[locale].tasks,
+                      sort: (r: Profile) => data.coachExtras?.[r.id]?.tasks.open ?? 0,
+                      cell: (r: Profile) => {
+                        const k = data.coachExtras?.[r.id]?.tasks ?? { open: 0, late: 0 };
+                        return (
+                          <Link href={`/${locale}/coaches/${r.id}#todo`}>
+                            {fillIn(staffRolesCopy[locale].tasksCount, { open: String(k.open), late: String(k.late) })}
+                          </Link>
+                        );
+                      },
+                    },
+                    {
+                      key: "formations",
+                      header: staffRolesCopy[locale].formations,
+                      sort: (r: Profile) => data.coachExtras?.[r.id]?.formations.length ?? 0,
+                      cell: (r: Profile) => {
+                        const list = data.coachExtras?.[r.id]?.formations ?? [];
+                        const day = (d: string | null) => (d ? new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")) : "");
+                        return (
+                          <Tip href={`/${locale}/coaches/${r.id}#formations`} definition={list.length ? list.map((x) => fillIn(staffRolesCopy[locale].formationOn, { title: x.title, date: day(x.on) })).join(" · ") : staffRolesCopy[locale].noFormation}>
+                            {fillIn(staffRolesCopy[locale].formationsCount, { n: String(list.length) })}
+                          </Tip>
+                        );
+                      },
+                    },
+                  ]
+                : []),
+              ...(role === "coach" && !former && !data?.coachExtras
                 ? [
                     {
                       key: "training",

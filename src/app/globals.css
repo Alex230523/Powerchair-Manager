@@ -11467,3 +11467,21 @@ ul.task-page li {
   flex: 1;
   min-width: 0;
 }
+
+/* 7: staff roles. */
+.staff-roles > li,
+.staff-people > li {
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.staff-confirm {
+  display: grid;
+  gap: var(--space-2);
+}
+.staff-confirm h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.tip-link {
+  color: inherit;
+}
