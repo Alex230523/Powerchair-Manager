@@ -44,7 +44,8 @@ test("getting started of a new club", async ({ page }) => {
 
     // 2. "Commencer" opens the right form; the real data moves the card on.
     await setup.getByRole("link", { name: "Commencer : Créer la saison en cours" }).click();
-    await expect(page).toHaveURL(/\/fr\/club\/manage#teams$/);
+    // 12: seasons and teams live in Réglages › Saisons et équipes.
+    await expect(page).toHaveURL(/\/fr\/settings\/seasons/);
     await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-10,CURRENT_DATE+300)", [club]);
     await page.goto("/fr");
     await expect(setup).toContainText("1 sur 9");
