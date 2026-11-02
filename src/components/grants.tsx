@@ -1,5 +1,5 @@
 "use client";
-import { FinanceNav } from "./finance-nav";
+import { AnnualReminder } from "./annual-reminder";
 import { SupportTabs } from "./grants-sponsors";
 import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { DataGrid } from "./data-grid";
@@ -114,7 +114,6 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
           </>
         }
       />
-      <FinanceNav locale={locale} current="income" income="support" />
       <SupportTabs locale={locale} current="grants" />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -603,6 +602,8 @@ function GrantSheet({
               </div>
             </section>
             <GrantPayments locale={locale} data={data} grant={grant} busy={busy} post={post} />
+            {/* 9: the yearly reminder, kept when the year's file closes. */}
+            <AnnualReminder locale={locale} data={data} grantId={grant.id} closed={grant.status === "closed" || grant.status === "paid"} busy={busy} post={post} />
             {funder && <FunderFacts locale={locale} data={data} funder={funder} others={others} edit={() => editFunder(funder.id)} openGrant={openGrant} />}
             <FinancedChairs locale={locale} data={data} grant={grant} busy={busy} post={post} />
           </>

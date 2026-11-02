@@ -42,7 +42,10 @@ export type Envelope = {
   /** Display name of the sender (the club) and where replies go. */
   fromName?: string;
   replyTo?: string;
+  /** 9: a file joined to the mail (the attestation PDF), base64. */
+  attachments?: Attachment[];
 };
+export type Attachment = { filename: string; contentType: "application/pdf"; base64: string };
 export type Publication = {
   organizationId: string | null;
   userId: string | null;
@@ -59,6 +62,8 @@ export type Publication = {
   html?: string;
   /** B7: an automation that only notifies in the application, without an email. */
   skipEmail?: boolean;
+  /** 9: files joined to the mail (never to the in-app notification). */
+  attachments?: Attachment[];
 };
 /** Display name and reply address chosen by the club (wave 9). */
 export async function senderOf(db: Db, org: string | null) {
@@ -177,6 +182,7 @@ async function insert(client: PoolClient, input: Publication) {
               email: input.email,
               url: input.variables.url,
               ...rendered,
+              ...(input.attachments?.length ? { attachments: input.attachments } : {}),
               ...(input.category === "security"
                 ? {}
                 : await senderOf(client, input.organizationId)),

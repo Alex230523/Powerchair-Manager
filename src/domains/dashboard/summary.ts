@@ -124,6 +124,8 @@ export const metricKeys = [
   "acceptedRecently",
   "duesNext30",
   "treasury",
+  // 9: the cash minus the reserved funds.
+  "available",
   "myNextDue",
   // The president's key figures (wave 16, A), for the season in view.
   "seasonPlayers",

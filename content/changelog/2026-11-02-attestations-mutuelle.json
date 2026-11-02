@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "player",
+    "parent"
+  ],
+  "link": "/dues/attestations",
+  "image": null,
+  "fr": {
+    "title": "L'attestation de mutuelle en PDF",
+    "text": "L'attestation porte le logo, le numéro d'entreprise et la signature du club. Elle part par email dès que la cotisation est payée, se télécharge dans votre espace, et le club peut compléter le formulaire propre à votre mutuelle."
+  },
+  "nl": {
+    "title": "Het ziekenfondsattest in pdf",
+    "text": "Het attest draagt het logo, het ondernemingsnummer en de handtekening van de club. Het vertrekt per e-mail zodra de bijdrage betaald is, is te downloaden in uw omgeving, en de club kan het eigen formulier van uw ziekenfonds invullen."
+  },
+  "en": {
+    "title": "The mutual insurance certificate as PDF",
+    "text": "The certificate carries the club's logo, company number and signature. It is emailed as soon as the fee is paid, can be downloaded in your space, and the club can fill in your mutual's own form."
+  }
+}

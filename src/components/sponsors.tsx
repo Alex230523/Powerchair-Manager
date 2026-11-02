@@ -1,4 +1,5 @@
 "use client";
+import { AnnualReminder } from "./annual-reminder";
 import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -541,6 +542,8 @@ export function PartnerSheet({
             <dd>{dayLabel(locale, partner.last_contact_on) || s.toDefine}</dd>
           </div>
         </dl>
+        {/* 9: the yearly reminder (the contract to renew). */}
+        <AnnualReminder locale={locale} data={data} partnerId={partner.id} busy={busy} post={post} />
         {data.can.manage && (
           <div className="row-actions">
             <Button variant="secondary" size="sm" onClick={edit}>{t.edit}</Button>

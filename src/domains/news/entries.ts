@@ -32,12 +32,14 @@ import e29 from "../../../content/changelog/2026-10-22-rappels-automatiques.json
 import e30 from "../../../content/changelog/2026-10-22-subsides-sponsors.json";
 import e31 from "../../../content/changelog/2026-10-22-todo.json";
 import e32 from "../../../content/changelog/2026-11-02-arbitrage.json";
-import e33 from "../../../content/changelog/2026-11-02-discipline.json";
-import e34 from "../../../content/changelog/2026-11-02-federation-asbl.json";
-import e35 from "../../../content/changelog/2026-11-02-nouveautes.json";
-import e36 from "../../../content/changelog/2026-11-02-signalements.json";
-import e37 from "../../../content/changelog/2026-11-02-sondages.json";
-import e38 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
+import e33 from "../../../content/changelog/2026-11-02-attestations-mutuelle.json";
+import e34 from "../../../content/changelog/2026-11-02-discipline.json";
+import e35 from "../../../content/changelog/2026-11-02-federation-asbl.json";
+import e36 from "../../../content/changelog/2026-11-02-fonds-reserves.json";
+import e37 from "../../../content/changelog/2026-11-02-nouveautes.json";
+import e38 from "../../../content/changelog/2026-11-02-signalements.json";
+import e39 from "../../../content/changelog/2026-11-02-sondages.json";
+import e40 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -73,10 +75,12 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-22-subsides-sponsors", data: e30 },
   { id: "2026-10-22-todo", data: e31 },
   { id: "2026-11-02-arbitrage", data: e32 },
-  { id: "2026-11-02-discipline", data: e33 },
-  { id: "2026-11-02-federation-asbl", data: e34 },
-  { id: "2026-11-02-nouveautes", data: e35 },
-  { id: "2026-11-02-signalements", data: e36 },
-  { id: "2026-11-02-sondages", data: e37 },
-  { id: "2026-11-02-vue-ensemble", data: e38 },
+  { id: "2026-11-02-attestations-mutuelle", data: e33 },
+  { id: "2026-11-02-discipline", data: e34 },
+  { id: "2026-11-02-federation-asbl", data: e35 },
+  { id: "2026-11-02-fonds-reserves", data: e36 },
+  { id: "2026-11-02-nouveautes", data: e37 },
+  { id: "2026-11-02-signalements", data: e38 },
+  { id: "2026-11-02-sondages", data: e39 },
+  { id: "2026-11-02-vue-ensemble", data: e40 },
 ];

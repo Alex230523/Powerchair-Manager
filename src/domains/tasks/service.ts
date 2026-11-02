@@ -516,9 +516,18 @@ async function setStatus(s: Scope, t: Awaited<ReturnType<typeof taskFor>>, statu
           },
         })
       ).rows[0]?.id;
-      if (next)
+      if (next) {
         for (const a of t.assignees)
           await s.c.query("INSERT INTO task_assignee(task_id,organization_id,profile_id,user_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING", [next, s.org, a.profile_id, a.user_id]);
+        // 9: the next year keeps its file (grant, sponsor, pot) and a yearly reminder stays one.
+        await s.c.query(
+          `UPDATE task n SET grant_id=o.grant_id,partner_id=o.partner_id,pot_id=o.pot_id,
+                  source_kind=CASE WHEN o.source_kind='annualReminder' THEN o.source_kind ELSE n.source_kind END,
+                  source_params=CASE WHEN o.source_kind='annualReminder' THEN o.source_params ELSE n.source_params END
+             FROM task o WHERE n.id=$1 AND o.id=$2 AND n.organization_id=$3 AND o.organization_id=$3`,
+          [next, t.id, s.org],
+        );
+      }
     }
   }
   await audit(s.c, s.org, s.userId, status === "done" ? "task.done" : status === "doing" ? "task.started" : "task.reopened", t.id, next ? { next } : undefined);

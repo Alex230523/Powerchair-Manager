@@ -41,7 +41,15 @@ export const fundraisingCommand = z.discriminatedUnion("action", [
     playersJoin: z.boolean().optional(),
     /** A pot of one team (wave 15): only its players take part; null or absent: the whole club. */
     teamId: z.uuid().nullable().optional(),
+    /** 9: an outside page (a donation page, a form). */
+    linkUrl: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(500)]).optional(),
   }),
+  /** 9: a goal per person (« vendre 20 boîtes »); target 0 removes it. */
+  z.object({ action: z.literal("goal"), potId: z.uuid(), profileId: z.uuid(), target: z.number().int().min(0).max(100000), unit: text(60) }),
+  /** 9: the progress of a goal, by the club, the player or his parent. */
+  z.object({ action: z.literal("progress"), potId: z.uuid(), profileId: z.uuid(), done: z.number().int().min(0).max(100000) }),
+  /** 9: tasks given to players and coaches, in the central to-do (« Collecte de fonds »). */
+  z.object({ action: z.literal("tasks"), potId: z.uuid(), title: text(200).min(2), dueOn: z.iso.date().nullable(), profileIds: z.array(z.uuid()).min(1).max(100) }),
   z.object({ action: z.literal("publish"), potId: z.uuid(), public: z.boolean() }),
   z.object({
     action: z.literal("movement"),
@@ -71,6 +79,7 @@ export const fundraisingCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("cancelMovement"), id: z.uuid() }),
 ]);
 export type FundraisingCommand = z.infer<typeof fundraisingCommand>;
+export type Goal = { profile_id: string; full_name: string; target: number; unit: string; done: number };
 /** A movement as shown: amounts and donors only for money managers and readers. */
 export type MovementView = {
   id: string;
@@ -170,7 +179,8 @@ export async function fundraisingView(db: Pool, p: Principal) {
     ).rows;
     const pots = (
       await c.query(
-        `SELECT p.id,p.group_id,p.name,p.description,p.goal_cents,p.deadline::text AS deadline,p.status,p.public_token,p.players_join,p.version,p.team_id,t.name AS team_name,t.color AS team_color,
+        `SELECT p.id,p.group_id,p.name,p.description,p.goal_cents,p.deadline::text AS deadline,p.status,p.public_token,p.players_join,p.version,p.team_id,t.name AS team_name,t.color AS team_color,p.link_url,
+                COALESCE((SELECT json_agg(json_build_object('profile_id',g.profile_id,'full_name',cp.full_name,'target',g.target,'unit',g.unit,'done',g.done) ORDER BY cp.full_name) FROM fundraising_goal g JOIN club_person cp ON cp.id=g.profile_id WHERE g.pot_id=p.id),'[]') AS goals,
                 COALESCE((SELECT array_agg(DISTINCT m.profile_id::text) FROM team_membership m WHERE m.team_id=p.team_id AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE)),'{}'::text[]) AS team_members
            FROM fundraising_pot p LEFT JOIN team t ON t.id=p.team_id WHERE p.organization_id=$1 ORDER BY p.status,p.created_at DESC`,
         [org],
@@ -190,6 +200,8 @@ export async function fundraisingView(db: Pool, p: Principal) {
       team_name: string | null;
       team_color: string | null;
       team_members: string[];
+      link_url: string;
+      goals: Goal[];
     }[];
     const movements = (
       await c.query(
@@ -207,6 +219,12 @@ export async function fundraisingView(db: Pool, p: Principal) {
           )
         ).rows as { id: string; full_name: string }[])
       : [];
+    // 9: the people a fundraising task can be given to (players and coaches).
+    const helpers = manage
+      ? ((
+          await c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' AND ('player'=ANY(directory_roles) OR 'coach'=ANY(directory_roles)) ORDER BY full_name", [org])
+        ).rows as { id: string; full_name: string }[])
+      : [];
     const ownProfilesList = own.size
       ? ((
           await c.query("SELECT id,full_name FROM club_person WHERE id=ANY($1::uuid[]) ORDER BY full_name", [[...own]])
@@ -217,6 +235,7 @@ export async function fundraisingView(db: Pool, p: Principal) {
       can: { manage, detail },
       groups,
       players,
+      helpers,
       ownProfiles: ownProfilesList,
       // A team pot is offered to that team's players (and their parents) only; money managers and readers see every pot.
       teams: manage ? ((await c.query("SELECT id,name,color FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [org])).rows as { id: string; name: string; color: string | null }[]) : [],
@@ -242,6 +261,8 @@ export async function fundraisingView(db: Pool, p: Principal) {
           /** The team's current players, for the collector list of a money manager (wave 15). */
           team_members: manage ? team_members : [],
           public_token: manage ? pot.public_token : null,
+          /** 9: the goals per person: all of them when the players take part, otherwise one's own. */
+          goals: pot.goals.filter((g) => manage || detail || pot.players_join || own.has(g.profile_id)),
           progress: potProgress(pot.goal_cents, mine),
           collectors: pot.players_join || detail ? collectors : [],
           /** What the viewer (or their children) collected, with amounts. */
@@ -278,7 +299,7 @@ export async function fundraisingExecute(
     p,
     true,
     async ({ c, org, userId, own, manage }) => {
-      if (cmd.action !== "collect" && cmd.action !== "cancelMovement" && !manage)
+      if (cmd.action !== "collect" && cmd.action !== "cancelMovement" && cmd.action !== "progress" && !manage)
         throw new AccessError("FORBIDDEN");
       const pot = async (id: string) => {
         const row = (
@@ -318,19 +339,53 @@ export async function fundraisingExecute(
           if (cmd.id) {
             await pot(cmd.id);
             await c.query(
-              "UPDATE fundraising_pot SET group_id=$3,name=$4,description=$5,goal_cents=$6,deadline=$7,status=$8,players_join=COALESCE($9,players_join),team_id=CASE WHEN $10::boolean THEN $11::uuid ELSE team_id END,version=version+1 WHERE id=$1 AND organization_id=$2",
-              [cmd.id, org, ...values, cmd.teamId !== undefined, cmd.teamId ?? null],
+              "UPDATE fundraising_pot SET group_id=$3,name=$4,description=$5,goal_cents=$6,deadline=$7,status=$8,players_join=COALESCE($9,players_join),team_id=CASE WHEN $10::boolean THEN $11::uuid ELSE team_id END,link_url=COALESCE($12,link_url),version=version+1 WHERE id=$1 AND organization_id=$2",
+              [cmd.id, org, ...values, cmd.teamId !== undefined, cmd.teamId ?? null, cmd.linkUrl ?? null],
             );
             return { id: cmd.id };
           }
           const id = (
             await c.query(
-              "INSERT INTO fundraising_pot(organization_id,group_id,name,description,goal_cents,deadline,status,players_join,created_by,team_id) VALUES($1,$2,$3,$4,$5,$6,$7,COALESCE($8,false),$9,$10) RETURNING id",
-              [org, ...values, userId, cmd.teamId ?? null],
+              "INSERT INTO fundraising_pot(organization_id,group_id,name,description,goal_cents,deadline,status,players_join,created_by,team_id,link_url) VALUES($1,$2,$3,$4,$5,$6,$7,COALESCE($8,false),$9,$10,$11) RETURNING id",
+              [org, ...values, userId, cmd.teamId ?? null, cmd.linkUrl ?? ""],
             )
           ).rows[0].id as string;
           await audit(c, org, userId, "fundraising.pot", id);
           return { id };
+        }
+        case "goal": {
+          await pot(cmd.potId);
+          if (!(await c.query("SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2", [cmd.profileId, org])).rowCount) throw new AccessError("NOT_FOUND", 404);
+          if (!cmd.target) await c.query("DELETE FROM fundraising_goal WHERE pot_id=$1 AND profile_id=$2", [cmd.potId, cmd.profileId]);
+          else
+            await c.query(
+              "INSERT INTO fundraising_goal(pot_id,organization_id,profile_id,target,unit) VALUES($1,$2,$3,$4,$5) ON CONFLICT (pot_id,profile_id) DO UPDATE SET target=EXCLUDED.target,unit=EXCLUDED.unit,updated_at=now()",
+              [cmd.potId, org, cmd.profileId, cmd.target, cmd.unit],
+            );
+          return { id: cmd.potId };
+        }
+        case "progress": {
+          // The club, or the person himself (a parent for his child).
+          if (!manage && !own.has(cmd.profileId)) throw new AccessError("FORBIDDEN");
+          const r = await c.query("UPDATE fundraising_goal SET done=$4,updated_at=now() WHERE pot_id=$1 AND profile_id=$2 AND organization_id=$3", [cmd.potId, cmd.profileId, org, cmd.done]);
+          if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+          return { id: cmd.potId };
+        }
+        case "tasks": {
+          const row = await pot(cmd.potId);
+          const people = (
+            await c.query("SELECT id FROM club_person WHERE organization_id=$1 AND id=ANY($2::uuid[]) AND status='active' AND ('player'=ANY(directory_roles) OR 'coach'=ANY(directory_roles))", [org, cmd.profileIds])
+          ).rows.map((r) => r.id as string);
+          if (people.length !== new Set(cmd.profileIds).size) throw new AccessError("NOT_FOUND", 404);
+          const task = (
+            await c.query(
+              "INSERT INTO task(organization_id,kind,category,title,detail,due_on,pot_id,origin,created_by,completion,link_url) VALUES($1,'other','fundraising',$2,$3,$4,$5,'manual',$6,'each',$7) RETURNING id",
+              [org, cmd.title, row.name, cmd.dueOn, cmd.potId, userId, row.link_url ?? ""],
+            )
+          ).rows[0].id as string;
+          for (const id of people) await c.query("INSERT INTO task_assignee(task_id,organization_id,profile_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [task, org, id]);
+          await audit(c, org, userId, "fundraising.tasks", cmd.potId, { task, people: people.length });
+          return { id: task, assigned: people.length };
         }
         case "publish": {
           await pot(cmd.potId);
@@ -391,7 +446,7 @@ export async function fundraisingExecute(
       }
     },
     expected,
-    cmd.action === "collect" || cmd.action === "cancelMovement",
+    cmd.action === "collect" || cmd.action === "cancelMovement" || cmd.action === "progress",
   );
 }
 

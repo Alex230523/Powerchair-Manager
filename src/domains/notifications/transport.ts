@@ -100,6 +100,7 @@ export function createTransport(
           subject: envelope.subject,
           text: envelope.text,
           html: envelope.html,
+          ...(envelope.attachments?.length ? { attachments: envelope.attachments.map((a) => ({ filename: a.filename, contentType: a.contentType, content: Buffer.from(a.base64, "base64") })) } : {}),
           messageId: `<${jobId}@${from.split("@")[1]}>`,
           disableFileAccess: true,
           disableUrlAccess: true,

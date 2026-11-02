@@ -45,7 +45,10 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/documents/file/[id]` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/documents/sign/[id]` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/dues` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
-| `/api/dues/attestations` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/dues/attestations` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/dues/attestations/form` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/dues/attestations/pdf` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/dues/attestations/settings` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/dues/split` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/equipment` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/equipment/compliance` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -66,6 +69,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/feedback` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/feedback/shot/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/finance/allocations` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/finance/operations` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/finance/receipt/[id]` (+ écriture) | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/finance/report` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -179,11 +183,15 @@ Notes :
 - `/api/circulars/file` : Pièce jointe d'une circulaire : destinataires et communication de la fédération
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
 - `/api/discipline` : Discipline (point 34) : bureau de la fédération (compétence discipline : règles par saison, sanctions proposées, décisions, recours, amendes) ; page du club (présidence et coachs ; recours et paiement des amendes par la présidence) ; ?player= historique d'un joueur (son club et sa fédération) ; ?file= pièce d'un recours
+- `/api/dues/attestations/form` : Formulaire propre à une mutuelle, vierge ou complété (point 9)
+- `/api/dues/attestations/pdf` : Attestation de mutuelle en PDF, avec logo, BCE et signature (point 9)
+- `/api/dues/attestations/settings` : Signataire et signature (administrateurs), envoi automatique des attestations (point 9)
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
 - `/api/feedback` : Signaler un problème dans l'application (point 19) : chaque compte, ses propres signalements et leur état ; 10 par jour ; envoi vers GitHub par le serveur, jeton jamais exposé
 - `/api/feedback/shot/[token]` : Capture d'un signalement (déjà masquée), par jeton imprévisible, liée depuis l'issue d'un dépôt privé ; 404 sans jeton valide
+- `/api/finance/allocations` : Fonds réservés : affectations, opérations rattachées, export justificatif (point 9)
 - `/api/guide` : Guide du jeu : chapitres publiés de sa fédération ; rédaction par la fédération ; note « Chez nous » du club
 - `/api/guide/image` : Image de la galerie ou photo d'un modèle : lecteurs de la fédération ; sans compte seulement si un chapitre public la montre
 - `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
@@ -264,6 +272,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/funding/partners` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/partners/[id]/agreement` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/report` |  |  |  |  |  |  |  |  |  |   |
+| `/funding/reserved` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/statements` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/tax` |  |  |  |  |  |  |  |  |  |   |
 | `/guide` |  |  |  |  |  |  |  |  |  |   |

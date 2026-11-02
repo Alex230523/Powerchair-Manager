@@ -11729,3 +11729,124 @@ ul.task-page li {
 .poll-form textarea {
   width: 100%;
 }
+
+/* 9: reserved funds and the cash in three figures. */
+.treasury {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+.treasury-bar {
+  height: 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+  overflow: hidden;
+}
+.treasury-reserved {
+  display: block;
+  height: 100%;
+  width: calc(var(--value, 0) * 1%);
+  background: var(--warning);
+}
+.treasury-legend {
+  font-size: var(--text-sm);
+}
+.allocation-list {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+}
+.allocation-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.allocation-figures dt {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.allocation-figures dd {
+  margin: 0;
+}
+.allocation-attach {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+.allocation-attach select {
+  min-height: 44px;
+  max-width: 100%;
+}
+
+/* 9: the attestation as a PDF, the signature, the mutuals' forms. */
+.attestation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+.attestation-frame {
+  width: 100%;
+  height: min(70vh, 48rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.signature-preview {
+  max-width: 18rem;
+  max-height: 6rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.mutual-forms li {
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+@media print {
+  .attestation-actions,
+  .mutual-forms {
+    display: none;
+  }
+}
+
+/* 9: fundraising goals per person and tasks. */
+.goal-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+}
+.goal-list li {
+  display: grid;
+  gap: var(--space-1);
+}
+.goal-bar {
+  display: block;
+  height: 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  overflow: hidden;
+}
+.goal-bar > span {
+  display: block;
+  height: 100%;
+  width: calc(var(--value, 0) * 1%);
+  background: var(--primary);
+}
+.pot-tasks {
+  display: grid;
+  gap: var(--space-2);
+}
+.pot-helpers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+.pot-helpers .check {
+  min-height: 44px;
+  align-items: center;
+}

@@ -36,6 +36,7 @@ export type Scope = {
   contactsManage: boolean;
   /** The actor's own club profiles: a task's person in charge sees and ticks it (wave 15). */
   own: Set<string>;
+  federation?: boolean;
 };
 
 /** Also the scope of the contact book (A4, crm/service). */
@@ -71,6 +72,7 @@ export async function scope<T>(
       contactsRead: staff && mfa,
       contactsManage: has("mandates.manage", "people.manage", "notifications.manage"),
       own: mfa ? await ownProfiles(c, { ...a, twoFactorEnabled: !!user.twoFactorEnabled }) : new Set(),
+      federation: a.kind === "federation",
     };
     const out = await fn(s);
     await c.query("COMMIT");
@@ -210,9 +212,12 @@ export type TaskRow = {
   origin: "condition" | "manual" | "template";
   condition_id: string | null;
   proofs: { id: string; filename: string }[];
+  /** 9: a yearly reminder comes back each year. */
+  recurrence: string;
+  source_kind: string;
 };
 const selectTasks =
-  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
+  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.recurrence,t.source_kind,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
 /** The nearest open date of a partner: a condition to deliver, the payment, the renewal or a planned step. */
 export function partnerNearest(
   p: { status: string; paid_on: string | null; payment_due_on: string | null; renewal_on: string | null; next_action_on: string | null },
@@ -572,6 +577,32 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           await log(s, "grant.checklist", cmd.grantId, { added });
           return { id: cmd.grantId, added };
         }
+        case "annualReminder": {
+          if (!!cmd.grantId === !!cmd.partnerId) throw new AccessError("INVALID_INPUT", 400);
+          const file = cmd.grantId
+            ? (await s.c.query("SELECT funder AS name FROM grant_application WHERE id=$1 AND organization_id=$2", [cmd.grantId, s.org])).rows[0]
+            : (await s.c.query("SELECT name FROM partner WHERE id=$1 AND organization_id=$2", [cmd.partnerId, s.org])).rows[0];
+          if (!file) throw new AccessError("NOT_FOUND", 404);
+          if (cmd.responsibleId && !(await s.c.query("SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2", [cmd.responsibleId, s.org])).rowCount) throw new AccessError("NOT_FOUND", 404);
+          // One running reminder per file: changed in place, otherwise created.
+          const open = (
+            await s.c.query("SELECT id FROM task WHERE organization_id=$1 AND source_kind='annualReminder' AND status<>'done' AND (grant_id=$2 OR partner_id=$3) LIMIT 1", [s.org, cmd.grantId, cmd.partnerId])
+          ).rows[0];
+          const params = JSON.stringify({ about: file.name });
+          if (open) {
+            await s.c.query("UPDATE task SET title=$3,due_on=$4,responsible_id=$5,source_params=$6::jsonb,updated_at=now() WHERE id=$1 AND organization_id=$2", [open.id, s.org, cmd.title, cmd.dueOn, cmd.responsibleId, params]);
+            return { id: open.id as string };
+          }
+          const id = (
+            await s.c.query(
+              `INSERT INTO task(organization_id,kind,category,title,due_on,responsible_id,grant_id,partner_id,origin,recurrence,created_by,source_kind,source_params,position)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,'manual','yearly',$9,'annualReminder',$10::jsonb,999) RETURNING id`,
+              [s.org, cmd.grantId ? "grant" : "sponsor", cmd.grantId ? (s.federation ? "fed_finance" : "grants") : s.federation ? "fed_finance" : "sponsors", cmd.title, cmd.dueOn, cmd.responsibleId, cmd.grantId, cmd.partnerId, s.userId, params],
+            )
+          ).rows[0].id as string;
+          await log(s, cmd.grantId ? "grant.annualReminder" : "partner.annualReminder", (cmd.grantId ?? cmd.partnerId)!, { dueOn: cmd.dueOn });
+          return { id };
+        }
         case "nextYear": {
           const g = (
             await s.c.query(
@@ -713,6 +744,15 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           );
           if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
           await logTask(s, cmd.id, cmd.done ? "task.done" : "task.reopen");
+          // 9: a yearly reminder done here comes back next year (once), on the same file.
+          if (cmd.done)
+            await s.c.query(
+              `INSERT INTO task(organization_id,kind,category,title,due_on,responsible_id,grant_id,partner_id,origin,recurrence,created_by,source_kind,source_params,position)
+               SELECT o.organization_id,o.kind,o.category,o.title,(o.due_on+interval '1 year')::date,o.responsible_id,o.grant_id,o.partner_id,o.origin,o.recurrence,$3,o.source_kind,o.source_params,o.position
+                 FROM task o WHERE o.id=$1 AND o.organization_id=$2 AND o.recurrence='yearly' AND o.source_kind='annualReminder' AND o.due_on IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM task n WHERE n.organization_id=o.organization_id AND n.source_kind='annualReminder' AND n.status<>'done' AND (n.grant_id=o.grant_id OR n.partner_id=o.partner_id))`,
+              [cmd.id, s.org, s.userId],
+            );
           return { id: cmd.id };
         }
         case "deleteTask": {

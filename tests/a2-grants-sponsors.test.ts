@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { menuGroups, type Workspace } from "../src/components/menu";
 import { grantsSponsorsCopy } from "../src/components/grants-sponsors-copy";
-import { financeNavCopy, incomeSections } from "../src/components/finance-nav-copy";
+import { financeNavCopy } from "../src/components/finance-nav-copy";
 import { fundingCommand } from "../src/domains/funding/schema";
 import { todoCopy } from "../src/components/todo-copy";
 
@@ -21,9 +21,10 @@ describe("A2 grants and sponsors", () => {
     expect(routes(workspace("treasurer" as never, ["dues.read"]))).toContain("/funding/grants-sponsors");
     expect(routes(workspace("coach", ["calendar.read"]))).not.toContain("/funding/grants-sponsors");
   });
-  it("gathers grants and sponsors in one income section", () => {
-    expect([...incomeSections]).toEqual(["dues", "support", "fundraising"]);
-    expect(financeNavCopy.fr.incomes.support).toBe("Subsides & sponsors");
+  it("puts grants and sponsors in the Finances group of the menu, with no extra row of tabs (9)", () => {
+    const money = menuGroups(workspace("club_president", ["dues.read", "dues.manage"])).find((g) => g.id === "money")!;
+    expect(money.items.map((i) => i.route)).toEqual(["/funding", "/dues", "/funding/grants-sponsors", "/fundraising"]);
+    expect(JSON.stringify(financeNavCopy)).not.toContain("Rentrées");
   });
   it("reads an instalment and the new fields", () => {
     const id = "00000000-0000-4000-8000-000000000000";

@@ -146,6 +146,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
                 // A2: grants and sponsors in one page, two views.
                 ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
+                // 9: the fundraising in the menu (no more row of « Rentrées »).
+                ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
               ],
             },
             {
@@ -233,6 +235,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
                   // A2: grants and sponsors in one page, two views.
                   ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
+                  ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
                 ],
               },
             ]

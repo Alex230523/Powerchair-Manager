@@ -29,7 +29,7 @@ describe("president menu (wave 14)", () => {
     expect(routes.activities).toEqual(["/calendar", "/events", "/matches", "/trips", "/venues", "/tournaments"]);
     expect(routes.communication).toEqual(["/communication", "/documents"]);
     // A2: « Subsides & sponsors » has its own entry.
-    expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors"]);
+    expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors", "/fundraising"]);
     // 12: « Gestion du club » went to Réglages; Réglages is the menu's last entry, apart.
     expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/equipment", "/incidents", "/discipline", "/contacts", "/tasks", "/circulars", "/sondages"]);
   });

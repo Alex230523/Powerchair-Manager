@@ -1,4 +1,6 @@
 "use client";
+import { PotExtras } from "./fundraising-goals";
+import { goalsCopy } from "./fundraising-goals-copy";
 import Link from "next/link";
 import { ContactPicker } from "./contact-picker";
 import { crmCopy } from "./crm-copy";
@@ -10,7 +12,6 @@ import type { fundraisingView } from "@/domains/fundraising/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, EmptyState, PageHeader, Card } from "./ui";
-import { FinanceNav } from "./finance-nav";
 
 export const fundraisingCopy = {
   fr: {
@@ -464,6 +465,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
             deadline: String(f.get("deadline") ?? "") || null,
             status: String(f.get("status") ?? "open"),
             playersJoin: f.get("playersJoin") === "on",
+            linkUrl: String(f.get("linkUrl") ?? "").trim(),
             ...(data?.teams.length ? { teamId: String(f.get("teamId") ?? "") || null } : {}),
           }).then((ok) => ok && setEditing(null));
         }}
@@ -506,6 +508,10 @@ export function Fundraising({ locale }: { locale: Locale }) {
         <label>
           {t.description}
           <textarea name="description" rows={2} maxLength={2000} defaultValue={pot?.description} />
+        </label>
+        <label>
+          {goalsCopy[locale].linkField}
+          <input name="linkUrl" type="url" maxLength={500} placeholder="https://" defaultValue={pot?.link_url ?? ""} />
         </label>
         <label className="check">
           <input type="checkbox" name="playersJoin" defaultChecked={pot?.players_join} />
@@ -593,7 +599,6 @@ export function Fundraising({ locale }: { locale: Locale }) {
       <PageHeader title={t.title} subtitle={t.intro} actions={data.can.manage && editing !== "group" && (
           <button type="button" className="button" onClick={() => setEditing("group")}>{t.newGroup}</button>
         )} />
-      {data.can.manage && <FinanceNav locale={locale} current="income" income="fundraising" />}
       {error && <p role="alert">{error}</p>}
       {(message || copied) && <p role="status">{copied || message}</p>}
       {editing === "group" && <Card label={t.newGroup}>{groupForm()}</Card>}
@@ -657,6 +662,8 @@ export function Fundraising({ locale }: { locale: Locale }) {
                         {pot.description && <p className="small pre-line">{pot.description}</p>}
                         <PotProgress locale={locale} goal={pot.goal_cents} progress={pot.progress} />
                         {pot.players_join && <Collectors pot={pot} t={t} locale={locale} />}
+                        {/* 9: the action's link, the goals per person, the tasks given. */}
+                        <PotExtras locale={locale} pot={pot} data={data} busy={busy} send={send} />
                         {pot.players_join && pot.status === "open" && data.ownProfiles.length > 0 && (
                           <CollectForm pot={pot} t={t} locale={locale} busy={busy} send={send} own={data.ownProfiles} />
                         )}

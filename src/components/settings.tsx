@@ -1,4 +1,5 @@
 "use client";
+import { AttestationAuto, AttestationSignature } from "./attestation-settings";
 import { TripSettings } from "./trip-settings";
 import { AssociationRules } from "./association";
 import { OnboardingSettings } from "./onboarding";
@@ -400,6 +401,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {/* 17: the statutes' rules for the assembly and the register. */}
           {shown && category === "club" && <AssociationRules locale={locale} />}
           {shown && category === "club" && <TaxApproval locale={locale} />}
+          {/* 9: the signatory and the signature of the mutual attestations (administrators only). */}
+          {shown && category === "club" && gov && !gov.disabled.includes("dues") && <AttestationSignature locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
@@ -701,6 +704,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}
           {shown && category === "money" && gov && !gov.disabled.includes("finance") && <FiscalYearPanel locale={locale} />}
+          {/* 9: the attestation sent by itself once the season is paid in full. */}
+          {shown && category === "money" && gov && !gov.disabled.includes("dues") && <AttestationAuto locale={locale} />}
           {shown && category === "journals" && gov?.can.rightsJournal && <Journal locale={locale} kind="rights" />}
           {shown && category === "journals" && gov?.can.healthJournal && <Journal locale={locale} kind="health" />}
         </div>

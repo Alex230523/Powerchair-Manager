@@ -15,6 +15,8 @@ import { Modal } from "./modal";
 import { setupCopy } from "./setup-copy";
 import { useRouter } from "next/navigation";
 import { FinanceNav } from "./finance-nav";
+import { Treasury } from "./reserved-funds";
+import { reservedCopy } from "./reserved-funds-copy";
 import { MoreMenu } from "./more-menu";
 import { financeSectionsCopy } from "./finance-sections-copy";
 import { undoToast } from "./toast";
@@ -140,6 +142,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
       receivableId,
       tripId: value("trip") || null,
       teamId: value("team") || null,
+      allocationId: value("allocation") || null,
       amountCents: Math.round(Number(value("amount").replace(",", ".")) * 100),
       method: value("method"),
       counterparty: value("counterparty"),
@@ -294,6 +297,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
 
       {view && s && (
         <>
+          {section === "overview" && view.treasury && <Treasury locale={locale} {...view.treasury} />}
           {section === "overview" && (
           <ul className="stat-row-grid" data-cols="4">
             <li>
@@ -436,6 +440,19 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                       <option value="">{x.wholeClub}</option>
                       {view.teams.map((tm) => (
                         <option key={tm.id} value={tm.id}>{tm.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {view.allocations.length > 0 && (
+                  <label htmlFor="fin-allocation">
+                    {reservedCopy[locale].fieldAllocation}
+                    <select id="fin-allocation" name="allocation" defaultValue="">
+                      <option value="">{reservedCopy[locale].fieldAllocationNone}</option>
+                      {view.allocations.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.label}
+                        </option>
                       ))}
                     </select>
                   </label>

@@ -50,12 +50,17 @@ export function SignaturePad({
   locale,
   busy,
   onSign,
+  texts,
+  defaultName = "",
 }: {
   locale: Locale;
   busy: boolean;
   onSign: (input: { signerName: string; signature: string }) => void;
+  /** 9: the same pad for another use (the club's signature on its attestations). */
+  texts?: Partial<(typeof copy)["fr"]>;
+  defaultName?: string;
 }) {
-  const t = copy[locale];
+  const t = { ...copy[locale], ...texts };
   const canvas = useRef<HTMLCanvasElement>(null);
   const [drawn, setDrawn] = useState(false),
     [error, setError] = useState("");
@@ -125,6 +130,7 @@ export function SignaturePad({
           minLength={2}
           maxLength={120}
           autoComplete="name"
+          defaultValue={defaultName}
         />
       </label>
       <div>

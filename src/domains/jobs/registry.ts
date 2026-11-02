@@ -26,6 +26,8 @@ import { circularsTick } from "../circulars/service";
 import { refereeingTick } from "../referees/service";
 import { feedbackTick } from "../feedback/service";
 import { pollsTick } from "../polls/service";
+import { allocationsTick } from "../finance/allocations";
+import { attestationTick } from "../dues/attestation-send";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -127,6 +129,9 @@ export const jobs = {
         feedback: await feedbackTick(db).then((r) => r.sent + r.checked),
         // H3: one relaunch the day before a poll closes; past polls close.
         polls: await pollsTick(db),
+        // 9: reserved funds whose use-by date comes (60 and 30 days); attestations sent once the season is paid.
+        allocations: await allocationsTick(db),
+        attestations: await attestationTick(db),
       };
     },
   },

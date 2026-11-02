@@ -30,6 +30,7 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
     const mfa = mfaSatisfied(!!user.twoFactorEnabled);
     const rights = permissions(a.role, a.grants);
     const all = mfa && (rights.includes("dues.manage") || rights.includes("dues.read"));
+    const send = mfa && rights.includes("dues.manage");
     const own = await ownProfiles(c, { ...a, twoFactorEnabled: !!user.twoFactorEnabled });
     const org = a.organization_id;
     const club = (
@@ -74,15 +75,38 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
         [org, rows.map((r) => r.profile_id)],
       )
     ).rows as { subject_profile_id: string; guardian_profile_id: string; percent: number; full_name: string }[];
+    // 9: what was sent, and the mutuals' own forms of the people in view.
+    const ids = rows.map((r) => r.profile_id as string);
+    const sends = season
+      ? ((
+          await c.query(
+            `SELECT a.profile_id,a.number,extract(year FROM a.issued_at)::int AS year,max(x.sent_at) AS last_sent,count(x.id)::int AS sends
+               FROM dues_attestation a LEFT JOIN dues_attestation_send x ON x.attestation_id=a.id
+              WHERE a.organization_id=$1 AND a.season_id=$2 AND a.profile_id=ANY($3::uuid[]) GROUP BY a.id`,
+            [org, season.id, ids],
+          )
+        ).rows as { profile_id: string; number: number; year: number; last_sent: string | null; sends: number }[])
+      : [];
+    const forms = season
+      ? ((
+          await c.query(
+            "SELECT f.id,f.profile_id,cp.full_name,f.blank_name,f.filled_name,f.created_at,f.done_at FROM mutual_form f JOIN club_person cp ON cp.id=f.profile_id WHERE f.organization_id=$1 AND f.season_id=$2 AND f.profile_id=ANY($3::uuid[]) ORDER BY f.done_at IS NOT NULL,f.created_at",
+            [org, season.id, ids],
+          )
+        ).rows as { id: string; profile_id: string; full_name: string; blank_name: string; filled_name: string | null; created_at: string; done_at: string | null }[])
+      : [];
+    const visible = (r: { profile_id: string }) => all || mine.includes(r.profile_id) || !splits.some((x) => x.subject_profile_id === r.profile_id) || splits.some((x) => x.subject_profile_id === r.profile_id && mine.includes(x.guardian_profile_id));
     await c.query("COMMIT");
     return {
+      organization_id: org,
       club,
-      can: { all },
+      can: { all, send },
+      forms: forms.filter(visible),
       seasons: seasons.map(({ id, name }) => ({ id, name })),
       season: season ?? null,
       issuedOn: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()),
       people: rows
-        .filter((r) => all || mine.includes(r.profile_id) || !splits.some((x) => x.subject_profile_id === r.profile_id) || splits.some((x) => x.subject_profile_id === r.profile_id && mine.includes(x.guardian_profile_id)))
+        .filter(visible)
         .map((r) => ({
         profile_id: r.profile_id as string,
         full_name: r.full_name as string,
@@ -90,6 +114,8 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
         paid_cents: r.paid_cents as number,
         last_paid_on: r.last_paid_on as string | null,
         eligible: paidInFull(r.dues, r.paid_cents),
+        /** 9: its number and its sendings. */
+        sent: ((x) => (x ? { number: `${x.year}-${String(x.number).padStart(4, "0")}`, last: x.last_sent, count: x.sends } : null))(sends.find((x) => x.profile_id === r.profile_id)),
         /** 29: the shares of the payment, one attestation part per representative. */
         shares: splits
           .filter((x) => x.subject_profile_id === r.profile_id && (all || mine.includes(x.guardian_profile_id)))

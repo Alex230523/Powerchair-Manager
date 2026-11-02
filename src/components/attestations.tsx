@@ -7,6 +7,7 @@ import type { attestationsView } from "@/domains/dues/attestation";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
 import { EmptyState, PageHeader } from "./ui";
+import { AttestationActions, MutualForms } from "./attestation-actions";
 
 const copy = {
   fr: {
@@ -112,7 +113,8 @@ export function Attestations({
     (code: string) => errors[code]?.[locale] ?? t.unavailable,
     [locale, t.unavailable],
   );
-  const { data, error } = useData<View>(
+  const [said, say] = useState("");
+  const { data, error, reload } = useData<View>(
     "/api/dues/attestations" + (chosen ? `?season=${encodeURIComponent(chosen)}` : ""),
     failure,
   );
@@ -175,12 +177,18 @@ export function Attestations({
                       <span className="sr-only"> : {x.full_name}</span>
                     </Link>
                   )}
+                  {/* 9: the PDF: preview, download, print, send. */}
+                  <AttestationActions locale={locale} data={data} person={x} reload={reload} say={say} />
                 </li>
               ))}
           </ul>
         ) : (
           <EmptyState title={t.none} />
         )}
+        <p role="status" className="muted">
+          {said}
+        </p>
+        <MutualForms locale={locale} data={data} reload={reload} say={say} />
       </div>
       {s &&
         eligible.map((x) => (

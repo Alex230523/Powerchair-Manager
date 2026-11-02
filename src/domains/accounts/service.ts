@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { reservedAt } from "../finance/allocations";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { moneyRights } from "../access/policy";
@@ -196,6 +197,8 @@ export async function accountsView(db: Pool, p: Principal, yearStart?: string) {
         categories.map((category) => ({ direction, category, rubric: mapping.get(`${direction}:${category}`) ?? defaultRubric(direction, category as Category), custom: mapping.has(`${direction}:${category}`) })),
       ),
       suggestions: { loans, partners },
+      /** 9: the reserved funds still left at the closing. */
+      reserved: await reservedAt(s.c, s.org, year.to),
       deadlines: { assembly: assemblyDeadline(year.to), filing: record?.approved_on ? filingDeadline(record.approved_on) : null },
       club: { name: identity.name as string, company_number: identity.company_number as string, address: identity.address as string, logo_version: identity.logo_version as string | null },
     };
