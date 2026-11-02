@@ -11062,3 +11062,52 @@ ul.task-page li {
 .asbl-meeting textarea {
   width: 100%;
 }
+
+/* Parcours d'accueil. */
+.journey-progress {
+  block-size: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.journey-progress > span {
+  display: block;
+  block-size: 100%;
+  inline-size: calc(var(--value, 0) * 1%);
+  background: var(--primary);
+}
+.journey-steps {
+  display: grid;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-5);
+}
+.journey-steps li[data-done] > p:first-child strong,
+.journey-steps li[data-done] > span {
+  color: var(--muted);
+}
+.onboarding-templates li,
+.onboarding-runs li {
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+.onboarding-templates li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.onboarding-runs summary {
+  min-height: 44px;
+  cursor: pointer;
+}
+.onboarding-step-editor {
+  display: grid;
+  gap: var(--space-3);
+  padding-inline-start: var(--space-5);
+}
+.onboarding-step-editor fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  min-width: 0;
+}

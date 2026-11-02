@@ -20,6 +20,7 @@ import { authorizationTick } from "../authorizations/service";
 import { seasonPlanTick } from "../seasons/plan";
 import { bookingsTick } from "../venues/bookings";
 import { associationTick } from "../association/service";
+import { onboardingTick } from "../onboarding/service";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -109,6 +110,8 @@ export const jobs = {
         bookings: await bookingsTick(db),
         // 17: the assembly's date to set, its invitation at J-notice and the reminder at J-5.
         association: await associationTick(db),
+        // Parcours d'accueil: steps checked by themselves, a gentle reminder for the late ones.
+        onboarding: await onboardingTick(db),
       };
     },
   },

@@ -1,4 +1,5 @@
 "use client";
+import { WelcomeJourney } from "./onboarding";
 import { SeasonPlanCard } from "./season-plan";
 import { plannerCopy } from "./calendar-planner-copy";
 import { CollectionBar } from "./collection-bar";
@@ -249,6 +250,8 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {t.noContext} <Link href={href("/access")}>{t.chooseProfile}</Link>
         </p>
       )}
+      {/* Parcours d'accueil: the newcomer's card until his journey ends. */}
+      <WelcomeJourney locale={locale} />
       {/* 16: from 45 days before the end of the season, the yearly assistant. */}
       {data.context?.role === "club_president" && <SeasonPlanCard locale={locale} />}
       {data.start && !data.start.calendarSubscribed && <StartCard locale={locale} href={href("/calendar?subscribe=1")} />}

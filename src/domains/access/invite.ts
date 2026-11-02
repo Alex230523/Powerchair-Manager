@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { assignOnAccept } from "../onboarding/service";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { setVisibility } from "../transfers/consent";
@@ -178,6 +179,8 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
       );
   }
   await audit(c, invite.organization_id, user.id, "invitation.accepted", mandate);
+  // Parcours d'accueil: the journeys written for this role start now.
+  await assignOnAccept(c, invite.organization_id, user.id, invite.role, invite.created_by);
   return mandate;
 }
 

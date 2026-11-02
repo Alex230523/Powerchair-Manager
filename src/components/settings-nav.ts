@@ -41,7 +41,8 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
     // 12: « Mes données » for everyone; the club's personal data for audit.read or mandates.manage.
     data: true,
     club: club && (admin || has("mandates.manage")),
-    members: club && has("mandates.manage"),
+    // The federation's presidency finds its welcome journeys (referees, staff) here too.
+    members: (club && has("mandates.manage")) || (a.kind === "federation" && admin),
     // 12: seasons and teams, and the season's passage (former « Gestion du club »).
     seasons: club && (has("teams.manage") || has("mandates.manage")),
     activities: club && has("mandates.manage"),
@@ -76,6 +77,7 @@ export const settingsEntries = [
   { id: "modules", category: "club", anchor: "settings-modules" },
   { id: "coachRights", category: "members", anchor: "settings-access-title" },
   { id: "rightProfiles", category: "members", anchor: "settings-profiles" },
+  { id: "onboarding", category: "members", anchor: "settings-onboarding" },
   { id: "presence", category: "activities", anchor: "settings-presence" },
   { id: "teamPlaces", category: "activities", anchor: "settings-team-places" },
   { id: "eventTypes", category: "activities", anchor: "settings-event-types" },
