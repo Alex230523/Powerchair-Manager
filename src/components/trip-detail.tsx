@@ -12,7 +12,9 @@ import {
   timeLabel,
   type Detail,
 } from "./trips";
-import { Badge, Card } from "./ui";
+import { Badge, Button, Card } from "./ui";
+import { authorizationCopy } from "@/domains/authorizations/authorization-copy";
+import { authorizationSettingsCopy, familyCopy } from "./family-copy";
 
 type List = Awaited<ReturnType<typeof tripsView>>;
 type Post = (body: Record<string, unknown>, done: string) => Promise<boolean>;
@@ -51,6 +53,7 @@ export function TripDetailSections({
       <Transport locale={locale} d={d} list={list} busy={busy} send={send} name={name} />
       <Schedule locale={locale} d={d} busy={busy} send={send} />
       {d.can.full && <Checklist locale={locale} d={d} busy={busy} send={send} />}
+      {d.authorizations.kinds.length > 0 && d.authorizations.people.length > 0 && <TripAuthorizations locale={locale} d={d} />}
       {d.can.full && <Documents locale={locale} d={d} />}
       {d.can.full && d.care && <CareSection locale={locale} d={d} busy={busy} send={send} />}
       {d.budget && <Budget locale={locale} d={d} busy={busy} send={send} />}
@@ -704,6 +707,82 @@ function Checklist({ locale, d, busy, send }: Props) {
           <button className="button secondary" disabled={busy}>{t.addCheck}</button>
         </form>
       )}
+    </Card>
+  );
+}
+
+/**
+ * 28: the travelling minors' authorizations, signed online by the parents.
+ * Missing ones are a warning on the trip (its page is the route sheet), never a block;
+ * the staff can remind the parents (a reminder also leaves by itself).
+ */
+function TripAuthorizations({ locale, d }: { locale: Locale; d: Detail }) {
+  const t = authorizationSettingsCopy[locale];
+  const k = authorizationCopy[locale].kinds;
+  const f = familyCopy[locale];
+  const [busy, setBusy] = useState(false),
+    [status, setStatus] = useState("");
+  const a = d.authorizations;
+  const waiting = a.people.flatMap((p) => p.items.filter((i) => i.status === "requested" && i.requestId).map((i) => i.requestId as string));
+  async function remind() {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/authorizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "remind", ids: waiting.slice(0, 300) }) });
+      const v = await r.json().catch(() => ({}));
+      setStatus(r.ok ? t.reminded.replace("{n}", String(v.sent ?? 0)) : "");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card title={t.tripTitle} labelledBy="trip-authorizations" headingId="trip-authorizations">
+      <p className="muted">{t.tripIntro}</p>
+      {d.can.full && a.missing > 0 && (
+        <p className="notice" role="note">
+          {t.tripMissing.replace("{n}", String(a.missing))}
+        </p>
+      )}
+      <div className="table-scroll" role="region" aria-label={t.tripTitle} tabIndex={0}>
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">{t.person}</th>
+              {a.kinds.map((x) => (
+                <th scope="col" key={x}>
+                  {k[x]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {a.people.map((p) => (
+              <tr key={p.id}>
+                <th scope="row">{p.name}</th>
+                {p.items.map((i) => (
+                  <td key={i.kind}>
+                    <Badge tone={i.status === "signed" ? "success" : i.status === "refused" ? "danger" : "warning"}>{i.status === "none" ? f.states.none : f.status[i.status]}</Badge>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {d.can.full && waiting.length > 0 && (
+        <p>
+          <Button variant="secondary" disabled={busy} onClick={() => void remind()}>
+            {t.remind}
+          </Button>
+        </p>
+      )}
+      {!d.can.full && (
+        <p>
+          <Link href={`/${locale}/family`}>{f.title}</Link>
+        </p>
+      )}
+      <p className="sr-only" role="status" aria-live="polite">
+        {status}
+      </p>
     </Card>
   );
 }

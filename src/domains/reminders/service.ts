@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { receivesMoneySql } from "../family/split";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -88,7 +89,8 @@ type Recipient = {
   name: string;
   locale: "fr" | "nl" | "en";
 };
-async function recipients(s: Scope, profileIds: string[]) {
+/** 29: for money (dues), only the representatives of the child's split, when the club chose one. */
+async function recipients(s: Scope, profileIds: string[], money = false) {
   const rows = (
     await s.c.query(
       `SELECT cp.id AS profile_id,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
@@ -97,7 +99,7 @@ async function recipients(s: Scope, profileIds: string[]) {
        UNION
        SELECT g.subject_profile_id,u.id,u.email,u.name,COALESCE(pe.locale,'fr')
          FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person pe ON pe.id=gp.person_id JOIN "user" u ON u.id=pe.user_id
-        WHERE g.organization_id=$2 AND g.subject_profile_id=ANY($1) AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND u.active`,
+        WHERE g.organization_id=$2 AND g.subject_profile_id=ANY($1) AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND u.active${money ? " AND " + receivesMoneySql("g") : ""}`,
       [profileIds, s.org],
     )
   ).rows as Recipient[];
@@ -175,7 +177,7 @@ export async function remindersView(db: Pool, p: Principal) {
     ) => {
       const to = await recipients(s, [
         ...new Set(rows.map((r) => r.profile_id)),
-      ]);
+      ], kind === "dues");
       const sent = await lastSent(s, kind);
       return rows.map((r) => ({
         ...r,
@@ -262,6 +264,7 @@ export async function remindersExecute(
         const to = await recipients(
           s,
           rows.map((r) => r.profile_id),
+          true,
         );
         for (const profileId of new Set(rows.map((r) => r.profile_id))) {
           const mine = rows.filter((r) => r.profile_id === profileId);
@@ -398,7 +401,7 @@ export async function duesReminderPlan(c: PoolClient, club: { id: string; name: 
     const lastDay = last[r.profile_id] ? new Date(last[r.profile_id]).toISOString().slice(0, 10) : null;
     return reminderDue(rules, open, lastDay, today) !== null;
   });
-  const to = await recipients(s, due.map((r) => r.profile_id));
+  const to = await recipients(s, due.map((r) => r.profile_id), true);
   return [...new Set(due.map((r) => r.profile_id))].map((profileId) => ({
     profileId,
     fullName: due.find((r) => r.profile_id === profileId)!.full_name,

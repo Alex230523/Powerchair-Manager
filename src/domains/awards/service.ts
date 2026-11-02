@@ -234,8 +234,16 @@ async function widgetClub(db: Pool | PoolClient, widget: string) {
 export async function publicHallOfFame(db: Pool, widget: string, none: string) {
   const club = await widgetClub(db, widget);
   if (!club) return null;
-  const awards = ((await db.query(`SELECT ${columns} ${joins} WHERE w.organization_id=$1 ORDER BY w.awarded_on DESC`, [club.id])).rows as Award[])
-    .map((a) => publicAward(a))
+  // 28: a refused image right keeps the person's prize off the public page.
+  const awards = (
+    (
+      await db.query(
+        `SELECT ${columns},EXISTS(SELECT 1 FROM authorization_request ar WHERE ar.profile_id=w.profile_id AND ar.kind='image' AND ar.status='refused') AS image_refused ${joins} WHERE w.organization_id=$1 ORDER BY w.awarded_on DESC`,
+        [club.id],
+      )
+    ).rows as (Award & { image_refused: boolean })[]
+  )
+    .map(({ image_refused, ...a }) => publicAward({ ...a, publishable: a.publishable && !image_refused }))
     .filter((a): a is Award => a !== null)
     // Nothing a visitor should not read: no note, no ids of people.
     .map((a) => ({ ...a, note: "", profile_id: null }));
@@ -245,7 +253,7 @@ export async function publicHallOfFame(db: Pool, widget: string, none: string) {
 export async function publicAwardPhoto(db: Pool, widget: string, id: string) {
   const club = await widgetClub(db, widget);
   if (!club || !z.uuid().safeParse(id).success) return null;
-  return ((await db.query("SELECT photo,photo_type FROM award WHERE id=$1 AND organization_id=$2 AND photo IS NOT NULL AND publishable", [id, club.id])).rows[0] ??
+  return ((await db.query("SELECT photo,photo_type FROM award w WHERE id=$1 AND organization_id=$2 AND photo IS NOT NULL AND publishable AND NOT EXISTS(SELECT 1 FROM authorization_request ar WHERE ar.profile_id=w.profile_id AND ar.kind='image' AND ar.status='refused')", [id, club.id])).rows[0] ??
     null) as { photo: Buffer; photo_type: string } | null;
 }
 /** The club's logo on the public page. */

@@ -17,7 +17,7 @@ import {
 import { manages, mayRespond } from "./access";
 import { publish } from "../notifications/queue";
 import { queuePush } from "../notifications/push-queue";
-import type { Command } from "./schema";
+import type { Command, responses } from "./schema";
 import { offerUndo } from "../undo/service";
 export { commandSchema } from "./schema";
 type Register = {
@@ -42,6 +42,8 @@ type Invitation = {
   actual: string;
   version: number;
   full_name: string;
+  responded_by_name: string | null;
+  responded_at: Date | null;
   canRespond: boolean;
 };
 type History = {
@@ -312,6 +314,32 @@ export async function inviteForEvent(c: PoolClient, p: Principal, a: Actor, e: E
   return r.id as string;
 }
 
+/** One answer for one invitation, by the person or a representative who may act (27: also for several children at once). */
+async function respondOne(
+  s: Scope,
+  org: string,
+  id: string,
+  expected: number,
+  response: (typeof responses)[number],
+  comment: string,
+  absenceReason: string | undefined,
+) {
+  const i = (await s.c.query("SELECT * FROM attendance_invitation WHERE id=$1 AND organization_id=$2", [id, org])).rows[0];
+  if (!i) throw new AccessError("NOT_FOUND", 404);
+  const r = await register(s, i.register_id),
+    e = await event(s, r.event_id);
+  scheduled(e);
+  if (i.withdrawn_at) throw new AccessError("INVITATION_WITHDRAWN", 409);
+  version(expected, i.version);
+  if (!(await canRead(s.c, s.a, e)) || !(await mayRespond(s.c, s.a, i.profile_id, true))) throw new AccessError("FORBIDDEN");
+  if (r.closed_at || r.deadline <= new Date() || e.starts_at <= new Date()) throw new AccessError("RESPONSE_CLOSED", 409);
+  // "Present" clears the reason: it would no longer describe anything.
+  await s.c.query(
+    "UPDATE attendance_invitation SET response=$2,comment=$3,absence_reason=$5,absence_period_id=NULL,responded_at=now(),responded_by=$4,version=version+1 WHERE id=$1",
+    [i.id, response, comment, s.p.userId, response === "absent" ? (absenceReason ?? "other") : ""],
+  );
+  await history(s, r.id, i.id, "respond", { response: i.response, comment: i.comment }, { response, comment });
+}
 export async function attendanceExecute(
   db: Pool,
   p: Principal,
@@ -401,7 +429,16 @@ export async function attendanceExecute(
         await notify(s, e, ids);
         return { id: r.id };
       }
-      if (cmd.action === "respond" || cmd.action === "mark") {
+      if (cmd.action === "respondMany") {
+        // 27: the same answer for each child, each checked as if answered alone.
+        for (const item of cmd.items) await respondOne(s, org, item.id, item.expectedVersion, cmd.response, cmd.comment, cmd.absenceReason);
+        return { ids: cmd.items.map((i) => i.id) };
+      }
+      if (cmd.action === "respond") {
+        await respondOne(s, org, cmd.id, cmd.expectedVersion, cmd.response, cmd.comment, cmd.absenceReason);
+        return { id: cmd.id };
+      }
+      if (cmd.action === "mark") {
         const i = (
           await s.c.query(
             "SELECT * FROM attendance_invitation WHERE id=$1 AND organization_id=$2",
@@ -414,38 +451,6 @@ export async function attendanceExecute(
         scheduled(e);
         if (i.withdrawn_at) throw new AccessError("INVITATION_WITHDRAWN", 409);
         version(cmd.expectedVersion, i.version);
-        if (cmd.action === "respond") {
-          if (
-            !(await canRead(s.c, s.a, e)) ||
-            !(await mayRespond(s.c, s.a, i.profile_id, true))
-          )
-            throw new AccessError("FORBIDDEN");
-          if (
-            r.closed_at ||
-            r.deadline <= new Date() ||
-            e.starts_at <= new Date()
-          )
-            throw new AccessError("RESPONSE_CLOSED", 409);
-          // "Present" clears the reason: it would no longer describe anything.
-          await s.c.query(
-            "UPDATE attendance_invitation SET response=$2,comment=$3,absence_reason=$5,absence_period_id=NULL,responded_at=now(),responded_by=$4,version=version+1 WHERE id=$1",
-            [
-              i.id,
-              cmd.response,
-              cmd.comment,
-              p.userId,
-              cmd.response === "absent" ? (cmd.absenceReason ?? "other") : "",
-            ],
-          );
-          await history(
-            s,
-            r.id,
-            i.id,
-            "respond",
-            { response: i.response, comment: i.comment },
-            { response: cmd.response, comment: cmd.comment },
-          );
-        } else {
           await manager(s, e);
           if (e.starts_at > new Date())
             throw new AccessError("EVENT_NOT_STARTED", 409);
@@ -469,8 +474,6 @@ export async function attendanceExecute(
             id: i.id,
             undo: await offerUndo(s.c, org, p.userId, "attendanceMark", r.id, { marks: [{ id: i.id, actual: i.actual }] }),
           };
-        }
-        return { id: i.id };
       }
       const r = await register(s, cmd.id),
         e = await event(s, r.event_id);
@@ -572,7 +575,8 @@ export async function attendanceView(
       if (r) {
         for (const i of (
           await s.c.query(
-            "SELECT i.*,p.full_name FROM attendance_invitation i JOIN club_person p ON p.id=i.profile_id WHERE i.register_id=$1 ORDER BY p.full_name",
+            // 29: who answered (one parent's answer is seen by the other, with its author).
+            'SELECT i.*,p.full_name,ru.name AS responded_by_name FROM attendance_invitation i JOIN club_person p ON p.id=i.profile_id LEFT JOIN "user" ru ON ru.id=i.responded_by WHERE i.register_id=$1 ORDER BY p.full_name',
             [r.id],
           )
         ).rows) {

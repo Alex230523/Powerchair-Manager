@@ -5,7 +5,7 @@ import type { IconName } from "./icons";
  * pages, the command palette and the tests share it. Visibility follows the
  * same rules as the panels it groups; the services still check every right.
  */
-export const settingsCategories = ["account", "notifications", "data", "club", "members", "seasons", "activities", "money", "journals"] as const;
+export const settingsCategories = ["account", "notifications", "data", "club", "members", "seasons", "activities", "documents", "money", "journals"] as const;
 export type SettingsCategory = (typeof settingsCategories)[number];
 export const isSettingsCategory = (x: string): x is SettingsCategory => (settingsCategories as readonly string[]).includes(x);
 
@@ -17,6 +17,7 @@ export const categoryIcons: Record<SettingsCategory, IconName> = {
   members: "players",
   seasons: "calendar",
   activities: "calendar",
+  documents: "document",
   money: "funding",
   journals: "shield",
 };
@@ -44,6 +45,8 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
     // 12: seasons and teams, and the season's passage (former « Gestion du club »).
     seasons: club && (has("teams.manage") || has("mandates.manage")),
     activities: club && has("mandates.manage"),
+    // 28: the parental authorizations' texts.
+    documents: club && has("documents.manage"),
     money: club && has("mandates.manage") && !off.has("dues"),
     journals: has("audit.read") || has("mandates.manage") || a.role === "club_president",
   };
@@ -85,6 +88,7 @@ export const settingsEntries = [
   { id: "presidency", category: "club", anchor: "settings-presidency" },
   { id: "seasons", category: "seasons", anchor: "settings-seasons" },
   { id: "rollover", category: "seasons", anchor: "settings-rollover" },
+  { id: "authorizations", category: "documents", anchor: "settings-authorizations" },
 ] as const satisfies readonly { id: string; category: SettingsCategory; anchor: string }[];
 export type SettingsEntryId = (typeof settingsEntries)[number]["id"];
 export type SettingsEntryCopy = Record<SettingsEntryId, { title: string; keywords: string }>;

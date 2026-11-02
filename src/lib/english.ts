@@ -465,7 +465,7 @@ export const english = {
     licence: "Licence",
     insurance: "Insurance",
     fitness: "Fitness certificate",
-    consent: "Consent",
+    consent: "Authorizations and consents",
     training: "Training qualification",
     contract: "Contract",
     accounting: "Financial document",

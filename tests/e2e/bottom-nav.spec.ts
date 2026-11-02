@@ -39,7 +39,7 @@ test("bottom bar on a phone for each role", async ({ page }) => {
       club_president: ["Accueil", "Calendrier", "Joueurs", "Cotisations", "Plus"],
       coach: ["Accueil", "Calendrier", "Présences", "Joueurs", "Plus"],
       player: ["Accueil", "Calendrier", "Ma fiche", "Cotisations", "Plus"],
-      guardian: ["Accueil", "Calendrier", "Ma fiche", "Cotisations", "Plus"],
+      guardian: ["Accueil", "Ma famille", "Calendrier", "Cotisations", "Plus"],
     };
     for (const role of Object.keys(expected)) {
       // The profile is switched on a wide screen (the account menu sits in the sidebar), then the phone.

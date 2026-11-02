@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
+import { familyCopy } from "./family-copy";
 import type { attestationsView } from "@/domains/dues/attestation";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
@@ -200,6 +201,14 @@ export function Attestations({
                 .replace("{amount}", money(x.paid_cents))
                 .replace("{paid}", x.last_paid_on ? t.paidText.replace("{d}", day(x.last_paid_on)) : "")}
             </p>
+            {/* 29: two homes, the share each representative paid. */}
+            {x.shares.length > 0 && (
+              <ul>
+                {x.shares.map((sh) => (
+                  <li key={sh.name}>{familyCopy[locale].shareLine.replace("{name}", sh.name).replace("{percent}", String(sh.percent)).replace("{amount}", money(sh.cents))}</li>
+                ))}
+              </ul>
+            )}
             <p>{t.done.replace("{d}", day(data.issuedOn))}</p>
             <div className="attestation-sign">
               <p>

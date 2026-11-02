@@ -1,4 +1,5 @@
 "use client";
+import { useClubChildFilter } from "./child-switcher";
 import Link from "next/link";
 import { EventList, MonthBoard, WeekGrid, colorAttrs, dayName, kindName, type ColorBy } from "./calendar-board";
 import { SubscribePanel } from "./calendar-subscribe";
@@ -430,7 +431,15 @@ export function Calendar({
       <option value="all">{t.whole}</option>
     </>
   );
-  const visible = data?.events;
+  // 27: a family keeps one child at a time if it chose so (« Tous » by default).
+  const family = useClubChildFilter(locale, data?.context.organization_id, !!data && data.context.role === "guardian");
+  const concerns = (e: NonNullable<typeof data>["events"][number], id: string) => e.participants.some((x) => x.id === id) || e.attendance.some((x: { id: string }) => x.id === id);
+  // With two children or more, each event carries the first names of the children it concerns (never a colour alone).
+  const visible = (family.child ? data?.events.filter((e) => concerns(e, family.child!)) : data?.events)?.map((e) => {
+    if (family.items.length < 2) return e;
+    const who = family.items.filter((k) => concerns(e, k.id)).map((k) => k.first);
+    return who.length ? { ...e, title: `${who.join(", ")} · ${e.title}` } : e;
+  });
   // 1: the element that opened the event's window gets the focus back when it closes.
   const opener = useRef<HTMLElement | null>(null);
   /** 1: the open event travels in the address (?event=), so its link can be shared. */
@@ -490,7 +499,7 @@ export function Calendar({
       },
     ).format(new Date(value));
   const p = plannerCopy[locale];
-  const kindsShown = (data?.events ?? []).filter((e) => !kindFilter || e.kind === kindFilter);
+  const kindsShown = (visible ?? []).filter((e) => !kindFilter || e.kind === kindFilter);
   const fmt = (o: Intl.DateTimeFormatOptions, d: string) => new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { ...o, timeZone: "UTC" }).format(new Date(d + "T12:00Z"));
   const lastDay = shiftLocal(range.to + "T12:00", -1).slice(0, 10);
   const period =
@@ -539,6 +548,7 @@ export function Calendar({
             )
           }
         />
+        {family.node}
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
           <p role="alert" className="error-message">

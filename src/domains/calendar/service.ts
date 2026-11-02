@@ -856,16 +856,17 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine,family) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
               [
                 s.a.organization_id,
                 p.userId,
                 s.a.id,
                 createHash("sha256").update(token).digest("hex"),
                 input.name,
-                input.teamId,
-                !!input.includeMoney,
-                !!input.mine && !input.teamId,
+                input.family ? null : input.teamId,
+                !input.family && !!input.includeMoney,
+                !!input.family || (!!input.mine && !input.teamId),
+                !!input.family,
               ],
             )
           ).rows[0].id;
@@ -879,7 +880,7 @@ export async function calendarExecute(
         // Same choices, a new secret: the old link stops at once (C9).
         const old = (
           await s.c.query(
-            "UPDATE calendar_feed SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 AND user_id=$3 AND mandate_id=$4 RETURNING name,team_id,include_money,only_mine",
+            "UPDATE calendar_feed SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 AND user_id=$3 AND mandate_id=$4 RETURNING name,team_id,include_money,only_mine,family",
             [input.id, s.a.organization_id, p.userId, s.a.id],
           )
         ).rows[0];
@@ -887,8 +888,8 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
-              [s.a.organization_id, p.userId, s.a.id, createHash("sha256").update(token).digest("hex"), old.name, old.team_id, old.include_money, old.only_mine],
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine,family) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+              [s.a.organization_id, p.userId, s.a.id, createHash("sha256").update(token).digest("hex"), old.name, old.team_id, old.include_money, old.only_mine, old.family],
             )
           ).rows[0].id;
         await audit(s.c, s.a.organization_id, p.userId, "calendar.feed.renewed", id);
@@ -1387,6 +1388,47 @@ async function concerns(c: PoolClient, e: Event, own: string[]) {
     )
   ).rowCount;
 }
+/**
+ * 27: the family feed. For each club where the account holds a current player
+ * or guardian mandate, the events that concern one of the children (invited
+ * or participant), each title prefixed with the children's first names and
+ * the club's name, so a parent of two clubs reads one calendar.
+ */
+async function familyFeedEvents(c: PoolClient, userId: string) {
+  const mandates = (
+    await c.query(
+      `SELECT r.*,u."twoFactorEnabled",o.name AS club FROM role_assignment r JOIN organization o ON o.id=r.organization_id AND o.kind='club'
+         JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id
+        WHERE r.user_id=$1 AND r.role IN ('guardian','player') AND u.active AND m.active AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())
+        ORDER BY o.name`,
+      [userId],
+    )
+  ).rows as (Actor & { club: string })[];
+  const out: (Event & { location: string })[] = [];
+  const seen = new Set<string>();
+  for (const a of mandates) {
+    if (seen.has(a.organization_id)) continue;
+    seen.add(a.organization_id);
+    const own = [...(await ownProfiles(c, a))];
+    if (!own.length) continue;
+    const names = new Map(
+      (await c.query("SELECT id,split_part(full_name,' ',1) AS first FROM club_person WHERE id=ANY($1::uuid[])", [own])).rows.map((r) => [r.id as string, r.first as string]),
+    );
+    const rows = (
+      await c.query(
+        "SELECT e.*,concat_ws(', ',COALESCE(v.name,NULLIF(e.free_location,''),p.name),COALESCE(v.address,p.address)) AS location FROM calendar_event e LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.starts_at>now()-interval '30 days' AND e.starts_at<now()+interval '366 days' ORDER BY starts_at",
+        [a.organization_id],
+      )
+    ).rows as (Event & { location: string })[];
+    for (const e of rows) {
+      if (!(await canRead(c, a, e))) continue;
+      const who = [];
+      for (const id of own) if (await concerns(c, e, [id])) who.push(names.get(id) ?? "");
+      if (who.length) out.push({ ...e, title: `${who.sort((x, y) => x.localeCompare(y)).join(", ")} · ${e.title} (${a.club})` });
+    }
+  }
+  return out.sort((x, y) => +new Date(x.starts_at) - +new Date(y.starts_at));
+}
 export async function calendarFeed(db: Pool, token: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new AccessError("NOT_FOUND", 404);
@@ -1415,6 +1457,8 @@ export async function calendarFeed(db: Pool, token: string) {
       )
     ).rows[0] as Actor | undefined;
     if (!a) throw new AccessError("NOT_FOUND", 404);
+    // 27: the family feed gathers the children's events of every club where the account answers for them.
+    if (f.family) return calendarIcs(await familyFeedEvents(c, f.user_id), process.env.BETTER_AUTH_URL!);
     const rows = (
       await c.query(
         "SELECT e.*,concat_ws(', ',COALESCE(v.name,NULLIF(e.free_location,''),p.name),COALESCE(v.address,p.address)) AS location FROM calendar_event e LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.starts_at>now()-interval '30 days' AND e.starts_at<now()+interval '366 days' AND ($2::uuid IS NULL OR e.team_id=$2) ORDER BY starts_at",

@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { receivesMoneySql } from "../family/split";
 import { duesAccount } from "../bank/service";
 import { formatReference } from "../bank/reference";
 import { formatIban } from "../../lib/iban";
@@ -177,7 +178,7 @@ export async function tellFamilies(c: PoolClient, org: string, ids: string[]) {
         `SELECT u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale FROM club_person cp JOIN person pe ON pe.id=cp.person_id JOIN "user" u ON u.id=pe.user_id WHERE cp.id=$1 AND cp.organization_id=$2 AND u.active
          UNION
          SELECT u.id,u.email,u.name,COALESCE(pe.locale,'fr') FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person pe ON pe.id=gp.person_id JOIN "user" u ON u.id=pe.user_id
-          WHERE g.organization_id=$2 AND g.subject_profile_id=$1 AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND u.active`,
+          WHERE g.organization_id=$2 AND g.subject_profile_id=$1 AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND u.active AND ${receivesMoneySql("g")}`,
         [r.profile_id, org],
       )
     ).rows as { id: string; email: string; name: string; locale: "fr" | "nl" | "en" }[];

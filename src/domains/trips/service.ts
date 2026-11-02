@@ -10,6 +10,7 @@ import {
 } from "../access/service";
 import { permissions, type Permission } from "../access/policy";
 import { ownProfiles } from "../calendar/access";
+import { cancelForTrip, requestForTrip, tripAuthorizations } from "../authorizations/service";
 import { logSensitiveAccess } from "../club/governance";
 import { seal, unseal } from "../notifications/crypto";
 import { brusselsToday } from "../people/service";
@@ -267,6 +268,8 @@ export async function tripDetail(db: Pool, p: Principal, id: string) {
         [id],
       )
     ).rows;
+    // 28: the authorizations of the travelling minors, signed or missing (each family sees its own).
+    const auth = await tripAuthorizations(x.c, x.org, id);
     const base = {
       organization_id: x.org,
       today,
@@ -291,6 +294,7 @@ export async function tripDetail(db: Pool, p: Principal, id: string) {
             phone: v.phone,
             passengers: v.passengers.filter((pid: string) => ids.has(pid)),
           })),
+        authorizations: { ...auth, people: auth.people.filter((q) => x.own.has(q.id)), missing: 0 },
         checklist: [],
         budget: null,
         documents: [],
@@ -386,6 +390,7 @@ export async function tripDetail(db: Pool, p: Principal, id: string) {
       ...base,
       participants: participantsAll,
       vehicles,
+      authorizations: auth,
       checklist,
       budget,
       documents,
@@ -563,6 +568,8 @@ export async function tripExecute(
               "INSERT INTO trip_participant(trip_id,profile_id,role) VALUES($1,$2,$3) ON CONFLICT(trip_id,profile_id) DO UPDATE SET role=EXCLUDED.role",
               [input.tripId, q.profileId, q.role],
             );
+          // 28: the minors' families receive the authorizations the club asks on trips.
+          await requestForTrip(x.c, x.org, x.userId, input.tripId);
           return { id: input.tripId };
         }
         case "participant": {
@@ -585,14 +592,21 @@ export async function tripExecute(
               input.status === "invited" ? row.status : input.status,
             ]);
           } else throw new AccessError("FORBIDDEN");
+          // 28: declining withdraws what was asked for this trip; coming back asks again.
+          const now = (await x.c.query("SELECT status FROM trip_participant WHERE id=$1", [input.participantId])).rows[0].status;
+          if (now === "declined") await cancelForTrip(x.c, row.trip_id, row.profile_id);
+          else if (row.status === "declined") await requestForTrip(x.c, x.org, x.userId, row.trip_id);
           return { id: row.trip_id };
         }
         case "removeParticipant": {
           need();
           const tripId = await tripOfItem(x, "trip_participant", input.participantId);
-          await x.c.query("DELETE FROM trip_participant WHERE id=$1", [
-            input.participantId,
-          ]);
+          const gone = (
+            await x.c.query("DELETE FROM trip_participant WHERE id=$1 RETURNING profile_id", [
+              input.participantId,
+            ])
+          ).rows[0];
+          if (gone) await cancelForTrip(x.c, tripId, gone.profile_id);
           return { id: tripId };
         }
         case "vehicle": {

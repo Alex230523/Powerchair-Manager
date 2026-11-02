@@ -82,6 +82,7 @@ const fr: Copy = {
     members: { title: "Membres et droits", text: "Ce que chaque coach peut voir et gérer, profils de droits." },
     seasons: { title: "Saisons et équipes", text: "Saisons, équipes, coachs par équipe, passage de saison." },
     activities: { title: "Activités", text: "Effectif attendu aux entraînements et aux matchs." },
+    documents: { title: "Documents", text: "Autorisations parentales signées en ligne : textes, validité, demandes." },
     money: { title: "Finances", text: "Barèmes de cotisation, alerte de saison lancée, rappels automatiques." },
     journals: { title: "Journaux et confidentialité", text: "Qui a changé quels droits, qui a lu des données de santé." },
   },
@@ -119,6 +120,7 @@ const fr: Copy = {
     presidency: { title: "Transmission de la présidence", keywords: "président passer la main successeur" },
     seasons: { title: "Saisons et équipes", keywords: "saison équipe gestion du club coachs par équipe" },
     rollover: { title: "Passage de saison", keywords: "nouvelle saison vérification début de saison" },
+    authorizations: { title: "Autorisations parentales", keywords: "autorisation parents signature déplacement transport droit à l’image soins urgence sortie mineur" },
   },
 };
 
@@ -164,6 +166,7 @@ const nl: Copy = {
     seasons: { title: "Seizoenen en teams", text: "Seizoenen, teams, coaches per team, seizoensovergang." },
     members: { title: "Leden en rechten", text: "Wat elke coach mag zien en beheren, rechtenprofielen." },
     activities: { title: "Activiteiten", text: "Verwachte bezetting op trainingen en wedstrijden." },
+    documents: { title: "Documenten", text: "Ouderlijke toestemmingen online ondertekend: teksten, geldigheid, aanvragen." },
     money: { title: "Financiën", text: "Lidgeldtarieven, waarschuwing bij gestart seizoen, automatische herinneringen." },
     journals: { title: "Logboeken en privacy", text: "Wie welke rechten wijzigde, wie gezondheidsgegevens las." },
   },
@@ -201,6 +204,7 @@ const nl: Copy = {
     presidency: { title: "Overdracht van het voorzitterschap", keywords: "voorzitter opvolger" },
     seasons: { title: "Seizoenen en teams", keywords: "seizoen team clubbeheer coaches per team" },
     rollover: { title: "Seizoensovergang", keywords: "nieuw seizoen controle begin van het seizoen" },
+    authorizations: { title: "Ouderlijke toestemmingen", keywords: "toestemming ouders handtekening verplaatsing vervoer beeldrecht zorg minderjarige" },
   },
 };
 
@@ -246,6 +250,7 @@ const en: Copy = {
     members: { title: "Members and rights", text: "What each coach may see and manage, rights profiles." },
     seasons: { title: "Seasons and teams", text: "Seasons, teams, coaches per team, season rollover." },
     activities: { title: "Activities", text: "Expected attendance at trainings and matches." },
+    documents: { title: "Documents", text: "Parental authorizations signed online: texts, validity, requests." },
     money: { title: "Finances", text: "Membership rates, season-started warning, automatic reminders." },
     journals: { title: "Logs and privacy", text: "Who changed which rights, who read health data." },
   },
@@ -283,6 +288,7 @@ const en: Copy = {
     presidency: { title: "Handing over the presidency", keywords: "president successor" },
     seasons: { title: "Seasons and teams", keywords: "season team club management coaches per team" },
     rollover: { title: "Season rollover", keywords: "new season start of season check" },
+    authorizations: { title: "Parental authorizations", keywords: "authorization parents signature trip transport image rights emergency care minor" },
   },
 };
 

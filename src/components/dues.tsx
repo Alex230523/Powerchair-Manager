@@ -1,4 +1,6 @@
 "use client";
+import { authorizationSettingsCopy } from "./family-copy";
+import { useClubChildFilter } from "./child-switcher";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
@@ -313,7 +315,11 @@ type Debt = {
   settled: { ordinal: number; due_on: string; amount_cents: number; paid_cents: number; left_cents: number }[];
   paid_cents: number;
   state: "paid" | "late" | "due_soon" | "on_track" | "cancelled" | "exempt";
-  payments: { id: string; occurred_on: string; amount_cents: number; method: string; reference: string; cancelled_at: string | null }[];
+  payments: { id: string; occurred_on: string; amount_cents: number; method: string; reference: string; cancelled_at: string | null; payer_name?: string | null }[];
+  /** 29: two homes. The club's split, who may be recorded as payer, the viewer's share. */
+  split?: { id: string; full_name: string; percent: number }[];
+  payers?: { id: string; full_name: string }[];
+  myPercent?: number | null;
   history: { action: string; reason: string; created_at: string }[];
   /** Teams the line belongs to (wave 15): its rate's team, or the player's current teams. */
   team_ids: string[];
@@ -343,6 +349,7 @@ const remindLabel = {
 };
 export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettre les cotisations de l'équipe » from a team's page. */ issueTeam?: string }) {
   const t = copy[locale] as (typeof copy)["fr"],
+    sc = authorizationSettingsCopy[locale],
     [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
@@ -436,9 +443,12 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
     new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
   const tone: Record<Debt["state"], Tone> = { paid: "success", late: "danger", due_soon: "warning", on_track: "neutral", cancelled: "neutral", exempt: "info" };
   const inTeam = (d: Debt) => !team || (d.team_ids ?? []).includes(team);
+  // 27: a family keeps one child at a time if it chose so (« Tous » by default).
+  const family = useClubChildFilter(locale, view?.organizationId, !!view && !view.readOnly && !view.manage);
   const rows = (view?.debts ?? []).filter(
     (d) =>
       inTeam(d) &&
+      (!family.child || d.profile_id === family.child) &&
       (!filter || d.season_id === filter) &&
       (!stateFilter || d.state === stateFilter) &&
       (!q || d.full_name.toLowerCase().includes(q.toLowerCase())),
@@ -485,6 +495,7 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
           </>
         }
       />
+      {family.node}
       {error && (
         <p role="alert">
           {error} <Link href={`/${locale}/access`}>{t.access}</Link>
@@ -756,6 +767,7 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
                 method: d.get("method"),
                 occurredOn: d.get("date"),
                 reference: d.get("reference"),
+                ...(d.get("payer") ? { payerProfileId: d.get("payer") } : {}),
               })).then((ok) => ok && closePay())
             }
           >
@@ -783,6 +795,19 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
                 <input name="reference" maxLength={160} />
               </label>
             </div>
+            {(paying.payers?.length ?? 0) > 0 && (
+              <label>
+                {sc.payer}
+                <select name="payer" defaultValue="">
+                  <option value="">{sc.payerNone}</option>
+                  {paying.payers!.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="actions">
               <Button disabled={busy}>{t.pay}</Button>
               <button type="button" className="button secondary" onClick={closePay}>{t.close}</button>
@@ -796,6 +821,9 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
             <Badge tone={tone[detail.state]} dot>{t.states[detail.state]}</Badge> {t.net} : {money(detail.net_cents)} · {t.collected} : {money(Math.min(detail.paid_cents, detail.net_cents))}
             {detail.discount_cents > 0 && <> · {t.discount} : {money(detail.discount_cents)} {detail.reason}</>}
           </p>
+          {/* 29: the share of each home. */}
+          {detail.myPercent != null && <p>{sc.yourShare.replace("{percent}", String(detail.myPercent))} · {money(Math.round((detail.net_cents * detail.myPercent) / 100))}</p>}
+          {view?.manage && (detail.split?.length ?? 0) > 0 && <p className="muted small">{detail.split!.map((x) => `${x.full_name} ${x.percent} %`).join(" · ")}</p>}
           <div className="table-scroll">
             <table>
               <thead>
@@ -819,7 +847,7 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
           {detail.payments.filter((x) => !x.cancelled_at).length ? (
             <ul className="plain-list">
               {detail.payments.filter((x) => !x.cancelled_at).map((x) => (
-                <li key={x.id}>{day(x.occurred_on)} · {money(x.amount_cents)} · {t.methods[x.method] ?? x.method}{x.reference && ` · ${x.reference}`}</li>
+                <li key={x.id}>{day(x.occurred_on)} · {money(x.amount_cents)} · {t.methods[x.method] ?? x.method}{x.reference && ` · ${x.reference}`}{x.payer_name && ` · ${sc.paidBy.replace("{name}", x.payer_name)}`}</li>
               ))}
             </ul>
           ) : (

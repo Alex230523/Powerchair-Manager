@@ -4,7 +4,7 @@ import { categoryIcons, isSettingsCategory, legacyAnchors, searchSettings, setti
 import { settingsHubCopy } from "../src/components/settings-hub-copy";
 
 /** Wave 15 (C13): settings split into categories, with a search and the old anchors still served. */
-const all = ["people.read", "mandates.manage", "audit.read", "dues.manage", "calendar.manage", "notifications.manage"];
+const all = ["people.read", "mandates.manage", "audit.read", "dues.manage", "calendar.manage", "notifications.manage", "documents.manage"];
 const keys = (o: object): string[] =>
   Object.entries(o)
     .flatMap(([k, v]) => (v && typeof v === "object" ? keys(v).map((x) => `${k}.${x}`) : [k]))

@@ -1,4 +1,5 @@
 "use client";
+import { useClubChildFilter } from "./child-switcher";
 import Link from "next/link";
 import { compressFormImages } from "@/lib/image-compress";
 import {
@@ -160,9 +161,12 @@ export function Documents({ locale }: { locale: Locale }) {
         {retiredCategories.includes(c) ? `${cl[c]} (${retiredCopy[locale].label})` : cl[c]}
       </option>
     ));
+  // 27: a family keeps one child at a time if it chose so (« Tous » by default).
+  const family = useClubChildFilter(locale, data?.context.organization_id, !!data && data.context.role === "guardian");
   const visible =
     data?.documents.filter(
       (d) =>
+        (!family.child || d.profile_id === family.child) &&
         (!status || d.status === status) &&
         (!category || d.category === category) &&
         (d.name + " " + (d.owner_name ?? ""))
@@ -173,6 +177,7 @@ export function Documents({ locale }: { locale: Locale }) {
     <>
       <main id="main" className="access documents">
         <PageHeader title={t.title} subtitle={t.intro} />
+        {family.node}
         {data?.manage && (
           <p>
             <Link

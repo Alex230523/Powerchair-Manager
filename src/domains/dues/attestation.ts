@@ -64,6 +64,16 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
           )
         ).rows
       : [];
+    // 29: two homes. A representative receives the attestation of a child when the club's split names him (his share), or when there is no split.
+    const mine = all
+      ? []
+      : (await c.query("SELECT cp.id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE cp.organization_id=$1 AND pe.user_id=$2", [org, p.userId])).rows.map((r) => r.id as string);
+    const splits = (
+      await c.query(
+        "SELECT b.subject_profile_id,b.guardian_profile_id,b.percent,cp.full_name FROM billing_split b JOIN club_person cp ON cp.id=b.guardian_profile_id WHERE b.organization_id=$1 AND b.subject_profile_id=ANY($2::uuid[])",
+        [org, rows.map((r) => r.profile_id)],
+      )
+    ).rows as { subject_profile_id: string; guardian_profile_id: string; percent: number; full_name: string }[];
     await c.query("COMMIT");
     return {
       club,
@@ -71,13 +81,19 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
       seasons: seasons.map(({ id, name }) => ({ id, name })),
       season: season ?? null,
       issuedOn: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()),
-      people: rows.map((r) => ({
+      people: rows
+        .filter((r) => all || mine.includes(r.profile_id) || !splits.some((x) => x.subject_profile_id === r.profile_id) || splits.some((x) => x.subject_profile_id === r.profile_id && mine.includes(x.guardian_profile_id)))
+        .map((r) => ({
         profile_id: r.profile_id as string,
         full_name: r.full_name as string,
         birth_date: r.birth_date as string | null,
         paid_cents: r.paid_cents as number,
         last_paid_on: r.last_paid_on as string | null,
         eligible: paidInFull(r.dues, r.paid_cents),
+        /** 29: the shares of the payment, one attestation part per representative. */
+        shares: splits
+          .filter((x) => x.subject_profile_id === r.profile_id && (all || mine.includes(x.guardian_profile_id)))
+          .map((x) => ({ name: x.full_name, percent: x.percent, cents: Math.round((r.paid_cents * x.percent) / 100) })),
       })),
     };
   } catch (e) {

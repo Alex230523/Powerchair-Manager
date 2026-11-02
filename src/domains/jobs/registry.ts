@@ -16,6 +16,7 @@ import { taskSourcesTick } from "../tasks/sources";
 import { runAutomations } from "../automations/engine";
 import { majorityTick } from "../people/service";
 import { seasonCheckTick } from "../season-check/service";
+import { authorizationTick } from "../authorizations/service";
 import { messagingRetirementTick } from "../messaging-archive/service";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -95,6 +96,8 @@ export const jobs = {
         majority: await majorityTick(db),
         // 8: a season that starts opens its check.
         seasonChecks: await seasonCheckTick(db),
+        // 28: the parental authorizations still unsigned after three days are recalled.
+        authorizationReminders: await authorizationTick(db),
         // 24: the presidents of clubs with old exchanges are told once, 14 days before they go.
         messagingNotices: await messagingRetirementTick(db),
       };

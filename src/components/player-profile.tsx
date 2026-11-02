@@ -1,4 +1,5 @@
 "use client";
+import { BillingSplit } from "./billing-split";
 import { CareCard } from "./care-card";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -459,6 +460,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
             ) : (
               <EmptyState title={t.noGuardians} />
             )}
+            {/* 29: two homes, who receives the dues and the attestations. */}
+            {view.can.managePeople && view.guardians.length > 1 && <BillingSplit locale={locale} subjectId={id} />}
           </Card>
         )}
 

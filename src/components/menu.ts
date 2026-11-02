@@ -71,6 +71,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             label: "mySpace",
             icon: "user",
             items: [
+              // 27: the parents' space, every child of every club.
+              ...item("/family", "family", "home", role === "guardian"),
               ...item("/calendar", "calendar", "calendar"),
               ...item("/tournaments", "tournaments", "trophy"),
               ...item("/players", "myFile", "players"),
@@ -288,8 +290,11 @@ export function bottomNav(state: Workspace | null, openTasks = 0): NavItem[] {
       ? ["/calendar", "/players", "/dues"]
       : role === "coach"
         ? ["/calendar", "/attendance", "/players"]
-        : role === "player" || role === "guardian"
-          ? ["/calendar", "/players", "/dues"]
+        : role === "guardian"
+          ? // 27: a parent's first shortcut is the family.
+            ["/family", "/calendar", "/dues"]
+          : role === "player"
+            ? ["/calendar", "/players", "/dues"]
           : null;
   const items = wanted
     ? wanted.map((route) => all.find((i) => i.route === route)).filter((i): i is NavItem => !!i)

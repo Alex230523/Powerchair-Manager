@@ -43,6 +43,7 @@ import { ClubIdentity } from "./club-identity";
 import { Privacy } from "./privacy";
 import { People } from "./people";
 import { SeasonCheckPanel } from "./season-check";
+import { AuthorizationSettings } from "./authorization-settings";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
@@ -650,6 +651,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "activities" && <EventTypesSettings locale={locale} />}
           {/* Wave 17 (O1): the task templates (transport, training…), for those who plan. */}
           {shown && category === "activities" && <TaskTemplates locale={locale} />}
+          {/* 28: the parental authorizations' texts. */}
+          {shown && category === "documents" && <AuthorizationSettings locale={locale} />}
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}

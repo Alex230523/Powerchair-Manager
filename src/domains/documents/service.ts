@@ -18,6 +18,7 @@ import {
 import { ageOn } from "../people/schema";
 import { seal, unseal } from "../notifications/crypto";
 import { publish } from "../notifications/queue";
+import { authorizationSigned } from "../authorizations/service";
 import {
   docAccess,
   notificationAllowed,
@@ -364,7 +365,7 @@ export async function documentView(db: Pool, p: Principal, raw: { season?: strin
       templates: admin
         ? (
             await s.c.query(
-              "SELECT DISTINCT ON(name,locale) id,name,locale,version,body FROM document_template WHERE organization_id=$1 ORDER BY name,locale,version DESC",
+              "SELECT DISTINCT ON(name,locale) id,name,locale,version,body FROM document_template WHERE organization_id=$1 AND authorization_kind IS NULL ORDER BY name,locale,version DESC",
               [s.a.organization_id],
             )
           ).rows
@@ -991,6 +992,8 @@ export async function documentSign(
         [d.organization_id, d.id, source.id, after, p.userId, name, sha, png],
       );
       await log(s.c, d, p.userId, "signed");
+      // 28: a parental authorization is answered; a signed image right allows the name in public.
+      await authorizationSigned(s.c, d.id, p.userId);
       return { id: d.id };
     },
     org,
