@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { sidelineCopy } from "./sideline-copy";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam, ApplyScope } from "./use-scope";
@@ -271,6 +273,13 @@ export function Matches({ locale }: { locale: Locale }) {
                           {t.edit}
                           <span className="sr-only"> : {m.opponent}</span>
                         </button>
+                        {/* 14: the match day on a phone. */}
+                        {m.status !== "played" && m.status !== "cancelled" && (
+                          <Link className="text-button" href={`/${locale}/matches/${m.id}/terrain`}>
+                            {sidelineCopy[locale].open}
+                            <span className="sr-only"> : {m.opponent}</span>
+                          </Link>
+                        )}
                       </div>
                     )
                   }

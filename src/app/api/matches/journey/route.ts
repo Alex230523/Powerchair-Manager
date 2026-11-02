@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   try {
     origin(request);
     const p = await principalIn(request, "matches"),
-      body = JSON.parse(new TextDecoder().decode(await bounded(request, 20000)));
+      body = JSON.parse(new TextDecoder().decode(await bounded(request, 9000000)));
     return Response.json(await journeyExecute(getDb(), p, journeyCommand.parse(body), z.uuid().parse(body.organizationId)), { headers: noStore });
   } catch (e) {
     return failure(e);

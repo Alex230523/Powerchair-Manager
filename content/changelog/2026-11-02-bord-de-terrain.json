@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/matches",
+  "image": null,
+  "fr": {
+    "title": "Le mode bord de terrain",
+    "text": "Le jour du match, « Ouvrir au bord du terrain » donne un écran à une main : présences, composition, score, buts, cartons et remplacements, même sans réseau. Tout part dès que la connexion revient."
+  },
+  "nl": {
+    "title": "De modus langs het veld",
+    "text": "Op de wedstrijddag geeft « Openen langs het veld » een scherm voor één hand: aanwezigheden, opstelling, score, doelpunten, kaarten en wissels, zelfs zonder netwerk. Alles vertrekt zodra de verbinding terug is."
+  },
+  "en": {
+    "title": "Pitch side mode",
+    "text": "On match day, « Open by the pitch » gives a one-handed screen: attendance, line-up, score, goals, cards and substitutions, even without network. Everything leaves as soon as the connection is back."
+  }
+}

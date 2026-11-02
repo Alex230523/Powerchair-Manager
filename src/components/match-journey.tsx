@@ -9,6 +9,7 @@ import { errors } from "./access-copy";
 import { fill } from "./fleet-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { HeadToHead } from "./match-cards";
+import { sidelineCopy } from "./sideline-copy";
 import { ReportReview } from "./refereeing";
 import { useData } from "./use-api";
 
@@ -80,9 +81,17 @@ export function MatchJourney({ locale, id }: { locale: Locale; id: string }) {
         title={m.home ? `${m.team} · ${m.opponent}` : `${m.opponent} · ${m.team}`}
         subtitle={[when, m.venue].filter(Boolean).join(" · ")}
         actions={
-          <Link className="button secondary" href={`/${locale}/guide/game`}>
-            {t.guideGame}
-          </Link>
+          <>
+            {/* 14: the match day on a phone, for those who manage the team. */}
+            {data.manage && m.status !== "played" && (
+              <Link className="button" href={`/${locale}/matches/${m.id}/terrain`}>
+                {sidelineCopy[locale].open}
+              </Link>
+            )}
+            <Link className="button secondary" href={`/${locale}/guide/game`}>
+              {t.guideGame}
+            </Link>
+          </>
         }
       />
       {error && <p role="alert">{error}</p>}

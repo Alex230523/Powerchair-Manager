@@ -150,3 +150,61 @@ export async function flushReports(send: (body: Record<string, unknown>) => Prom
   }
   return { sent, refused, left: pendingReports().length };
 }
+
+/**
+ * 14: « Bord de terrain ». Every action of the day (a presence, a goal, a
+ * card, a timeout) waits here in the order it was made and leaves as soon as
+ * the network comes back. A refusal by the server (the match changed in the
+ * meantime) is told with its label and never blocks the next ones. Only ids,
+ * the action and a short label are kept, never a health datum.
+ */
+const SIDELINE_QUEUE = "pfm-sideline-queue";
+export type QueuedAction = { key: string; matchId: string; label: string; body: Record<string, unknown>; queuedAt: number };
+export function pendingActions(matchId?: string): QueuedAction[] {
+  const all = read<QueuedAction[]>(SIDELINE_QUEUE, []);
+  return matchId ? all.filter((a) => a.matchId === matchId) : all;
+}
+export function queueAction(a: Omit<QueuedAction, "queuedAt">) {
+  const next = pendingActions().filter((x) => x.key !== a.key);
+  next.push({ ...a, queuedAt: Date.now() });
+  write(SIDELINE_QUEUE, next);
+  return next.filter((x) => x.matchId === a.matchId).length;
+}
+export function dropAction(key: string) {
+  write(SIDELINE_QUEUE, pendingActions().filter((a) => a.key !== key));
+}
+/** The last action still waiting for this match, taken back before it leaves. */
+export function popAction(matchId: string) {
+  const mine = pendingActions(matchId);
+  const last = mine[mine.length - 1];
+  if (last) dropAction(last.key);
+  return last ?? null;
+}
+/** Sends in order; a network failure stops and keeps the rest, a refusal is counted with its label and dropped. */
+export async function flushActions(matchId: string, send: (body: Record<string, unknown>) => Promise<Response>) {
+  let sent = 0;
+  const refused: string[] = [];
+  for (const a of pendingActions(matchId).sort((x, y) => x.queuedAt - y.queuedAt)) {
+    try {
+      const r = await send(a.body);
+      dropAction(a.key);
+      if (r.ok) sent++;
+      else refused.push(a.label);
+    } catch {
+      break;
+    }
+  }
+  return { sent, refused, left: pendingActions(matchId).length };
+}
+/** The match's data kept on the device for a day, so the screen opens without network. */
+const SIDELINE_SNAPSHOT = "pfm-sideline-snapshot";
+export function saveSideline(matchId: string, data: unknown) {
+  const all = read<Record<string, { savedAt: number; data: unknown }>>(SIDELINE_SNAPSHOT, {});
+  for (const [k, v] of Object.entries(all)) if (Date.now() - v.savedAt > DAY) delete all[k];
+  all[matchId] = { savedAt: Date.now(), data };
+  write(SIDELINE_SNAPSHOT, all);
+}
+export function loadSideline<T>(matchId: string): T | null {
+  const v = read<Record<string, { savedAt: number; data: T }>>(SIDELINE_SNAPSHOT, {})[matchId];
+  return v && Date.now() - v.savedAt <= DAY ? v.data : null;
+}

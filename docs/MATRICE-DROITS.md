@@ -301,6 +301,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/matches` |  |  |  |  |  |  |  |  |  |   |
 | `/matches/[id]` |  |  |  |  |  |  |  |  |  |   |
+| `/matches/[id]/terrain` |  |  |  |  |  |  |  |  |  |   |
 | `/messages` |  |  |  |  |  |  |  |  |  |   |
 | `/notifications` |  |  |  |  |  |  |  |  |  |   |
 | `/nouveautes` |  |  |  |  |  |  |  |  |  |   |

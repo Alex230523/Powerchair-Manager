@@ -22,7 +22,9 @@ import { speedState } from "../equipment/workshop";
  */
 const id = z.uuid();
 export const checklistKeys = ["chairs", "batteries", "balls", "shirts", "firstAid", "transport"] as const;
-export const liveKinds = ["goal", "goal_against", "yellow", "red", "sub_in", "sub_out"] as const;
+export const liveKinds = ["goal", "goal_against", "assist", "yellow", "red", "sub_in", "sub_out", "timeout"] as const;
+/** 14: the events that name nobody. */
+export const teamKinds = ["goal_against", "timeout"] as const;
 export const journeyCommand = z.discriminatedUnion("action", [
   /** A match created before A5, or whose event was removed: the call-up now. */
   z.object({ action: z.literal("convene"), id }),
@@ -37,6 +39,10 @@ export const journeyCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("checklist"), id, items: z.array(z.object({ key: z.enum(checklistKeys), responsibleId: id.nullable() })).min(1).max(checklistKeys.length) }),
   z.object({ action: z.literal("live"), id, clientId: id, kind: z.enum(liveKinds), profileId: id.nullable(), minute: z.number().int().min(0).max(200).nullable() }),
   z.object({ action: z.literal("undoLive"), id, eventId: id }),
+  /** 14: a presence marked from the side of the pitch (a tap: present; otherwise absent or excused). */
+  z.object({ action: z.literal("presence"), id, profileId: id, actual: z.enum(["present", "absent", "excused", "unchecked"]) }),
+  /** 14: the photo of the paper match sheet. */
+  z.object({ action: z.literal("sheetPhoto"), id, type: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]), base64: z.string().min(8).max(8500000) }),
   z.object({ action: z.literal("validate"), id, version: z.number().int().positive(), ourScore: z.number().int().min(0).max(99), theirScore: z.number().int().min(0).max(99) }),
 ]);
 export type JourneyCommand = z.infer<typeof journeyCommand>;
@@ -64,11 +70,12 @@ export function eligibility(p: { licence: string | null; documentsDue: number; c
 /** The live score and each player's goals and cards, from the day's events (cancelled ones left out). Pure. */
 export function tally(events: { kind: string; profile_id: string | null; cancelled_at: unknown }[]) {
   const live = events.filter((e) => !e.cancelled_at);
-  const per = new Map<string, { goals: number; yellow: number; red: boolean }>();
+  const per = new Map<string, { goals: number; yellow: number; red: boolean; assists: number }>();
   for (const e of live) {
     if (!e.profile_id) continue;
-    const v = per.get(e.profile_id) ?? { goals: 0, yellow: 0, red: false };
+    const v = per.get(e.profile_id) ?? { goals: 0, yellow: 0, red: false, assists: 0 };
     if (e.kind === "goal") v.goals++;
+    if (e.kind === "assist") v.assists++;
     if (e.kind === "yellow") v.yellow = Math.min(2, v.yellow + 1);
     if (e.kind === "red") v.red = true;
     per.set(e.profile_id, v);
@@ -121,7 +128,8 @@ async function squad(c: PoolClient, org: string, m: Row) {
                         'lastSpeed',(SELECT json_build_object('speed',i.speed_kmh::float,'on',i.occurred_on::text) FROM chair_intervention i WHERE i.chair_id=ch.id AND i.kind='speed_check' AND i.cancelled_at IS NULL ORDER BY i.occurred_on DESC,i.created_at DESC LIMIT 1))
                  FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
                 WHERE ea.profile_id=cp.id AND ea.ends_on IS NULL AND ch.organization_id=$1 ORDER BY ea.is_primary DESC,ea.starts_on DESC LIMIT 1) AS chair,
-              (SELECT i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS answer
+              (SELECT i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS answer,
+              (SELECT i.actual FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS actual
          FROM team_membership tm JOIN club_person cp ON cp.id=tm.profile_id LEFT JOIN player_sport_profile sp ON sp.profile_id=cp.id
         WHERE tm.organization_id=$1 AND tm.team_id=$2 AND tm.role='player' AND NOT tm.cancelled AND tm.closed_at IS NULL AND tm.starts_on<=CURRENT_DATE AND (tm.ends_on IS NULL OR tm.ends_on>=CURRENT_DATE) AND cp.status='active'
         ORDER BY cp.id`,
@@ -147,6 +155,8 @@ async function squad(c: PoolClient, org: string, m: Row) {
     documents_due: number;
     chair: { name: string; status: string; serviceDue: boolean } | null;
     answer: "present" | "absent" | "uncertain" | "none" | null;
+    /** 14: the presence seen on the day. */
+    actual: string | null;
     suspension: { remaining: number; summary: string; cause: string } | null;
     blocking: Problem[];
     warnings: Problem[];
@@ -329,17 +339,43 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
       }
       case "live": {
         if (m.status === "played" && m.validated_at) throw new AccessError("INVALID_TRANSITION", 409);
-        if (cmd.kind !== "goal_against") {
+        if (!(teamKinds as readonly string[]).includes(cmd.kind)) {
           if (!cmd.profileId) throw new AccessError("INVALID_INPUT", 400);
           if (!(await c.query("SELECT 1 FROM match_player WHERE match_id=$1 AND organization_id=$2 AND profile_id=$3", [m.id, org, cmd.profileId])).rowCount) throw new AccessError("NOT_IN_LINEUP", 400);
         }
         // The same event sent twice (from the offline queue) is written once.
         await c.query(
           "INSERT INTO match_live_event(organization_id,match_id,client_id,kind,profile_id,minute,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (client_id) DO NOTHING",
-          [org, m.id, cmd.clientId, cmd.kind, cmd.kind === "goal_against" ? null : cmd.profileId, cmd.minute, p.userId],
+          [org, m.id, cmd.clientId, cmd.kind, (teamKinds as readonly string[]).includes(cmd.kind) ? null : cmd.profileId, cmd.minute, p.userId],
         );
         const t = tally(await liveOf(c, org, m.id));
         out = { id: m.id, ours: t.ours, theirs: t.theirs };
+        break;
+      }
+      case "presence": {
+        // The match's call-up (its calendar event): the presence seen on the day.
+        const inv = m.calendar_event_id
+          ? (
+              await c.query(
+                "SELECT i.id,i.actual,i.register_id FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$1 AND i.profile_id=$2 AND i.organization_id=$3 AND i.withdrawn_at IS NULL FOR UPDATE OF i",
+                [m.calendar_event_id, cmd.profileId, org],
+              )
+            ).rows[0]
+          : null;
+        if (!inv) throw new AccessError("NOT_INVITED", 404);
+        await c.query("UPDATE attendance_invitation SET actual=$2,marked_at=now(),marked_by=$3,version=version+1 WHERE id=$1", [inv.id, cmd.actual, p.userId]);
+        await c.query("INSERT INTO attendance_history(register_id,invitation_id,actor_id,action,before_data,after_data) VALUES($1,$2,$3,'mark',$4,$5)", [inv.register_id, inv.id, p.userId, JSON.stringify({ actual: inv.actual }), JSON.stringify({ actual: cmd.actual })]);
+        out = { id: m.id };
+        break;
+      }
+      case "sheetPhoto": {
+        const bytes = Buffer.from(cmd.base64, "base64");
+        if (!bytes.length || bytes.length > 6291456) throw new AccessError("INVALID_FILE", 400);
+        await c.query(
+          "INSERT INTO match_sheet_photo(match_id,organization_id,media_type,content,uploaded_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT (match_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,uploaded_by=EXCLUDED.uploaded_by,uploaded_at=now()",
+          [m.id, org, cmd.type, bytes, p.userId],
+        );
+        out = { id: m.id };
         break;
       }
       case "undoLive": {
@@ -355,8 +391,8 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
         // The statistics follow the day's events; without any, the line-up keeps what was typed.
         if (live.some((e) => !e.cancelled_at))
           for (const row of await lineupOf(c, org, m.id)) {
-            const x = t.per.get(row.profile_id) ?? { goals: 0, yellow: 0, red: false };
-            await c.query("UPDATE match_player SET goals=$3,yellow_cards=$4,red_card=$5 WHERE match_id=$1 AND profile_id=$2", [m.id, row.profile_id, x.goals, x.yellow, x.red]);
+            const x = t.per.get(row.profile_id) ?? { goals: 0, yellow: 0, red: false, assists: 0 };
+            await c.query("UPDATE match_player SET goals=$3,yellow_cards=$4,red_card=$5,assists=$6 WHERE match_id=$1 AND profile_id=$2", [m.id, row.profile_id, x.goals, x.yellow, x.red, x.assists]);
           }
         await c.query("UPDATE match SET status='played',our_score=$3,their_score=$4,validated_at=now(),validated_by=$5,version=version+1 WHERE id=$1 AND organization_id=$2", [
           m.id,

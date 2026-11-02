@@ -140,6 +140,24 @@ it("sends the day's checklist to the to-do once, with its people in charge", asy
   expect(tasks.find((t) => t.source_kind === "match_chairs")!.responsible_id).toBe(coachProfile);
 });
 
+it("14: marks presences from the pitch side, takes an assist and a timeout, files the sheet's photo, refuses a stale validation", async () => {
+  await run(coach, { action: "presence", profileId: ana, actual: "present" });
+  await run(coach, { action: "presence", profileId: bilal, actual: "excused" });
+  const actual = (await db.query("SELECT cp.full_name,i.actual FROM attendance_invitation i JOIN club_person cp ON cp.id=i.profile_id WHERE i.profile_id=ANY($1::uuid[]) ORDER BY cp.full_name", [[ana, bilal]])).rows;
+  expect(actual).toEqual([{ full_name: "Ana", actual: "present" }, { full_name: "Bilal", actual: "excused" }]);
+  await run(coach, { action: "live", clientId: randomUUID(), kind: "assist", profileId: ana, minute: 5 });
+  await run(coach, { action: "live", clientId: randomUUID(), kind: "timeout", profileId: null, minute: 6 });
+  const v = await journeyView(db, coach, match);
+  if (!v.manage) throw new Error("manage");
+  expect(v.liveScore).toEqual({ ours: 0, theirs: 0 });
+  expect(v.players.find((p) => p.profile_id === ana)!.actual).toBe("present");
+  await run(coach, { action: "sheetPhoto", type: "image/png", base64: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).toString("base64") });
+  expect((await db.query("SELECT media_type FROM match_sheet_photo WHERE match_id=$1", [match])).rows).toEqual([{ media_type: "image/png" }]);
+  // An action made on an older state of the match is refused, and only that one.
+  await expect(run(coach, { action: "validate", version: v.match.version - 1 > 0 ? v.match.version - 1 : v.match.version + 1, ourScore: 0, theirScore: 0 })).rejects.toMatchObject({ code: "STALE_VERSION" });
+  await expect(run(otherCoach, { action: "presence", profileId: ana, actual: "absent" })).rejects.toBeTruthy();
+});
+
 it("takes the score live, an event sent twice written once (the offline queue), and confirms the result", async () => {
   const goal = randomUUID();
   await run(coach, { action: "live", clientId: goal, kind: "goal", profileId: ana, minute: 12 });

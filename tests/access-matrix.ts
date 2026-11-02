@@ -277,6 +277,7 @@ export const pages: Record<string, PageAccess> = {
   "/licenses": {},
   "/matches": {},
   "/matches/[id]": {},
+  "/matches/[id]/terrain": {},
   "/messages": {},
   "/notifications": {},
   "/nouveautes": {},

@@ -12051,3 +12051,127 @@ a.match-context {
   border: 0;
   background: none;
 }
+
+/* 14: « Bord de terrain »: one column, big targets, strong contrast. */
+.sideline {
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+  color: var(--text);
+  background: var(--surface);
+  font-size: var(--text-lg);
+}
+.sideline h1 {
+  font-size: var(--text-xl);
+  margin: 0;
+}
+.sideline-head {
+  display: grid;
+  gap: var(--space-2);
+}
+.sideline-score {
+  display: inline-block;
+  padding-inline: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+.sideline-big,
+.sideline .tabs button {
+  min-height: 56px;
+  font-size: var(--text-lg);
+}
+.sideline-net {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--success);
+  font-weight: 600;
+}
+.sideline-offline {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.sideline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.sideline-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+.sideline-list > li[data-actual="present"] {
+  border-color: var(--success);
+}
+.sideline-person {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+}
+.sideline-state {
+  font-weight: 700;
+}
+.sideline-row,
+.sideline-actions,
+.sideline-clock {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-2);
+}
+.sideline-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.sideline-scoreboard > div {
+  display: grid;
+  gap: var(--space-2);
+}
+.sideline-side {
+  margin: 0;
+  font-weight: 700;
+  text-align: center;
+}
+.sideline-scoreboard .sideline-big {
+  font-size: var(--text-xl);
+}
+.sideline-form {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-md);
+}
+.sideline-form select {
+  width: 100%;
+}
+.sideline-events {
+  padding-inline-start: var(--space-4);
+}
+.sideline-alert {
+  color: var(--danger);
+  font-weight: 600;
+}
+.sideline-final {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.sideline-file input {
+  display: block;
+  min-height: 56px;
+  width: 100%;
+}
