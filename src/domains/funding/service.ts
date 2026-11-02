@@ -321,6 +321,8 @@ export async function fundingView(db: Pool, p: Principal) {
       /** The actor's own club profiles, for "my tasks". */
       own: [...s.own],
       grants,
+      /** H13: the impact reports filed with each grant. */
+      attachments: (await s.c.query("SELECT id,grant_id,filename,period_from::text AS period_from,period_to::text AS period_to,created_at FROM grant_attachment WHERE organization_id=$1 ORDER BY created_at DESC", [s.org])).rows as { id: string; grant_id: string; filename: string; period_from: string; period_to: string; created_at: string }[],
       payments,
       funders,
       chairs,

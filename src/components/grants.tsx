@@ -1,5 +1,6 @@
 "use client";
 import { AnnualReminder } from "./annual-reminder";
+import { ImpactLinks } from "./impact-links";
 import { SupportTabs } from "./grants-sponsors";
 import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { DataGrid } from "./data-grid";
@@ -602,6 +603,8 @@ function GrantSheet({
               </div>
             </section>
             <GrantPayments locale={locale} data={data} grant={grant} busy={busy} post={post} />
+            {/* H13: the impact report for the grant's period, filed with its justification. */}
+            <ImpactLinks locale={locale} data={data} grant={grant} />
             {/* 9: the yearly reminder, kept when the year's file closes. */}
             <AnnualReminder locale={locale} data={data} grantId={grant.id} closed={grant.status === "closed" || grant.status === "paid"} busy={busy} post={post} />
             {funder && <FunderFacts locale={locale} data={data} funder={funder} others={others} edit={() => editFunder(funder.id)} openGrant={openGrant} />}

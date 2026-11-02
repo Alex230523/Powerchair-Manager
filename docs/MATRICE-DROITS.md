@@ -77,6 +77,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/finance/statements` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/finance/statements/[id]` | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/funding` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/funding/attachment` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/funding/deadlines` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/funding/grants/[id]/chairs` | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/funding/proof/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
@@ -144,6 +145,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/statistics/awards/[id]/photo` | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
 | `/api/statistics/club` | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/statistics/game` | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/statistics/impact` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/statistics/report` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/tasks` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/tax` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
@@ -194,6 +196,7 @@ Notes :
 - `/api/feedback/shot/[token]` : Capture d'un signalement (déjà masquée), par jeton imprévisible, liée depuis l'issue d'un dépôt privé ; 404 sans jeton valide
 - `/api/finance/allocations` : Fonds réservés : affectations, opérations rattachées, export justificatif (point 9)
 - `/api/finance/forecast` : Trésorerie prévisionnelle sur 12 mois, simulations et seuil, export PDF (H4)
+- `/api/funding/attachment` : Rapport d'impact joint au dossier d'un subside (H13)
 - `/api/guide` : Guide du jeu : chapitres publiés de sa fédération ; rédaction par la fédération ; note « Chez nous » du club
 - `/api/guide/image` : Image de la galerie ou photo d'un modèle : lecteurs de la fédération ; sans compte seulement si un chapitre public la montre
 - `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
@@ -210,6 +213,7 @@ Notes :
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 - `/api/seasons/plan` : Préparer la saison suivante : l'assistant annuel, réservé à la présidence du club (point 16)
 - `/api/staff-roles` : Rôles de staff : lecture par les membres du club, modification et attribution avec mandates.manage
+- `/api/statistics/impact` : Rapport d'impact d'une période : chiffres, PDF, Excel, ajustements, réglages (H13)
 
 ## Pages
 
@@ -317,6 +321,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/statistics` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/club` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/game` |  |  |  |  |  |  |  |  |  |   |
+| `/statistics/impact` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/report` |  |  |  |  |  |  |  |  |  |   |
 | `/t/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/tasks` |  |  |  |  |  |  |  |  |  |   |
