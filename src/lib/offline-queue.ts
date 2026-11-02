@@ -106,6 +106,7 @@ export function clearOfflineData() {
     window.localStorage.removeItem(QUEUE);
     window.localStorage.removeItem(SNAPSHOT);
     window.localStorage.removeItem(MATCH_QUEUE);
+    window.localStorage.removeItem("pfm-referee-report-queue");
   } catch {
     /* Nothing to clear. */
   }
@@ -115,4 +116,37 @@ export function clearOfflineData() {
   } catch {
     /* No storage: nothing to clear. */
   }
+}
+
+/**
+ * 25: the referee's report written in a hall without network waits here and
+ * leaves when the connection comes back. The players are named by their ids
+ * (the server writes the names); one report per match, the newer replaces.
+ */
+const REPORT_QUEUE = "pfm-referee-report-queue";
+export type QueuedReport = { key: string; body: Record<string, unknown>; queuedAt: number };
+export function pendingReports(): QueuedReport[] {
+  return read<QueuedReport[]>(REPORT_QUEUE, []);
+}
+export function queueReport(matchId: string, body: Record<string, unknown>) {
+  const next = pendingReports().filter((m) => m.key !== matchId);
+  next.push({ key: matchId, body, queuedAt: Date.now() });
+  write(REPORT_QUEUE, next);
+  return next.length;
+}
+/** Sends the waiting reports; a network failure keeps the rest, a refusal drops it and is counted. */
+export async function flushReports(send: (body: Record<string, unknown>) => Promise<Response>) {
+  let sent = 0,
+    refused = 0;
+  for (const m of pendingReports()) {
+    try {
+      const r = await send(m.body);
+      write(REPORT_QUEUE, pendingReports().filter((x) => x.key !== m.key));
+      if (r.ok) sent++;
+      else refused++;
+    } catch {
+      break;
+    }
+  }
+  return { sent, refused, left: pendingReports().length };
 }

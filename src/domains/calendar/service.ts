@@ -1506,6 +1506,11 @@ export async function calendarFeed(db: Pool, token: string) {
       ).rows as (Event & { location: string })[];
       allowed.push(...meetings.map((m) => ({ ...m, id: "task-" + m.id })));
     }
+    // 39: a referee's accepted designations (club and tournament matches), in his own feed.
+    if (a.role === "referee") {
+      const { designationEvents } = await import("../referees/service");
+      allowed.push(...(await designationEvents(c, f.organization_id, a.user_id)));
+    }
     // Wave 15: money deadlines, when asked and while the person keeps money rights.
     let days: { uid: string; date: string; title: string }[] = [];
     if (f.include_money) {

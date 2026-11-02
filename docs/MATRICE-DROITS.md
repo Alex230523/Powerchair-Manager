@@ -116,6 +116,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/push` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/push/respond` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/referee` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | oui | refusé | refusé | refusé |
+| `/api/refereeing` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/registrations` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/registrations/file/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/registrations/guest` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
@@ -181,6 +182,7 @@ Notes :
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
 - `/api/onboarding` : Parcours d'accueil : ses propres parcours ; modèles et suivi pour qui gère les membres
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
+- `/api/refereeing` : Arbitrage (points 25 et 36 à 39) : bureau de la fédération (compétence arbitrage : désignations, niveaux, barème, formations, notes de frais, export CSV, récapitulatif PDF) ; bureau de l'arbitre (réponses, itinéraires, rapport, notes de frais, formations) ; ?report= relecture du rapport par le club dans les 48 heures
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 - `/api/seasons/plan` : Préparer la saison suivante : l'assistant annuel, réservé à la présidence du club (point 16)
 - `/api/staff-roles` : Rôles de staff : lecture par les membres du club, modification et attribution avec mandates.manage

@@ -23,6 +23,7 @@ import { associationTick } from "../association/service";
 import { onboardingTick } from "../onboarding/service";
 import { offboardingTick } from "../offboarding/service";
 import { circularsTick } from "../circulars/service";
+import { refereeingTick } from "../referees/service";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
@@ -118,6 +119,8 @@ export const jobs = {
         offboarding: await offboardingTick(db),
         // 33: the circulars whose date came leave.
         circulars: await circularsTick(db),
+        // 39: proposals left unanswered, the eve's reminder, reports validated after 48 hours.
+        refereeing: await refereeingTick(db),
       };
     },
   },

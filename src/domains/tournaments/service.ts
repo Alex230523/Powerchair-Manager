@@ -1,3 +1,4 @@
+import { designateFromTournament } from "../referees/mirror";
 import { emitWebhook } from "../integrations/webhooks";
 import { fedCan } from "../access/policy";
 import { ensureStorage } from "../storage/service";
@@ -616,11 +617,14 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
           if (input.refereeId && !(await refereeOptions(s)).some((r) => r.id === input.refereeId)) throw new AccessError("NOT_FOUND", 404);
           if (!(await s.c.query("SELECT 1 FROM tournament_day WHERE id=$1 AND tournament_id=$2", [input.dayId, t.id])).rowCount) throw new AccessError("NOT_FOUND", 404);
           if (input.matchId) {
+            const before = (await s.c.query("SELECT referee_user_id FROM tournament_match WHERE id=$1 AND tournament_id=$2", [input.matchId, t.id])).rows[0]?.referee_user_id ?? null;
             const r = await s.c.query(
               "UPDATE tournament_match SET day_id=$3,kickoff=$4,stage=$5,group_label=$6,home_organization_id=$7,away_organization_id=$8,referee_user_id=$9,version=version+1 WHERE id=$1 AND tournament_id=$2 AND status IN ('scheduled','cancelled')",
               [input.matchId, t.id, input.dayId, input.kickoff, input.stage, input.group, input.home, input.away, input.refereeId],
             );
             if (!r.rowCount) throw new AccessError("MATCH_HAS_RESULT", 409);
+            // 25: the referee chosen here is the accepted main designation.
+            if (before !== input.refereeId) await designateFromTournament(s.c, input.matchId, input.refereeId, s.p.userId);
           } else {
             const id = (
               await s.c.query(
@@ -628,6 +632,7 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
                 [t.id, input.dayId, input.kickoff, input.stage, input.group, input.home, input.away, input.refereeId],
               )
             ).rows[0].id as string;
+            if (input.refereeId) await designateFromTournament(s.c, id, input.refereeId, s.p.userId);
             await audit(s.c, org, s.p.userId, "tournament.match", id);
             return { id };
           }

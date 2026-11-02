@@ -8,6 +8,7 @@ import { journeyCopy, type JourneyCopy } from "./match-journey-copy";
 import { errors } from "./access-copy";
 import { fill } from "./fleet-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
+import { ReportReview } from "./refereeing";
 import { useData } from "./use-api";
 
 /**
@@ -527,20 +528,7 @@ function AfterStep({ ctx }: { ctx: Ctx }) {
         ) : (
           <p className="muted">{t.noReferee}</p>
         )}
-        <h3>{t.report}</h3>
-        {data.report ? (
-          <p>
-            {data.report.home_score} - {data.report.away_score}
-            {data.report.incidents && (
-              <>
-                <br />
-                {data.report.incidents}
-              </>
-            )}
-          </p>
-        ) : (
-          <p className="muted">{t.noReport}</p>
-        )}
+        <ReportReview locale={locale} matchId={data.match.id} />
       </Card>
     </div>
   );

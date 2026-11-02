@@ -70,8 +70,6 @@ export type JourneyCopy = {
   sheet: string;
   announcement: string;
   announcementReady: string;
-  report: string;
-  noReport: string;
   referees: string;
   noReferee: string;
   result: string;
@@ -151,8 +149,6 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     sheet: "Feuille de match (PDF)",
     announcement: "Ouvrir le brouillon d'annonce",
     announcementReady: "Brouillon d'annonce prêt dans Communication.",
-    report: "Rapport de l'arbitre",
-    noReport: "Pas encore de rapport de l'arbitre.",
     referees: "Arbitres",
     noReferee: "Aucun arbitre désigné.",
     result: "Résultat",
@@ -239,8 +235,6 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     sheet: "Wedstrijdblad (PDF)",
     announcement: "Het ontwerp van aankondiging openen",
     announcementReady: "Ontwerp van aankondiging klaar in Communicatie.",
-    report: "Verslag van de scheidsrechter",
-    noReport: "Nog geen verslag van de scheidsrechter.",
     referees: "Scheidsrechters",
     noReferee: "Geen scheidsrechter aangeduid.",
     result: "Uitslag",
@@ -327,8 +321,6 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     sheet: "Match sheet (PDF)",
     announcement: "Open the draft announcement",
     announcementReady: "Draft announcement ready in Communication.",
-    report: "Referee's report",
-    noReport: "No referee's report yet.",
     referees: "Referees",
     noReferee: "No referee designated.",
     result: "Result",
