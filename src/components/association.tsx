@@ -446,10 +446,7 @@ function MeetingCard({ locale, m, data, busy, send }: { locale: Locale; m: Meeti
           <ul className="plain-list asbl-attendees">
             {m.attendees.map((a) => (
               <li key={a.profile_id}>
-                <label className="check" htmlFor={`${base}-present-${a.profile_id}`}>
-                  <input id={`${base}-present-${a.profile_id}`} type="checkbox" checked={a.present} disabled={busy || !open} onChange={(e) => void send({ action: "presence", meetingId: m.id, profileId: a.profile_id, present: e.target.checked })} />
-                  {a.full_name}
-                </label>
+                <Presence key={`${a.profile_id}-${a.present}`} id={`${base}-present-${a.profile_id}`} name={a.full_name} present={a.present} disabled={busy || !open} save={(present) => send({ action: "presence", meetingId: m.id, profileId: a.profile_id, present })} />
                 <span className="muted small">
                   {t.answers[a.answer as keyof typeof t.answers]}
                   {a.holder_id && ` · ${fill(t.proxyTo, { name: name(a.holder_id) })}`}
@@ -491,6 +488,27 @@ function MeetingCard({ locale, m, data, busy, send }: { locale: Locale; m: Meeti
         </>
       )}
     </Card>
+  );
+}
+
+/** A present member ticked at once (the server's answer follows; a refusal unticks it). */
+function Presence({ id, name, present, disabled, save }: { id: string; name: string; present: boolean; disabled: boolean; save: (present: boolean) => Promise<boolean> }) {
+  const [on, setOn] = useState(present);
+  return (
+    <label className="check" htmlFor={id}>
+      <input
+        id={id}
+        type="checkbox"
+        checked={on}
+        disabled={disabled}
+        onChange={async (e) => {
+          const next = e.target.checked;
+          setOn(next);
+          if (!(await save(next))) setOn(!next);
+        }}
+      />
+      {name}
+    </label>
   );
 }
 

@@ -40,7 +40,7 @@ test("staff roles, from the settings to the coaches' list", async ({ page }) => 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/settings/members");
     const card = page.locator("section").filter({ has: page.getByRole("heading", { name: "Rôles", exact: true }) }).last();
-    await expect(card.getByText("Trésorier", { exact: true })).toBeVisible();
+    await expect(card.locator("strong").filter({ hasText: /^Trésorier$/ })).toBeVisible();
     await axe(page, "roles");
     const theo = card.locator(".staff-people li").filter({ hasText: "Théo Trésor" });
     await theo.getByLabel("Trésorier").check();
