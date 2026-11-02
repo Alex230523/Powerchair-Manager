@@ -51,15 +51,15 @@ test("a hall's booking from the calendar, on a phone", async ({ page }) => {
     await expect(card.getByRole("heading", { name: "Hall des Sports · Saison 2026-2027" })).toBeVisible({ timeout: 15000 });
     await expect(card.locator(".trip-meta").getByText("À demander")).toBeVisible();
     await expect(card.getByRole("listitem").filter({ hasText: /\(6 séances\)/ })).toBeVisible();
-    await card.getByText("Email prêt à envoyer").click();
+    await card.locator("summary").filter({ hasText: "Email prêt à envoyer" }).click();
     await expect(card.getByRole("link", { name: "Ouvrir dans la messagerie" })).toHaveAttribute("href", /^mailto:salle@example\.test\?subject=/);
     await axe(page, "bookings");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     // The request task is in the to-do.
     expect(Number((await db.query("SELECT count(*)::int AS n FROM task WHERE organization_id=$1 AND source_kind='venueRequest'", [club])).rows[0].n)).toBe(1);
 
-    await card.getByLabel("Statut").selectOption("confirmed");
-    await card.getByLabel("Référence").fill("RES-118");
+    await card.getByLabel("Statut").first().selectOption("confirmed");
+    await card.getByLabel("Référence").first().fill("RES-118");
     await card.getByRole("button", { name: "Enregistrer le statut" }).click();
     await expect(card.locator(".trip-meta").getByText("Confirmée")).toBeVisible();
 
