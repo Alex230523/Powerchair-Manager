@@ -20,7 +20,7 @@ import {
   registrationExtras,
   fieldExtras,
 } from "./registrations-copy";
-import { platformTemplate } from "@/domains/registrations/templates";
+import { fillDues, platformTemplate } from "@/domains/registrations/templates";
 import { moveField, removeField, restoreField } from "@/domains/registrations/editor";
 import {
   DecisionButtons,
@@ -577,7 +577,7 @@ function FormEditor({
             >
               <legend>
                 {fill(q.question, { n: i + 1 })}
-                <span className="question-title"> · {label(f) || q.untitled}</span>
+                <span className="question-title"> · {fillDues(label(f), null) || q.untitled}</span>
               </legend>
               <div className="question-tools">
                 <button
@@ -585,8 +585,8 @@ function FormEditor({
                   className="icon-button sm"
                   aria-expanded={!folded.has(f.key)}
                   aria-controls={"question-body-" + f.key}
-                  aria-label={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: label(f) || q.untitled })}
-                  title={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: label(f) || q.untitled })}
+                  aria-label={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: fillDues(label(f), null) || q.untitled })}
+                  title={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: fillDues(label(f), null) || q.untitled })}
                   onClick={() => toggle(f.key)}
                 >
                   <Icon name={folded.has(f.key) ? "chevronDown" : "chevronUp"} size={16} />
@@ -625,8 +625,8 @@ function FormEditor({
                 <button
                   type="button"
                   className="icon-button sm question-remove"
-                  aria-label={fill(q.removeQuestion, { n: i + 1, label: label(f) })}
-                  title={fill(q.removeQuestion, { n: i + 1, label: label(f) })}
+                  aria-label={fill(q.removeQuestion, { n: i + 1, label: fillDues(label(f), null) })}
+                  title={fill(q.removeQuestion, { n: i + 1, label: fillDues(label(f), null) })}
                   onClick={() => remove(i)}
                 >
                   <Icon name="trash" size={16} />

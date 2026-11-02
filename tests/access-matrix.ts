@@ -48,7 +48,7 @@ export const apiRoutes: Record<string, ApiRoute> = {
   "contacts": { methods: ["GET", "POST"] },
   "courses": { methods: ["GET", "POST"] },
   "courses/proof": { methods: ["GET"] },
-  "cron/[job]": { methods: ["GET", "POST"] },
+  "cron/[job]": { methods: ["GET", "POST"], skip: "Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)" },
   "dashboard": { methods: ["GET"] },
   "designations": { methods: ["GET", "POST"] },
   "documents": { methods: ["GET", "POST"] },

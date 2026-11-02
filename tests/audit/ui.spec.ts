@@ -48,9 +48,17 @@ for (const role of roles)
       const errors: string[] = [];
       let mark = 0;
       page.on("console", (m) => {
-        if (m.type() === "error") errors.push(m.text().slice(0, 200));
+        // A failed request is reported below with its address, not as the browser's bare message.
+        if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) errors.push(m.text().slice(0, 200));
       });
       page.on("pageerror", (e) => errors.push(e.message.slice(0, 200)));
+      page.on("response", (r) => {
+        const url = new URL(r.url());
+        if (r.status() >= 400 && url.pathname.startsWith("/api/")) errors.push(`${r.status()} ${r.request().method()} ${url.pathname}${url.search}`.slice(0, 200));
+      });
+      // A page that asks before leaving (unsaved form) must not hold the audit: leave.
+      page.on("dialog", (d) => void d.accept().catch(() => undefined));
+      page.setDefaultNavigationTimeout(30000);
       mkdirSync(`${out}/shots`, { recursive: true });
       try {
         await page.addInitScript(([theme, size]) => {
@@ -109,7 +117,7 @@ for (const role of roles)
         for (const locale of variant.locales)
           for (const base of paths) {
             const path = base.replace(/^\/fr(?=\/|$)/, `/${locale}`);
-            const response = await page.goto(path).catch(() => null);
+            const response = await page.goto(path, { timeout: 30000 }).catch(() => null);
             if (!response || response.status() >= 400) {
               issues.push({ rule: "page-status", role, variant: variant.id, locale, path, what: "page", target: "page", detail: String(response?.status() ?? "no answer"), shot: null });
               continue;

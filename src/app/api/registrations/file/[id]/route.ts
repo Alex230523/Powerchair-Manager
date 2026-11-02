@@ -49,7 +49,13 @@ export async function POST(
       headers: { "content-type": request.headers.get("content-type") ?? "" },
       body: bytes,
     });
-    const data = await wrapped.formData();
+    // 23: a body that is not a form is a bad request, not a server failure.
+    const data = await wrapped.formData().catch(() => null);
+    if (!data)
+      return Response.json(
+        { error: "INVALID_INPUT" },
+        { status: 400, headers: noStore },
+      );
     const file = data.get("file");
     if (!(file instanceof File))
       return Response.json(

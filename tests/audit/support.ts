@@ -69,11 +69,20 @@ export function emailOf(role: AuditRole) {
 
 /** Signs `request` in (the page's request shares its cookies) and picks the role's first profile. */
 export async function signIn(request: APIRequestContext, db: Pool, role: AuditRole) {
-  await db.query('DELETE FROM "rateLimit"');
-  const login = await request.post("/api/auth/sign-in/email", { headers: { origin }, data: { email: emailOf(role), password: passwordOf(role) } });
-  if (login.status() !== 200) throw new Error(`Sign-in of ${role}: ${login.status()}`);
-  const workspace = await (await request.get("/api/workspace")).json();
-  const context = (workspace.contexts as { id: string }[])[0];
+  // Several tests sign the same account in at once: a refused attempt is tried again.
+  let context: { id: string } | undefined;
+  for (let attempt = 1; attempt <= 4 && !context; attempt++) {
+    await db.query('DELETE FROM "rateLimit"');
+    const login = await request.post("/api/auth/sign-in/email", { headers: { origin }, data: { email: emailOf(role), password: passwordOf(role) } });
+    if (login.status() !== 200) {
+      if (attempt === 4) throw new Error(`Sign-in of ${role}: ${login.status()}`);
+      await new Promise((r) => setTimeout(r, 500 * attempt));
+      continue;
+    }
+    const workspace = await request.get("/api/workspace").then((r) => r.json()).catch(() => ({}));
+    context = ((workspace as { contexts?: { id: string }[] }).contexts ?? [])[0];
+    if (!context) await new Promise((r) => setTimeout(r, 500 * attempt));
+  }
   if (!context) throw new Error(`No profile for ${role}`);
   const chosen = await request.post("/api/workspace", { headers: { origin }, data: { action: "context", mandateId: context.id } });
   if (chosen.status() !== 200) throw new Error(`Context of ${role}: ${chosen.status()}`);
