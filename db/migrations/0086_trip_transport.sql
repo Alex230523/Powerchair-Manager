@@ -4,7 +4,7 @@
 --    days: accommodation, programme and budget as before). The existing
 --    trips become a stay when they last more than one day, else transport.
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'trip' AND column_name = 'mode') THEN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'trip' AND column_name = 'mode') THEN
     ALTER TABLE trip ADD COLUMN mode text NOT NULL DEFAULT 'transport';
     UPDATE trip SET mode = 'stay' WHERE ends_on > starts_on;
   END IF;
@@ -28,7 +28,7 @@ ALTER TABLE contact ADD CONSTRAINT contact_tags_check
 -- 3. Each vehicle of a trip has a type: the club's, a rental, a private one.
 --    The former vehicles without a fleet vehicle become private ones.
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'trip_vehicle' AND column_name = 'kind') THEN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'trip_vehicle' AND column_name = 'kind') THEN
     ALTER TABLE trip_vehicle ADD COLUMN kind text NOT NULL DEFAULT 'club';
     UPDATE trip_vehicle SET kind = 'private' WHERE vehicle_id IS NULL;
   END IF;
