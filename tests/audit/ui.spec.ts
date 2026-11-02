@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import { displayChecks, type Finding } from "./checks";
+import { displayChecks } from "./checks";
 import { signIn, type AuditRole } from "./support";
 import { matches, type Exception, type Issue, reportHtml } from "./report";
 
