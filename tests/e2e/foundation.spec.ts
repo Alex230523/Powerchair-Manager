@@ -30,9 +30,11 @@ for (const locale of ["fr", "nl", "en"])
     await expect(page.locator("header .lang-menu summary")).toHaveText(locale.toUpperCase());
     await expect(page.locator(".sidebar, .bottom-nav")).toHaveCount(0);
     await page.goto(`/${locale}/access`);
+    // The list offers the other languages only.
+    const target = locale === "en" ? { code: "nl", name: /Nederlands/ } : { code: "en", name: /English/ };
     await page.locator("header .lang-menu summary").click();
-    await page.locator("header .lang-menu").getByRole("link", { name: /English/ }).click();
-    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.locator("header .lang-menu").getByRole("link", { name: target.name }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", target.code);
   });
 test("root redirects and unsupported locale is rejected", async ({ page }) => {
   await page.goto("/");
