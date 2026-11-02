@@ -219,7 +219,7 @@ test("new club, federation and referee pages load and pass axe", async ({
     // Menu groups are folded until opened: the entries exist, visible or not. Wave 14 regroups the
     // president's menu: Équipes, Activités (trips and halls are back), Communication, Argent, Club, Plus.
     // Wave 17 (J3): « Transferts » became « Licences », next to « Bourse aux transferts ».
-    for (const name of ["Licences", "Bourse aux transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
+    for (const name of ["Classification", "Bourse aux transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
       await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
     for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club", "Plus"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
