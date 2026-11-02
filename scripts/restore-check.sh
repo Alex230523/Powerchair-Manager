@@ -10,7 +10,7 @@ file="${1:?usage: restore-check.sh <file.dump.enc>}"
 if [ -f "$file.sha256" ]; then sha256sum --check --status "$file.sha256"; fi
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in "$file" \
   | pg_restore --no-owner --no-privileges --clean --if-exists --exit-on-error --dbname "$RESTORE_URL"
-tables="organization \"user\" club_person team calendar_event mail_job document_version funding_task contact schema_migrations"
+tables="organization \"user\" club_person team calendar_event mail_job document_version task contact schema_migrations"
 status=0
 for t in $tables; do
   restored=$(psql "$RESTORE_URL" -Atc "SELECT count(*) FROM $t" 2>/dev/null || echo "missing")

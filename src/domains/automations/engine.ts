@@ -159,7 +159,7 @@ async function planGeneric(c: PoolClient, club: Club, s: Settings, today: string
   if (s.rule === "taskLate")
     for (const t of (
       await c.query(
-        `SELECT t.id,t.title,t.due_on::text AS due,t.responsible_id,t.responsible_user_id,COALESCE(cp.full_name,'') AS person FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
+        `SELECT t.id,t.title,t.due_on::text AS due,t.responsible_id,t.responsible_user_id,COALESCE(cp.full_name,'') AS person FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
           WHERE t.organization_id=$1 AND t.status<>'done' AND t.due_on<=$2::date-GREATEST($3::int,1) AND NOT (t.source_kind LIKE 'auto\\_%')
             AND (t.responsible_id IS NOT NULL OR t.responsible_user_id IS NOT NULL)`,
         [org, today, delay],
@@ -289,7 +289,7 @@ async function deliverGeneric(c: PoolClient, club: Club, s: Settings, o: Occurre
     const creator = (await c.query("SELECT user_id FROM role_assignment WHERE organization_id=$1 AND role='club_president' AND revoked_at IS NULL ORDER BY created_at LIMIT 1", [club.id])).rows[0]?.user_id;
     if (fresh && creator)
       await c.query(
-        `INSERT INTO funding_task(organization_id,kind,category,title,due_on,origin,source_key,source_kind,source_params,created_by) VALUES($1,'other',$2,$3,$4,'template',$5,$6,$7,$8)
+        `INSERT INTO task(organization_id,kind,category,title,due_on,origin,source_key,source_kind,source_params,created_by) VALUES($1,'other',$2,$3,$4,'template',$5,$6,$7,$8)
          ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING`,
         [club.id, catalog[s.rule].category, render(defaultMessages[s.rule as keyof typeof defaultMessages].fr.subject, { about: o.about, person: o.person, date: o.due, organization: club.name }).slice(0, 200), o.due, `auto:${k}`, `auto_${s.rule}`, JSON.stringify({ about: o.about }), creator],
       );

@@ -37,6 +37,7 @@ export function ExportButton<R>({
   period = "",
   columns,
   rows,
+  allRows,
   label,
   variant = "secondary",
 }: {
@@ -48,6 +49,8 @@ export function ExportButton<R>({
   period?: string;
   columns: ExportColumnDef<R>[];
   rows: R[];
+  /** 13.3: a list paged by the server reads all its pages for the file. */
+  allRows?: () => Promise<R[]>;
   label?: string;
   variant?: "secondary" | "ghost";
 }) {
@@ -68,7 +71,7 @@ export function ExportButton<R>({
         subject,
         period,
         columns: picked.map((c) => ({ header: c.label, type: c.type ?? "text" })),
-        rows: rows.map((r) => picked.map((c) => cellOf(c.value(r), c.type ?? "text"))),
+        rows: (allRows ? await allRows() : rows).map((r) => picked.map((c) => cellOf(c.value(r), c.type ?? "text"))),
       });
       setOpen(false);
     } catch {

@@ -10,8 +10,9 @@ import { syncSources } from "./sources";
 
 /**
  * A1: the organisation's central to-do (club or federation), grown from the
- * club task list of wave 17 (O1). The table stays funding_task (view
- * org_task). The president and the people who plan see and give every
+ * club task list of wave 17 (O1). Table task (named funding_task until
+ * migration 0077; the views funding_task and org_task stay one version for
+ * older deployments). The president and the people who plan see and give every
  * task; money matters stay with the money people; everyone else sees and
  * ticks only the tasks given to them, never the others' details.
  */
@@ -117,7 +118,7 @@ const select = `SELECT t.id,t.kind,t.category,t.title,t.detail,t.due_on::text AS
         t.responsible_id,t.responsible_user_id,COALESCE(cp.full_name,ru.name) AS responsible_name,t.team_id,
         t.partner_id,t.grant_id,t.event_id,t.match_id,t.trip_id,t.obligation_id,t.chair_id,t.pot_id,t.document_id,t.receivable_id,t.source_kind,t.source_params,t.auto_closed,t.contact_id,
         COALESCE(pa.name, g.funder, e.title, CASE WHEN m.id IS NOT NULL THEN mt.name||' · '||m.opponent END, tr.title, o.title, ch.name, pot.name, doc.name, ct.full_name) AS about
-   FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN "user" ru ON ru.id=t.responsible_user_id
+   FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN "user" ru ON ru.id=t.responsible_user_id
    LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
    LEFT JOIN calendar_event e ON e.id=t.event_id AND e.organization_id=t.organization_id
    LEFT JOIN match m ON m.id=t.match_id AND m.organization_id=t.organization_id LEFT JOIN team mt ON mt.id=m.team_id
@@ -241,7 +242,7 @@ type Insert = {
 };
 const insert = (s: Scope, i: Insert) =>
   s.c.query(
-    `INSERT INTO funding_task(organization_id,kind,category,title,detail,due_on,responsible_id,responsible_user_id,event_id,match_id,trip_id,obligation_id,chair_id,origin,priority,recurrence,checklist,team_id,source_key,source_kind,created_by)
+    `INSERT INTO task(organization_id,kind,category,title,detail,due_on,responsible_id,responsible_user_id,event_id,match_id,trip_id,obligation_id,chair_id,origin,priority,recurrence,checklist,team_id,source_key,source_kind,created_by)
      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
      ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,
     [
@@ -274,7 +275,7 @@ async function tellResponsible(s: Pick<Scope, "c" | "org" | "userId">, taskId: s
   const r = (
     await s.c.query(
       `SELECT t.title,t.due_on::text AS due_on,o.name AS organization,u.id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
-         FROM funding_task t JOIN organization o ON o.id=t.organization_id
+         FROM task t JOIN organization o ON o.id=t.organization_id
          LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
          JOIN "user" u ON u.id=COALESCE(t.responsible_user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
         WHERE t.id=$1 AND t.organization_id=$2 AND u.active`,
@@ -303,7 +304,7 @@ export const tellTaskResponsible = (c: PoolClient, org: string, actorId: string,
 async function taskFor(s: Scope, id: string) {
   const t = (
     await s.c.query(
-      "SELECT id,kind,category,title,detail,due_on::text AS due_on,status,responsible_id,responsible_user_id,recurrence,checklist,priority,team_id,origin,source_key FROM funding_task WHERE id=$1 AND organization_id=$2 FOR UPDATE",
+      "SELECT id,kind,category,title,detail,due_on::text AS due_on,status,responsible_id,responsible_user_id,recurrence,checklist,priority,team_id,origin,source_key FROM task WHERE id=$1 AND organization_id=$2 FOR UPDATE",
       [id, s.org],
     )
   ).rows[0] as
@@ -318,7 +319,7 @@ async function taskFor(s: Scope, id: string) {
 
 /** Done: a recurring task comes back for its next date. */
 async function setStatus(s: Scope, t: Awaited<ReturnType<typeof taskFor>>, status: Status) {
-  await s.c.query("UPDATE funding_task SET status=$3,done_on=CASE WHEN $3='done' THEN CURRENT_DATE ELSE NULL END,auto_closed=false,updated_at=now() WHERE id=$1 AND organization_id=$2", [
+  await s.c.query("UPDATE task SET status=$3,done_on=CASE WHEN $3='done' THEN CURRENT_DATE ELSE NULL END,auto_closed=false,updated_at=now() WHERE id=$1 AND organization_id=$2", [
     t.id,
     s.org,
     status,
@@ -491,7 +492,7 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
           if (!list[command.index]) throw new AccessError("NOT_FOUND", 404);
           list[command.index] = { ...list[command.index], done: command.done };
         }
-        await s.c.query("UPDATE funding_task SET checklist=$3,updated_at=now() WHERE id=$1 AND organization_id=$2", [t.id, s.org, JSON.stringify(list)]);
+        await s.c.query("UPDATE task SET checklist=$3,updated_at=now() WHERE id=$1 AND organization_id=$2", [t.id, s.org, JSON.stringify(list)]);
         return { ok: true as const };
       }
       if (command.action === "update") {
@@ -502,7 +503,7 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
         const keepKind = t.kind === "sponsor" || t.kind === "grant";
         if (command.teamId) await checkLinks(s, { eventId: null, matchId: null, tripId: null, obligationId: null, chairId: null, teamId: command.teamId });
         await s.c.query(
-          `UPDATE funding_task SET category=$3,title=$4,detail=$5,due_on=$6,responsible_id=$7,responsible_user_id=$8,priority=$9,recurrence=$10,team_id=$11,kind=$12,updated_at=now()
+          `UPDATE task SET category=$3,title=$4,detail=$5,due_on=$6,responsible_id=$7,responsible_user_id=$8,priority=$9,recurrence=$10,team_id=$11,kind=$12,updated_at=now()
             WHERE id=$1 AND organization_id=$2`,
           [
             t.id,
@@ -525,8 +526,8 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
       }
       // Delete: a sponsor's or a grant's task is removed from its file; an automatic one closes by itself.
       if (t.kind === "sponsor" || t.kind === "grant" || t.source_key || !s.manage) throw new AccessError("FORBIDDEN");
-      await s.c.query("DELETE FROM funding_task_proof WHERE task_id=$1 AND organization_id=$2", [t.id, s.org]);
-      await s.c.query("DELETE FROM funding_task WHERE id=$1 AND organization_id=$2", [t.id, s.org]);
+      await s.c.query("DELETE FROM task_proof WHERE task_id=$1 AND organization_id=$2", [t.id, s.org]);
+      await s.c.query("DELETE FROM task WHERE id=$1 AND organization_id=$2", [t.id, s.org]);
       await audit(s.c, s.org, s.userId, "task.deleted", t.id);
       return { ok: true as const };
     },
@@ -538,7 +539,7 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
 export async function myTasksCount(c: PoolClient, org: string, userId: string, own: string[]) {
   return (
     await c.query(
-      "SELECT count(*)::int AS n FROM funding_task WHERE organization_id=$1 AND status<>'done' AND due_on<=CURRENT_DATE+14 AND (responsible_user_id=$2 OR responsible_id=ANY($3::uuid[]))",
+      "SELECT count(*)::int AS n FROM task WHERE organization_id=$1 AND status<>'done' AND due_on<=CURRENT_DATE+14 AND (responsible_user_id=$2 OR responsible_id=ANY($3::uuid[]))",
       [org, userId, own],
     )
   ).rows[0].n as number;

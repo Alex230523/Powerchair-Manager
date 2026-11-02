@@ -1,4 +1,5 @@
 import { mfaSatisfied } from "../../lib/security-policy";
+import { decodeCursor, encodeCursor, PAGE_SIZE } from "../../lib/cursor";
 import { Pool, type PoolClient } from "pg";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
 import {
@@ -94,7 +95,7 @@ function needManage(s: Scope) {
       mfaSatisfied(!!s.a.twoFactorEnabled) ? "FORBIDDEN" : "MFA_REQUIRED",
     );
 }
-const eventSelect = `SELECT e.*,s.interval_days,COALESCE(v.name,NULLIF(e.free_location,''),p.name) AS place_name,COALESCE(v.address,p.address) AS place_address,t.name AS team_name,t.color AS team_color,u.name AS responsible_name,et.name AS type_name,et.color AS type_color,et.family AS type_family FROM calendar_event e JOIN calendar_series s ON s.id=e.series_id LEFT JOIN event_type et ON et.id=e.event_type_id LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id LEFT JOIN team t ON t.id=e.team_id JOIN "user" u ON u.id=e.responsible_user_id`;
+const eventSelect = `SELECT e.*,e.starts_at::text AS cursor_at,s.interval_days,COALESCE(v.name,NULLIF(e.free_location,''),p.name) AS place_name,COALESCE(v.address,p.address) AS place_address,t.name AS team_name,t.color AS team_color,u.name AS responsible_name,et.name AS type_name,et.color AS type_color,et.family AS type_family FROM calendar_event e JOIN calendar_series s ON s.id=e.series_id LEFT JOIN event_type et ON et.id=e.event_type_id LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id LEFT JOIN team t ON t.id=e.team_id JOIN "user" u ON u.id=e.responsible_user_id`;
 async function record(s: Scope, id: string) {
   const e = (
     await s.c.query(eventSelect + " WHERE e.id=$1 AND e.organization_id=$2", [
@@ -460,22 +461,29 @@ async function attendanceRows(s: Scope, e: Event) {
   return result;
 }
 export async function calendarView(db: Pool, p: Principal, range: Range) {
+  const listed = range.all === "true",
+    after = listed ? decodeCursor(range.after, 2) : null;
   return scope(db, p, async (s) => {
     const rows = (
       await s.c.query(
         eventSelect +
-          " WHERE e.organization_id=$1 AND ($6::boolean OR (e.starts_at<$3::date AND e.ends_at>$2::date)) AND ($4::uuid IS NULL OR e.team_id=$4) AND ($5::uuid IS NULL OR e.place_id=$5) ORDER BY e.starts_at,e.id LIMIT 101 OFFSET $7",
+          // 13.3: a period (month, week, day) comes whole; the list of every
+          // event comes a page at a time, after the cursor of the last one shown.
+          " WHERE e.organization_id=$1 AND ($6::boolean OR (e.starts_at<$3::date AND e.ends_at>$2::date)) AND ($4::uuid IS NULL OR e.team_id=$4) AND ($5::uuid IS NULL OR e.place_id=$5)" +
+          " AND ($7::timestamptz IS NULL OR (e.starts_at,e.id)>($7::timestamptz,$8::uuid)) ORDER BY e.starts_at,e.id" +
+          (listed ? ` LIMIT ${PAGE_SIZE + 1}` : ""),
         [
           s.a.organization_id,
           range.from,
           range.to,
           range.team || null,
           range.place || null,
-          range.all === "true",
-          range.offset ?? 0,
+          listed,
+          ...(after ?? [null, null]),
         ],
       )
     ).rows as (Event & {
+      cursor_at: string;
       place_name: string | null;
       place_address: string | null;
       team_name: string | null;
@@ -488,7 +496,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
     })[];
     const events = [];
     const own = await ownProfiles(s.c, s.a);
-    for (const e of rows.slice(0, 100)) {
+    const shown = listed ? rows.slice(0, PAGE_SIZE) : rows;
+    for (const e of shown) {
       if (!(await canRead(s.c, s.a, e))) continue;
       const staff = manager(s.a) || (await coachTeam(s.c, s.a, e.team_id));
       const docs = [];
@@ -600,7 +609,7 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
             category: d.category,
           });
     return {
-      hasMore: rows.length > 100,
+      next: listed && rows.length > PAGE_SIZE ? encodeCursor([shown[shown.length - 1].cursor_at, shown[shown.length - 1].id]) : null,
       sharedVenues: (
         await s.c.query(
           // Wave 17 (C4): the validated halls of the federation, and those this club proposed.
@@ -1408,7 +1417,7 @@ export async function calendarFeed(db: Pool, token: string) {
     if (!a) throw new AccessError("NOT_FOUND", 404);
     const rows = (
       await c.query(
-        "SELECT e.*,concat_ws(', ',COALESCE(v.name,NULLIF(e.free_location,''),p.name),COALESCE(v.address,p.address)) AS location FROM calendar_event e LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.starts_at>now()-interval '30 days' AND e.starts_at<now()+interval '366 days' AND ($2::uuid IS NULL OR e.team_id=$2) ORDER BY starts_at LIMIT 1000",
+        "SELECT e.*,concat_ws(', ',COALESCE(v.name,NULLIF(e.free_location,''),p.name),COALESCE(v.address,p.address)) AS location FROM calendar_event e LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.starts_at>now()-interval '30 days' AND e.starts_at<now()+interval '366 days' AND ($2::uuid IS NULL OR e.team_id=$2) ORDER BY starts_at",
         [f.organization_id, f.team_id],
       )
     ).rows as (Event & { location: string })[];

@@ -1,3 +1,4 @@
+import { cursorSchema, decodeCursor, PAGE_SIZE, pageOf } from "../../lib/cursor";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -40,6 +41,7 @@ export const journalQuery = z.object({
   userId: z.string().max(200).optional(),
   from: z.iso.date().optional(),
   to: z.iso.date().optional(),
+  after: cursorSchema,
 });
 
 /** Actions shown in the rights journal. */
@@ -228,12 +230,15 @@ export async function journalView(
     if (!mfa) throw new AccessError("MFA_REQUIRED");
     const from = q.from ?? null,
       to = q.to ?? null,
-      who = q.userId ?? null;
+      who = q.userId ?? null,
+      // 13.3: newest first, a page at a time.
+      [afterAt, afterId] = decodeCursor(q.after, 2) ?? [null, null],
+      page = <T extends { id: string; cursor_at: string }>(rows: T[]) => pageOf(rows, PAGE_SIZE, (r) => [r.cursor_at, r.id]);
     if (q.kind === "rights") {
       if (!perms.includes("audit.read")) throw new AccessError("FORBIDDEN");
       const rows = (
         await c.query(
-          `SELECT a.id,a.action,a.created_at,a.details,actor.name AS actor,a.actor_id,
+          `SELECT a.id,a.action,a.created_at,a.created_at::text AS cursor_at,a.details,actor.name AS actor,a.actor_id,
                   COALESCE(target.name,subject.name) AS subject,COALESCE(ra.user_id,a.details->>'userId') AS subject_id,
                   (ra.id IS NOT NULL) AS mandate,
                   CASE WHEN a.action='mandate.renew' AND a.details ? 'validUntil' THEN a.details->>'validUntil' ELSE ra.valid_until::text END AS valid_until
@@ -245,27 +250,31 @@ export async function journalView(
               AND ($3::date IS NULL OR a.created_at>=$3::date)
               AND ($4::date IS NULL OR a.created_at<$4::date+1)
               AND ($5::text IS NULL OR a.actor_id=$5 OR ra.user_id=$5 OR a.details->>'userId'=$5)
-            ORDER BY a.created_at DESC LIMIT 500`,
-          [org, rightsActions, from, to, who],
+              AND ($6::timestamptz IS NULL OR (a.created_at,a.id::text)<($6::timestamptz,$7::text))
+            ORDER BY a.created_at DESC,a.id::text DESC LIMIT ${PAGE_SIZE + 1}`,
+          [org, rightsActions, from, to, who, afterAt, afterId],
         )
       ).rows;
-      return { kind: "rights" as const, rows, people: await people(c, org) };
+      const { items, next } = page(rows);
+      return { kind: "rights" as const, rows: items, next, people: await people(c, org) };
     }
     if (role !== "club_president") throw new AccessError("FORBIDDEN");
     const rows = (
       await c.query(
-        `SELECT l.id,l.kind,l.created_at,u.name AS actor,l.actor_id,cp.full_name AS subject
+        `SELECT l.id,l.kind,l.created_at,l.created_at::text AS cursor_at,u.name AS actor,l.actor_id,cp.full_name AS subject
            FROM sensitive_access_log l JOIN "user" u ON u.id=l.actor_id
            LEFT JOIN club_person cp ON cp.id=l.profile_id
           WHERE l.organization_id=$1
             AND ($2::date IS NULL OR l.created_at>=$2::date)
             AND ($3::date IS NULL OR l.created_at<$3::date+1)
             AND ($4::text IS NULL OR l.actor_id=$4)
-          ORDER BY l.created_at DESC LIMIT 500`,
-        [org, from, to, who],
+            AND ($5::timestamptz IS NULL OR (l.created_at,l.id::text)<($5::timestamptz,$6::text))
+          ORDER BY l.created_at DESC,l.id::text DESC LIMIT ${PAGE_SIZE + 1}`,
+        [org, from, to, who, afterAt, afterId],
       )
     ).rows;
-    return { kind: "health" as const, rows, people: await people(c, org) };
+    const { items, next } = page(rows);
+    return { kind: "health" as const, rows: items, next, people: await people(c, org) };
   });
 }
 async function people(c: PoolClient, org: string) {

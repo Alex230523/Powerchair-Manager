@@ -22,6 +22,7 @@ import { registrationErrors } from "./registrations-copy";
 import { Button, Panel, Badge, PageHeader } from "./ui";
 import { DataGrid, postCommand } from "./data-grid";
 import { bulkCopy } from "./bulk-copy";
+import { LoadMore } from "./use-api";
 import { SignaturePad, signatureCopy } from "./signature-pad";
 type View = Awaited<ReturnType<typeof documentView>>;
 function Field({
@@ -59,7 +60,8 @@ export function Documents({ locale }: { locale: Locale }) {
     [status, setStatus] = useState(""),
     [category, setCategory] = useState(""),
     [ruleId, setRule] = useState(""),
-    [templateId, setTemplate] = useState("");
+    [templateId, setTemplate] = useState(""),
+    [moreBusy, setMoreBusy] = useState(false);
   // The top bar's team (wave 12) narrows the list to its members' documents.
   const scope = useScope();
   const scopedUrl = "/api/documents" + (scope.teamId ? `?team=${scope.teamId}` : "");
@@ -69,6 +71,20 @@ export function Documents({ locale }: { locale: Locale }) {
     if (!r.ok) throw new Error(body.error);
     setData(body);
   }, [scopedUrl]);
+  /** 13.3: older documents, a page at a time, added under those shown. */
+  async function showMore(cursor: string) {
+    setMoreBusy(true);
+    try {
+      const r = await fetch(scopedUrl + (scopedUrl.includes("?") ? "&" : "?") + "after=" + encodeURIComponent(cursor), { cache: "no-store" }),
+        body = await r.json();
+      if (!r.ok) throw new Error(body.error);
+      setData((d) => (d ? { ...d, documents: [...d.documents, ...body.documents], next: body.next } : d));
+    } catch (e) {
+      setError(errorText(e instanceof Error ? e.message : ""));
+    } finally {
+      setMoreBusy(false);
+    }
+  }
   const errorText = useCallback(
     (code: string) =>
       (documentErrors[code] ?? registrationErrors[code])?.[
@@ -303,6 +319,7 @@ export function Documents({ locale }: { locale: Locale }) {
                 ]}
               />
               {!visible.length && <p>{t.empty}</p>}
+              <LoadMore locale={locale} shown={data.documents.length} hasMore={!!data.next} busy={moreBusy} failed={false} onMore={() => void showMore(data.next as string)} />
             </Panel>
             {doc && (
               <Panel title={doc.name}>

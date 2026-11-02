@@ -11,6 +11,7 @@ export async function GET(request: Request) {
       userId: u.get("user") || undefined,
       from: u.get("from") || undefined,
       to: u.get("to") || undefined,
+      after: u.get("after") || undefined,
     });
     return Response.json(
       await journalView(getDb(), await principal(request), q),

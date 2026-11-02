@@ -1,5 +1,7 @@
 import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
+import { z } from "zod";
+import { cursorSchema, decodeCursor, PAGE_SIZE, pageOf } from "../../lib/cursor";
 import { resolveScope } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -90,33 +92,16 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       season = seasonOf(today);
     // The team chosen in the top bar (wave 12): the ledger, the budget and the figures follow it.
     const teamId = (await resolveScope(c, { organization_id: org, role: actor.role, user_id: p.userId, team_id: actor.team_id }, raw)).teamId;
-    const entries = (
+    // 13.3: the figures come from every line (a light read), the list from its first page.
+    const all = (
       await c.query(
-        `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,t.trip_id,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,tm.color AS team_color,u.name AS author,
-                COALESCE((SELECT json_agg(json_build_object('id',r.id,'filename',r.filename) ORDER BY r.uploaded_at) FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL),'[]') AS receipts,
-                ${originSql} AS origin
-           FROM finance_transaction t JOIN "user" u ON u.id=t.created_by LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id)
-          WHERE t.organization_id=$1 AND t.deleted_at IS NULL AND ($2::uuid IS NULL OR COALESCE(t.team_id,tr.team_id)=$2) ORDER BY t.occurred_on DESC,t.created_at DESC LIMIT 2000`,
+        `SELECT t.occurred_on::text,t.direction,t.category,t.amount_cents,t.cancelled_at FROM finance_transaction t LEFT JOIN trip tr ON tr.id=t.trip_id
+          WHERE t.organization_id=$1 AND t.deleted_at IS NULL AND ($2::uuid IS NULL OR COALESCE(t.team_id,tr.team_id)=$2)`,
         [org, teamId],
       )
-    ).rows as (Entry & {
-      id: string;
-      label: string;
-      method: string;
-      counterparty: string;
-      reference: string;
-      notes: string;
-      source: string;
-      cancel_reason: string | null;
-      receivable_id: string | null;
-      team_id: string | null;
-      team_name: string | null;
-      team_color: string | null;
-      author: string;
-      receipts: { id: string; filename: string }[];
-      /** Wave 17 (N1): an operation made elsewhere (dues, sponsor, affiliation) is deleted from there. */
-      origin: "dues" | "sponsor" | "affiliation" | null;
-    })[];
+    ).rows as Entry[];
+    const first = await operationsPage(c, org, teamId, {});
+    const entries = first.items;
     // Dues are scheduled amounts; what is paid comes from the ledger (by hand or from the bank, B1).
     const dues = (
       await c.query(
@@ -140,7 +125,7 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       net_cents: number;
       paid_cents: number;
     }[];
-    const summary = ledgerSummary(entries, season.from, season.to);
+    const summary = ledgerSummary(all, season.from, season.to);
     const budget = await budgetLines(c, org, season.label, teamId);
     // Trips a line can be attached to (recent and upcoming).
     const trips = (
@@ -157,7 +142,7 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       teamId,
       today,
       season,
-      seasons: seasonsOf(entries, season.label),
+      seasons: seasonsOf(all, season.label),
       summary,
       dues: {
         season: dues.total as number,
@@ -168,7 +153,63 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       budget,
       comparison: budgetComparison(budget, summary.byCategory),
       entries,
+      entriesNext: first.next,
     };
+  });
+}
+
+export type Operation = (Entry & {
+      id: string;
+      label: string;
+      method: string;
+      counterparty: string;
+      reference: string;
+      notes: string;
+      source: string;
+      cancel_reason: string | null;
+      receivable_id: string | null;
+      team_id: string | null;
+      team_name: string | null;
+      team_color: string | null;
+      author: string;
+      receipts: { id: string; filename: string }[];
+      /** Wave 17 (N1): an operation made elsewhere (dues, sponsor, affiliation) is deleted from there. */
+      origin: "dues" | "sponsor" | "affiliation" | null;
+    });
+export const operationsFilter = z.object({
+  direction: z.enum(["in", "out"]).optional(),
+  category: z.string().max(40).optional(),
+  q: z.string().max(100).optional(),
+  after: cursorSchema,
+});
+/**
+ * 13.3: the ledger, a page at a time (newest first), with the page's filters
+ * applied by the server. The export reads every page.
+ */
+async function operationsPage(c: PoolClient, org: string, teamId: string | null, f: z.infer<typeof operationsFilter>) {
+  const after = decodeCursor(f.after, 3);
+  const rows = (
+    await c.query(
+      `SELECT t.id,t.occurred_on::text,t.label,t.direction,t.category,t.amount_cents,t.method,t.counterparty,t.reference,t.notes,t.source,t.cancelled_at,t.cancel_reason,t.receivable_id,t.trip_id,COALESCE(t.team_id,tr.team_id) AS team_id,tm.name AS team_name,tm.color AS team_color,u.name AS author,t.created_at::text AS cursor_at,
+              COALESCE((SELECT json_agg(json_build_object('id',r.id,'filename',r.filename) ORDER BY r.uploaded_at) FROM finance_receipt r WHERE r.transaction_id=t.id AND r.removed_at IS NULL),'[]') AS receipts,
+              ${originSql} AS origin
+         FROM finance_transaction t JOIN "user" u ON u.id=t.created_by LEFT JOIN trip tr ON tr.id=t.trip_id LEFT JOIN team tm ON tm.id=COALESCE(t.team_id,tr.team_id)
+        WHERE t.organization_id=$1 AND t.deleted_at IS NULL AND ($2::uuid IS NULL OR COALESCE(t.team_id,tr.team_id)=$2)
+          AND ($3::text IS NULL OR t.direction=$3) AND ($4::text IS NULL OR t.category=$4)
+          AND ($5::text IS NULL OR concat_ws(' ',t.label,t.counterparty,t.reference) ILIKE '%'||$5||'%')
+          AND ($6::date IS NULL OR (t.occurred_on,t.created_at,t.id)<($6::date,$7::timestamptz,$8::uuid))
+        ORDER BY t.occurred_on DESC,t.created_at DESC,t.id DESC LIMIT ${PAGE_SIZE + 1}`,
+      [org, teamId, f.direction ?? null, f.category || null, f.q?.trim().replace(/[\\%_]/g, (m) => "\\" + m) || null, ...(after ?? [null, null, null])],
+    )
+  ).rows as (Operation & { cursor_at: string })[];
+  // The cursor keeps the time to the microsecond (text), a Date would round it.
+  const page = pageOf(rows, PAGE_SIZE, (r) => [r.occurred_on, r.cursor_at, r.id]);
+  return { items: page.items.map(({ cursor_at: _c, ...r }) => r as Operation), next: page.next };
+}
+export async function financeOperations(db: Pool, p: Principal, raw: { season?: string; team?: string }, filter: z.infer<typeof operationsFilter>) {
+  return scope(db, p, false, async (c, org, _user, _edit, actor) => {
+    const teamId = (await resolveScope(c, { organization_id: org, role: actor.role, user_id: p.userId, team_id: actor.team_id }, raw)).teamId;
+    return operationsPage(c, org, teamId, filter);
   });
 }
 

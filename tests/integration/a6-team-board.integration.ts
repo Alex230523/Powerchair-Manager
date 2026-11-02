@@ -69,7 +69,7 @@ beforeAll(async () => {
   // A played league match, a match to come, an event with answers, a task on the next match.
   await db.query("INSERT INTO match(organization_id,team_id,opponent,kind,starts_at,status,our_score,their_score,created_by) VALUES($1,$2,'Lions','league',now()-interval '7 days','played',3,1,$3)", [clubA, teamA, user]);
   const next = (await db.query("INSERT INTO match(organization_id,team_id,opponent,kind,starts_at,created_by) VALUES($1,$2,'Tigres','league',now()+interval '5 days',$3) RETURNING id", [clubA, teamA, user])).rows[0].id;
-  await db.query("INSERT INTO funding_task(organization_id,kind,title,due_on,match_id,origin,created_by) VALUES($1,'transport','Réserver le minibus',CURRENT_DATE+3,$2,'manual',$3)", [clubA, next, user]);
+  await db.query("INSERT INTO task(organization_id,kind,title,due_on,match_id,origin,created_by) VALUES($1,'transport','Réserver le minibus',CURRENT_DATE+3,$2,'manual',$3)", [clubA, next, user]);
 });
 afterAll(async () => {
   await db.end();

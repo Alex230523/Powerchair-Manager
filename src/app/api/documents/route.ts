@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     return Response.json(
-      await documentView(getDb(), await principal(request), parseScope(new URL(request.url).searchParams)),
+      await documentView(getDb(), await principal(request), parseScope(new URL(request.url).searchParams), new URL(request.url).searchParams.get("after") || undefined),
       { headers: noStore },
     );
   } catch (e) {

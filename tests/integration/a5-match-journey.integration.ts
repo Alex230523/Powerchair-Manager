@@ -131,7 +131,7 @@ it("flags a player without a valid licence and a broken chair, and lines up only
 it("sends the day's checklist to the to-do once, with its people in charge", async () => {
   expect(await run(coach, { action: "checklist", items: [{ key: "chairs", responsibleId: coachProfile }, { key: "transport", responsibleId: null }] })).toMatchObject({ created: 2 });
   expect(await run(coach, { action: "checklist", items: [{ key: "chairs", responsibleId: coachProfile }, { key: "balls", responsibleId: null }] })).toMatchObject({ created: 1 });
-  const tasks = (await db.query("SELECT kind,category,source_kind,responsible_id,team_id,due_on::text FROM funding_task WHERE match_id=$1 ORDER BY source_kind", [match])).rows;
+  const tasks = (await db.query("SELECT kind,category,source_kind,responsible_id,team_id,due_on::text FROM task WHERE match_id=$1 ORDER BY source_kind", [match])).rows;
   expect(tasks.map((t) => [t.source_kind, t.kind, t.category])).toEqual([
     ["match_balls", "equipment", "sport"],
     ["match_chairs", "equipment", "sport"],

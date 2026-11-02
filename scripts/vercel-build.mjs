@@ -6,7 +6,10 @@
  * Protection, and creates its demo accounts with the project's own secret
  * password (PFM_DEMO_PASSWORD), never the public one written in the
  * repository. Steps: migrations, demo club (once, under a lock so two
- * previews built at the same time never create it twice), then the build.
+ * previews built at the same time never create it twice), a check that the
+ * database holds the demo only, then the build. Each preview has its own
+ * database branch when the Neon integration is set up that way
+ * (docs/APERCUS-VERCEL.md).
  *
  * Any other environment stops here; vercel.json also skips production builds
  * until a real production database and its settings exist
@@ -48,6 +51,24 @@ try {
   await lock.query("COMMIT");
 } finally {
   await lock.end();
+}
+
+// 13.1: a preview only ever holds the demo. A database with any other
+// organisation (a real club typed in « to test », or a database meant for
+// production linked by mistake) stops the deployment here.
+const check = new pg.Client({ connectionString: childEnv.DATABASE_URL, connectionTimeoutMillis: 10000 });
+await check.connect();
+try {
+  const others = (await check.query("SELECT name FROM organization WHERE NOT is_demo ORDER BY name LIMIT 5")).rows.map((r) => r.name);
+  if (others.length) {
+    console.error(
+      `vercel-build: this preview database holds organisations that are not part of the demo (${others.join(", ")}). ` +
+        "A preview never runs on real data: give it its own database (docs/APERCUS-VERCEL.md) or remove these organisations.",
+    );
+    process.exit(1);
+  }
+} finally {
+  await check.end();
 }
 
 // The build gets the project's own variables: next.config.ts inlines the

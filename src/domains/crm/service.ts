@@ -140,7 +140,7 @@ async function detail(s: Scope, id: string) {
           WHERE e.organization_id=$1 AND pl.contact_id=$2 AND e.starts_at>=now()-interval '1 day' AND e.status<>'cancelled' ORDER BY e.starts_at LIMIT 10`,
       ),
       tasks: await q<{ id: string; title: string; due_on: string | null; status: string; responsible: string | null }>(
-        `SELECT t.id,t.title,t.due_on::text AS due_on,t.status,cp.full_name AS responsible FROM funding_task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
+        `SELECT t.id,t.title,t.due_on::text AS due_on,t.status,cp.full_name AS responsible FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id
           WHERE t.organization_id=$1 AND t.contact_id=$2 ORDER BY t.status='done',t.due_on NULLS LAST`,
       ),
     },
@@ -201,7 +201,7 @@ const references: [table: string, column: string, club: string | null][] = [
   ["partner", "contact_id", "organization_id"],
   ["calendar_place", "contact_id", "organization_id"],
   ["affiliation_fee", "contact_id", null],
-  ["funding_task", "contact_id", "organization_id"],
+  ["task", "contact_id", "organization_id"],
   ["equipment_chair", "supplier_contact_id", "organization_id"],
   ["fundraising_movement", "contact_id", null],
 ];
@@ -306,7 +306,7 @@ export async function contactsExecute(db: Pool, p: Principal, cmd: ContactComman
             throw new AccessError("NOT_FOUND", 404);
           const id = (
             await s.c.query(
-              "INSERT INTO funding_task(organization_id,kind,category,title,due_on,responsible_id,contact_id,origin,created_by) VALUES($1,'other',$2,$3,$4,$5,$6,'manual',$7) RETURNING id",
+              "INSERT INTO task(organization_id,kind,category,title,due_on,responsible_id,contact_id,origin,created_by) VALUES($1,'other',$2,$3,$4,$5,$6,'manual',$7) RETURNING id",
               [s.org, sponsorCategory(c.tags), cmd.title, cmd.dueOn, cmd.responsibleId, c.id, s.userId],
             )
           ).rows[0].id as string;

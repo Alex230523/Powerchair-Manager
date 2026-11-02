@@ -299,7 +299,7 @@ export async function openEventsExecute(db: Pool, p: Principal, cmd: OpenEventCo
             // The organisation goes to the to-do, category « Événements ».
             const locale = ((await s.c.query("SELECT locale FROM person WHERE user_id=$1", [s.p.userId])).rows[0]?.locale ?? "fr") as Locale;
             await s.c.query(
-              "INSERT INTO funding_task(organization_id,kind,category,title,detail,due_on,event_id,origin,created_by,source_key,source_kind) VALUES($1,'other','events',$2,$3,($4::timestamptz AT TIME ZONE 'Europe/Brussels')::date-1,$5,'manual',$6,$7,'open_event') ON CONFLICT DO NOTHING",
+              "INSERT INTO task(organization_id,kind,category,title,detail,due_on,event_id,origin,created_by,source_key,source_kind) VALUES($1,'other','events',$2,$3,($4::timestamptz AT TIME ZONE 'Europe/Brussels')::date-1,$5,'manual',$6,$7,'open_event') ON CONFLICT DO NOTHING",
               [org, fill(openEventsCopy[locale].mail.task, { event: d.title }).slice(0, 200), "", d.starts_at, d.id, s.p.userId, `open_event:${oe}`],
             );
           }

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { financeView } from "@/domains/finance/service";
 import { budgetTone, categories, methods } from "@/domains/finance/schema";
@@ -8,7 +8,7 @@ import { cssVars } from "./css-vars";
 import { financeCopy, financeExtras } from "./finance-copy";
 import { errors } from "./access-copy";
 import { Icon } from "./icons";
-import { ShowMore, useShowMore } from "./use-api";
+import { LoadMore, useServerList } from "./use-api";
 import { PageHeader, Badge, Button, EmptyState, Card, ExportButton, KpiCard, Toolbar } from "./ui";
 import { useScope } from "./use-scope";
 import { Modal } from "./modal";
@@ -40,6 +40,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
     [adding, setAdding] = useState(create),
     [cancelling, setCancelling] = useState(""),
     [q, setQ] = useState(""),
+    [query, setQuery] = useState(""),
     [direction, setDirection] = useState(""),
     [category, setCategory] = useState(""),
     [editingBudget, setEditingBudget] = useState(false),
@@ -66,6 +67,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
     const v = await r.json();
     if (!r.ok) throw new Error(v.error);
     setView(v);
+    ops.reload();
   }
   useEffect(() => {
     let cancelled = false;
@@ -197,18 +199,22 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
       },
     );
   }
-  const entries =
-    view?.entries.filter(
-      (e) =>
-        (!direction || e.direction === direction) &&
-        (!category || e.category === category) &&
-        [e.label, e.counterparty, e.reference]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(q.toLocaleLowerCase()),
-    ) ?? [];
-  const { visible: shownEntries, more: moreEntries } = useShowMore(entries);
-  function exportCsv() {
+  // 13.3: the ledger is read a page at a time, filtered by the server.
+  const opsUrl =
+    section === "operations"
+      ? "/api/finance/operations?" +
+        new URLSearchParams({ team: scope.teamId ?? "", direction, category, q: query }).toString()
+      : "";
+  const ops = useServerList<View["entries"][number]>(opsUrl);
+  const entries = ops.items;
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function search(value: string) {
+    setQ(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setQuery(value.trim()), 300);
+  }
+  async function exportCsv() {
+    const every = await ops.all(opsUrl || "/api/finance/operations?" + new URLSearchParams({ team: scope.teamId ?? "" }).toString());
     const cell = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const rows = [
       [
@@ -222,7 +228,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
         t.reference,
         t.cancelled,
       ],
-      ...entries.map((e) => [
+      ...every.map((e) => [
         e.occurred_on,
         e.label,
         e.direction === "in" ? t.in : t.out,
@@ -272,7 +278,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
               <MoreMenu
                 label={n.more}
                 items={[
-                  { label: n.export, run: exportCsv, hidden: !entries.length },
+                  { label: n.export, run: () => void exportCsv(), hidden: !view.entries.length },
                   { label: n.annualReport, run: () => router.push(`/${locale}/funding/report?season=${view.season.label}`) },
                 ]}
               />
@@ -653,7 +659,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                 <input
                   type="search"
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={(e) => search(e.target.value)}
                 />
               </label>
               <label>
@@ -689,6 +695,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                 subject={x.operationsWord}
                 period={view.season.label}
                 rows={entries}
+                allRows={() => ops.all()}
                 columns={[
                   { id: "date", label: t.date, type: "date", value: (e) => e.occurred_on },
                   { id: "label", label: t.label, value: (e) => e.label },
@@ -727,7 +734,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                     </tr>
                   </thead>
                   <tbody>
-                    {shownEntries.map((e) => (
+                    {entries.map((e) => (
                       <tr
                         key={e.id}
                         data-cancelled={e.cancelled_at ? true : undefined}
@@ -876,8 +883,8 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
                 </table>
               </div>
             ) : null}
-            {entries.length ? (
-              <ShowMore locale={locale} {...moreEntries} />
+            {entries.length || !ops.loaded || ops.more.failed ? (
+              <LoadMore locale={locale} {...ops.more} />
             ) : (
               <EmptyState
                 title={t.empty}

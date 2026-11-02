@@ -80,7 +80,7 @@ it("opens a calendar event to the public, with its task in the to-do", async () 
   });
   open = r.id as string;
   token = (await db.query("SELECT token FROM open_event WHERE id=$1", [open])).rows[0].token;
-  expect((await db.query("SELECT category,title FROM funding_task WHERE event_id=$1", [event])).rows[0]).toEqual({ category: "events", title: "Organiser : Journée découverte" });
+  expect((await db.query("SELECT category,title FROM task WHERE event_id=$1", [event])).rows[0]).toEqual({ category: "events", title: "Organiser : Journée découverte" });
   await expect(run(president, { action: "open", eventId: event, capacity: null, opensAt: new Date().toISOString(), closesAt: new Date(Date.now() + 86400000).toISOString() })).rejects.toMatchObject({ code: "ALREADY_OPEN" });
   const v = await publicEvent(db, token);
   expect(v).toMatchObject({ club: "Club A", title: "Journée découverte", window: "open", left: 2, fee_cents: 1500, registration: null });

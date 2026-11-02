@@ -127,3 +127,99 @@ export function ShowMore({
     </p>
   );
 }
+
+const pages = {
+  fr: { more: "Afficher plus", shown: "{n} affichés", loading: "Chargement…", failed: "La suite n'a pas pu être chargée. Réessayez." },
+  nl: { more: "Meer tonen", shown: "{n} getoond", loading: "Laden…", failed: "Het vervolg kon niet worden geladen. Probeer opnieuw." },
+  en: { more: "Show more", shown: "{n} shown", loading: "Loading…", failed: "The next items could not be loaded. Try again." },
+};
+/**
+ * 13.3: a list paged by the server. `url` answers `{ items, next }`; with
+ * `after=<cursor>` it gives the page after. A new `url` (another filter)
+ * starts again from the first page; `reload` does the same after a change;
+ * `all` reads every page, for an export that covers the whole list.
+ */
+type PagesState<T> = { url: string; items: T[]; next: string | null; loaded: boolean; busy: boolean; failed: boolean };
+const withAfter = (url: string, cursor: string) => url + (url.includes("?") ? "&" : "?") + "after=" + encodeURIComponent(cursor);
+async function pageAt<T>(url: string): Promise<{ items: T[]; next: string | null }> {
+  const r = await fetch(url, { cache: "no-store" });
+  const v = await r.json();
+  if (!r.ok) throw new Error(v.error);
+  return v;
+}
+export function useServerList<T>(url: string) {
+  const [state, setState] = useState<PagesState<T>>({ url, items: [], next: null, loaded: false, busy: false, failed: false });
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    pageAt<T>(url)
+      .then((v) => {
+        if (!cancelled) setState({ url, items: v.items, next: v.next, loaded: true, busy: false, failed: false });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ url, items: [], next: null, loaded: true, busy: false, failed: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url, version]);
+  const current = state.url === url ? state : { ...state, items: [] as T[], next: null, loaded: false };
+  async function onMore() {
+    if (!current.next || current.busy) return;
+    const cursor = current.next;
+    setState((s) => ({ ...s, busy: true, failed: false }));
+    try {
+      const v = await pageAt<T>(withAfter(url, cursor));
+      setState((s) => (s.url === url ? { ...s, items: [...s.items, ...v.items], next: v.next, busy: false } : s));
+    } catch {
+      setState((s) => ({ ...s, busy: false, failed: true }));
+    }
+  }
+  async function all(from = url) {
+    let page = await pageAt<T>(from);
+    const items = [...page.items];
+    while (page.next) {
+      page = await pageAt<T>(withAfter(from, page.next));
+      items.push(...page.items);
+    }
+    return items;
+  }
+  return {
+    items: current.items,
+    loaded: current.loaded,
+    all,
+    reload: () => setVersion((v) => v + 1),
+    more: { shown: current.items.length, hasMore: !!current.next, busy: current.busy, failed: current.failed, onMore },
+  };
+}
+export function LoadMore({
+  locale,
+  shown,
+  hasMore,
+  busy,
+  failed,
+  onMore,
+}: {
+  locale: Locale;
+  shown: number;
+  hasMore: boolean;
+  busy: boolean;
+  failed: boolean;
+  onMore: () => void;
+}) {
+  if (!hasMore && !failed) return null;
+  const t = pages[locale];
+  return (
+    <p className="show-more">
+      <span className="muted" role="status" aria-live="polite">
+        {failed ? t.failed : busy ? t.loading : t.shown.replace("{n}", String(shown))}
+      </span>{" "}
+      {hasMore && (
+        <button type="button" className="button secondary" onClick={onMore} disabled={busy} aria-busy={busy}>
+          {t.more}
+        </button>
+      )}
+    </p>
+  );
+}
