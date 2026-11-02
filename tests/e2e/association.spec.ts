@@ -35,7 +35,7 @@ test("the register and the assembly, on a phone", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/club/association");
     await expect(page.getByRole("heading", { name: "Vie de l'ASBL", level: 1 })).toBeVisible();
-    await page.getByLabel("Personne", { exact: true }).selectOption({ label: "Martine Membre" });
+    await page.getByRole("combobox", { name: /^Personne/ }).selectOption({ label: "Martine Membre" });
     await page.getByRole("button", { name: "Inscrire au registre" }).click();
     await expect(page.locator(".asbl-members").getByText("Martine Membre")).toBeVisible();
     await expect(page.locator(".asbl-history").getByText(/Admission · Membre effectif/)).toBeVisible();
