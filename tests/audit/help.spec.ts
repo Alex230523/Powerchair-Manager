@@ -37,7 +37,7 @@ for (const sheet of helpSheets)
       try {
         await expect(page.locator("main")).toHaveScreenshot(`${sheet.id}.png`, { maxDiffPixelRatio: 0.03, animations: "disabled", mask: [page.locator("time")] });
       } catch {
-        status = "changed";
+        status = missing ? "missing" : "changed";
       }
       if (status !== "same") {
         mkdirSync("audit-report/help", { recursive: true });
