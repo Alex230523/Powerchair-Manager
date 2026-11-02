@@ -9,6 +9,7 @@ import base from "./playwright.config";
 export default defineConfig({
   ...base,
   testDir: "tests/audit",
+  globalSetup: "./tests/audit/global-setup.ts",
   workers: 4,
   fullyParallel: true,
   reporter: process.env.GITHUB_ACTIONS ? [["github"], ["list"]] : "list",
