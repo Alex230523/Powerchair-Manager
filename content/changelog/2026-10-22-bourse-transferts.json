@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "player",
+    "parent"
+  ],
+  "link": "/transfers",
+  "image": null,
+  "fr": {
+    "title": "La bourse aux transferts",
+    "text": "Un joueur (ou son parent) peut se dire visible par les autres clubs ; les clubs se contactent dans les règles."
+  },
+  "nl": {
+    "title": "De transferbeurs",
+    "text": "Een speler (of zijn ouder) kan zich zichtbaar maken voor andere clubs; clubs nemen volgens de regels contact op."
+  },
+  "en": {
+    "title": "The transfer board",
+    "text": "A player (or his parent) can choose to be visible to other clubs; clubs get in touch by the rules."
+  }
+}

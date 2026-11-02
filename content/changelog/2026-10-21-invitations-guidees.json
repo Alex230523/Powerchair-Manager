@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "president"
+  ],
+  "link": "/players",
+  "image": null,
+  "fr": {
+    "title": "Les invitations partent toutes seules",
+    "text": "Quand le club ajoute quelqu'un avec une adresse email, l'invitation part. Le lien ouvre une création de compte guidée, déjà reliée à sa fiche."
+  },
+  "nl": {
+    "title": "Uitnodigingen vertrekken vanzelf",
+    "text": "Wanneer de club iemand met een e-mailadres toevoegt, vertrekt de uitnodiging. De link opent een begeleide accountaanmaak, al gekoppeld aan zijn fiche."
+  },
+  "en": {
+    "title": "Invitations leave by themselves",
+    "text": "When the club adds someone with an e-mail address, the invitation leaves. The link opens a guided account creation, already linked to their file."
+  }
+}

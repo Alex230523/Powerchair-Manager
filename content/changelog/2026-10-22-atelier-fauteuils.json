@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach",
+    "parent",
+    "player"
+  ],
+  "link": "/equipment",
+  "image": null,
+  "fr": {
+    "title": "L'atelier des fauteuils",
+    "text": "Chaque fauteuil garde ses révisions et ses réparations ; une panne se signale depuis un téléphone."
+  },
+  "nl": {
+    "title": "De rolstoelwerkplaats",
+    "text": "Elke rolstoel bewaart zijn nazichten en herstellingen; een defect meldt u vanaf een telefoon."
+  },
+  "en": {
+    "title": "The chair workshop",
+    "text": "Each chair keeps its services and repairs; a breakdown is reported from a phone."
+  }
+}

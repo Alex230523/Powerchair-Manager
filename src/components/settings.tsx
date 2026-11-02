@@ -5,6 +5,8 @@ import { OnboardingSettings } from "./onboarding";
 import { OffboardingSettings } from "./offboarding";
 import { StaffRoles } from "./staff-roles";
 import { TutorialSettings } from "./first-steps";
+import { NewsSetting } from "./news";
+import { newsCopy } from "./news-copy";
 import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
 import { TaskTemplates } from "./tasks";
@@ -380,6 +382,12 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "account" && <AccountPanels locale={locale} />}
           {/* Wave 17 (O1): the first-connection tour, started again on demand. */}
           {shown && category === "account" && tutorialAudience(ws?.selected?.role) && <TutorialSettings locale={locale} />}
+          {/* 20: the window after a new delivery, on or off. */}
+          {shown && category === "account" && (
+            <Card title={newsCopy[locale].title} labelledBy="settings-news" headingId="settings-news">
+              <NewsSetting locale={locale} />
+            </Card>
+          )}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
           {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}

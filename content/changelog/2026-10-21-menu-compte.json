@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "all"
+  ],
+  "link": "/settings",
+  "image": null,
+  "fr": {
+    "title": "Un menu du compte plus clair",
+    "text": "En bas du menu, votre nom ouvre un menu compact : langue, thème, taille du texte et réglages, chacun sur une ligne."
+  },
+  "nl": {
+    "title": "Een duidelijker accountmenu",
+    "text": "Onderaan het menu opent uw naam een compact menu: taal, thema, tekstgrootte en instellingen, elk op één lijn."
+  },
+  "en": {
+    "title": "A clearer account menu",
+    "text": "At the bottom of the menu, your name opens a compact menu: language, theme, text size and settings, each on one line."
+  }
+}

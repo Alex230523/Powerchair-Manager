@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "all"
+  ],
+  "link": "/signalements",
+  "image": null,
+  "fr": {
+    "title": "Signaler un problème",
+    "text": "Depuis le menu du compte, signalez un bug ou une idée, avec une capture où vos données sont masquées. Une panne de fauteuil se signale aussi en scannant le code collé dessus."
+  },
+  "nl": {
+    "title": "Een probleem melden",
+    "text": "Meld vanuit het accountmenu een bug of een idee, met een schermafbeelding waarin uw gegevens gemaskeerd zijn. Een defecte rolstoel meldt u ook door de code erop te scannen."
+  },
+  "en": {
+    "title": "Report a problem",
+    "text": "From the account menu, report a bug or an idea, with a screenshot where your data is masked. A broken chair can also be reported by scanning the code stuck on it."
+  }
+}

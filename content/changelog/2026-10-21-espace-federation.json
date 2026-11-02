@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "federation"
+  ],
+  "link": "/federation/clubs",
+  "image": null,
+  "fr": {
+    "title": "L'espace de la fédération",
+    "text": "La fédération crée un club, invite sa présidence et ses arbitres, et voit les équipes, sans aide technique."
+  },
+  "nl": {
+    "title": "De ruimte van de federatie",
+    "text": "De federatie maakt een club aan, nodigt het voorzitterschap en de scheidsrechters uit en ziet de ploegen, zonder technische hulp."
+  },
+  "en": {
+    "title": "The federation's space",
+    "text": "The federation creates a club, invites its presidency and its referees, and sees the teams, without technical help."
+  }
+}

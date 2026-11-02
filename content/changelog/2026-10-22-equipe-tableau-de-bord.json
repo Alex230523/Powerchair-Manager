@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "coach",
+    "president"
+  ],
+  "link": "/teams",
+  "image": null,
+  "fr": {
+    "title": "La page équipe répond à « tout est en ordre pour samedi ? »",
+    "text": "Présences, cotisations, documents et fauteuils de l'équipe se lisent sur une seule page."
+  },
+  "nl": {
+    "title": "De ploegpagina antwoordt op « alles in orde voor zaterdag? »",
+    "text": "Aanwezigheden, lidgelden, documenten en rolstoelen van de ploeg lezen op één pagina."
+  },
+  "en": {
+    "title": "The team page answers « all set for Saturday? »",
+    "text": "The team's attendance, fees, documents and chairs read on one page."
+  }
+}

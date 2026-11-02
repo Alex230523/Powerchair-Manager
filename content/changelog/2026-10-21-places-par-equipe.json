@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/teams",
+  "image": null,
+  "fr": {
+    "title": "Le nombre de places par équipe",
+    "text": "Chaque équipe peut avoir un nombre de places : on voit tout de suite s'il en reste pour un nouveau joueur."
+  },
+  "nl": {
+    "title": "Het aantal plaatsen per ploeg",
+    "text": "Elke ploeg kan een aantal plaatsen hebben: u ziet meteen of er nog plaats is voor een nieuwe speler."
+  },
+  "en": {
+    "title": "Places per team",
+    "text": "Each team can have a number of places: you see at once whether there is room for a new player."
+  }
+}

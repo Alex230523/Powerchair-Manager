@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "parent"
+  ],
+  "link": "/dues",
+  "image": null,
+  "fr": {
+    "title": "Payer par QR de virement",
+    "text": "Chaque cotisation a son QR code de virement ; le relevé de la banque dit ce qui est payé."
+  },
+  "nl": {
+    "title": "Betalen met een overschrijvings-QR",
+    "text": "Elk lidgeld heeft een QR-code voor overschrijving; het rekeninguittreksel zegt wat betaald is."
+  },
+  "en": {
+    "title": "Pay with a transfer QR",
+    "text": "Each fee has its transfer QR code; the bank statement tells what is paid."
+  }
+}

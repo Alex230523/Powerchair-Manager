@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/contacts",
+  "image": null,
+  "fr": {
+    "title": "Le carnet de contacts",
+    "text": "Fournisseurs, communes, sponsors, salles : chaque contact garde son historique et ses liens avec le reste."
+  },
+  "nl": {
+    "title": "Het contactenboek",
+    "text": "Leveranciers, gemeenten, sponsors, zalen: elk contact bewaart zijn geschiedenis en zijn koppelingen met de rest."
+  },
+  "en": {
+    "title": "The contact book",
+    "text": "Suppliers, councils, sponsors, halls: each contact keeps its history and its links with the rest."
+  }
+}

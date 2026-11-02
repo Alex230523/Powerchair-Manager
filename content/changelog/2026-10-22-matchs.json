@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach",
+    "player",
+    "parent"
+  ],
+  "link": "/matches",
+  "image": null,
+  "fr": {
+    "title": "Tous les matchs au même endroit",
+    "text": "Championnat, coupe, tournois et amicaux entre clubs : la page Matchs suit tout, avec les résultats."
+  },
+  "nl": {
+    "title": "Alle wedstrijden op één plek",
+    "text": "Competitie, beker, toernooien en vriendschappelijke wedstrijden tussen clubs: de pagina Wedstrijden volgt alles, met de uitslagen."
+  },
+  "en": {
+    "title": "Every match in one place",
+    "text": "League, cup, tournaments and friendlies between clubs: the Matches page follows everything, with the results."
+  }
+}

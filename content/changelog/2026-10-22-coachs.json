@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "coach",
+    "president"
+  ],
+  "link": "/coaches",
+  "image": null,
+  "fr": {
+    "title": "Les coachs, leur formation et leur permis",
+    "text": "Un coach voit ses tâches, demande une formation à la fédération et dépose son permis ; la présidence vérifie."
+  },
+  "nl": {
+    "title": "Coaches, hun opleiding en hun rijbewijs",
+    "text": "Een coach ziet zijn taken, vraagt een opleiding aan bij de federatie en laadt zijn rijbewijs op; het voorzitterschap controleert."
+  },
+  "en": {
+    "title": "Coaches, their training and their licence",
+    "text": "A coach sees his tasks, asks the federation for a course and uploads his driving licence; the presidency checks."
+  }
+}

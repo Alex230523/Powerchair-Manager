@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "federation"
+  ],
+  "link": "/federation/referees",
+  "image": null,
+  "fr": {
+    "title": "L'arbitrage en un seul circuit",
+    "text": "Les arbitres acceptent leurs matchs, les retrouvent dans leur agenda avec l'itinéraire et envoient leur rapport depuis le téléphone. Le club confirme ou conteste le rapport dans les 48 heures."
+  },
+  "nl": {
+    "title": "Scheidsrechters in één circuit",
+    "text": "Scheidsrechters aanvaarden hun wedstrijden, vinden ze in hun agenda met de route en sturen hun verslag vanaf de telefoon. De club bevestigt of betwist het verslag binnen 48 uur."
+  },
+  "en": {
+    "title": "Refereeing in one circuit",
+    "text": "Referees accept their matches, find them in their calendar with the route and send their report from the phone. The club confirms or contests the report within 48 hours."
+  }
+}

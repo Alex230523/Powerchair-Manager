@@ -19,6 +19,7 @@
 - **Couleurs via les variables CSS** de `src/app/globals.css`, jamais de code couleur dans un composant.
 - **Pas de fausses données dans l'interface.** États vides honnêtes ; un bouton visible doit fonctionner.
 - **Next.js 16** : lire [AGENTS.md](AGENTS.md) ; certaines API diffèrent des versions précédentes.
+- **Nouveautés pour les utilisateurs.** Toute livraison visible ajoute son entrée dans `content/changelog/AAAA-MM-JJ-sujet.json` : titre et texte de deux ou trois phrases simples, sans jargon, en `fr`, `nl` et `en`, lien vers la page concernée, rôles concernés (`player`, `parent`, `coach`, `president`, `federation` ou `all`). Puis `npx tsx scripts/changelog-index.ts`. Le test `tests/news.test.ts` refuse un fichier incomplet ou absent de l'index.
 
 ## Style de code
 

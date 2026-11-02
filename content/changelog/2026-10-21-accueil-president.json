@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "president"
+  ],
+  "link": "/",
+  "image": null,
+  "fr": {
+    "title": "Un accueil fait pour la présidence",
+    "text": "Les tâches passent au vert une fois faites, le statut du club tient dans un carré, et les prochains événements sont à gauche, les chiffres à droite."
+  },
+  "nl": {
+    "title": "Een startpagina voor het voorzitterschap",
+    "text": "Taken worden groen zodra ze klaar zijn, de status van de club staat in één vak, en de volgende activiteiten links, de cijfers rechts."
+  },
+  "en": {
+    "title": "A home made for the presidency",
+    "text": "Tasks turn green once done, the club's status fits in one box, and the next events are on the left, the figures on the right."
+  }
+}

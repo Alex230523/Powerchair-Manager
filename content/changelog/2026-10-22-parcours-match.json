@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "coach",
+    "player",
+    "parent"
+  ],
+  "link": "/matches",
+  "image": null,
+  "fr": {
+    "title": "Un match, du début à la fin",
+    "text": "Avant, le jour même et après : invitations, composition, score en direct et résultat dans un seul parcours."
+  },
+  "nl": {
+    "title": "Een wedstrijd, van begin tot eind",
+    "text": "Ervoor, op de dag zelf en erna: uitnodigingen, opstelling, live score en uitslag in één traject."
+  },
+  "en": {
+    "title": "A match, from start to finish",
+    "text": "Before, on the day and after: invitations, line-up, live score and result in one journey."
+  }
+}

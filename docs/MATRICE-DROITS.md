@@ -100,6 +100,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/matches/journey` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/news` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/offboarding` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -185,6 +186,7 @@ Notes :
 - `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
 - `/api/guide/public` : Public : chapitre ouvert par la fédération, sans compte
 - `/api/keys` : Clés et badges d'un coach ou d'un membre du staff (H10)
+- `/api/news` : Nouveautés (point 20) : chaque compte, filtrées sur le rôle du profil utilisé ; lu ou non lu et fenêtre désactivable par compte
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
 - `/api/onboarding` : Parcours d'accueil : ses propres parcours ; modèles et suivi pour qui gère les membres
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
@@ -277,6 +279,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/matches/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/messages` |  |  |  |  |  |  |  |  |  |   |
 | `/notifications` |  |  |  |  |  |  |  |  |  |   |
+| `/nouveautes` |  |  |  |  |  |  |  |  |  |   |
 | `/partner-report/[token]` |  |  |  |  |  |  |  |  |  |   |
 | `/players` |  |  |  |  |  |  |  |  |  |   |
 | `/players/[id]` |  |  |  |  |  |  |  |  |  |   |

@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/players",
+  "image": null,
+  "fr": {
+    "title": "Exporter en Excel",
+    "text": "Chaque liste importante s'exporte en Excel, avec les colonnes que vous voyez."
+  },
+  "nl": {
+    "title": "Exporteren naar Excel",
+    "text": "Elke belangrijke lijst kan naar Excel, met de kolommen die u ziet."
+  },
+  "en": {
+    "title": "Export to Excel",
+    "text": "Every important list exports to Excel, with the columns you see."
+  }
+}

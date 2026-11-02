@@ -1,4 +1,5 @@
 "use client";
+import { NewsPopup } from "./news";
 import { WelcomeJourney } from "./onboarding";
 import { SeasonPlanCard } from "./season-plan";
 import { plannerCopy } from "./calendar-planner-copy";
@@ -290,6 +291,8 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
         )}
       </section>
       {/* 15: the home by role: the next appointment with its answer, a coach's teams, the federation's day. */}
+      {/* 20: the newest delivery for this role, once. */}
+      <NewsPopup locale={locale} />
       {data.focus && <HomeFocus locale={locale} focus={data.focus} organizationId={organizationId} href={href} reload={() => window.dispatchEvent(new Event("pfm-workspace"))} />}
       {data.context && (
         <div className="dash-grid dash-section">

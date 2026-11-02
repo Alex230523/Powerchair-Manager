@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "all"
+  ],
+  "link": "/nouveautes",
+  "image": null,
+  "fr": {
+    "title": "Les nouveautés, expliquées simplement",
+    "text": "Cette page dit ce qui change dans l'application pour vous, en quelques phrases. Une pastille « Nouveau » signale les pages qui ont changé."
+  },
+  "nl": {
+    "title": "Nieuwigheden, eenvoudig uitgelegd",
+    "text": "Deze pagina zegt wat er voor u verandert in de toepassing, in enkele zinnen. Een badge « Nieuw » toont de pagina's die veranderd zijn."
+  },
+  "en": {
+    "title": "What's new, simply explained",
+    "text": "This page says what changes in the application for you, in a few sentences. A « New » badge shows the pages that changed."
+  }
+}

@@ -248,7 +248,9 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     [bell, setBell] = useState(false),
     [typing, setTyping] = useState(false),
     // 19: « Signaler un problème », over the page the person is on.
-    [feedback, setFeedback] = useState(false);
+    [feedback, setFeedback] = useState(false),
+    // 20: the « Nouveau » badges of the menu.
+    [news, setNews] = useState<{ badges: string[] } | null>(null);
   const menuButton = useRef<HTMLButtonElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     aside = useRef<HTMLElement>(null),
@@ -309,6 +311,15 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
         })
         .catch(() => {
           if (!cancelled) setBrief(null);
+        });
+      // 20: « Nouveautés » for this profile's role.
+      fetch("/api/news", { cache: "no-store" })
+        .then(async (r) => (r.ok ? ((await r.json()) as { badges: string[] }) : null))
+        .then((n) => {
+          if (!cancelled) setNews(n && { badges: n.badges });
+        })
+        .catch(() => {
+          if (!cancelled) setNews(null);
         });
       // 22: the tasks given to me, for the menu's counter and the phone's shortcut.
       fetch("/api/tasks?count=mine", { cache: "no-store" })
@@ -409,6 +420,11 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           <Icon name={icon} />
         </span>
         <span className="nav-label">{t[label]}</span>
+        {news?.badges.includes(route) && (
+          <span className="nav-new">
+            <Badge tone="info">{t.newBadge}</Badge>
+          </span>
+        )}
         {todo && todo.count > 0 && (
           <>
             <span className="nav-count" aria-hidden="true">
@@ -578,6 +594,11 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 </button>
               )}
               {state && (
+                <Link className="menu-link" href={`/${locale}/nouveautes`}>
+                  <Icon name="megaphone" size={16} /> {t.news}
+                </Link>
+              )}
+              {state && (
                 <Link className="menu-link" href={`/${locale}/signalements`}>
                   <Icon name="clipboardList" size={16} /> {t.myReports}
                 </Link>
@@ -631,7 +652,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, { route: "/signalements?new=1", label: t.feedback }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, { route: "/signalements?new=1", label: t.feedback }, { route: "/nouveautes", label: t.news }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
                 actions={paletteActions({
                   kind: state?.selected?.kind,
                   role,

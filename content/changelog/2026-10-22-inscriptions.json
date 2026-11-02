@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "parent"
+  ],
+  "link": "/registrations",
+  "image": null,
+  "fr": {
+    "title": "Des inscriptions plus simples",
+    "text": "Le formulaire d'inscription s'adapte au club ; la présidence accepte ou refuse en un geste, et la famille est prévenue."
+  },
+  "nl": {
+    "title": "Eenvoudigere inschrijvingen",
+    "text": "Het inschrijvingsformulier past zich aan de club aan; het voorzitterschap aanvaardt of weigert in één beweging, en de familie wordt verwittigd."
+  },
+  "en": {
+    "title": "Simpler registrations",
+    "text": "The registration form fits the club; the presidency accepts or declines in one step, and the family is told."
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president"
+  ],
+  "link": "/funding/grants-sponsors",
+  "image": null,
+  "fr": {
+    "title": "Subsides et sponsors",
+    "text": "Une seule entrée de menu, deux vues : les dossiers de subside avec leurs échéances et les sponsors avec leurs contreparties."
+  },
+  "nl": {
+    "title": "Subsidies en sponsors",
+    "text": "Eén menu-item, twee weergaven: de subsidiedossiers met hun deadlines en de sponsors met hun tegenprestaties."
+  },
+  "en": {
+    "title": "Grants and sponsors",
+    "text": "One menu entry, two views: grant files with their deadlines and sponsors with what they receive in return."
+  }
+}

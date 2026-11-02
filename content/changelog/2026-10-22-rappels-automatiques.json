@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president"
+  ],
+  "link": "/settings/club",
+  "image": null,
+  "fr": {
+    "title": "Les rappels partent tout seuls",
+    "text": "Choisissez les rappels à envoyer (cotisations, documents, réponses) : l'application s'en charge."
+  },
+  "nl": {
+    "title": "Herinneringen vertrekken vanzelf",
+    "text": "Kies welke herinneringen vertrekken (lidgelden, documenten, antwoorden): de toepassing doet de rest."
+  },
+  "en": {
+    "title": "Reminders leave by themselves",
+    "text": "Choose which reminders to send (fees, documents, answers): the application does the rest."
+  }
+}

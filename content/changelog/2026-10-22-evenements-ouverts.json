@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president"
+  ],
+  "link": "/events",
+  "image": null,
+  "fr": {
+    "title": "Les événements ouverts au public",
+    "text": "Journées découverte, stages et soupers : des personnes sans compte s'inscrivent, avec liste d'attente et rappels."
+  },
+  "nl": {
+    "title": "Activiteiten open voor het publiek",
+    "text": "Kennismakingsdagen, stages en etentjes: mensen zonder account schrijven zich in, met wachtlijst en herinneringen."
+  },
+  "en": {
+    "title": "Events open to the public",
+    "text": "Discovery days, camps and dinners: people without an account sign up, with a waiting list and reminders."
+  }
+}
