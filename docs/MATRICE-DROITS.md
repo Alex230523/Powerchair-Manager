@@ -87,7 +87,6 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/matches/journey` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/matches/journey/sheet` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
-| `/api/messaging-archive` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/open-events` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -152,7 +151,6 @@ Notes :
 - `/api/authorizations` : Autorisations parentales : textes du club (Réglages › Documents), demandes à toutes les familles, relances ; refus par un parent (point 28)
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
-- `/api/messaging-archive` : PDF des anciens échanges de la messagerie, pour la présidence du club, jusqu'à la suppression des tables (point 24)
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 
