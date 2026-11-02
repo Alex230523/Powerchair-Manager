@@ -171,6 +171,7 @@ try {
       .rowCount
   ) {
     console.log(`« ${CLUB} » existe déjà.`);
+    await alignPasswords();
     // Tournaments came later (21/10/2026): added to an existing demo once.
     await seedTournaments(db, CLUB, FEDERATION, refereeAccount.email);
     // Wave 16 (E1): the demo events take the club's type matching their kind.
@@ -1738,6 +1739,34 @@ try {
     await db.query("DELETE FROM session WHERE id=$1", [id]);
   }
   await db.end();
+}
+
+/**
+ * The demo accounts follow PFM_DEMO_PASSWORD: when the project's secret
+ * changes (a forgotten value cannot be read back from Vercel), the next
+ * preview build gives the existing demo accounts the new one. Only the
+ * accounts of this script (@demo.pfm), only with the project's own secret,
+ * never in production (refused above).
+ */
+async function alignPasswords() {
+  if (!ownPassword) return;
+  const context = await auth.$context;
+  const emails = [...accounts, federationAccount, refereeAccount].map((a) => a.email);
+  const rows = (
+    await db.query(
+      'SELECT a.id,a.password,u.id AS user_id FROM account a JOIN "user" u ON u.id=a."userId" WHERE a."providerId"=\'credential\' AND lower(u.email)=ANY($1::text[])',
+      [emails],
+    )
+  ).rows as { id: string; password: string | null; user_id: string }[];
+  let changed = 0;
+  for (const r of rows) {
+    if (r.password && (await context.password.verify({ hash: r.password, password: DEMO_PASSWORD }))) continue;
+    await db.query("UPDATE account SET password=$1,\"updatedAt\"=now() WHERE id=$2", [await context.password.hash(DEMO_PASSWORD), r.id]);
+    // Sessions opened with the old password end.
+    await db.query('DELETE FROM session WHERE "userId"=$1', [r.user_id]);
+    changed++;
+  }
+  if (changed) console.log(`Mot de passe des comptes de démonstration aligné sur PFM_DEMO_PASSWORD (${changed}).`);
 }
 
 function printAccounts() {

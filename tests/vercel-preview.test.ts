@@ -45,4 +45,12 @@ describe("build and demo accounts", () => {
     expect(seed).toContain('process.env.NODE_ENV === "production" && !ownPassword && !process.argv.includes("--force")');
     expect(seed).toContain('if (process.env.VERCEL_ENV === "production")');
   });
+  it("gives the existing demo accounts a new PFM_DEMO_PASSWORD, and only them", () => {
+    expect(seed).toContain("existe déjà.`);\n    await alignPasswords();");
+    const align = seed.slice(seed.indexOf("async function alignPasswords"), seed.indexOf("function printAccounts"));
+    expect(align).toContain("if (!ownPassword) return;");
+    expect(align).toContain("[...accounts, federationAccount, refereeAccount].map((a) => a.email)");
+    expect(align).toContain("lower(u.email)=ANY($1::text[])");
+    expect(align).toContain("context.password.verify({ hash: r.password, password: DEMO_PASSWORD })");
+  });
 });

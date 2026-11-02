@@ -24,7 +24,7 @@ Connexion par email et mot de passe uniquement : la double authentification a é
 
 1. refus si l’environnement n’est pas un aperçu, ou s’il manque la base, le secret ou le mot de passe de démo ;
 2. migrations (`scripts/migrate.mjs`, sous verrou) ;
-3. club de démo créé une seule fois (`scripts/demo-seed.ts`, sous un second verrou), avec `PFM_DEMO_PASSWORD` : le mot de passe public écrit dans le dépôt ne sert jamais en ligne, et le mot de passe n’apparaît pas dans les journaux ;
+3. club de démo créé une seule fois (`scripts/demo-seed.ts`, sous un second verrou), avec `PFM_DEMO_PASSWORD` : le mot de passe public écrit dans le dépôt ne sert jamais en ligne, et le mot de passe n’apparaît pas dans les journaux. Si la valeur de `PFM_DEMO_PASSWORD` change (par exemple parce qu’elle est oubliée : Vercel ne la réaffiche jamais), le build suivant donne ce nouveau mot de passe aux six comptes `@demo.pfm` existants et ferme leurs sessions ;
 4. `next build`.
 
 Comptes : `president@demo.pfm`, `coach@demo.pfm`, `joueur@demo.pfm`, `parent@demo.pfm`, `federation@demo.pfm`, `arbitre@demo.pfm`.
