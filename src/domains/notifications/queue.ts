@@ -29,7 +29,8 @@ export type ResourceType =
   | "license"
   | "newsletter"
   | "event_mail"
-  | "automation";
+  | "automation"
+  | "tax";
 export type Envelope = {
   email: string;
   url: string;

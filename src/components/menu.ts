@@ -21,6 +21,8 @@ export type Workspace = {
     kind: "club" | "federation";
     logo_version: string | null;
     disabled_modules?: string[];
+    /** B8: approved for tax receipts. */
+    tax_approved?: boolean;
   };
   permissions: string[];
   fundraisingOpen?: boolean;

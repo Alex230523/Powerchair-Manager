@@ -25,6 +25,7 @@ Un dossier par module. Les routes API appellent ces fonctions ; l'interface n'y 
 | `club/`           | Identité du club (nom, contact, logo) et résumé des équipes                                              |
 | `finance/`        | Grand livre du club : recettes, dépenses, annulations, synthèse de saison                                |
 | `bank/`           | Comptes bancaires, communications structurées, QR de virement, import de relevés, rapprochement (B1)     |
+| `tax/`            | Attestations fiscales 281.71 et fichier Belcotax-on-Web, pour un club agréé seulement (B8)               |
 | `coaches/`        | Fiche coach, formations fédérales, demandes des clubs, clubs affiliés                                    |
 | `privacy/`        | Doublons et fusion, export RGPD, anonymisation, règles de conservation                                   |
 | `competitions/`   | Matchs, compositions, statistiques, désignations et rapports d'arbitres                                  |

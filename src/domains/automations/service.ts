@@ -28,7 +28,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (c: PoolClie
     await account(c, p);
     if (a.role !== "club_president" && !permissions(a.role as never, a.grants).includes("notifications.manage")) throw new AccessError("FORBIDDEN");
     const club = (
-      await c.query(`SELECT id,name,disabled_modules AS disabled,dues_rules,automations_stopped AS stopped FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id])
+      await c.query(`SELECT id,name,disabled_modules AS disabled,dues_rules,automations_stopped AS stopped,tax_approved FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id])
     ).rows[0] as Club;
     const out = await fn(c, club, p.userId);
     await c.query("COMMIT");
@@ -54,7 +54,8 @@ export async function automationsView(db: Pool, p: Principal, simulate = false) 
       organization_id: club.id,
       stopped: club.stopped,
       today: brusselsToday(),
-      rules: ruleKeys.map((rule) => ({
+      // B8: nothing about tax receipts for a club that is not approved.
+      rules: ruleKeys.filter((rule) => rule !== "taxDeadline" || club.tax_approved).map((rule) => ({
         rule,
         def: catalog[rule],
         settings: settings[rule],

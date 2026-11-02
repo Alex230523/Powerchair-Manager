@@ -40,6 +40,7 @@ import { exportCopy } from "./export-copy";
 import { Icon } from "./icons";
 import { AccountPanels } from "./account-settings";
 import { ClubIdentity } from "./club-identity";
+import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
 
@@ -379,6 +380,7 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && <ClubObligations locale={locale} />}
+          {shown && category === "club" && <TaxApproval locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}

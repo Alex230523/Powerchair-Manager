@@ -141,7 +141,9 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await page.getByRole("link", { name: "Ouvrir la fiche de l'équipe : Équipe A", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/fr/teams/${teamA}$`));
     await loaded(page, "/fr/teams/A");
-    await expect(page.getByRole("tab", { name: "Effectif", exact: true })).toBeVisible();
+    // A6: the dashboard opens first; the roster is the next tab.
+    await expect(page.getByRole("tab", { name: "Tableau de bord", exact: true })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Effectif", exact: true }).click();
     await expect(page.locator("main table")).toContainText("Emma Peeters");
     await axe(page, "team sheet");
     await page.getByRole("button", { name: "Déplacer vers… : Emma Peeters" }).click();

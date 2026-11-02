@@ -74,7 +74,7 @@ it("runs a task once at a time and writes every run", async () => {
   const [a, b] = await Promise.all([runJob(db, "documents", env()), runJob(db, "documents", env())]);
   expect([a.status, b.status].sort()).toEqual(["done", "locked"]);
   const runs = (await db.query("SELECT job,ok,summary FROM job_run WHERE job='documents'")).rows;
-  expect(runs).toEqual([{ job: "documents", ok: true, summary: { expired: 0 } }]);
+  expect(runs).toEqual([{ job: "documents", ok: true, summary: { expired: 0, taxPurged: 0 } }]);
   // A task that fails is written with its error code, without stopping the others.
   const failed = await runJob(db, "mail", { ...env(), MAIL_TRANSPORT: "smtp", SMTP_HOST: "" });
   expect(failed).toMatchObject({ status: "failed", code: "SMTP_HOST_REQUIRED" });

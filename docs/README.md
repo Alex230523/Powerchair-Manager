@@ -110,6 +110,8 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [B2 : mise en production à coût zéro (prête, non activée)](evolutions/2026-10-22-t-b2-production.md) |
 | 22/10/2026 | [B7 : automatisation des emails et des rappels](evolutions/2026-10-22-u-b7-automatisations.md) |
 | 22/10/2026 | [B1 : paiements par QR de virement et rapprochement bancaire](evolutions/2026-10-22-v-b1-paiements.md) |
+| 22/10/2026 | [B8 : attestations fiscales, activées par un réglage oui/non](evolutions/2026-10-22-w-b8-attestations-fiscales.md) |
+| 22/10/2026 | [A6 : la page équipe comme tableau de bord](evolutions/2026-10-22-x-a6-equipe-tableau-de-bord.md) |
 
 ## Convention
 
