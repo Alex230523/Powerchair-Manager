@@ -165,6 +165,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 // 34: the federation's sanctions, the club's appeals and fines.
                 ...item("/discipline", "discipline", "shield"),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
+                // H1: new players, from the first contact to the registration.
+                ...item("/recrutement", "recruitment", "userPlus", has("recruitment.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
                 // 33: the federation's circulars, for every member of an affiliated club.
@@ -213,6 +215,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 items: [
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
+                  ...item("/recrutement", "recruitment", "userPlus", has("recruitment.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                   // B5: a coach reports an incident of his players.
                   ...item("/incidents", "incidents", "alert", role === "coach" || has("people.manage")),

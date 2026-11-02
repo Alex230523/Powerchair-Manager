@@ -11893,3 +11893,36 @@ ul.task-page li {
   color: var(--muted);
   font-size: var(--text-sm);
 }
+
+/* H1: recruitment, a board by stage (scrolls sideways inside itself, never the page). */
+.prospect-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(15rem, 1fr);
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-block-end: var(--space-2);
+  margin-block: var(--space-3);
+}
+.prospect-column {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+.prospect-column h2 {
+  font-size: var(--text-md);
+  margin: 0;
+}
+.prospect-column select,
+.prospect-list select {
+  min-height: 44px;
+  max-width: 100%;
+}
+.partner-line {
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}

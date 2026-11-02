@@ -28,6 +28,7 @@ import { feedbackTick } from "../feedback/service";
 import { pollsTick } from "../polls/service";
 import { allocationsTick } from "../finance/allocations";
 import { forecastTick } from "../finance/forecast";
+import { recruitmentTick } from "../recruitment/service";
 import { attestationTick } from "../dues/attestation-send";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { ruleKeys } from "../automations/catalog";
@@ -135,6 +136,8 @@ export const jobs = {
         attestations: await attestationTick(db),
         // H4: the certain forecast under the threshold within three months.
         forecast: await forecastTick(db),
+        // H1: call back after a trial, follow up a silence, delete after the delay.
+        recruitment: await recruitmentTick(db),
       };
     },
   },

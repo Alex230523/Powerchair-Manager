@@ -39,9 +39,10 @@ import e36 from "../../../content/changelog/2026-11-02-fonds-reserves.json";
 import e37 from "../../../content/changelog/2026-11-02-nouveautes.json";
 import e38 from "../../../content/changelog/2026-11-02-previsions.json";
 import e39 from "../../../content/changelog/2026-11-02-rapport-impact.json";
-import e40 from "../../../content/changelog/2026-11-02-signalements.json";
-import e41 from "../../../content/changelog/2026-11-02-sondages.json";
-import e42 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
+import e40 from "../../../content/changelog/2026-11-02-recrutement.json";
+import e41 from "../../../content/changelog/2026-11-02-signalements.json";
+import e42 from "../../../content/changelog/2026-11-02-sondages.json";
+import e43 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -84,7 +85,8 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-02-nouveautes", data: e37 },
   { id: "2026-11-02-previsions", data: e38 },
   { id: "2026-11-02-rapport-impact", data: e39 },
-  { id: "2026-11-02-signalements", data: e40 },
-  { id: "2026-11-02-sondages", data: e41 },
-  { id: "2026-11-02-vue-ensemble", data: e42 },
+  { id: "2026-11-02-recrutement", data: e40 },
+  { id: "2026-11-02-signalements", data: e41 },
+  { id: "2026-11-02-sondages", data: e42 },
+  { id: "2026-11-02-vue-ensemble", data: e43 },
 ];

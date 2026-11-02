@@ -120,6 +120,7 @@ const fr: Copy = {
     "federation.courses": "Formations",
     "federation.communication": "Communication (circulaires, guide)",
     "federation.finance": "Finances de la fédération",
+    "recruitment.manage": "Recrutement de nouveaux joueurs",
   },
   roles: {
     coach: "Coach",
@@ -204,6 +205,7 @@ const nl: Copy = {
     "federation.courses": "Opleidingen",
     "federation.communication": "Communicatie (omzendbrieven, gids)",
     "federation.finance": "Financiën van de federatie",
+    "recruitment.manage": "Rekrutering van nieuwe spelers",
   },
   roles: {
     coach: "Coach",
@@ -287,6 +289,7 @@ const en: Copy = {
     "federation.courses": "Training",
     "federation.communication": "Communication (circulars, guide)",
     "federation.finance": "The federation's finances",
+    "recruitment.manage": "Recruiting new players",
   },
   roles: {
     coach: "Coach",
@@ -320,6 +323,7 @@ export const grantGroups: { key: string; grants: Grant[] }[] = [
     key: "club",
     grants: [
       "registrations.manage",
+      "recruitment.manage",
       "documents.read",
       "documents.manage",
       "documents.sensitive",

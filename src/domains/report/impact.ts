@@ -51,9 +51,9 @@ export async function impactFigures(c: PoolClient, org: string, from: string, to
   const settings = await settingsOf(c, org);
   const range = [org, from, to];
   // Beneficiaries: the players on a team during the period (aggregated here, never returned one by one).
-  const players = await all<{ id: string; birth_date: string | null; postal_address: string; first: string }>(
+  const players = await all<{ id: string; birth_date: string | null; postal_address: string; first: string; recruitment_source: string | null }>(
     c,
-    `SELECT cp.id,cp.birth_date::text,cp.postal_address,(SELECT min(x.starts_on) FROM team_membership x WHERE x.profile_id=cp.id AND x.role='player' AND NOT x.cancelled)::text AS first
+    `SELECT cp.id,cp.birth_date::text,cp.postal_address,cp.recruitment_source,(SELECT min(x.starts_on) FROM team_membership x WHERE x.profile_id=cp.id AND x.role='player' AND NOT x.cancelled)::text AS first
        FROM club_person cp WHERE cp.organization_id=$1 AND cp.anonymized_at IS NULL AND EXISTS (
          SELECT 1 FROM team_membership m WHERE m.profile_id=cp.id AND m.organization_id=$1 AND m.role='player' AND NOT m.cancelled AND m.starts_on<=$3::date AND (m.ends_on IS NULL OR m.ends_on>=$2::date))`,
     range,
@@ -67,7 +67,12 @@ export async function impactFigures(c: PoolClient, org: string, from: string, to
     if (commune) communes.set(commune, (communes.get(commune) ?? 0) + 1);
     else unknownCommune++;
   }
-  const fresh = players.filter((p) => p.first && p.first >= from && p.first <= to).length;
+  const newcomers = players.filter((p) => p.first && p.first >= from && p.first <= to);
+  const fresh = newcomers.length;
+  // H1: where the new players come from, when the recruitment recorded it.
+  const origin = newcomers.some((p) => p.recruitment_source)
+    ? Object.entries(newcomers.reduce<Record<string, number>>((m, p) => ((m[p.recruitment_source ?? "unknown"] = (m[p.recruitment_source ?? "unknown"] ?? 0) + 1), m), {})).map(([source, n]) => ({ source, n }))
+    : null;
   // Retention: the players of the year before the period still there.
   const before = await all<{ id: string }>(
     c,
@@ -136,8 +141,8 @@ export async function impactFigures(c: PoolClient, org: string, from: string, to
     /** Sex is not recorded in the application: no figure. */
     bySex: null,
     newPlayers: fresh,
-    /** H1 (where the new players come from) is not recorded yet. */
-    origin: null,
+    /** H1: by source; null when the recruitment recorded none. */
+    origin,
     retention: before.length ? { kept, of: before.length, rate: Math.round((kept * 100) / before.length) } : null,
     sessions: adj("sessions", sessions.n),
     sessionHours: round(sessions.hours),
@@ -252,6 +257,8 @@ const words = {
     noData: "donnée absente",
     sex: "Par sexe : non relevé par le club",
     origin: "Provenance des nouveaux joueurs : non relevée",
+    originBy: "Provenance des nouveaux joueurs : {list}",
+    sources: { rehab: "centre de revalidation", school: "école spécialisée", association: "association", fair: "salon", social: "réseaux sociaux", word_of_mouth: "bouche-à-oreille", other: "autre", unknown: "non relevée" },
     reserved: "Fonds réservés du subside",
     reservedLine: "{label} : prévu {amount}, dépensé {spent}, reste {remaining}",
     adjustment: "Ajustement : {indicator} {delta} ({note})",
@@ -290,6 +297,8 @@ const words = {
     noData: "geen gegevens",
     sex: "Per geslacht: niet bijgehouden door de club",
     origin: "Herkomst van de nieuwe spelers: niet bijgehouden",
+    originBy: "Herkomst van de nieuwe spelers: {list}",
+    sources: { rehab: "revalidatiecentrum", school: "buitengewoon onderwijs", association: "vereniging", fair: "beurs", social: "sociale media", word_of_mouth: "mond-tot-mond", other: "andere", unknown: "niet bijgehouden" },
     reserved: "Bestemde fondsen van de subsidie",
     reservedLine: "{label}: voorzien {amount}, uitgegeven {spent}, saldo {remaining}",
     adjustment: "Aanpassing: {indicator} {delta} ({note})",
@@ -328,6 +337,8 @@ const words = {
     noData: "no data",
     sex: "By sex: not recorded by the club",
     origin: "Where new players come from: not recorded",
+    originBy: "Where new players come from: {list}",
+    sources: { rehab: "rehabilitation centre", school: "special school", association: "association", fair: "fair", social: "social media", word_of_mouth: "word of mouth", other: "other", unknown: "not recorded" },
     reserved: "The grant's reserved funds",
     reservedLine: "{label}: planned {amount}, spent {spent}, left {remaining}",
     adjustment: "Adjustment: {indicator} {delta} ({note})",
@@ -390,7 +401,7 @@ async function pdfOf(s: Scope, locale: Locale, from: string, to: string, grantId
     ...f.communes.slice(0, 15).map((c) => ({ text: `${c.name} : ${c.n}`, size: 10, indent: 14 })),
     ...(f.unknownCommune ? [{ text: `${w.unknown} : ${f.unknownCommune}`, size: 10, indent: 14 }] : []),
     { text: w.sex, size: 10, gap: 6 },
-    { text: w.origin, size: 10 },
+    { text: f.origin ? fill(w.originBy, { list: f.origin.map((o) => `${w.sources[o.source as keyof typeof w.sources] ?? o.source} ${o.n}`).join(", ") }) : w.origin, size: 10 },
     ...(g?.reserved.length ? [{ text: w.reserved, bold: true, gap: 10 }, ...g.reserved.map((r) => ({ text: fill(w.reservedLine, { label: r.label, amount: money(r.amount), spent: money(r.spent), remaining: money(r.remaining) }), size: 10, indent: 14 }))] : []),
     ...f.adjustments.map((a, i) => ({ text: fill(w.adjustment, { indicator: (w as Record<string, unknown>)[a.indicator] as string, delta: (a.delta > 0 ? "+" : "") + a.delta, note: a.note }), size: 9, gap: i ? 0 : 8 })),
     { text: w.method, bold: true, gap: 14 },

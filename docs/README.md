@@ -150,6 +150,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Argent : fonds réservés, attestations, levée de fonds, rappels annuels](evolutions/2026-11-02-zzi-argent.md) |
 | 02/11/2026 | [Trésorerie prévisionnelle sur 12 mois](evolutions/2026-11-02-zzj-previsions.md) |
 | 02/11/2026 | [Rapport d'impact pour les subsides](evolutions/2026-11-02-zzk-rapport-impact.md) |
+| 02/11/2026 | [Recrutement de nouveaux joueurs](evolutions/2026-11-02-zzl-recrutement.md) |
 
 ## Convention
 

@@ -7,8 +7,8 @@ import { staffRolesCopy } from "../src/components/staff-roles-copy";
 const keys = (o: object): string[] => Object.entries(o).flatMap(([k, v]) => (v && typeof v === "object" ? keys(v).map((x) => `${k}.${x}`) : [k]));
 
 describe("staff roles", () => {
-  it("proposes the seven roles in three languages, none with a sensitive right", () => {
-    expect(proposedRoles.map((r) => r.key)).toEqual(["head-coach", "assistant-coach", "team-manager", "equipment-manager", "transport-manager", "treasurer", "secretary"]);
+  it("proposes the eight roles in three languages, none with a sensitive right", () => {
+    expect(proposedRoles.map((r) => r.key)).toEqual(["head-coach", "assistant-coach", "team-manager", "equipment-manager", "transport-manager", "treasurer", "secretary", "recruitment"]);
     for (const r of proposedRoles) {
       expect(r.name.fr && r.name.nl && r.name.en && r.description.fr && r.description.nl && r.description.en).toBeTruthy();
       expect(r.grants.filter((g) => sensitiveGrants.includes(g))).toEqual([]);

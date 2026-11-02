@@ -6,6 +6,7 @@ import type { impactView } from "@/domains/report/impact";
 import { adjustable } from "@/domains/report/impact-schema";
 import { errors } from "./access-copy";
 import { impactCopy, fill } from "./impact-copy";
+import { recruitmentCopy } from "./recruitment-copy";
 import { useData } from "./use-api";
 import { HorizontalBars } from "./charts";
 import { Icon } from "./icons";
@@ -194,7 +195,7 @@ function Report({ locale, data, act, grant }: { locale: Locale; data: View; act:
           ))}
         </ul>
         <p className="muted small">{t.sex}</p>
-        <p className="muted small">{t.origin}</p>
+        <p className="muted small">{f.origin ? fill(t.originBy, { list: f.origin.map((o) => `${recruitmentCopy[locale].sources[o.source] ?? "?"} ${o.n}`).join(", ") }) : t.origin}</p>
       </section>
       <div className="grid">
         <Card title={t.byAge} labelledBy="impact-age" headingId="impact-age">

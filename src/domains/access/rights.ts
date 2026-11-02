@@ -29,6 +29,8 @@ export const rightsModules: RightsModule[] = [
   },
   { key: "attendance", edit: ["attendance.manage"] },
   { key: "registrations", edit: ["registrations.manage"] },
+  // H1: new players, from the first contact to the registration.
+  { key: "recruitment", edit: ["recruitment.manage"] },
   {
     key: "documents",
     read: ["documents.read"],

@@ -128,6 +128,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/public/ics/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/push` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/push/respond` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
+| `/api/recruitment` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/referee` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | oui | refusé | refusé | refusé |
 | `/api/refereeing` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/registrations` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -209,6 +210,7 @@ Notes :
 - `/api/polls` : Mini-sondages du club et de la fédération : à répondre, créés, résultats, clôture vers un événement ou une tâche (H3)
 - `/api/polls/answer` : Lien personnel d'un sondage, sans connexion, à usage unique (H3)
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
+- `/api/recruitment` : Recrutement de nouveaux joueurs : prospects, essais, partenaires, indicateurs (H1)
 - `/api/refereeing` : Arbitrage (points 25 et 36 à 39) : bureau de la fédération (compétence arbitrage : désignations, niveaux, barème, formations, notes de frais, export CSV, récapitulatif PDF) ; bureau de l'arbitre (réponses, itinéraires, rapport, notes de frais, formations) ; ?report= relecture du rapport par le club dans les 48 heures
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 - `/api/seasons/plan` : Préparer la saison suivante : l'assistant annuel, réservé à la présidence du club (point 16)
@@ -308,6 +310,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/players/[id]/payment/[receivable]` |  |  |  |  |  |  |  |  |  |   |
 | `/players/former` |  |  |  |  |  |  |  |  |  |   |
 | `/privacy` |  |  |  |  |  |  |  |  |  |   |
+| `/recrutement` |  |  |  |  |  |  |  |  |  |   |
 | `/referee` |  |  |  |  |  |  |  |  |  |   |
 | `/registration-widget/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/registrations` |  |  |  |  |  |  |  |  |  |   |

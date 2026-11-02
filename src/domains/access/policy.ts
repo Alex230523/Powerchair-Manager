@@ -28,6 +28,8 @@ export const delegable = [
   "equipment.manage",
   "people.sensitive",
   "dues.read",
+  /** H1: the recruitment of new players (prospects, trial sessions). */
+  "recruitment.manage",
   /** B8: a donor's national number, for the tax receipts (each opening is logged). */
   "tax.identity",
   /** 32: the federation's competences, given to its delegates (the presidency holds them all). */
@@ -132,6 +134,7 @@ export function permissions(
                 p !== "attendance.manage" &&
                 p !== "dues.manage" &&
                 p !== "dues.read" &&
+                p !== "recruitment.manage" &&
                 p !== "equipment.manage"),
           ),
         ]
