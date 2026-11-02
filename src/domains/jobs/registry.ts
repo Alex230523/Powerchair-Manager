@@ -14,7 +14,6 @@ import { affiliationTick } from "../affiliations/service";
 import { equipmentLoanTick } from "../equipment/loans";
 import { taskSourcesTick } from "../tasks/sources";
 import { runAutomations } from "../automations/engine";
-import { messagingRetirementTick } from "../messaging-archive/service";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { watchdog } from "./watchdog";
@@ -89,8 +88,6 @@ export const jobs = {
         loans: await equipmentLoanTick(db),
         // B5: claims close to their deadline, first-aid items about to expire.
         incidents: await incidentTick(db),
-        // 24: the presidents of clubs with old exchanges are told once, 14 days before they go.
-        messagingNotices: await messagingRetirementTick(db),
       };
     },
   },
