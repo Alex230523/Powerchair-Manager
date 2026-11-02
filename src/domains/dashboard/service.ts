@@ -557,6 +557,7 @@ export async function computeFor(
               classification: fedCan(a.role, a.grants, "federation.classification"),
               courses: fedCan(a.role, a.grants, "federation.courses"),
               communication: fedCan(a.role, a.grants, "federation.communication"),
+              discipline: fedCan(a.role, a.grants, "federation.discipline"),
             })
           : undefined;
   // Getting started of a new club (wave 15, C3): for the president, until done or hidden.

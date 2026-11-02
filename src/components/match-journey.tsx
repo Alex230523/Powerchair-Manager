@@ -223,7 +223,7 @@ function BeforeStep({ ctx }: { ctx: Ctx }) {
                     {p.answer && <Badge tone={p.answer === "present" ? "success" : p.answer === "absent" ? "danger" : "neutral"}>{t.answers[p.answer]}</Badge>}
                     {p.blocking.map((b) => (
                       <Badge key={b} tone="danger" dot>
-                        {t.blocking} : {t.problems[b]}
+                        {t.blocking} : {b === "suspended" && p.suspension ? fill(t.suspendedFor, { n: p.suspension.remaining }) : t.problems[b]}
                       </Badge>
                     ))}
                     {p.warnings.map((w) => (

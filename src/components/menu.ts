@@ -158,6 +158,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 // B5: incidents and their insurance declaration.
                 ...item("/incidents", "incidents", "alert", has("people.manage", "mandates.manage")),
+                // 34: the federation's sanctions, the club's appeals and fines.
+                ...item("/discipline", "discipline", "shield"),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
@@ -208,6 +210,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                   // B5: a coach reports an incident of his players.
                   ...item("/incidents", "incidents", "alert", role === "coach" || has("people.manage")),
+                  // 34: the sanctions of the club's players (the coaches see them).
+                  ...item("/discipline", "discipline", "shield", role === "coach"),
                   // A1: everyone has a to-do (only one's own tasks unless one plans).
                   ...item("/tasks", "tasks", "clipboardList"),
                   // 33: the federation's circulars, for every member of an affiliated club.
@@ -241,6 +245,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           ...item("/federation/teams", "federationTeams", "players", fed("federation.licences")),
                           ...item("/tournaments", "tournaments", "trophy", fed("federation.competitions")),
                           ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
+                          // 34: sanctions, appeals and fines.
+                          ...item("/federation/discipline", "discipline", "shield", fed("federation.discipline")),
                           ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
                           ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
                           ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),

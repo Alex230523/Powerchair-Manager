@@ -170,6 +170,8 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
     ...(focus.classificationsToDo ? [{ text: fill(t.classificationsToDo, { n: focus.classificationsToDo }), route: "/federation/licenses" }] : []),
     ...(focus.matchesWithoutReferee ? [{ text: fill(t.matchesWithoutReferee, { n: focus.matchesWithoutReferee }), route: "/federation/referees" }] : []),
     ...(focus.reportsPending ? [{ text: fill(t.reportsPending, { n: focus.reportsPending }), route: "/federation/referees" }] : []),
+    ...(focus.discipline?.proposed ? [{ text: fill(t.disciplineProposed, { n: focus.discipline.proposed }), route: "/federation/discipline" }] : []),
+    ...(focus.discipline?.appeals ? [{ text: fill(t.disciplineAppeals, { n: focus.discipline.appeals }), route: "/federation/discipline" }] : []),
   ];
   const seasons = [...new Set(focus.licences.map((l) => l.season))].slice(0, 4);
   return (
@@ -208,7 +210,7 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
           {focus.lateClubs ? <p className="focus-figure">{focus.lateClubs}</p> : <p className="muted">{t.lateClubsNone}</p>}
         </Card>
       )}
-      {(focus.can.classification || focus.can.referees) && (
+      {(focus.can.classification || focus.can.referees || focus.can.discipline) && (
         <Card title={t.toDo} labelledBy="focus-todo" headingId="focus-todo">
           {toDo.length ? (
             <ul className="focus-list">

@@ -74,6 +74,7 @@ const fr = {
     "Les matchs de championnat et de coupe sont visibles par la fédération, qui désigne les arbitres.",
   errors: {
     NOT_IN_TEAM: "Un joueur choisi n'est pas dans cette équipe.",
+    PLAYER_SUSPENDED: "Un joueur choisi est suspendu : il ne peut pas être sur la feuille de match.",
     NOT_IN_LINEUP: "Un joueur n'est pas dans la composition.",
     GOALS_EXCEED_SCORE:
       "Il y a plus de buts de joueurs que de buts marqués par l'équipe.",
@@ -153,6 +154,7 @@ const nl: Copy = {
     "Competitie- en bekerwedstrijden zijn zichtbaar voor de federatie, die de scheidsrechters aanduidt.",
   errors: {
     NOT_IN_TEAM: "Een gekozen speler zit niet in dit team.",
+    PLAYER_SUSPENDED: "Een gekozen speler is geschorst: hij kan niet op het wedstrijdblad staan.",
     NOT_IN_LINEUP: "Een speler staat niet in de opstelling.",
     GOALS_EXCEED_SCORE:
       "Er zijn meer doelpunten van spelers dan doelpunten van het team.",
@@ -231,6 +233,7 @@ const en: Copy = {
     "League and cup matches are visible to the federation, which designates the referees.",
   errors: {
     NOT_IN_TEAM: "A chosen player is not in this team.",
+    PLAYER_SUSPENDED: "A chosen player is suspended: he cannot be on the team sheet.",
     NOT_IN_LINEUP: "A player is not in the line-up.",
     GOALS_EXCEED_SCORE: "Players scored more goals than the team.",
   },

@@ -88,6 +88,8 @@ function href(locale: Locale, t: TaskRow) {
   if (t.source_kind?.startsWith("venue")) return at(`/venues#bookings`);
   // « Fin de coach »: a step of a departure opens the coach's file.
   if (t.source_kind === "offboarding" && t.source_params?.profile) return at(`/coaches/${t.source_params.profile}#departure`);
+  // 34: a fine of the federation.
+  if (t.source_kind === "disciplineFine") return at(`/discipline#fines`);
   return null;
 }
 /** The application's own tasks read in the reader's language. */

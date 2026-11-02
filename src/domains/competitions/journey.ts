@@ -1,3 +1,4 @@
+import { suspensionsFor } from "../discipline/service";
 import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
@@ -40,16 +41,18 @@ export const journeyCommand = z.discriminatedUnion("action", [
 ]);
 export type JourneyCommand = z.infer<typeof journeyCommand>;
 
-export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck";
+export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended";
 const broken = (status: string) => status === "maintenance" || status === "out_of_service";
 /**
  * What stops a player from playing (blocking) or deserves a look (warning).
  * B3: a chair over the speed limit, never checked or checked too long ago
  * is a warning. Pure.
  */
-export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null }) {
+export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null; suspended?: boolean }) {
   const blocking: Problem[] = [],
     warnings: Problem[] = [];
+  // 34: a suspension still running keeps the player off the sheet.
+  if (p.suspended) blocking.push("suspended");
   if (p.licence !== "active") blocking.push("licence");
   if (p.chair && broken(p.chair.status)) blocking.push("chairBroken");
   if (p.documentsDue > 0) warnings.push("documents");
@@ -109,7 +112,7 @@ async function matchOf(c: PoolClient, org: string, matchId: string, lock = false
 async function squad(c: PoolClient, org: string, m: Row) {
   const r = (await c.query("SELECT chair_speed_limit_kmh::float AS limit,speed_check_days AS days FROM organization WHERE id=$1", [org])).rows[0];
   const rules = { limit: Number(r.limit), days: Number(r.days) };
-  return (
+  const rows = (
     await c.query(
       `SELECT DISTINCT ON (cp.id) cp.id AS profile_id,cp.full_name,cp.jersey_number,COALESCE(NULLIF(tm.position,''),cp.playing_position) AS position,COALESCE(sp.classification,'not_classified') AS classification,
               (SELECT l.status FROM license l WHERE l.profile_id=cp.id AND l.organization_id=$1 AND l.season=$3 ORDER BY CASE l.status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 WHEN 'requested' THEN 2 ELSE 3 END LIMIT 1) AS licence,
@@ -124,9 +127,16 @@ async function squad(c: PoolClient, org: string, m: Row) {
         ORDER BY cp.id`,
       [org, m.team_id, seasonOf(brusselsToday()).label, m.calendar_event_id],
     )
-  ).rows.map((r) => ({
+  ).rows;
+  const suspended = await suspensionsFor(
+    c,
+    org,
+    rows.map((x) => x.profile_id as string),
+  );
+  return rows.map((r) => ({
     ...r,
-    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) } }),
+    suspension: suspended.get(r.profile_id) ?? null,
+    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) }, suspended: suspended.has(r.profile_id) }),
   })) as {
     profile_id: string;
     full_name: string;
@@ -137,6 +147,7 @@ async function squad(c: PoolClient, org: string, m: Row) {
     documents_due: number;
     chair: { name: string; status: string; serviceDue: boolean } | null;
     answer: "present" | "absent" | "uncertain" | "none" | null;
+    suspension: { remaining: number; summary: string; cause: string } | null;
     blocking: Problem[];
     warnings: Problem[];
   }[];

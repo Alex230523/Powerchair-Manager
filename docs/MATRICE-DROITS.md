@@ -40,6 +40,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/cron/[job]` | · | · | · | · | · | · | · | · | · | · |
 | `/api/dashboard` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/designations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/discipline` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/documents` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/documents/file/[id]` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/documents/sign/[id]` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
@@ -171,6 +172,7 @@ Notes :
 - `/api/circulars` : Circulaires : reçues par les membres et arbitres ; rédaction, envoi, suivi et export par la compétence communication de la fédération
 - `/api/circulars/file` : Pièce jointe d'une circulaire : destinataires et communication de la fédération
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
+- `/api/discipline` : Discipline (point 34) : bureau de la fédération (compétence discipline : règles par saison, sanctions proposées, décisions, recours, amendes) ; page du club (présidence et coachs ; recours et paiement des amendes par la présidence) ; ?player= historique d'un joueur (son club et sa fédération) ; ?file= pièce d'un recours
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
@@ -217,6 +219,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/contacts` |  |  |  |  |  |  |  |  |  |   |
 | `/design` |  |  |  |  |  |  |  |  |  |   |
 | `/desinscription/[id]` |  |  |  |  |  |  |  |  |  |   |
+| `/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/documents` |  |  |  |  |  |  |  |  |  |   |
 | `/don/[token]` |  |  |  |  |  |  |  |  |  |   |
 | `/dues` |  |  |  |  |  |  |  |  |  |   |
@@ -234,6 +237,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/affiliations` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/clubs` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/courses` |  |  |  |  |  |  |  |  |  |   |
+| `/federation/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/referees` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/team` |  |  |  |  |  |  |  |  |  |   |

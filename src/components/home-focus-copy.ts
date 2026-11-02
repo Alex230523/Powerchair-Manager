@@ -39,6 +39,8 @@ export const focusCopy: Record<
     toDo: string;
     classificationsToDo: string;
     matchesWithoutReferee: string;
+    disciplineProposed: string;
+    disciplineAppeals: string;
     reportsPending: string;
     nothingToDo: string;
     nothingPending: string;
@@ -83,6 +85,8 @@ export const focusCopy: Record<
     toDo: "À traiter",
     classificationsToDo: "{n} classifications demandées",
     matchesWithoutReferee: "{n} matchs sans arbitre désigné",
+    disciplineProposed: "{n} sanction(s) à décider",
+    disciplineAppeals: "{n} recours ouvert(s)",
     reportsPending: "{n} rapports de match en attente",
     nothingToDo: "Rien à traiter.",
     nothingPending: "Rien à faire, tout est en ordre.",
@@ -126,6 +130,8 @@ export const focusCopy: Record<
     toDo: "Te behandelen",
     classificationsToDo: "{n} aangevraagde classificaties",
     matchesWithoutReferee: "{n} wedstrijden zonder scheidsrechter",
+    disciplineProposed: "{n} sanctie(s) te beslissen",
+    disciplineAppeals: "{n} open beroep(en)",
     reportsPending: "{n} wedstrijdverslagen in afwachting",
     nothingToDo: "Niets te behandelen.",
     nothingPending: "Niets te doen, alles is in orde.",
@@ -169,6 +175,8 @@ export const focusCopy: Record<
     toDo: "To handle",
     classificationsToDo: "{n} classifications asked",
     matchesWithoutReferee: "{n} matches without a referee",
+    disciplineProposed: "{n} sanction(s) to decide",
+    disciplineAppeals: "{n} open appeal(s)",
     reportsPending: "{n} match reports pending",
     nothingToDo: "Nothing to handle.",
     nothingPending: "Nothing to do, all in order.",

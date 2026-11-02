@@ -1,4 +1,6 @@
 "use client";
+import { DisciplineHistory } from "./discipline";
+import { disciplineCopy } from "./discipline-copy";
 import { BillingSplit } from "./billing-split";
 import { CareCard } from "./care-card";
 import Link from "next/link";
@@ -932,6 +934,12 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
           )}
           <Link href={`/${locale}/matches`}>{matchCopy[locale].link} →</Link>
         </Card>
+        {/* 34: the disciplinary history, for the club's presidency and coaches. */}
+        {view.can.discipline && (
+          <Card title={disciplineCopy[locale].history} icon="shield" wide>
+            <DisciplineHistory locale={locale} profileId={id} />
+          </Card>
+        )}
       </section>
     {moving && currentTeams.length > 0 && (
         <MoveDialog

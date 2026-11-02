@@ -135,6 +135,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     remove: "Supprimer",
     removeOf: "Supprimer la tâche : {title}",
     sources: {
+      disciplineFine: "Payer l'amende : {about}",
       grantDeadline: "Déposer le dossier de subside : {about}",
       affiliationDue: "Payer l'affiliation : {about}",
       venueRequest: "Demander la réservation : {about}",
@@ -245,6 +246,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     remove: "Verwijderen",
     removeOf: "De taak verwijderen: {title}",
     sources: {
+      disciplineFine: "De boete betalen: {about}",
       grantDeadline: "Het subsidiedossier indienen: {about}",
       affiliationDue: "De aansluiting betalen: {about}",
       venueRequest: "De reservatie aanvragen: {about}",
@@ -355,6 +357,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     remove: "Delete",
     removeOf: "Delete the task: {title}",
     sources: {
+      disciplineFine: "Pay the fine: {about}",
       grantDeadline: "File the grant application: {about}",
       affiliationDue: "Pay the affiliation: {about}",
       venueRequest: "Request the booking: {about}",

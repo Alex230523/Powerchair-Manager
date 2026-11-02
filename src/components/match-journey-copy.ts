@@ -20,7 +20,8 @@ export type JourneyCopy = {
   lineupSaved: string;
   blocking: string;
   warning: string;
-  problems: Record<"licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck", string>;
+  problems: Record<"licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended", string>;
+  suspendedFor: string;
   notPresent: string;
   publish: string;
   unpublish: string;
@@ -99,7 +100,8 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Composition enregistrée.",
     blocking: "Bloquant",
     warning: "À vérifier",
-    problems: { licence: "pas de licence valide", chairBroken: "fauteuil en panne", documents: "documents à fournir", chairService: "révision dépassée", noChair: "pas de fauteuil attribué", speedCheck: "contrôle de vitesse à refaire" },
+    problems: { licence: "pas de licence valide", chairBroken: "fauteuil en panne", documents: "documents à fournir", chairService: "révision dépassée", noChair: "pas de fauteuil attribué", speedCheck: "contrôle de vitesse à refaire", suspended: "suspendu" },
+    suspendedFor: "suspendu, encore {n} match(s)",
     notPresent: "n'a pas répondu « présent »",
     publish: "Publier la composition",
     unpublish: "Retirer la publication",
@@ -157,7 +159,8 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSoon: "La composition sera publiée par le coach.",
     errors: {
       NOT_PRESENT: "Ce joueur n'a pas répondu « présent » à l'invitation.",
-      PLAYER_NOT_ELIGIBLE: "Un joueur a un problème bloquant (licence ou fauteuil).",
+      PLAYER_NOT_ELIGIBLE: "Un joueur a un problème bloquant (licence, fauteuil ou suspension).",
+      PLAYER_SUSPENDED: "Un joueur est suspendu : il ne peut pas être sur la feuille de match.",
       NOT_IN_TEAM: "Ce joueur ne fait pas partie de l'équipe.",
       NOT_IN_LINEUP: "Ce joueur n'est pas dans la composition.",
       GOALS_EXCEED_SCORE: "Il y a plus de buts notés que le score.",
@@ -185,7 +188,8 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Opstelling opgeslagen.",
     blocking: "Blokkerend",
     warning: "Na te kijken",
-    problems: { licence: "geen geldige licentie", chairBroken: "rolstoel defect", documents: "documenten te bezorgen", chairService: "nazicht verlopen", noChair: "geen rolstoel toegewezen", speedCheck: "snelheidscontrole opnieuw te doen" },
+    problems: { licence: "geen geldige licentie", chairBroken: "rolstoel defect", documents: "documenten te bezorgen", chairService: "nazicht verlopen", noChair: "geen rolstoel toegewezen", speedCheck: "snelheidscontrole opnieuw te doen", suspended: "geschorst" },
+    suspendedFor: "geschorst, nog {n} wedstrijd(en)",
     notPresent: "antwoordde niet « aanwezig »",
     publish: "Opstelling publiceren",
     unpublish: "Publicatie intrekken",
@@ -243,7 +247,8 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSoon: "De opstelling wordt door de coach gepubliceerd.",
     errors: {
       NOT_PRESENT: "Deze speler antwoordde niet « aanwezig » op de uitnodiging.",
-      PLAYER_NOT_ELIGIBLE: "Een speler heeft een blokkerend probleem (licentie of rolstoel).",
+      PLAYER_NOT_ELIGIBLE: "Een speler heeft een blokkerend probleem (licentie, rolstoel of schorsing).",
+      PLAYER_SUSPENDED: "Een speler is geschorst: hij kan niet op het wedstrijdblad staan.",
       NOT_IN_TEAM: "Deze speler hoort niet bij het team.",
       NOT_IN_LINEUP: "Deze speler staat niet in de opstelling.",
       GOALS_EXCEED_SCORE: "Er zijn meer doelpunten genoteerd dan de score.",
@@ -271,7 +276,8 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Line-up saved.",
     blocking: "Blocking",
     warning: "To check",
-    problems: { licence: "no valid licence", chairBroken: "chair broken", documents: "documents to provide", chairService: "service overdue", noChair: "no chair assigned", speedCheck: "speed check to redo" },
+    problems: { licence: "no valid licence", chairBroken: "chair broken", documents: "documents to provide", chairService: "service overdue", noChair: "no chair assigned", speedCheck: "speed check to redo", suspended: "suspended" },
+    suspendedFor: "suspended, {n} more match(es)",
     notPresent: "did not answer « present »",
     publish: "Publish the line-up",
     unpublish: "Withdraw the publication",
@@ -329,7 +335,8 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSoon: "The coach will publish the line-up.",
     errors: {
       NOT_PRESENT: "This player did not answer « present » to the invitation.",
-      PLAYER_NOT_ELIGIBLE: "A player has a blocking problem (licence or chair).",
+      PLAYER_NOT_ELIGIBLE: "A player has a blocking problem (licence, chair or suspension).",
+      PLAYER_SUSPENDED: "A player is suspended: he cannot be on the team sheet.",
       NOT_IN_TEAM: "This player is not in the team.",
       NOT_IN_LINEUP: "This player is not in the line-up.",
       GOALS_EXCEED_SCORE: "More goals are noted than the score.",

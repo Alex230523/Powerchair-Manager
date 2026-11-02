@@ -1,3 +1,4 @@
+import { suspensionsFor } from "../discipline/service";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -338,6 +339,9 @@ export async function matchExecute(
       );
       if (command.players.some((x) => !allowedPlayers.has(x.profileId)))
         throw new AccessError("NOT_IN_TEAM", 400);
+      // 34: a suspended player stays off the sheet.
+      if ((await suspensionsFor(c, org, command.players.map((x) => x.profileId))).size)
+        throw new AccessError("PLAYER_SUSPENDED", 409);
       const keep = command.players.map((x) => x.profileId);
       await c.query(
         "DELETE FROM match_player WHERE match_id=$1 AND organization_id=$2 AND NOT (profile_id=ANY($3::uuid[]))",

@@ -285,6 +285,8 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         editPosition: can.editPosition,
         managePeople: can.managePeople,
         viewMoney: can.viewMoney,
+        // 34: the disciplinary history, for the club's presidency and coaches.
+        discipline: ["club_president", "coach"].includes(s.context.role),
       },
       teams,
       // Open teams of the club, for "move to…" (wave 12): those who manage teams only.

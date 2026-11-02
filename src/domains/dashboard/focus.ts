@@ -39,7 +39,7 @@ export type CoachFocus = {
 export type FederationFocus = {
   kind: "federation";
   /** 32: the cards follow the person's competences (all of them for the presidency). */
-  can: { licences: boolean; competitions: boolean; referees: boolean; classification: boolean; courses: boolean; communication: boolean };
+  can: { licences: boolean; competitions: boolean; referees: boolean; classification: boolean; courses: boolean; communication: boolean; discipline?: boolean };
   lateClubs: number;
   clubs: { affiliated: number; pending: number };
   licences: { season: string; category: string; n: number }[];
@@ -49,6 +49,8 @@ export type FederationFocus = {
   classificationDays: { id: string; day: string; place: string | null }[];
   tournamentDays: { id: string; tournamentId: string; name: string; day: string; place: string }[];
   pending: { places: number; models: number; courses: number };
+  /** 34: sanctions to decide and appeals to settle. */
+  discipline: { proposed: number; appeals: number };
 };
 export type Focus = MemberFocus | CoachFocus | FederationFocus;
 
@@ -165,6 +167,10 @@ export async function federationFocus(c: PoolClient, fed: string, can: Federatio
        AND EXISTS (SELECT 1 FROM referee_assignment a WHERE a.match_id=m.id AND a.status='accepted') AND NOT EXISTS (SELECT 1 FROM match_report r WHERE r.match_id=m.id)`,
     can.referees,
   );
+  const discipline = {
+    proposed: await n("SELECT count(*)::int AS n FROM discipline_sanction WHERE federation_id=$1 AND status='proposed'", !!can.discipline),
+    appeals: await n("SELECT count(*)::int AS n FROM discipline_appeal a JOIN discipline_sanction s ON s.id=a.sanction_id WHERE s.federation_id=$1 AND a.status='open'", !!can.discipline),
+  };
   const courses = await n("SELECT count(*)::int AS n FROM training_request q JOIN training_course k ON k.id=q.course_id WHERE k.federation_id=$1 AND q.status='requested'", can.courses);
   const lateClubs = (
     await c.query(
@@ -201,5 +207,6 @@ export async function federationFocus(c: PoolClient, fed: string, can: Federatio
     classificationDays: can.classification ? classificationDays : [],
     tournamentDays: can.competitions ? tournamentDays : [],
     pending: { places: can.competitions ? places : 0, models: can.competitions ? models : 0, courses },
+    discipline,
   };
 }

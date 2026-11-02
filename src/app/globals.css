@@ -3551,6 +3551,34 @@ input.narrow {
   padding: 0;
   margin: 0 0 14px;
 }
+/* 34: discipline (the figures of a sanction, a decision's form, a player's history). */
+.discipline-figures {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.discipline-decide {
+  display: grid;
+  gap: var(--space-2);
+}
+.discipline-history {
+  display: grid;
+  gap: var(--space-2);
+}
+.discipline .report-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-sm);
+}
+.discipline fieldset {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-width: 0;
+}
 /* 25 and 36 to 39: the refereeing desks and the report's review. */
 .refereeing {
   display: grid;

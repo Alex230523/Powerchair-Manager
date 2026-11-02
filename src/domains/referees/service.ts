@@ -8,6 +8,8 @@ import { publish } from "../notifications/queue";
 import { fromOurSide, officialKinds } from "../competitions/schema";
 import type { IcsEvent } from "../calendar/ics";
 import { mirrorTournamentReferee } from "./mirror";
+import { recordCards, type Card } from "../discipline/service";
+import type { Competition } from "../discipline/schema";
 import { expenseAmount, refereeingCommand, reviewOpen, routeLinks, type RefereeingCommand } from "./schema";
 import type { z } from "zod";
 
@@ -421,8 +423,17 @@ export async function refereeingExecute(db: Pool, p: Principal, raw: z.input<typ
 async function validate(c: PoolClient, matchId: string) {
   const r = (await c.query("UPDATE match_report SET validated_at=now() WHERE match_id=$1 AND validated_at IS NULL RETURNING events", [matchId])).rows[0] as { events: { kind: string; side: string; profileId: string | null }[] } | undefined;
   if (!r) return;
-  const m = (await c.query("SELECT home,organization_id FROM match WHERE id=$1", [matchId])).rows[0] as { home: boolean; organization_id: string };
+  const m = (await c.query("SELECT home,organization_id,kind,starts_at FROM match WHERE id=$1", [matchId])).rows[0] as { home: boolean; organization_id: string; kind: Competition; starts_at: string };
   const ours = m.home ? "home" : "away";
+  // 34: the cards go to the discipline (each counted once, in its order in the match).
+  const seq = new Map<string, number>();
+  const cards: Card[] = [];
+  for (const e of r.events.filter((e) => e.side === ours && e.profileId && (e.kind === "yellow" || e.kind === "red"))) {
+    const k = `${e.profileId}:${e.kind}`;
+    seq.set(k, (seq.get(k) ?? 0) + 1);
+    cards.push({ organizationId: m.organization_id, profileId: e.profileId!, kind: e.kind as "yellow" | "red", competition: m.kind, matchId, playedAt: m.starts_at, seq: Math.min(3, seq.get(k)!) });
+  }
+  await recordCards(c, cards);
   for (const e of r.events.filter((e) => e.side === ours && e.profileId)) {
     const set = e.kind === "goal" ? "goals=LEAST(goals+1,50)" : e.kind === "yellow" ? "yellow_cards=LEAST(yellow_cards+1,2)" : "red_card=true";
     await c.query(`UPDATE match_player SET ${set} WHERE match_id=$1 AND organization_id=$2 AND profile_id=$3`, [matchId, m.organization_id, e.profileId]);
