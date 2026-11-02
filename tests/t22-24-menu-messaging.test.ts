@@ -48,8 +48,8 @@ describe("tasks in every menu", () => {
 
 describe("the messaging is gone", () => {
   const files = (dir: string): string[] => readdirSync(dir).flatMap((n) => (statSync(`${dir}/${n}`).isDirectory() ? files(`${dir}/${n}`) : [`${dir}/${n}`]));
-  it("leaves no code of it, outside the PDF of the old exchanges and the redirect", () => {
-    const kept = ["src/domains/messaging-archive/service.ts", "src/domains/messaging-archive/archive-copy.ts", "src/app/api/messaging-archive/route.ts", "src/app/[locale]/messages/page.tsx"];
+  it("leaves no code of it, outside the redirect, and drops its tables", () => {
+    const kept = ["src/app/[locale]/messages/page.tsx"];
     for (const f of [...files("src"), ...files("scripts")]) {
       if (kept.includes(f)) continue;
       const text = readFileSync(f, "utf8");
@@ -57,6 +57,8 @@ describe("the messaging is gone", () => {
     }
     expect(existsSync("src/domains/messages")).toBe(false);
     expect(existsSync("src/app/api/messages")).toBe(false);
+    expect(existsSync("src/domains/messaging-archive")).toBe(false);
+    expect(readFileSync("db/migrations/0080_messaging_dropped.sql", "utf8")).toContain("DROP TABLE IF EXISTS internal_message;");
   });
   it("keeps the club's Communication under its own module", () => {
     expect(optionalModules).toContain("communication");
