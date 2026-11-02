@@ -98,7 +98,7 @@ test("places: private sheet, rate, proposal validated by the federation, window 
     await expect(fromCalendar).toHaveCount(0);
     await page.getByRole("button", { name: "Nouvel événement", exact: true }).click();
     // 1: one search for the place; « Nos lieux » first, the new place among them.
-    const field = page.getByRole("combobox", { name: "Lieu", exact: true });
+    const field = page.locator("input[role=combobox]").and(page.getByRole("combobox", { name: "Lieu", exact: true }));
     await field.fill("Restaurant");
     await expect(page.getByRole("group", { name: "Nos lieux" }).getByRole("option", { name: /^Restaurant du club/ })).toHaveCount(1);
     await expect(page.getByRole("option", { name: "Utiliser « Restaurant » comme lieu libre" })).toBeVisible();
