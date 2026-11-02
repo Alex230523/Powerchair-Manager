@@ -77,9 +77,9 @@ test("a rental's round, its tasks and the road sheet on a phone", async ({ page 
     // The vehicle form, not another card of the page.
     await page.locator("form").filter({ has: page.getByLabel("Adresse de retrait") }).getByRole("button", { name: "Enregistrer", exact: true }).click();
     const card = page.locator(".vehicle-card").filter({ hasText: "Camionnette louée" });
-    await expect(card.getByText("Retrait du véhicule")).toBeVisible();
-    await expect(card.getByText("Retour du véhicule")).toBeVisible();
-    await expect(card.getByText("Le chargement tient dans le véhicule.")).toBeVisible();
+    await expect(card.getByText("Retrait du véhicule").first()).toBeVisible();
+    await expect(card.getByText("Retour du véhicule").first()).toBeVisible();
+    await expect(card.getByText("Le chargement tient dans le véhicule.").first()).toBeVisible();
     await axe(page, "vehicle round");
     await noScroll(page);
 
