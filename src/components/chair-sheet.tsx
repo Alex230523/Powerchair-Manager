@@ -15,6 +15,7 @@ import { Icon } from "./icons";
 import { LoanActions, loanTone } from "./fleet";
 import { ChairWorkshop, ReportBreakdown } from "./workshop";
 import { workshopCopy } from "./workshop-copy";
+import { ChairCompliance } from "./chair-compliance";
 
 export type View = Awaited<ReturnType<typeof equipmentView>>;
 export type Chair = View["chairs"][number];
@@ -156,6 +157,8 @@ export function ChairSheet({ locale, view, chair, busy, send, reload }: { locale
         {tab === "facts" && view.kind === "club" && chair.status !== "retired" && (
           <ReportBreakdown locale={locale} chairId={chair.id} chairName={chair.name} organizationId={view.context.organization_id} done={() => void reload?.()} />
         )}
+        {/* Guide, Le fauteuil de match: « Conforme pour un match », ticked at a service. */}
+        {tab === "facts" && view.kind === "club" && chair.status !== "retired" && <ChairCompliance locale={locale} chairId={chair.id} today={today} />}
         {tab === "workshop" && <ChairWorkshop locale={locale} chairId={chair.id} />}
         {tab === "edit" && <ChairForm key={chair.id + chair.version} locale={locale} view={view} chair={chair} busy={busy} send={send} />}
         {tab === "lend" && <LendPanel locale={locale} view={view} chair={chair} busy={busy} send={send} />}

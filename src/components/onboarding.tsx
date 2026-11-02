@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { onboardingView } from "@/domains/onboarding/service";
@@ -125,6 +126,14 @@ function StepLine({ locale, runId, s, today, busy, send }: { locale: Locale; run
         {s.done_at ? <Badge tone="success">{t.done}</Badge> : late ? <Badge tone="warning">{t.late}</Badge> : null}
       </p>
       {s.body && <p className="small pre-line">{s.body}</p>}
+      {kind === "read" && s.link.startsWith("guide:") && (
+        <p className="small">
+          <Link href={`/${locale}/guide/${s.link.slice(6)}`}>
+            {t.openGuide}
+            <span className="sr-only"> : {s.title}</span>
+          </Link>
+        </p>
+      )}
       {s.signed_name && <p className="small muted">{fill(t.signedAs, { name: s.signed_name })}</p>}
       {!s.done_at &&
         (selfSteps.includes(kind) ? (
@@ -385,6 +394,19 @@ function TemplateEditor({ locale, tpl, data, busy, close, send }: { locale: Loca
                         {profileFields.map((k) => (
                           <option key={k} value={k}>
                             {t.fields[k]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {s.kind === "read" && (
+                    <label htmlFor={`${base}-guide`}>
+                      {t.guideChapter}
+                      <select id={`${base}-guide`} value={s.link} onChange={(e) => change(i, { link: e.target.value })}>
+                        <option value="">{t.guideNone}</option>
+                        {(["game", "chair"] as const).map((g) => (
+                          <option key={g} value={`guide:${g}`}>
+                            {t.guideChapters[g]}
                           </option>
                         ))}
                       </select>

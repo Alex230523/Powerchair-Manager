@@ -558,6 +558,12 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                   <Icon name="settings" size={16} /> {t.settings}
                 </Link>
               )}
+              {/* Guide du powerchair football, for every profile. */}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/guide`}>
+                  <Icon name="document" size={16} /> {t.guide}
+                </Link>
+              )}
               {/* Wave 16 (M1): one line per setting, label left, compact control right. */}
               <hr className="menu-separator" />
               <div className="menu-row">
@@ -607,7 +613,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
                 actions={paletteActions({
                   kind: state?.selected?.kind,
                   role,

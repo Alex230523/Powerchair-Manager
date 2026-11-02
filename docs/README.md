@@ -136,6 +136,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [17 : registre des membres et assemblée générale, automatisés](evolutions/2026-11-02-zu-17-registre-ag.md) |
 | 02/11/2026 | [Parcours d'accueil personnalisables (club et fédération)](evolutions/2026-11-02-zv-parcours-accueil.md) |
 | 02/11/2026 | [Fin de coach : le parcours de départ](evolutions/2026-11-02-zw-fin-de-coach.md) |
+| 02/11/2026 | [Guide du powerchair football : deux pages à lire](evolutions/2026-11-02-zx-guide-du-jeu.md) |
 
 ## Convention
 

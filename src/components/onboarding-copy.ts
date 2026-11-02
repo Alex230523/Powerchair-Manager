@@ -34,6 +34,10 @@ type Copy = {
   stepDays: string;
   stepRequired: string;
   stepLink: string;
+  guideChapter: string;
+  guideNone: string;
+  guideChapters: Record<"game" | "chair", string>;
+  openGuide: string;
   stepOwner: string;
   noOwner: string;
   fields: Record<"phone" | "birth_date" | "licence" | "photo" | "availability", string>;
@@ -98,6 +102,10 @@ const fr: Copy = {
   stepDays: "Jours après l'arrivée",
   stepRequired: "Obligatoire",
   stepLink: "Lien",
+  guideChapter: "Chapitre du guide (coché après lecture)",
+  guideNone: "Aucun",
+  guideChapters: { game: "Le powerchair football en une page", chair: "Le fauteuil de match" },
+  openGuide: "Ouvrir le chapitre",
   stepOwner: "Avec",
   noOwner: "Personne",
   fields: { phone: "Téléphone", birth_date: "Date de naissance", licence: "Permis de conduire", photo: "Photo", availability: "Disponibilités (arbitre)" },
@@ -162,6 +170,10 @@ const nl: Copy = {
   stepDays: "Dagen na de aankomst",
   stepRequired: "Verplicht",
   stepLink: "Koppeling",
+  guideChapter: "Hoofdstuk van de gids (afgevinkt na lezing)",
+  guideNone: "Geen",
+  guideChapters: { game: "Powerchair football op één pagina", chair: "De wedstrijdrolstoel" },
+  openGuide: "Het hoofdstuk openen",
   stepOwner: "Met",
   noOwner: "Niemand",
   fields: { phone: "Telefoon", birth_date: "Geboortedatum", licence: "Rijbewijs", photo: "Foto", availability: "Beschikbaarheden (scheidsrechter)" },
@@ -226,6 +238,10 @@ const en: Copy = {
   stepDays: "Days after arrival",
   stepRequired: "Required",
   stepLink: "Link",
+  guideChapter: "Guide chapter (ticked once read)",
+  guideNone: "None",
+  guideChapters: { game: "Powerchair football on one page", chair: "The match chair" },
+  openGuide: "Open the chapter",
   stepOwner: "With",
   noOwner: "Nobody",
   fields: { phone: "Phone", birth_date: "Date of birth", licence: "Driving licence", photo: "Photo", availability: "Availability (referee)" },

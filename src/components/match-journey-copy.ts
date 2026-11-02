@@ -38,6 +38,9 @@ export type JourneyCopy = {
   checklistSent: string;
   tasks: string;
   dayIntro: string;
+  speedReminder: string;
+  guideChair: string;
+  guideGame: string;
   presences: string;
   minute: string;
   goal: string;
@@ -115,6 +118,9 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     sendChecklist: "Envoyer dans la to-do",
     checklistSent: "{n} tâche(s) ajoutée(s) à la to-do.",
     tasks: "Tâches du match",
+    speedReminder: "Faites contrôler la vitesse de chaque fauteuil au moins 15 minutes avant le coup d'envoi.",
+    guideChair: "Le fauteuil de match",
+    guideGame: "Guide du jeu",
     dayIntro: "Un appui par fait de match. Sans réseau, chaque appui attend sur le téléphone et part dès que la connexion revient.",
     presences: "Présences constatées",
     minute: "Minute",
@@ -200,6 +206,9 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     sendChecklist: "Naar de to-do sturen",
     checklistSent: "{n} taak/taken aan de to-do toegevoegd.",
     tasks: "Taken van de wedstrijd",
+    speedReminder: "Laat de snelheid van elke rolstoel minstens 15 minuten voor de aftrap controleren.",
+    guideChair: "De wedstrijdrolstoel",
+    guideGame: "Spelgids",
     dayIntro: "Eén tik per feit. Zonder netwerk wacht elke tik op de telefoon en vertrekt zodra de verbinding terug is.",
     presences: "Vastgestelde aanwezigheden",
     minute: "Minuut",
@@ -285,6 +294,9 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     sendChecklist: "Send to the to-do",
     checklistSent: "{n} task(s) added to the to-do.",
     tasks: "The match's tasks",
+    speedReminder: "Have every chair's speed checked at least 15 minutes before kick-off.",
+    guideChair: "The match chair",
+    guideGame: "Game guide",
     dayIntro: "One tap per fact. Without network, each tap waits on the phone and leaves as soon as the connection is back.",
     presences: "Attendance taken",
     minute: "Minute",

@@ -17,7 +17,7 @@ describe("welcome journeys", () => {
       }
       expect(new Set(s.steps.map((x) => x.key)).size).toBe(s.steps.length);
     }
-    expect(suggested.coach.steps.map((x) => x.kind)).toEqual(["message", "sign", "profile", "profile", "upload", "training", "task", "meeting", "tour"]);
+    expect(suggested.coach.steps.map((x) => x.kind)).toEqual(["message", "sign", "profile", "profile", "upload", "training", "task", "meeting", "tour", "read", "read"]);
     expect(suggested.referee.audience).toBe("referee");
   });
   it("counts the required steps, finds the next one and those late", () => {

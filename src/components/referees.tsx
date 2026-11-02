@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { ClassificationDays } from "./classification-days";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
@@ -82,7 +83,20 @@ export function RefereeSpace({ locale }: { locale: Locale }) {
 
   return (
     <main id="main" className="access referees">
-      <PageHeader title={t.refereeTitle} subtitle={t.refereeIntro} />
+      <PageHeader
+        title={t.refereeTitle}
+        subtitle={t.refereeIntro}
+        actions={
+          <>
+            <Link className="button secondary" href={`/${locale}/guide/game`}>
+              {t.guideGame}
+            </Link>
+            <Link className="button secondary" href={`/${locale}/guide/chair`}>
+              {t.guideChair}
+            </Link>
+          </>
+        }
+      />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {denied && <p className="notice">{t.denied}</p>}

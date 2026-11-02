@@ -77,8 +77,8 @@ it("gives the invited coach his club's journey when he accepts, with a meeting i
   const mine = await onboardingView(db, coach);
   expect(mine.mine).toHaveLength(1);
   coachRun = mine.mine[0].id;
-  expect(mine.mine[0].steps.map((s) => s.key)).toEqual(["welcome", "charter", "phone", "licence", "certificate", "training", "observe", "meet", "tour"]);
-  expect(mine.mine[0].progress).toMatchObject({ done: 0, total: 7, next: "welcome" });
+  expect(mine.mine[0].steps.map((s) => s.key)).toEqual(["welcome", "charter", "phone", "licence", "certificate", "training", "observe", "meet", "tour", "guide-game", "guide-chair"]);
+  expect(mine.mine[0].progress).toMatchObject({ done: 0, total: 9, next: "welcome" });
   const meet = mine.mine[0].steps.find((s) => s.key === "meet")!;
   const people = (await db.query("SELECT a.profile_id,cp.full_name FROM task_assignee a JOIN club_person cp ON cp.id=a.profile_id WHERE a.task_id=$1 ORDER BY cp.full_name", [meet.task_id])).rows.map((r) => r.full_name);
   expect(people).toEqual(["Nouveau Coach", "Présidente"]);
@@ -110,10 +110,12 @@ it("reminds a late required step once a week, and the club follows who is where"
   expect(Number((await db.query("SELECT count(*)::int AS n FROM notification_dispatch WHERE recipient_user_id=$1", [coach.userId])).rows[0].n)).toBe(before + 1);
   const follow = (await onboardingView(db, president)).runs.find((r) => r.id === coachRun)!;
   expect(follow).toMatchObject({ user_name: "Nouveau Coach", status: "active" });
-  expect(follow.progress).toMatchObject({ done: 5, total: 7, late: 1 });
-  // The club marks the observed training; the tour seen: the journey ends.
+  expect(follow.progress).toMatchObject({ done: 5, total: 9, late: 1 });
+  // The club marks the observed training; the tour seen, the guide read: the journey ends.
   await run(president, { action: "mark", runId: coachRun, key: "observe", done: true }, clubA);
   await db.query("INSERT INTO user_tutorial(user_id,audience,tutorial_seen_at) VALUES($1,'coach',now())", [coach.userId]);
+  // No federation guide here: the coach marks the two pages read himself.
+  for (const key of ["guide-game", "guide-chair"]) await run(coach, { action: "done", runId: coachRun, key }, clubA);
   await onboardingTick(db);
   expect((await onboardingView(db, president)).runs.find((r) => r.id === coachRun)!.status).toBe("done");
 });

@@ -4,6 +4,7 @@ import { isLocale, type Locale } from "../../lib/locale";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
 import { isAdmin, permissions } from "../access/policy";
 import { publish } from "../notifications/queue";
+import { guideReadBy } from "../guide/service";
 import { dueOf, onboardingCommand, progress, stepSchema, suggested, type OnboardingCommand, type Step } from "./schema";
 import { z } from "zod";
 
@@ -143,6 +144,8 @@ export async function autoCheck(c: PoolClient, runId: string) {
     let done = false;
     if (s.kind === "task" || s.kind === "meeting") done = !!s.task_id && !!(await c.query("SELECT 1 FROM task WHERE id=$1 AND status='done'", [s.task_id])).rowCount;
     else if (s.kind === "upload") done = !!s.document_id && !!(await c.query("SELECT 1 FROM club_document WHERE id=$1 AND status IN ('uploaded','review','valid')", [s.document_id])).rowCount;
+    // Guide: an « À lire » step pointing to a chapter ticks once the chapter is read.
+    else if (s.kind === "read" && s.link.startsWith("guide:")) done = await guideReadBy(c, run.organization_id, run.user_id, s.link.slice(6));
     else if (s.kind === "tour") done = !!(await c.query("SELECT 1 FROM user_tutorial WHERE user_id=$1 AND audience=$2 AND tutorial_seen_at IS NOT NULL", [run.user_id, tourAudience[run.audience] ?? run.audience])).rowCount;
     else if (s.kind === "profile") {
       const q: Record<string, [string, unknown[]]> = {

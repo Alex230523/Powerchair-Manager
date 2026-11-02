@@ -11111,3 +11111,197 @@ ul.task-page li {
   padding: var(--space-3);
   min-width: 0;
 }
+
+/* Guide du powerchair football: the table of contents, a chapter, its figures, the club's note. */
+.guide-list {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.guide-item {
+  display: grid;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.guide-item:hover {
+  border-color: var(--border-strong);
+}
+.guide-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.guide-chapter .guide-body {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 48rem;
+}
+.guide-body h2 {
+  font-size: var(--text-lg);
+  margin: var(--space-3) 0 0;
+}
+.guide-body p,
+.guide-body ul {
+  margin: 0;
+}
+.guide-note {
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--info);
+  border-radius: var(--radius-md);
+  background: var(--info-soft);
+  color: var(--text);
+}
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.guide-table :is(th, td) {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.guide-table thead th {
+  color: var(--muted);
+}
+.guide-figure {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.guide-figure figcaption {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.guide-svg {
+  width: 100%;
+  max-width: 34rem;
+  height: auto;
+}
+.gf-court {
+  fill: var(--success-soft);
+  stroke: var(--success-ink);
+  stroke-width: 1.5;
+}
+.gf-line,
+.gf-dim {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.2;
+}
+.gf-dim {
+  stroke: var(--muted);
+  stroke-dasharray: 4 3;
+}
+.gf-area {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 1.2;
+}
+.gf-post {
+  stroke: var(--danger);
+  stroke-width: 4;
+}
+.gf-mark,
+.gf-ball {
+  fill: var(--text);
+}
+.gf-zone {
+  fill: var(--warning-soft);
+  stroke: var(--warning-ink);
+  stroke-dasharray: 5 3;
+}
+.gf-us {
+  fill: var(--primary);
+}
+.gf-them {
+  fill: var(--surface);
+  stroke: var(--danger);
+  stroke-width: 2.5;
+}
+.gf-chair,
+.gf-wheel {
+  fill: var(--surface-soft);
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+.gf-wheel {
+  fill: var(--muted);
+}
+.gf-guard {
+  fill: var(--warning);
+  stroke: var(--warning-ink);
+}
+.gf-belt {
+  stroke: var(--info);
+  stroke-width: 4;
+}
+.gf-number {
+  fill: var(--surface);
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+.gf-text {
+  fill: var(--text);
+  font-size: var(--text-xs);
+}
+.gf-text-them,
+.gf-text-foul {
+  fill: var(--danger-ink);
+  font-weight: 700;
+}
+.guide-ours {
+  max-width: 48rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+.guide-ours h2 {
+  font-size: var(--text-md);
+  margin: 0 0 var(--space-2);
+}
+.guide-sources {
+  max-width: 48rem;
+  color: var(--muted);
+}
+.chair-compliance {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.chair-compliance h3 {
+  font-size: var(--text-md);
+  margin: 0;
+}
+@media print {
+  /* One chapter, one A4 page where it can: the tools stay on screen. */
+  .guide-chapter .no-print,
+  .guide-chapter .page-header .page-actions,
+  .guide-chapter .crumbs {
+    display: none !important;
+  }
+  .guide-chapter {
+    font-size: var(--text-sm);
+  }
+  .guide-chapter .guide-body {
+    gap: var(--space-2);
+  }
+  .guide-svg {
+    max-height: 6.5cm;
+  }
+  .guide-figure,
+  .guide-table tr {
+    break-inside: avoid;
+  }
+}

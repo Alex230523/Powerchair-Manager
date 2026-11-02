@@ -45,6 +45,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/dues/attestations` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/dues/split` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/equipment` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/equipment/compliance` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/equipment/workshop` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/equipment/workshop/report` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/exercises` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -76,6 +77,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/fundraising/public` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/governance` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/governance/journal` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/guide` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/guide/public` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/hall-of-fame/[widget]/[id]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/health` | oui | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/incidents` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
@@ -161,7 +164,10 @@ Notes :
 - `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
+- `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
+- `/api/guide` : Guide du jeu : chapitres publiés de sa fédération ; rédaction par la fédération ; note « Chez nous » du club
+- `/api/guide/public` : Public : chapitre ouvert par la fédération, sans compte
 - `/api/keys` : Clés et badges d'un coach ou d'un membre du staff (H10)
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF
 - `/api/onboarding` : Parcours d'accueil : ses propres parcours ; modèles et suivi pour qui gère les membres
@@ -229,6 +235,9 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/funding/report` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/statements` |  |  |  |  |  |  |  |  |  |   |
 | `/funding/tax` |  |  |  |  |  |  |  |  |  |   |
+| `/guide` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/[slug]` |  |  |  |  |  |  |  |  |  |   |
+| `/guide/public/[federation]/[slug]` |  |  |  |  |  |  |  |  |  |   |
 | `/fundraising` |  |  |  |  |  |  |  |  |  |   |
 | `/hall-of-fame-widget/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/incidents` |  |  |  |  |  |  |  |  |  |   |

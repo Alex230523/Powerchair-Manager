@@ -82,6 +82,9 @@ export const suggested: Record<"coach" | "referee" | "family", { audience: Audie
       s("observe", "task", { fr: "Observer un entraînement", nl: "Een training bijwonen", en: "Observe a training session" }, 14),
       s("meet", "meeting", { fr: "Rencontre avec le président", nl: "Ontmoeting met de voorzitter", en: "Meeting with the president" }, 21),
       s("tour", "tour", { fr: "Visite guidée de l'espace coach", nl: "Rondleiding in de coachruimte", en: "Guided tour of the coach's space" }, 3),
+      // Guide du powerchair football: the two pages, ticked once read.
+      s("guide-game", "read", { fr: "Lire « Le powerchair football en une page »", nl: "« Powerchair football op één pagina » lezen", en: "Read « Powerchair football on one page »" }, 14, { link: "guide:game" }),
+      s("guide-chair", "read", { fr: "Lire « Le fauteuil de match »", nl: "« De wedstrijdrolstoel » lezen", en: "Read « The match chair »" }, 21, { link: "guide:chair" }),
     ],
   },
   referee: {
@@ -99,6 +102,8 @@ export const suggested: Record<"coach" | "referee" | "family", { audience: Audie
       s("training", "training", { fr: "Suivre la formation d'arbitre", nl: "De scheidsrechtersopleiding volgen", en: "Follow the referee training" }, 60),
       s("observe", "meeting", { fr: "Observer un match avec un arbitre confirmé", nl: "Een wedstrijd bijwonen met een ervaren scheidsrechter", en: "Observe a match with an experienced referee" }, 30),
       s("tour", "tour", { fr: "Visite guidée de l'espace arbitre", nl: "Rondleiding in de scheidsrechtersruimte", en: "Guided tour of the referee's space" }, 3),
+      s("guide-game", "read", { fr: "Lire « Le powerchair football en une page »", nl: "« Powerchair football op één pagina » lezen", en: "Read « Powerchair football on one page »" }, 14, { link: "guide:game" }),
+      s("guide-chair", "read", { fr: "Lire « Le fauteuil de match »", nl: "« De wedstrijdrolstoel » lezen", en: "Read « The match chair »" }, 21, { link: "guide:chair" }),
     ],
   },
   family: {
@@ -112,6 +117,8 @@ export const suggested: Record<"coach" | "referee" | "family", { audience: Audie
       s("authorizations", "read", { fr: "Lire et signer les autorisations parentales (page Famille)", nl: "De ouderlijke toestemmingen lezen en ondertekenen (pagina Gezin)", en: "Read and sign the parental authorizations (Family page)" }, 14),
       s("phone", "profile", { fr: "Indiquer un téléphone", nl: "Een telefoonnummer invullen", en: "Give a phone number" }, 7, { link: "phone" }),
       s("first", "task", { fr: "Répondre à la première invitation à l'entraînement", nl: "Antwoorden op de eerste uitnodiging voor de training", en: "Answer the first training invitation" }, 14),
+      s("guide-game", "read", { fr: "Lire « Le powerchair football en une page »", nl: "« Powerchair football op één pagina » lezen", en: "Read « Powerchair football on one page »" }, 14, { link: "guide:game" }),
+      s("guide-chair", "read", { fr: "Lire « Le fauteuil de match »", nl: "« De wedstrijdrolstoel » lezen", en: "Read « The match chair »" }, 21, { link: "guide:chair", required: false }),
     ],
   },
 };

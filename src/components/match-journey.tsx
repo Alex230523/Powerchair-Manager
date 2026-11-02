@@ -74,7 +74,15 @@ export function MatchJourney({ locale, id }: { locale: Locale; id: string }) {
       <p>
         <Link href={`/${locale}/matches`}>← {t.back}</Link>
       </p>
-      <PageHeader title={m.home ? `${m.team} · ${m.opponent}` : `${m.opponent} · ${m.team}`} subtitle={[when, m.venue].filter(Boolean).join(" · ")} />
+      <PageHeader
+        title={m.home ? `${m.team} · ${m.opponent}` : `${m.opponent} · ${m.team}`}
+        subtitle={[when, m.venue].filter(Boolean).join(" · ")}
+        actions={
+          <Link className="button secondary" href={`/${locale}/guide/game`}>
+            {t.guideGame}
+          </Link>
+        }
+      />
       {error && <p role="alert">{error}</p>}
       <p role="status" className="sr-only">
         {message}
@@ -391,6 +399,10 @@ function DayStep({ ctx }: { ctx: Ctx }) {
         {data.match.team} {ours} - {theirs} {data.match.opponent}
       </p>
       {waiting.length > 0 && <p className="notice">{fill(t.offline, { n: waiting.length })}</p>}
+      {/* Guide, Le fauteuil de match: the speed is checked at least 15 minutes before kick-off. */}
+      <p className="notice">
+        {t.speedReminder} <Link href={`/${locale}/guide/chair`}>{t.guideChair}</Link>
+      </p>
       <p role="status">{note}</p>
       <div className="journey-day-tools">
         <label htmlFor="journey-minute">
