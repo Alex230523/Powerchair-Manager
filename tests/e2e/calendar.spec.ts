@@ -5,6 +5,9 @@ import { localAt, shiftLocal } from "../../src/domains/calendar/time";
 import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
+  // A view button clicked low on the page scrolls it: the header's actions then sit under the
+  // sticky top bar, which axe reads as covered targets. The check runs from the top of the page.
+  await page.evaluate(() => window.scrollTo(0, 0));
   expect(
     (
       await new AxeBuilder({ page })
