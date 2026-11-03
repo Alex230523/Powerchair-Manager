@@ -28,6 +28,10 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
   useEffect(() => {
     ref.current?.showModal();
   }, []);
+  // The preview's canvas (with its masks) becomes the picture sent.
+  const publish = useCallback((canvas: HTMLCanvasElement) => {
+    shot.current = canvas;
+  }, []);
   async function capture() {
     setError("");
     // The window steps aside for the picture, then comes back.
@@ -121,7 +125,8 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
             <ShotPreview
               key={shots}
               locale={locale}
-              shot={shot}
+              source={shot}
+              publish={publish}
               drop={() => {
                 shot.current = null;
                 setShots(0);
@@ -148,45 +153,53 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
   );
 }
 
-/** The picture before it leaves: drag on it to mask a zone; or drop it. */
-function ShotPreview({ locale, shot, drop }: { locale: Locale; shot: RefObject<HTMLCanvasElement | null>; drop: () => void }) {
+/**
+ * The picture before it leaves: drag on it to mask a zone; or drop it. The
+ * capture is copied into this component's own canvas, which is then the one
+ * sent (`publish`), so nothing received as a prop is modified.
+ */
+function ShotPreview({ locale, source, publish, drop }: { locale: Locale; source: RefObject<HTMLCanvasElement | null>; publish: (canvas: HTMLCanvasElement) => void; drop: () => void }) {
   const t = feedbackCopy[locale];
-  const box = useRef<HTMLDivElement>(null),
+  const own = useRef<HTMLCanvasElement>(null),
     start = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
-    const host = box.current,
-      canvas = shot.current;
-    if (!host || !canvas) return;
-    canvas.className = "feedback-shot";
-    canvas.setAttribute("role", "img");
-    canvas.setAttribute("aria-label", t.preview);
-    host.replaceChildren(canvas);
-  }, [shot, t]);
-  const point = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const canvas = shot.current!,
+    const from = source.current,
+      to = own.current;
+    if (!from || !to) return;
+    to.width = from.width;
+    to.height = from.height;
+    to.getContext("2d")?.drawImage(from, 0, 0);
+    publish(to);
+  }, [source, publish]);
+  const point = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const canvas = e.currentTarget,
       r = canvas.getBoundingClientRect();
     return { x: ((e.clientX - r.left) / r.width) * canvas.width, y: ((e.clientY - r.top) / r.height) * canvas.height };
   };
   return (
     <div className="feedback-preview">
       <p className="field-help">{t.previewHint}</p>
-      <div
-        ref={box}
-        className="feedback-shot-box"
-        onPointerDown={(e) => {
-          start.current = point(e);
-        }}
-        onPointerUp={(e) => {
-          const a = start.current;
-          start.current = null;
-          if (!a) return;
-          const b = point(e);
-          const ctx = shot.current?.getContext("2d");
-          if (!ctx) return;
-          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "currentColor";
-          ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-        }}
-      />
+      <div className="feedback-shot-box">
+        <canvas
+          ref={own}
+          className="feedback-shot"
+          role="img"
+          aria-label={t.preview}
+          onPointerDown={(e) => {
+            start.current = point(e);
+          }}
+          onPointerUp={(e) => {
+            const a = start.current;
+            start.current = null;
+            if (!a) return;
+            const b = point(e);
+            const ctx = e.currentTarget.getContext("2d");
+            if (!ctx) return;
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "currentColor";
+            ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+          }}
+        />
+      </div>
       <button type="button" className="button secondary" onClick={drop}>
         {t.drop}
       </button>
