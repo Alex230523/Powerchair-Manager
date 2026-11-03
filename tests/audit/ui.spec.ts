@@ -66,8 +66,12 @@ for (const role of roles)
         void page
             .evaluate((html) => {
               const skip = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT", "LINK", "META"]);
+              // Drawn only once mounted, on purpose (theme, text size, contrast): left out of the comparison.
+              const later = ".theme-icons, .compact-select, .small-check";
               const sig = (root: Element) =>
-                [...root.querySelectorAll("*")].filter((e) => !skip.has(e.tagName)).map((e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].join(".") : ""}`);
+                [...root.querySelectorAll("*")]
+                  .filter((e) => !skip.has(e.tagName) && !e.closest(later))
+                  .map((e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].join(".") : ""}${e.children.length ? "" : "=" + (e.textContent ?? "").trim().slice(0, 30)}`);
               const server = sig(new DOMParser().parseFromString(html, "text/html").body),
                 client = sig(document.body);
               let i = 0;
