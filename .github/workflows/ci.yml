@@ -71,7 +71,7 @@ jobs:
           scripts/backup.sh ci-backup.dump.enc
           RESTORE_URL=postgresql://pfm:pfm_ci@localhost:5432/pfm_restore SOURCE_URL="$DATABASE_URL" scripts/restore-check.sh ci-backup.dump.enc
       - name: Build
-        run: scripts/ci-annotate.sh "Build" npm run build
+        run: scripts/ci-annotate.sh "Build" scripts/build-retry.sh
 
   e2e:
     name: End-to-end (Playwright)
@@ -104,7 +104,7 @@ jobs:
             echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
           } > .env.local
       - name: Build (failures shown as annotations; Playwright reuses the output)
-        run: scripts/ci-annotate.sh "Build for end-to-end" npm run build
+        run: scripts/ci-annotate.sh "Build for end-to-end" scripts/build-retry.sh
         env:
           PFM_BUILD_DIR: .next-e2e
           PFM_LOCAL_MAIL: "true"
@@ -161,7 +161,7 @@ jobs:
             echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
           } > .env.local
       - name: Build
-        run: scripts/ci-annotate.sh "Build for the audits" npm run build
+        run: scripts/ci-annotate.sh "Build for the audits" scripts/build-retry.sh
         env:
           PFM_BUILD_DIR: .next-e2e
           PFM_LOCAL_MAIL: "true"
