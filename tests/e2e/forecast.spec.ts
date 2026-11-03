@@ -41,7 +41,7 @@ test("the 12-month cash forecast", async ({ page }) => {
     await page.getByLabel("Montant").fill("5000");
     await page.getByRole("button", { name: "Ajouter à la prévision" }).click();
     await expect(page.getByText(/Achat de 2 fauteuils/).first()).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText("passe sous le seuil");
+    await expect(page.getByRole("alert").filter({ hasText: "passe sous le seuil" })).toBeVisible();
     expect((await db.query("SELECT count(*)::int AS n FROM finance_transaction WHERE organization_id=$1", [club])).rows[0].n).toBe(1);
     await axe(page, "forecast");
     await noSideScroll(page);

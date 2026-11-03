@@ -82,7 +82,7 @@ test("a chair for each player, a breakdown and its repair", async ({ page }) => 
 
     // 3. The repair in « Atelier » gives it back; the report as a PDF.
     await page.getByRole("tab", { name: "Atelier", exact: true }).click();
-    await expect(page.getByText("Le moteur gauche ne répond plus")).toBeVisible();
+    await expect(page.getByText("Le moteur gauche ne répond plus").first()).toBeVisible();
     await page.getByRole("combobox", { name: "Type", exact: true }).selectOption({ label: "Réparation" });
     await page.getByLabel("Coût (€)").fill("80");
     await page.getByLabel("Diagnostic").fill("Connecteur du moteur");
