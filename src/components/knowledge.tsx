@@ -102,7 +102,7 @@ export function Tip({ children, definition }: { children: ReactNode; definition:
   const id = useId();
   const [hidden, setHidden] = useState(false);
   return (
-    <span className="tip" data-hidden={hidden || undefined} onMouseLeave={() => setHidden(false)}>
+    <span className="lex-tip" data-hidden={hidden || undefined} onMouseLeave={() => setHidden(false)}>
       <button type="button" className="tip-term" aria-describedby={id} onKeyDown={(e) => e.key === "Escape" && setHidden(true)} onBlur={() => setHidden(false)}>
         {children}
       </button>
