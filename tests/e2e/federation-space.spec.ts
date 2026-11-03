@@ -32,7 +32,7 @@ test("federation space: clubs and presidents, teams, referees", async ({ page })
     // 1. The menu in the order of the federation's day.
     // The group is folded on the home page: the links are there, in this order (once the menu has loaded).
     await expect(page.locator(".sidebar nav a", { hasText: "Clubs et présidents" })).toHaveCount(1);
-    const links = (await page.locator(".sidebar nav a").allTextContents()).map((x) => x.trim());
+    const links = (await page.locator(".sidebar nav a .nav-label").allTextContents()).map((x) => x.trim());
     const order = ["Clubs et présidents", "Équipes", "Tournois", "Arbitres et désignations", "Licences et classifications", "Formations des coachs"].map((l) => links.indexOf(l));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((x, y) => x - y));

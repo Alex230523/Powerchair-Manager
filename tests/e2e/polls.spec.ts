@@ -65,7 +65,9 @@ test("a date poll, answered by the personal link, becomes the event", async ({ p
 
     // The player's personal link, without signing in, once.
     const href = (await db.query("SELECT href FROM app_notification WHERE recipient_user_id=$1 AND href LIKE '%/sondage/%'", [pu])).rows[0].href as string;
-    const guest = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    // A context of its own (axe needs it), signed out.
+    const guestContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const guest = await guestContext.newPage();
     await guest.goto(href);
     await expect(guest.getByRole("heading", { name: "Quand jouer contre les Aigles ?", level: 1 })).toBeVisible();
     const samedi = guest.getByRole("group", { name: /Samedi/ });
@@ -77,7 +79,7 @@ test("a date poll, answered by the personal link, becomes the event", async ({ p
     await expect(guest.getByText("Merci, votre réponse est enregistrée.").first()).toBeVisible();
     await guest.reload();
     await expect(guest.getByText(/Ce lien a déjà servi/)).toBeVisible();
-    await guest.close();
+    await guestContext.close();
 
     // Live results, then the date becomes the event.
     await page.goto("/fr/sondages");
