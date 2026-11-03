@@ -47,7 +47,7 @@ test("reserved funds, the attestation PDF and the signature", async ({ page }) =
     await page.goto("/fr/funding/reserved");
     await expect(page.getByRole("heading", { name: "Fonds réservés", level: 1 })).toBeVisible();
     await page.getByRole("button", { name: "Nouvelle affectation" }).click();
-    await page.getByLabel("Subside").selectOption({ label: "Province" });
+    await page.getByLabel(/^Subside/).selectOption({ label: "Province" });
     await page.getByLabel("Libellé").fill("2 fauteuils Strike Force");
     await page.getByLabel("Montant prévu").fill("3000");
     await page.getByRole("button", { name: "Enregistrer" }).click();
