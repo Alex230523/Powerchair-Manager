@@ -55,9 +55,9 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     const category = page.getByRole("combobox", { name: "Catégorie" });
     await category.fill("Signalétique");
     await page.getByRole("option", { name: "+ Créer « Signalétique »" }).click();
-    // Created and chosen once the server answers.
+    // Created once the server answers: the category's row appears, then the field keeps it.
+    await expect(page.getByRole("textbox", { name: "Nom de la catégorie Signalétique" })).toBeVisible();
     await expect(category).toHaveValue("Signalétique");
-    await expect(page.locator("input[name=categoryId]")).not.toHaveValue("");
     await category.fill("Ballons");
     await page.getByRole("option", { name: "Ballons", exact: true }).click();
     await page.getByLabel("Quantité").fill("8");
