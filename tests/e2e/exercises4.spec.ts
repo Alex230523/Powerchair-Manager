@@ -49,6 +49,8 @@ test("tactic sheet: objective, tag, pitch drawn by keyboard, list view, federal 
     await dialog.getByText("Dessiner sur le terrain").click();
     await dialog.getByRole("button", { name: "Joueur A", exact: true }).click();
     const pitch = dialog.getByRole("group", { name: "Éditeur de terrain" });
+    // The pitch is low in the window: on screen before the pointer touches it.
+    await pitch.scrollIntoViewIfNeeded();
     const box = (await pitch.boundingBox())!;
     await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.5);
     const player = dialog.getByRole("button", { name: /^joueur A1 à/ });

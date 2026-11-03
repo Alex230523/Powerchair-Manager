@@ -65,7 +65,7 @@ test("the pitch side, offline then synchronised", async ({ page, context }) => {
     // No network: the actions wait on the phone.
     await context.setOffline(true);
     await page.getByRole("tab", { name: "Match" }).click();
-    await page.getByRole("button", { name: "But pour nous" }).click();
+    await page.getByRole("button", { name: /(^|\s)But pour nous$/ }).click();
     await page.getByLabel("Buteur").selectOption(ana);
     await page.getByRole("button", { name: "Enregistrer le but" }).click();
     await page.getByRole("button", { name: "Carton", exact: true }).click();

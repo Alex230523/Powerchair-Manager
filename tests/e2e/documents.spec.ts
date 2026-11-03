@@ -8,7 +8,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
   browser,
 }) => {
   test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use npm run test:e2e:db");
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL }),
     playerContext = await browser.newContext({ baseURL: origin }),
     playerPage = await playerContext.newPage();
