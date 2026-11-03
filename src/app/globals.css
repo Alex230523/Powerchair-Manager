@@ -836,6 +836,11 @@ ol > .card,
   list-style: none;
   padding: 0;
 }
+/* A table wider than the screen scrolls in its frame, never the page. */
+.table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
 .table-scroll {
   overflow-x: auto;
   margin-block: var(--card-gap);
