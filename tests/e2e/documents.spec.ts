@@ -179,6 +179,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
       }),
     ).toBeVisible();
     await playerPage.reload();
+    await playerPage.getByRole("tab", { name: "Liste détaillée" }).click();
     await playerPage
       .getByRole("button", {
         name: "Consentement annuel · Valide",

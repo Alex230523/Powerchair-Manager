@@ -62,7 +62,10 @@ test("tactic sheet: objective, tag, pitch drawn by keyboard, list view, federal 
     await page.keyboard.press("Control+z");
     await expect(dialog.getByLabel("Position X (m, de gauche à droite)")).toHaveValue(before);
     await dialog.getByRole("button", { name: "Ballon", exact: true }).click();
-    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.5);
+    // The panel of the chosen object moved the pitch: measured again.
+    await pitch.scrollIntoViewIfNeeded();
+    const again = (await pitch.boundingBox())!;
+    await page.mouse.click(again.x + again.width * 0.3, again.y + again.height * 0.5);
     await expect(dialog.getByText(/joueur A1 à .*ballon à/)).toBeVisible();
     await axe(page, "sheet form with pitch");
     await dialog.getByRole("button", { name: "Enregistrer" }).click();
