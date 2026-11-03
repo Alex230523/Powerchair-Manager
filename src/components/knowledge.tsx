@@ -103,7 +103,7 @@ export function Tip({ children, definition, href }: { children: ReactNode; defin
   const [hidden, setHidden] = useState(false);
   const keys = { "aria-describedby": id, onKeyDown: (e: { key: string }) => e.key === "Escape" && setHidden(true), onBlur: () => setHidden(false) };
   return (
-    <span className="tip" data-hidden={hidden || undefined} onMouseLeave={() => setHidden(false)}>
+    <span className="lex-tip" data-hidden={hidden || undefined} onMouseLeave={() => setHidden(false)}>
       {/* 7: a tip may also lead somewhere (a click opens the page it sums up). */}
       {href ? (
         <Link href={href} className="tip-term tip-link" {...keys}>
