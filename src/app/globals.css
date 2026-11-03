@@ -3562,6 +3562,14 @@ input.narrow {
   border-radius: var(--radius-md);
   background: var(--surface);
 }
+/* The states are sentences (« Cotisation en retard, certificat manquant… »): they wrap on a phone. */
+.person-overview .badge {
+  height: auto;
+  min-height: 22px;
+  padding-block: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .overview-blocking h2 {
   font-size: var(--text-lg);
   margin: 0 0 var(--space-2);
