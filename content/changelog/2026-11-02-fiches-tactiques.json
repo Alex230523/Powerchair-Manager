@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "coach",
+    "president",
+    "player",
+    "parent",
+    "federation"
+  ],
+  "link": "/exercises",
+  "image": null,
+  "fr": {
+    "title": "Fiches exercice et tactique, terrain dessinable",
+    "text": "Les fiches gagnent un objectif libre, des tags du club et un terrain à dessiner (joueurs, ballon, cônes, flèches, plusieurs situations), au clavier comme au doigt. Une feuille tactique s'ajoute à un match et les joueurs invités la lisent. Un club propose ses fiches à la bibliothèque fédérale, les autres clubs les copient."
+  },
+  "nl": {
+    "title": "Oefen- en tactiekfiches, veld om op te tekenen",
+    "text": "De fiches krijgen een vrij doel, tags van de club en een veld om op te tekenen (spelers, bal, kegels, pijlen, meerdere situaties), met het toetsenbord of met de vinger. Een tactische fiche wordt aan een wedstrijd toegevoegd en de uitgenodigde spelers lezen ze. Een club stelt zijn fiches voor aan de federale bibliotheek, de andere clubs kopiëren ze."
+  },
+  "en": {
+    "title": "Exercise and tactic sheets, a pitch to draw on",
+    "text": "Sheets get a free objective, the club's tags and a pitch to draw on (players, ball, cones, arrows, several situations), by keyboard or by finger. A tactic sheet is added to a match and the invited players read it. A club proposes its sheets to the federal library, the other clubs copy them."
+  }
+}

@@ -263,6 +263,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
                           ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),
                           ...item("/federation/courses", "courses", "team", fed("federation.courses")),
+                          // 4: the federal library of exercise and tactic sheets.
+                          ...item("/exercises", "exercises", "clipboardList", fed("federation.courses")),
                           // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
                           ...item("/equipment", "equipment", "wheelchair", fed("federation.competitions")),
                           // 32: the presidency's delegates and their roles.

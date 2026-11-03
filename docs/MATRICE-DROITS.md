@@ -57,6 +57,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/exercises` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/exercises/[id]` | connexion | introuvable | introuvable | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/exercises/[id]/diagram` | connexion | introuvable | introuvable | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
+| `/api/exercises/library` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/exercises/library/[id]/diagram` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/exercises/program/[eventId]` | connexion | introuvable | introuvable | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
 | `/api/exports` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/family` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -106,6 +108,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/matches/journey` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/matches/journey/tactic` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/news` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |

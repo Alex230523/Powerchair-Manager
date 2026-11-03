@@ -8306,6 +8306,328 @@ details.event-section > summary {
   }
 }
 
+/* ---------- 4: exercise and tactic sheets: tags, pitch editor, federal library ---------- */
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-xs);
+}
+.tag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tag, var(--chart-8));
+}
+.tag-remove {
+  min-width: 24px;
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--text-md);
+}
+.tag-picker {
+  display: grid;
+  gap: var(--space-1);
+  position: relative;
+}
+.tag-options {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+.tag-option {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+.tag-option.is-active {
+  background: var(--accent-soft);
+  color: var(--heading);
+}
+.tag-filter > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.tag-filter fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border: 0;
+  margin: 0;
+  padding: var(--space-2) 0;
+}
+.exercise-table th[scope="row"] {
+  font-weight: 600;
+}
+.exercise-tag-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.exercise-tag-row,
+.exercise-tag-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.federal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--card-gap);
+}
+.federal-sheet,
+.federal-proposal {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--card-padding);
+}
+.match-tactics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.match-tactics summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.pitch-details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.pitch-editor,
+.pitch-panel,
+.pitch-view {
+  display: grid;
+  gap: var(--space-3);
+}
+.pitch-figure {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.pitch-figure figcaption {
+  font-weight: 600;
+}
+.pitch-situation-actions,
+.pitch-history,
+.pitch-nudge,
+.pitch-area-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.pitch-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+  padding: var(--space-2);
+}
+.pitch-tool {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.pitch-tool.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.pitch-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+.pitch-selected {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+.pitch-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  touch-action: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+}
+.pitch-view .pitch-svg {
+  touch-action: auto;
+}
+.pitch-svg-edit.is-placing {
+  cursor: crosshair;
+}
+.pitch-margin {
+  fill: var(--surface-soft);
+}
+.pitch-surface {
+  fill: var(--success-soft);
+}
+.pitch-line {
+  fill: none;
+  stroke: var(--success-ink);
+  stroke-width: 2;
+}
+.pitch-goal {
+  stroke: var(--heading);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.pitch-player {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.pitch-keeper {
+  stroke: var(--heading);
+  stroke-width: 3;
+}
+.pitch-team-a {
+  fill: var(--chart-1);
+}
+.pitch-team-b {
+  fill: var(--chart-4);
+}
+.pitch-player-label {
+  fill: var(--on-primary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  pointer-events: none;
+}
+.pitch-ball {
+  fill: var(--surface);
+  stroke: var(--heading);
+  stroke-width: 2;
+}
+.pitch-cone {
+  fill: var(--warning);
+  stroke: var(--warning-ink);
+  stroke-width: 1;
+}
+.pitch-plot {
+  fill: var(--info);
+  stroke: var(--info-ink);
+  stroke-width: 1;
+}
+.pitch-chair {
+  fill: none;
+  stroke: var(--heading);
+  stroke-width: 2;
+}
+.pitch-zone {
+  fill: var(--info-soft);
+  fill-opacity: 0.6;
+  stroke: var(--info-ink);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.pitch-text {
+  fill: var(--heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.pitch-arrow {
+  stroke: var(--heading);
+  stroke-width: 3;
+  fill: none;
+}
+.pitch-pass {
+  stroke-dasharray: 8 6;
+}
+.pitch-arrowhead {
+  fill: var(--heading);
+}
+.pitch-point {
+  fill: var(--focus);
+}
+.pitch-hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 3;
+}
+.pitch-hit-line {
+  stroke-width: 22;
+}
+.pitch-object {
+  cursor: grab;
+  outline: none;
+}
+.pitch-object.is-selected .pitch-hit,
+.pitch-object:focus-visible .pitch-hit {
+  stroke: var(--focus);
+  stroke-dasharray: 4 3;
+}
+.pitch-object.is-selected .pitch-hit-line,
+.pitch-object:focus-visible .pitch-hit-line {
+  stroke: var(--focus);
+  stroke-opacity: 0.35;
+  stroke-dasharray: none;
+}
+.pitch-description > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+@media print {
+  .pitch-description {
+    display: none;
+  }
+  .pitch-svg {
+    max-height: 110mm;
+  }
+}
+
 /* ---------- The club's tournaments (wave 16, E3) ---------- */
 .club-tournaments-section {
   margin-top: var(--space-6);

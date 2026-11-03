@@ -12,6 +12,7 @@ import { HeadToHead } from "./match-cards";
 import { sidelineCopy } from "./sideline-copy";
 import { ReportReview } from "./refereeing";
 import { useData } from "./use-api";
+import { MatchTactics } from "./match-tactics";
 
 /**
  * A5: one match sheet, three steps. « Avant »: the invitation and its answers,
@@ -100,6 +101,12 @@ export function MatchJourney({ locale, id }: { locale: Locale; id: string }) {
       </p>
       {/* 5: before a match, the last results against the same opponent. */}
       {m.status !== "played" && <HeadToHead locale={locale} matchId={m.id} opponent={m.opponent} teamId={m.team_id} />}
+      {/* 4: the tactic sheets, for the staff and, read only, for the invited. */}
+      {data.manage ? (
+        <MatchTactics locale={locale} matchId={m.id} organizationId={data.organization_id} tactics={data.tactics} options={data.tacticOptions} canEdit={data.canTactics} staff reload={reload} />
+      ) : (
+        data.tactics.length > 0 && <MatchTactics locale={locale} matchId={m.id} organizationId={data.organization_id} tactics={data.tactics} options={[]} canEdit={false} staff={false} reload={reload} />
+      )}
       {data.manage ? (
         <>
           <Tabs

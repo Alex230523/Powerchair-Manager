@@ -9,6 +9,7 @@ import { seasonOf } from "../finance/schema";
 import { manageable } from "./service";
 import { matchEvent, proposeScore } from "./friendly";
 import { speedState } from "../equipment/workshop";
+import { exerciseRights, tacticOptions, tacticsOf } from "../exercises/service";
 
 /**
  * A5: one match sheet in three steps (Avant | Jour J | Après), built on the
@@ -226,6 +227,8 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
         manage: false as const,
         match: m,
         callUp,
+        // 4: the tactics, read only and without the coach's notes, for the invited and their parents only.
+        tactics: callUp.length ? await tacticsOf(c, org, matchId, false) : [],
         lineup: published ? (await lineupOf(c, org, matchId)).map(({ profile_id, full_name, starter, jersey_number, position }) => ({ profile_id, full_name, starter, jersey_number, position })) : null,
         result: done ? { ours: m.our_score, theirs: m.their_score } : null,
       };
@@ -249,9 +252,14 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
       ])
     ).rows as { id: string; title: string; source_kind: string; status: string; responsible: string }[];
     const officials = await officialsOf(c, org, m);
+    const canTactics = exerciseRights(s.context).write;
     return {
       organization_id: org,
       manage: true as const,
+      // 4: « Ajouter une tactique ».
+      tactics: await tacticsOf(c, org, matchId, true),
+      tacticOptions: canTactics ? await tacticOptions(c, org, s.p.userId) : [],
+      canTactics,
       match: m,
       players,
       lineup,
@@ -271,6 +279,15 @@ const words = {
   en: { about: "{team} · {opponent}", result: "Result: {team} {ours}-{theirs} {opponent}", scorers: "Scorers: {names}.", none: "Thanks to all the players, the staff and the supporters!", heading: "{team} against {opponent}" },
 };
 const fill = (x: string, v: Record<string, string | number>) => x.replace(/\{(\w+)\}/g, (k, n: string) => (n in v ? String(v[n]) : k));
+
+/** 4: the image or PDF of a tactic, for those who see it from the match. */
+export async function journeyTacticDiagram(db: Pool, p: Principal, matchId: string, exerciseId: string) {
+  const v = await journeyView(db, p, matchId);
+  if (!v.tactics.some((x) => x.id === exerciseId && x.has_diagram)) throw new AccessError("NOT_FOUND", 404);
+  const d = (await db.query("SELECT media_type,content FROM exercise_diagram WHERE exercise_id=$1 AND organization_id=$2", [exerciseId, v.organization_id])).rows[0] as { media_type: string; content: Buffer } | undefined;
+  if (!d) throw new AccessError("NOT_FOUND", 404);
+  return d;
+}
 
 export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand, expected: string) {
   return peopleScope(db, p, true, async (s: PeopleScope) => {

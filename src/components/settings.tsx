@@ -18,6 +18,7 @@ import { durationText } from "./duration-copy";
 import { TeamPlacesSettings } from "./team-places-settings";
 import { ClubObligations } from "./club-obligations";
 import { HallOfFameSettings } from "./hall-of-fame";
+import { ExerciseTagsSettings } from "./exercise-tags-settings";
 import { EventTypesSettings } from "./event-types-settings";
 import { FiscalYearPanel } from "./fiscal-year";
 import Link from "next/link";
@@ -683,6 +684,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           )}
           {shown && category === "activities" && gov?.can.presence && <TeamPlacesSettings locale={locale} />}
           {shown && category === "activities" && <EventTypesSettings locale={locale} />}
+          {/* 4: the exercise sheets' tags, shared by the coaches. */}
+          {shown && category === "activities" && <ExerciseTagsSettings locale={locale} />}
           {/* H9: the holidays of reference, the closures and the season planner. */}
           {shown && category === "activities" && (
             <Card title={seasonScheduleCopy[locale].referenceTitle} labelledBy="settings-holidays" headingId="settings-holidays">
