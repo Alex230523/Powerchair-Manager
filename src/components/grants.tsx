@@ -438,7 +438,7 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                 <input name="recheck" type="date" defaultValue={v?.recheck_on ?? ""} aria-describedby="grant-recheck-hint" />
                 <span className="muted small field-hint" id="grant-recheck-hint">{c.recheckHint}</span>
               </label>
-              <ContactPicker locale={locale} name="contact" value={v?.contact_id ?? null} label={t.contact} none={t.noContact} />
+              {data.can.contacts && <ContactPicker locale={locale} name="contact" value={v?.contact_id ?? null} label={t.contact} none={t.noContact} />}
             </div>
             <label>
               {c.conditions}
@@ -766,7 +766,7 @@ function FunderForm({ locale, data, funder, busy, post, close }: { locale: Local
             {c.funderPhone}
             <input name="phone" type="tel" maxLength={40} defaultValue={funder.phone} />
           </label>
-          <ContactPicker locale={locale} name="contact" value={funder.contact_id} label={c.funderContact} none={t.noContact} />
+          {data.can.contacts && <ContactPicker locale={locale} name="contact" value={funder.contact_id} label={c.funderContact} none={t.noContact} />}
         </div>
         <label>
           {c.funderAddress}
