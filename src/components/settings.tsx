@@ -18,6 +18,7 @@ import { durationText } from "./duration-copy";
 import { TeamPlacesSettings } from "./team-places-settings";
 import { ClubObligations } from "./club-obligations";
 import { HallOfFameSettings } from "./hall-of-fame";
+import { ClubSecurity, MyDataRequests } from "./data-care";
 import { ExerciseTagsSettings } from "./exercise-tags-settings";
 import { EventTypesSettings } from "./event-types-settings";
 import { FiscalYearPanel } from "./fiscal-year";
@@ -399,6 +400,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && <ClubObligations locale={locale} />}
+          {/* 21: « Sécurité et données »: the agreement, the export, the closure, retention, the requests. */}
+          {shown && category === "club" && <ClubSecurity locale={locale} />}
           {/* 17: the statutes' rules for the assembly and the register. */}
           {shown && category === "club" && <AssociationRules locale={locale} />}
           {shown && category === "club" && <TaxApproval locale={locale} />}
@@ -427,6 +430,8 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
               </p>
             </Card>
           )}
+          {/* 21: a request about one's data, sent to the club that holds it. */}
+          {shown && category === "data" && <MyDataRequests locale={locale} />}
           {shown && category === "data" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />}
           {/* 12: seasons, teams and the season's passage (the former « Gestion du club »). */}
           {shown && category === "seasons" && <People locale={locale} management embedded />}

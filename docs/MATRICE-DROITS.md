@@ -30,8 +30,10 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/classification` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/classification/texts` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/club` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/club/export/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/club/logo` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/club/obligations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/club/security` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/coach-profile` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/communication` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -129,6 +131,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/privacy` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/privacy/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/privacy/mine` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/privacy/requests` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/progress` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/public/club/[slug]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/public/ics/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
@@ -305,6 +308,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/incidents` |  |  |  |  |  |  |  |  |  |   |
 | `/inscription/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/join` |  |  |  |  |  |  |  |  |  |   |
+| `/legal/[doc]` |  |  |  |  |  |  |  |  |  |   |
 | `/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/matches` |  |  |  |  |  |  |  |  |  |   |
 | `/matches/[id]` |  |  |  |  |  |  |  |  |  |   |

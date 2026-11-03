@@ -70,6 +70,8 @@ export const settingsEntries = [
   { id: "setup", category: "club", anchor: "settings-setup" },
   { id: "identity", category: "club", anchor: "club-identity-title" },
   { id: "obligations", category: "club", anchor: "settings-obligations" },
+  // 21: the agreement, the export, the closure, retention, the people's requests.
+  { id: "security", category: "club", anchor: "security" },
   { id: "assemblyRules", category: "club", anchor: "settings-assembly-rules" },
   { id: "tax", category: "club", anchor: "settings-tax" },
   { id: "appearance", category: "club", anchor: "settings-appearance" },

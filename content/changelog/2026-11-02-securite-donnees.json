@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "all"
+  ],
+  "link": "/settings/club",
+  "image": null,
+  "fr": {
+    "title": "Sécurité et données",
+    "text": "La présidence trouve dans Réglages › Club où sont les données, qui y accède, le contrat de sous-traitance à accepter, l'export complet du club et les durées de conservation. Chacun peut demander à son club l'accès, la correction ou l'effacement de ses données depuis Mes données."
+  },
+  "nl": {
+    "title": "Veiligheid en gegevens",
+    "text": "Het voorzitterschap vindt in Instellingen › Club waar de gegevens staan, wie er toegang toe heeft, de te aanvaarden verwerkersovereenkomst, de volledige export van de club en de bewaartermijnen. Iedereen kan zijn club via Mijn gegevens om inzage, verbetering of verwijdering vragen."
+  },
+  "en": {
+    "title": "Security and data",
+    "text": "The presidency finds in Settings › Club where the data is, who accesses it, the processing agreement to accept, the club's full export and the retention periods. Everyone can ask their club for access, correction or erasure of their data from My data."
+  }
+}

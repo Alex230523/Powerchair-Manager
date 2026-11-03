@@ -203,8 +203,9 @@ export async function federationClubsExecute(db: Pool, p: Principal, command: Fe
       if (command.action === "createClub") {
         const club = (
           await s.c.query(
-            `INSERT INTO organization(name,kind,federation_id,city,affiliation_number,company_number,legal_form,contact_email)
-             VALUES($1,'club',$2,$3,$4,$5,$6,$7) RETURNING id`,
+            // 21: a club opened by its federation waits for its president's acceptance of the processing agreement.
+            `INSERT INTO organization(name,kind,federation_id,city,affiliation_number,company_number,legal_form,contact_email,dpa_required)
+             VALUES($1,'club',$2,$3,$4,$5,$6,$7,true) RETURNING id`,
             [command.name, s.fed, command.city, command.affiliationNumber, command.companyNumber, command.legalForm, command.contactEmail || null],
           ).catch((e: { code?: string }) => {
             if (e.code === "23505") throw new AccessError("AFFILIATION_TAKEN", 409);

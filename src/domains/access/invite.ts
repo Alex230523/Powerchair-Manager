@@ -1,3 +1,4 @@
+import { requireDpa } from "../legal/service";
 import type { Pool, PoolClient } from "pg";
 import { assignOnAccept } from "../onboarding/service";
 import { createHash, randomBytes } from "node:crypto";
@@ -68,6 +69,8 @@ export async function inviteProfile(
     message?: string;
   },
 ) {
+  // 21: the members of a club come in once its presidency accepted the processing agreement in force.
+  if (i.role !== "club_president") await requireDpa(c, org);
   const token = randomBytes(32).toString("hex");
   const id = (
     await c.query(

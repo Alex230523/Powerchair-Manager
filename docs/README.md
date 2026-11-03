@@ -157,6 +157,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Joueur : « Mon suivi »](evolutions/2026-11-02-zzp-mon-suivi.md) |
 | 02/11/2026 | [Documents en dossiers et modèles d'emails](evolutions/2026-11-02-zzq-documents-dossiers-modeles.md) |
 | 02/11/2026 | [Matériel, amélioré](evolutions/2026-11-02-zzr-materiel.md) |
+| 02/11/2026 | [Préparer l'ouverture à d'autres clubs](evolutions/2026-11-02-zzs-ouverture-autres-clubs.md) |
 
 ## Convention
 

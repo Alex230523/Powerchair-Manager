@@ -31,6 +31,7 @@ import { forecastTick } from "../finance/forecast";
 import { recruitmentTick } from "../recruitment/service";
 import { attestationTick } from "../dues/attestation-send";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
+import { closureTick, exportTick, retentionTick } from "../legal/service";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { watchdog } from "./watchdog";
@@ -138,6 +139,10 @@ export const jobs = {
         forecast: await forecastTick(db),
         // H1: call back after a trial, follow up a silence, delete after the delay.
         recruitment: await recruitmentTick(db),
+        // 21: the full exports asked for, the closures whose 30 days are over, the retention purge.
+        clubExports: await exportTick(db),
+        clubClosures: await closureTick(db),
+        retention: await retentionTick(db),
       };
     },
   },
