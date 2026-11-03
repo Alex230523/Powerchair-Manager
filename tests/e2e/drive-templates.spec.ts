@@ -95,7 +95,7 @@ test("documents in folders and email templates", async ({ page }) => {
     await card.getByRole("button", { name: "Modifier" }).click();
     const editor = page.getByRole("dialog");
     await editor.getByLabel("Objet").fill("Bienvenue, ");
-    await editor.getByLabel("Insérer une variable", { exact: true }).selectOption("prénom");
+    await editor.getByRole("combobox", { name: /^Insérer une variable/ }).selectOption("prénom");
     await editor.getByLabel("Objet").focus();
     await editor.getByRole("button", { name: "Insérer une variable" }).click();
     await expect(editor.getByLabel("Objet")).toHaveValue("Bienvenue, {prénom}");
