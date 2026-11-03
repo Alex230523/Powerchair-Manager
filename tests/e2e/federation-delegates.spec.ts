@@ -51,7 +51,7 @@ test("delegates and circulars of a federation", async ({ page }) => {
     await appoint.getByLabel("Personne").selectOption({ label: "Rita Arbitre · Fédération équipe" });
     await appoint.getByLabel("Responsable arbitrage").check();
     await appoint.getByRole("button", { name: "Désigner une personne" }).click();
-    await expect(page.locator(".staff-people").getByText(/Rita Arbitre/)).toBeVisible();
+    await expect(page.locator(".staff-people").getByText("Rôles de Rita Arbitre")).toBeVisible();
     await axe(page, "federation team");
     await noSideScroll(page);
 
@@ -67,7 +67,7 @@ test("delegates and circulars of a federation", async ({ page }) => {
     await expect(sent.getByText("Envoyée")).toBeVisible();
     await sent.getByRole("link", { name: "Nouveau règlement des compétitions" }).click();
     await expect(page.getByRole("heading", { name: "Suivi par club" })).toBeVisible();
-    await expect(page.getByText(/Club circulaire/)).toBeVisible();
+    await expect(page.getByText(/Club circulaire/).first()).toBeVisible();
     await axe(page, "follow-up");
     await noSideScroll(page);
     await page.screenshot({ path: "test-results/federation-delegates-390.png", fullPage: true });
