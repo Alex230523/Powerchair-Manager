@@ -58,7 +58,7 @@ test("delegates and circulars of a federation", async ({ page }) => {
     await page.goto("/fr/circulars");
     await page.getByRole("button", { name: "Nouvelle circulaire" }).click();
     await page.getByLabel("Titre").fill("Nouveau règlement des compétitions");
-    await page.getByLabel("Texte", { exact: true }).fill("Le règlement change au 1er janvier. Merci de le lire.");
+    await page.getByRole("textbox", { name: /^Texte/ }).fill("Le règlement change au 1er janvier. Merci de le lire.");
     await page.getByLabel("Accusé de lecture obligatoire").check();
     await axe(page, "compose");
     await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
