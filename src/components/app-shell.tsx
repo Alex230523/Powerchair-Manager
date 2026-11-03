@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FirstSteps } from "./first-steps";
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
@@ -65,24 +65,9 @@ function setTheme(next: "light" | "dark") {
   }
   window.dispatchEvent(new Event("pfm-theme"));
 }
-/**
- * A value read from the browser (theme, text size, contrast), null until the
- * page is mounted. Not useSyncExternalStore: when the shell re-renders before
- * this part of the menu is hydrated, the store's client value was used against
- * the server's HTML (React error #418, the menu then drawn again).
- */
-function useBrowserValue<T>(subscribe: (change: () => void) => () => void, read: () => T): T | null {
-  const [value, setValue] = useState<T | null>(null);
-  useEffect(() => {
-    const update = () => setValue(read());
-    queueMicrotask(update);
-    return subscribe(update);
-  }, [subscribe, read]);
-  return value;
-}
 /** Light or dark: two round icon buttons (wave 16, M1), each named for screen readers and in a tooltip. */
 export function ThemeChoice({ t }: { t: Copy }) {
-  const dark = useBrowserValue(subscribeTheme, isDark);
+  const dark = useSyncExternalStore(subscribeTheme, isDark, () => null);
   if (dark === null) return null;
   return (
     <div className="theme-icons" role="group" aria-label={t.theme}>
@@ -173,7 +158,7 @@ function setDisplay(key: "textSize" | "contrast", value: string) {
 }
 /** Text size as a compact list (wave 16, M1). */
 export function TextSizeChoice({ t, id }: { t: Copy; id: string }) {
-  const state = useBrowserValue(subscribeDisplay, displayState);
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
   if (state === null) return null;
   const size = state.split("|")[0];
   const label: Record<TextSize, string> = { normal: t.textNormal, large: t.textLarge, xlarge: t.textXLarge };
@@ -189,7 +174,7 @@ export function TextSizeChoice({ t, id }: { t: Copy; id: string }) {
 }
 /** Stronger contrast: an 18 px box; the whole label is the 44 px target (wave 16, M1). */
 export function ContrastChoice({ t }: { t: Copy }) {
-  const state = useBrowserValue(subscribeDisplay, displayState);
+  const state = useSyncExternalStore(subscribeDisplay, displayState, () => null);
   if (state === null) return null;
   return (
     <label className="check small-check">
