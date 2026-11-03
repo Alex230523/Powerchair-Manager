@@ -11388,8 +11388,9 @@ ul.task-page li {
 .guide-lexicon dd {
   margin: 0;
 }
-.tip {
+.lex-tip {
   position: relative;
+  display: inline;
 }
 .tip-term {
   font: inherit;
@@ -11397,11 +11398,10 @@ ul.task-page li {
   background: none;
   border: 0;
   padding: 0;
-  /* A word in a sentence, yet a target of 24 px at least (WCAG 2.5.8). */
-  display: inline-block;
-  min-height: 24px;
-  min-width: 24px;
-  vertical-align: baseline;
+  /* A word in a sentence: the inline exception of WCAG 2.5.8 applies, so it
+     stays inline (a block of 24 px would overlap the lines around it). */
+  display: inline;
+  line-height: inherit;
   text-decoration: underline dotted;
   text-underline-offset: 0.2em;
   cursor: help;
@@ -11426,11 +11426,11 @@ ul.task-page li {
   font-size: var(--text-sm);
   font-weight: 400;
 }
-.tip:hover .tip-bubble,
-.tip:focus-within .tip-bubble {
+.lex-tip:hover .tip-bubble,
+.lex-tip:focus-within .tip-bubble {
   display: block;
 }
-.tip[data-hidden] .tip-bubble {
+.lex-tip[data-hidden] .tip-bubble {
   display: none;
 }
 @media print {
