@@ -65,7 +65,7 @@ test("the knowledge centre: tips, quiz, search and its pages", async ({ page }) 
     await axe(page, "quiz");
 
     await page.goto("/fr/guide");
-    await page.getByLabel("Rechercher dans le guide").fill("ramming");
+    await page.getByRole("searchbox", { name: "Rechercher dans le guide" }).fill("ramming");
     await page.getByRole("button", { name: "Rechercher" }).click();
     await expect(page.getByRole("link", { name: "Le powerchair football en une page" }).first()).toBeVisible();
     await axe(page, "search");

@@ -59,7 +59,9 @@ export function Sideline({ locale, id }: { locale: Locale; id: string }) {
   }, [id, send, load, t]);
   useEffect(() => {
     // Loading at mount and following the network are subscriptions to the outside world.
-    void load().then(() => setQueue(pendingActions(id)));
+    void Promise.resolve()
+      .then(load)
+      .then(() => setQueue(pendingActions(id)));
     const up = () => {
       setOnline(true);
       void flush();
