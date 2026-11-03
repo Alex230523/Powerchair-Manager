@@ -220,7 +220,8 @@ export function CategoryPicker({ locale, view, initial, send }: { locale: Locale
     [open, setOpen] = useState(false),
     [active, setActive] = useState(0),
     [created, setCreated] = useState<{ id: string; name: string }[]>([]);
-  const all = [...list.map((g) => ({ id: g.id, name: g.name })), ...created];
+  // A category created here is also in the reloaded list: once only.
+  const all = [...list.map((g) => ({ id: g.id, name: g.name })), ...created.filter((c) => !list.some((g) => g.id === c.id))];
   const typed = text.trim();
   const matches = all.filter((g) => !typed || fold(g.name).includes(fold(typed))).slice(0, 8);
   const exact = all.some((g) => fold(g.name) === fold(typed));
