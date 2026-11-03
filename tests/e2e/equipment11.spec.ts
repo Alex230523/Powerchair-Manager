@@ -45,7 +45,7 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("combobox", { name: /^Fauteuil/ })).toHaveValue(/.+/);
     await dialog.getByRole("combobox", { name: /^Joueur/ }).selectOption({ label: "Léa Martin" });
-    await dialog.getByLabel("Au").fill(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
+    await dialog.getByRole("textbox", { name: "Au" }).fill(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     await dialog.getByRole("button", { name: "Prêter maintenant" }).click();
 
     // 3. Small material with a category typed on the fly, then « Nouveau prêt » of 5 balls.
@@ -66,10 +66,10 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     await page.getByRole("button", { name: "Nouveau prêt" }).click();
     const loan = page.getByRole("dialog");
     await loan.getByLabel("Du matériel").check();
-    await loan.getByLabel("Matériel", { exact: true }).selectOption({ index: 1 });
+    await loan.getByRole("combobox", { name: /^Matériel/ }).selectOption({ index: 1 });
     await loan.getByLabel("Quantité").fill("5");
     await loan.getByRole("combobox", { name: /^Joueur/ }).selectOption({ label: "Léa Martin" });
-    await loan.getByLabel("Au").fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+    await loan.getByRole("textbox", { name: "Au" }).fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
     await loan.getByRole("button", { name: "Prêter maintenant" }).click();
     await expect(page.getByRole("rowheader", { name: "5 × Ballons de match" })).toBeVisible();
     await axe(page, "loans");
