@@ -31,8 +31,8 @@ test("national teams: create a team, readable at 390 px", async ({ page }) => {
     await page.goto("/fr/federation/national");
     await expect(page.getByRole("heading", { level: 1, name: "Équipes nationales" })).toBeVisible();
     await page.getByLabel("Nom (ex. Belgique U18)").fill("Belgique U18");
-    await page.getByLabel("Catégorie", { exact: true }).selectOption("u18");
-    await page.getByLabel("PF2 au plus parmi les sélectionnés (vide : pas de limite)").fill("2");
+    await page.getByLabel(/^Catégorie/).first().selectOption("u18");
+    await page.getByLabel(/^PF2 au plus/).fill("2");
     await page.getByRole("button", { name: "Enregistrer" }).first().click();
     await expect(page.getByRole("heading", { name: /Belgique U18/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
