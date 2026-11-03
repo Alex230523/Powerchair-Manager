@@ -8377,6 +8377,14 @@ details.event-section > summary {
   display: grid;
   gap: var(--space-4);
 }
+/* The file's name and « Détails » side by side in a row: targets of 24 px at least. */
+.drive-table th a,
+.drive-table th .text-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+}
 /* A grid item takes the width of its widest content: the table scrolls in its frame instead. */
 .drive > *,
 .drive-files > * {
