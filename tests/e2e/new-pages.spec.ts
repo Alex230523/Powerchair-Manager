@@ -215,12 +215,12 @@ test("new club, federation and referee pages load and pass axe", async ({
     // from the calendar; notifications inside settings; the photo corner opens Mon espace.
     for (const path of ["/fr/contacts", "/fr/funding/grants", "/fr/funding/partners"]) await check(page, path);
     for (const name of ["Annuaire des salles", "Notifications", "Mon espace", "Messagerie"])
-      await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
+      await expect(page.locator("nav a .nav-label").filter({ hasText: new RegExp(`^${name}$`) })).toHaveCount(0);
     // Menu groups are folded until opened: the entries exist, visible or not. Wave 14 regroups the
     // president's menu: Équipes, Activités (trips and halls are back), Communication, Argent, Club, Plus.
     // Wave 17 (J3): « Transferts » became « Licences », next to « Bourse aux transferts ».
     for (const name of ["Classification", "Bourse aux transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
-      await expect(page.locator("nav").getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(1);
+      await expect(page.locator("nav a .nav-label").filter({ hasText: new RegExp(`^${name}$`) })).toHaveCount(1);
     // 12: no « Plus » group; « Réglages » closes the menu.
     for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
