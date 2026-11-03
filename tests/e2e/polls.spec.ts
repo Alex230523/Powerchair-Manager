@@ -54,9 +54,9 @@ test("a date poll, answered by the personal link, becomes the event", async ({ p
     await page.getByLabel("Question").fill("Quand jouer contre les Aigles ?");
     await expect(page.getByLabel("Qui répond")).toHaveValue("team");
     await page.getByLabel("Date de clôture").fill(local(3, 20));
-    await page.getByLabel("Option 1", { exact: true }).fill("Samedi");
+    await page.getByLabel(/^Option 1 \*?$/).fill("Samedi");
     await page.getByLabel("Date et heure de l'option 1").fill(local(10, 14));
-    await page.getByLabel("Option 2", { exact: true }).fill("Dimanche");
+    await page.getByLabel(/^Option 2 \*?$/).fill("Dimanche");
     await page.getByLabel("Date et heure de l'option 2").fill(local(11, 10));
     await axe(page, "poll form");
     await noSideScroll(page);
