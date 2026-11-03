@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Locale } from "@/lib/locale";
 import type { feedbackView } from "@/domains/feedback/service";
@@ -19,7 +19,9 @@ import { Badge, Button, Card, EmptyState, PageHeader } from "./ui";
 export function FeedbackDialog({ locale, close }: { locale: Locale; close: () => void }) {
   const t = feedbackCopy[locale];
   const ref = useRef<HTMLDialogElement>(null);
-  const [shot, setShot] = useState<HTMLCanvasElement | null>(null),
+  // The picture lives in a ref (a canvas is drawn on, never re-rendered); `shots` counts the captures.
+  const shot = useRef<HTMLCanvasElement | null>(null),
+    [shots, setShots] = useState(0),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [sent, setSent] = useState(false);
@@ -31,7 +33,8 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
     // The window steps aside for the picture, then comes back.
     ref.current?.close();
     try {
-      setShot(await captureScreen());
+      shot.current = await captureScreen();
+      setShots((n) => n + 1);
     } catch {
       setError(t.captureFailed);
     } finally {
@@ -44,7 +47,7 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
     const f = new FormData(form);
     let screenshot: string | null = null;
     try {
-      screenshot = shot ? pngOf(shot) : null;
+      screenshot = shot.current ? pngOf(shot.current) : null;
     } catch {
       screenshot = null;
     }
@@ -114,8 +117,16 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
             <input id="feedback-contact" name="contact" type="checkbox" />
             {t.contact}
           </label>
-          {shot ? (
-            <ShotPreview locale={locale} shot={shot} drop={() => setShot(null)} />
+          {shots > 0 ? (
+            <ShotPreview
+              key={shots}
+              locale={locale}
+              shot={shot}
+              drop={() => {
+                shot.current = null;
+                setShots(0);
+              }}
+            />
           ) : (
             <p>
               <button type="button" className="button secondary" onClick={() => void capture()}>
@@ -138,21 +149,23 @@ export function FeedbackDialog({ locale, close }: { locale: Locale; close: () =>
 }
 
 /** The picture before it leaves: drag on it to mask a zone; or drop it. */
-function ShotPreview({ locale, shot, drop }: { locale: Locale; shot: HTMLCanvasElement; drop: () => void }) {
+function ShotPreview({ locale, shot, drop }: { locale: Locale; shot: RefObject<HTMLCanvasElement | null>; drop: () => void }) {
   const t = feedbackCopy[locale];
   const box = useRef<HTMLDivElement>(null),
     start = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
-    const host = box.current;
-    if (!host) return;
-    shot.className = "feedback-shot";
-    shot.setAttribute("role", "img");
-    shot.setAttribute("aria-label", t.preview);
-    host.replaceChildren(shot);
+    const host = box.current,
+      canvas = shot.current;
+    if (!host || !canvas) return;
+    canvas.className = "feedback-shot";
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", t.preview);
+    host.replaceChildren(canvas);
   }, [shot, t]);
   const point = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const r = shot.getBoundingClientRect();
-    return { x: ((e.clientX - r.left) / r.width) * shot.width, y: ((e.clientY - r.top) / r.height) * shot.height };
+    const canvas = shot.current!,
+      r = canvas.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * canvas.width, y: ((e.clientY - r.top) / r.height) * canvas.height };
   };
   return (
     <div className="feedback-preview">
@@ -168,7 +181,8 @@ function ShotPreview({ locale, shot, drop }: { locale: Locale; shot: HTMLCanvasE
           start.current = null;
           if (!a) return;
           const b = point(e);
-          const ctx = shot.getContext("2d")!;
+          const ctx = shot.current?.getContext("2d");
+          if (!ctx) return;
           ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "currentColor";
           ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
         }}
