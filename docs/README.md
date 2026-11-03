@@ -154,6 +154,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Matchs : une seule ligne, cartes d'équipe, statistiques par équipe](evolutions/2026-11-02-zzm-matchs.md) |
 | 02/11/2026 | [Mode « bord de terrain » sur téléphone](evolutions/2026-11-02-zzn-bord-de-terrain.md) |
 | 02/11/2026 | [Fiches exercice et tactique](evolutions/2026-11-02-zzo-fiches-exercice-tactique.md) |
+| 02/11/2026 | [Joueur : « Mon suivi »](evolutions/2026-11-02-zzp-mon-suivi.md) |
 
 ## Convention
 

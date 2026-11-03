@@ -127,6 +127,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/privacy` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/privacy/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/privacy/mine` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/progress` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/public/club/[slug]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/public/ics/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/push` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |

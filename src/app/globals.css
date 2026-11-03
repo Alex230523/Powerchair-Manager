@@ -8306,6 +8306,44 @@ details.event-section > summary {
   }
 }
 
+/* ---------- 31: « Mon suivi » ---------- */
+.progress {
+  display: grid;
+  gap: var(--card-gap);
+}
+.progress-streaks,
+.progress-goals,
+.progress-feedback {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.progress-goal,
+.progress-note {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.progress-reaction,
+.progress-react-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.progress-form {
+  margin-top: var(--space-3);
+}
+.progress-table td,
+.progress-table th {
+  white-space: nowrap;
+}
+
 /* ---------- 4: exercise and tactic sheets: tags, pitch editor, federal library ---------- */
 .tag-list {
   list-style: none;

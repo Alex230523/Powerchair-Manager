@@ -6,6 +6,8 @@ import { disciplineCopy } from "./discipline-copy";
 import { workshopCopy } from "./workshop-copy";
 import { BillingSplit } from "./billing-split";
 import { CareCard } from "./care-card";
+import { PlayerProgress, useProgress } from "./player-progress";
+import { progressCopy } from "./progress-copy";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -38,7 +40,7 @@ import { toastCopy } from "./toast-copy";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
-type Tab = "overview" | "personal" | "sport";
+type Tab = "overview" | "personal" | "sport" | "progress";
 type Editing = "" | "support" | "confidential" | "sport" | "identity" | "game";
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
@@ -47,7 +49,7 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
  * the directory (`embedded`) or as a full page (/players/[id]); the identity,
  * the position and number and the team assignment are edited here too.
  */
-export function PlayerProfile({ locale, id, embedded = false, onChanged }: { locale: Locale; id: string; embedded?: boolean; onChanged?: () => void }) {
+export function PlayerProfile({ locale, id, embedded = false, onChanged, initialTab }: { locale: Locale; id: string; embedded?: boolean; onChanged?: () => void; initialTab?: string }) {
   const t = playerProfileCopy[locale],
     sc = sheetCopy[locale],
     pc = peopleCopy[locale];
@@ -57,10 +59,12 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [chosenTab, setTab] = useState<Tab | null>(null),
+    [chosenTab, setTab] = useState<Tab | null>(initialTab === "progress" ? "progress" : null),
     [editing, setEditing] = useState<Editing>("");
   // 40: the overview, and the first tab it decides (the overview for the presidency, « Personnel » otherwise).
   const { data: overview } = useOverview(id);
+  // 31: « Mon suivi » for the player and his parents, « Suivi » for his coaches and the presidency.
+  const { data: progress, reload: reloadProgress } = useProgress(locale, id);
   const tab: Tab = chosenTab ?? (overview?.overviewFirst ? "overview" : "personal");
   const failure = (code: string) =>
     t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
@@ -229,12 +233,20 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <Tabs label={p.full_name} items={(overview ? (["overview", "personal", "sport"] as const) : (["personal", "sport"] as const)).map((key) => ({
+      <Tabs label={p.full_name} items={([...(overview ? (["overview"] as const) : []), "personal", "sport", ...(progress ? (["progress"] as const) : [])] as Tab[]).map((key) => ({
           id: key,
           label: (
             <>
-              <Icon name={key === "overview" ? "eye" : key === "personal" ? "user" : "chart"} />
-              {key === "overview" ? overviewCopy[locale].tab : key === "personal" ? t.personalTab : t.sportTab}
+              <Icon name={key === "overview" ? "eye" : key === "personal" ? "user" : key === "progress" ? "star" : "chart"} />
+              {key === "overview"
+                ? overviewCopy[locale].tab
+                : key === "personal"
+                  ? t.personalTab
+                  : key === "progress"
+                    ? progress?.access === "self" || progress?.access === "parent"
+                      ? progressCopy[locale].tabSelf
+                      : progressCopy[locale].tabStaff
+                    : t.sportTab}
             </>
           ),
         }))} value={tab} onChange={(id) => setTab(id as Tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
@@ -962,6 +974,11 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
           </Card>
         )}
       </section>
+      {progress && (
+        <section id="panel-progress" role="tabpanel" aria-labelledby="tab-progress" hidden={tab !== "progress"}>
+          {tab === "progress" && <PlayerProgress locale={locale} data={progress} reload={reloadProgress} />}
+        </section>
+      )}
     {moving && currentTeams.length > 0 && (
         <MoveDialog
           locale={locale}
