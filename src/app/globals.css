@@ -8325,6 +8325,11 @@ details.event-section > summary {
   display: grid;
   gap: var(--space-4);
 }
+/* A grid item takes the width of its widest content: the table scrolls in its frame instead. */
+.drive > *,
+.drive-files > * {
+  min-width: 0;
+}
 .drive-bar {
   display: flex;
   flex-wrap: wrap;
