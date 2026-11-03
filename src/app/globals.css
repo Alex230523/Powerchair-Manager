@@ -12739,3 +12739,9 @@ a.match-context {
   min-height: 56px;
   width: 100%;
 }
+/* 21: the other public texts, each link a target of 44 px. */
+.legal-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
