@@ -413,15 +413,17 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   const badgeOf = (route: string): { count: number; tone: string } | undefined =>
     route === "/tasks" ? { count: myTasks.open, tone: myTasks.late ? "danger" : "warning" } : counterRoutes[route] ? counts.get(counterRoutes[route]) : undefined;
   function item({ route, label, icon }: NavItem) {
-    const todo = badgeOf(route);
+    const todo = badgeOf(route),
+      fresh = news?.badges.includes(route);
+    // 20: « Nouveau » is a description, not part of the entry's name.
     return (
-      <Link key={route} href={`/${locale}${route}`} aria-current={current(route)}>
+      <Link key={route} href={`/${locale}${route}`} aria-current={current(route)} aria-describedby={fresh ? "nav-new-description" : undefined}>
         <span className="nav-icon">
           <Icon name={icon} />
         </span>
         <span className="nav-label">{t[label]}</span>
-        {news?.badges.includes(route) && (
-          <span className="nav-new">
+        {fresh && (
+          <span className="nav-new" aria-hidden="true">
             <Badge tone="info">{t.newBadge}</Badge>
           </span>
         )}
@@ -517,6 +519,9 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
               if ((e.target as Element).closest("a")) setDrawer(false);
             }}
           >
+            <span id="nav-new-description" hidden>
+              {t.newBadge}
+            </span>
             {item({ route: "", label: "home", icon: "home" })}
             {groups.map((group) => {
               const holds = group.items.some((i) => current(i.route) !== undefined);

@@ -3577,6 +3577,12 @@ input.narrow {
 .nav-new {
   margin-inline-start: auto;
 }
+/* On the current entry (filled with the primary colour), the badge takes the inverse colours. */
+.sidebar nav a[aria-current] .nav-new .badge {
+  background: var(--on-primary);
+  border-color: var(--on-primary);
+  color: var(--primary);
+}
 .news-popup {
   max-width: 40rem;
   margin-block: var(--space-3);
