@@ -59,7 +59,7 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     await expect(page.getByRole("textbox", { name: "Nom de la catégorie Signalétique" })).toBeVisible();
     await expect(category).toHaveValue("Signalétique");
     await category.fill("Ballons");
-    await page.getByRole("option", { name: "Ballons", exact: true }).click();
+    await page.getByRole("listbox", { name: "Catégorie" }).getByRole("option", { name: "Ballons", exact: true }).click();
     await page.getByLabel("Quantité").fill("8");
     await page.getByRole("button", { name: "Enregistrer" }).click();
     await expect(page.getByRole("heading", { name: "Catégories du matériel" })).toBeVisible();
