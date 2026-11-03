@@ -12,7 +12,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `/api/absences` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/account/avatar` | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
-| `/api/accounts` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/accounts` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
 | `/api/accounts/export` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/affiliations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/association` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -63,19 +63,19 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/referees` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/teams` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
-| `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
-| `/api/finance/operations` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
-| `/api/finance/receipt/[id]` (+ écriture) | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
-| `/api/finance/report` | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
-| `/api/finance/statements` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
-| `/api/finance/statements/[id]` | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
-| `/api/funding` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
+| `/api/finance/operations` | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
+| `/api/finance/receipt/[id]` (+ écriture) | connexion | introuvable | refusé | refusé | refusé | introuvable | refusé | introuvable | introuvable | introuvable |
+| `/api/finance/report` | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
+| `/api/finance/statements` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
+| `/api/finance/statements/[id]` | connexion | introuvable | refusé | refusé | refusé | introuvable | refusé | introuvable | introuvable | introuvable |
+| `/api/funding` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
 | `/api/funding/deadlines` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
-| `/api/funding/grants/[id]/chairs` | connexion | introuvable | refusé | refusé | refusé | refusé | refusé | refusé | introuvable | refusé |
-| `/api/funding/proof/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | refusé | refusé | refusé | introuvable | refusé |
+| `/api/funding/grants/[id]/chairs` | connexion | introuvable | refusé | refusé | refusé | introuvable | refusé | introuvable | introuvable | introuvable |
+| `/api/funding/proof/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/funding/report` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/funding/report/proof` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
-| `/api/funding/tasks` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/funding/tasks` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/fundraising` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/fundraising/public` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/governance` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
