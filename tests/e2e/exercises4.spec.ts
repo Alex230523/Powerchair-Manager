@@ -38,7 +38,7 @@ test("tactic sheet: objective, tag, pitch drawn by keyboard, list view, federal 
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Titre").fill("Sortie de balle");
     await dialog.getByLabel("Genre").selectOption("tactic");
-    await dialog.getByLabel("Type", { exact: true }).selectOption("tactics");
+    await dialog.getByLabel(/^Type/).selectOption("tactics");
     await dialog.getByLabel("Objectif").fill("Sortir proprement par le côté faible");
     const tags = dialog.getByRole("combobox", { name: "Tags" });
     await tags.fill("Relance");

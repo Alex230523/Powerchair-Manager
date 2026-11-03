@@ -54,7 +54,7 @@ export function LegalPage({ locale, doc }: { locale: Locale; doc: LegalDoc }) {
         </div>
       )}
       <nav aria-label={c.publicPages}>
-        <ul className="plain-list">
+        <ul className="plain-list legal-links">
           {legalDocs
             .filter((d) => d !== doc)
             .map((d) => (

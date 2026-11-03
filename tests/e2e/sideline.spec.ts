@@ -58,7 +58,7 @@ test("the pitch side, offline then synchronised", async ({ page, context }) => {
     await page.goto(`/fr/matches/${created.id}`);
     await page.getByRole("link", { name: "Ouvrir au bord du terrain" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Aigles");
-    await page.getByRole("button", { name: /Ana Buteuse/ }).click();
+    await page.getByRole("button", { name: /^Ana Buteuse(?! :)/ }).click();
     await expect(page.getByText("En ligne")).toBeVisible();
     await axe(page, "presence");
 

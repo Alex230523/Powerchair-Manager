@@ -53,7 +53,7 @@ test("security and data: accept the agreement, ask the full export, send a reque
     await axe(page, "security and data");
 
     await page.goto("/fr/settings/data");
-    await page.getByLabel("Demande").selectOption("rectification");
+    await page.getByRole("combobox", { name: /^Demande/ }).selectOption("rectification");
     await page.getByLabel("Précisions (facultatif)").fill("Mon adresse a changé.");
     await page.getByRole("button", { name: "Envoyer la demande" }).click();
     await expect(page.getByText("Demande transmise au club.")).toBeVisible();
