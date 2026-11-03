@@ -47,9 +47,28 @@ for (const role of roles)
       const issues: Issue[] = [];
       const errors: string[] = [];
       let mark = 0;
+      // The HTML the server sent for the last page, to name what React found different when hydrating.
+      let served = "";
+      page.on("response", (r) => {
+        if (r.request().isNavigationRequest() && r.request().frame() === page.mainFrame()) void r.text().then((t) => (served = t), () => undefined);
+      });
       page.on("console", (m) => {
         // A failed request is reported below with its address, not as the browser's bare message.
         if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) errors.push(m.text().slice(0, 200));
+        if (m.text().includes("#418"))
+          void page
+            .evaluate((html) => {
+              const skip = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT", "LINK", "META"]);
+              const sig = (root: Element) =>
+                [...root.querySelectorAll("*")].filter((e) => !skip.has(e.tagName)).map((e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].join(".") : ""}`);
+              const server = sig(new DOMParser().parseFromString(html, "text/html").body),
+                client = sig(document.body);
+              let i = 0;
+              while (i < server.length && server[i] === client[i]) i++;
+              return `first difference at element ${i}: server [${server.slice(Math.max(0, i - 2), i + 3).join(" ")}] client [${client.slice(Math.max(0, i - 2), i + 3).join(" ")}]`;
+            }, served)
+            .then((d) => console.log(`AUDIT hydration\t${new URL(page.url()).pathname}\t${role}\t${variant.id}\t${d.slice(0, 1200)}`))
+            .catch(() => undefined);
       });
       page.on("pageerror", (e) => errors.push(e.message.slice(0, 200)));
       page.on("response", (r) => {
