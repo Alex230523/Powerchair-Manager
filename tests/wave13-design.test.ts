@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /** Wave 13, foundations: the tokens of the new design system, written once for both themes. */
 const css = readFileSync("src/app/globals.css", "utf8");
@@ -51,7 +51,10 @@ describe("design tokens", () => {
   });
   it("serves the fonts itself", () => {
     const fonts = readFileSync("src/app/fonts.ts", "utf8");
-    expect(fonts).toContain('from "next/font/google"');
+    // The files are in the repository: the build asks nothing of Google either.
+    expect(fonts).toContain('from "next/font/local"');
+    expect(fonts).not.toContain("next/font/google");
+    for (const file of fonts.match(/\.\/fonts\/[a-z0-9-]+\.woff2/g) ?? []) expect(existsSync("src/app/" + file.slice(2))).toBe(true);
     expect(fonts).toContain('variable: "--font-dm-sans"');
     expect(fonts).toContain('variable: "--font-source-serif"');
     expect(css).not.toMatch(/fonts\.googleapis\.com|@import/);
