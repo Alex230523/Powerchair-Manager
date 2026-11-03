@@ -43,6 +43,22 @@ export function contextChanged() {
 // Runs before paint (see layout) so the stored theme never flashes.
 // Text size and contrast (wave 15, C4) are applied the same way.
 export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast"),x=localStorage.getItem("pfm-lexicon");if(x==="off")d.dataset.lexicon="off";if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
+/** What themeScript does, again after mounting (same keys, same values). */
+function reapplyDisplay() {
+  try {
+    const d = document.documentElement.dataset,
+      read = (k: string) => window.localStorage.getItem(k);
+    const theme = read("pfm-theme"),
+      size = read("pfm-text-size"),
+      contrast = read("pfm-contrast");
+    if (read("pfm-lexicon") === "off") d.lexicon = "off";
+    if (theme === "light" || theme === "dark") d.theme = theme;
+    if (size === "large" || size === "xlarge") d.textSize = size;
+    if (contrast === "more" || contrast === "normal") d.contrast = contrast;
+  } catch {
+    /* Storage refused: the defaults stay. */
+  }
+}
 const darkQuery = "(prefers-color-scheme: dark)";
 function subscribeTheme(change: () => void) {
   const media = window.matchMedia(darkQuery);
@@ -237,6 +253,13 @@ function GuestShell({ locale, children }: { locale: Locale; children: ReactNode 
 export function AppShell({ locale, signedIn = true, children }: { locale: Locale; signedIn?: boolean; children: ReactNode }) {
   const path = usePathname(),
     t = shellCopy[locale];
+  // The display preferences on <html>, set again once mounted: when React redraws the
+  // document after a hydration mismatch, <html> loses what the head script had set.
+  useEffect(() => {
+    reapplyDisplay();
+    window.dispatchEvent(new Event("pfm-theme"));
+    window.dispatchEvent(new Event("pfm-display"));
+  }, []);
   const [state, setState] = useState<Workspace | null>(null),
     [signedOut, setSignedOut] = useState(false),
     [busy, setBusy] = useState(false),
