@@ -183,7 +183,7 @@ export function ClubSecurity({ locale }: { locale: Locale }) {
           ))}
         </ul>
         <h3>{t.publicPages}</h3>
-        <ul className="plain-list">
+        <ul className="plain-list legal-links">
           {legalDocs.map((d) => (
             <li key={d}>
               <Link href={`/${locale}/legal/${d}`}>{t.docs[d]}</Link>
