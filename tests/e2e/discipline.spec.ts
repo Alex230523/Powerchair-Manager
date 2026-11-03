@@ -47,17 +47,17 @@ test("discipline: confirm, appeal, pay", async ({ page }) => {
     await page.goto("/fr/federation/discipline");
     await expect(page.getByRole("heading", { name: "Discipline", level: 1 })).toBeVisible();
     const proposed = page.locator("section").filter({ has: page.getByRole("heading", { name: "À décider" }) });
-    await expect(proposed.getByText("Hugo Fougueux")).toBeVisible();
+    await expect(proposed.getByText("Hugo Fougueux", { exact: true })).toBeVisible();
     await axe(page, "federation desk");
     await proposed.getByRole("button", { name: /^Confirmer/ }).click();
     const running = page.locator("section").filter({ has: page.getByRole("heading", { name: "Suspensions en cours" }) });
-    await expect(running.getByText("Hugo Fougueux")).toBeVisible();
+    await expect(running.getByText("Hugo Fougueux", { exact: true })).toBeVisible();
     await noSideScroll(page);
 
     await context(page, clubMandate);
     await page.goto("/fr/discipline");
     const sanctions = page.locator("section").filter({ has: page.getByRole("heading", { name: "Sanctions" }) });
-    await expect(sanctions.getByText("Hugo Fougueux")).toBeVisible();
+    await expect(sanctions.getByText("Hugo Fougueux", { exact: true })).toBeVisible();
     await sanctions.getByText("Introduire un recours").click();
     await sanctions.getByLabel("Motif du recours").fill("Le joueur n'était pas sur le terrain à ce moment.");
     await axe(page, "appeal");

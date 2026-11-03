@@ -111,6 +111,15 @@ jobs:
           PFM_MAIL_DIR: .local/mail-e2e
       - name: End-to-end tests
         run: scripts/ci-annotate.sh "End-to-end" npm run test:e2e:db
+      # The page as the failed test saw it (accessibility tree), readable in the log without downloading the artifact.
+      - name: Page snapshots of the failed tests
+        if: failure()
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r f; do
+            echo "::group::$f"
+            head -n 250 "$f"
+            echo "::endgroup::"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
