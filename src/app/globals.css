@@ -12008,6 +12008,11 @@ ul.task-page li {
 }
 .tip-link {
   color: inherit;
+/* A list of links, one per line: each a target of 44 px. */
+.link-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 /* 32: the federation's home, licence holders by season. */
