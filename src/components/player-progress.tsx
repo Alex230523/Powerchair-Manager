@@ -59,7 +59,7 @@ function FiguresTable({ locale, now, before, labels }: { locale: Locale; now: Fi
 }
 
 /** The form of an objective: area, title, details (and the period for the coach). */
-function GoalForm({ locale, coach, period, busy, submit }: { locale: Locale; coach: boolean; period: string; busy: boolean; submit: (body: Record<string, unknown>) => Promise<boolean> }) {
+function GoalForm({ locale, profileId, coach, period, busy, submit }: { locale: Locale; profileId: string; coach: boolean; period: string; busy: boolean; submit: (body: Record<string, unknown>) => Promise<boolean> }) {
   const t = progressCopy[locale];
   return (
     <form
@@ -70,6 +70,7 @@ function GoalForm({ locale, coach, period, busy, submit }: { locale: Locale; coa
         const f = new FormData(form);
         void submit({
           action: coach ? "goalCreate" : "goalPropose",
+          profileId,
           category: f.get("category"),
           title: String(f.get("title") ?? "").trim(),
           detail: String(f.get("detail") ?? ""),
@@ -244,7 +245,7 @@ export function PlayerProgress({ locale, data, reload }: { locale: Locale; data:
         ) : (
           <p className="muted">{t.noGoals}</p>
         )}
-        {(coach || data.can.propose) && current.length < data.maxGoals && <GoalForm locale={locale} coach={coach} period={data.period} busy={busy} submit={submit} />}
+        {(coach || data.can.propose) && current.length < data.maxGoals && <GoalForm locale={locale} profileId={data.player.id} coach={coach} period={data.period} busy={busy} submit={submit} />}
         {(coach || data.can.propose) && current.length >= data.maxGoals && <p className="muted small">{t.full(data.maxGoals)}</p>}
       </Card>
 

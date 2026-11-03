@@ -65,6 +65,19 @@ test("documents in folders and email templates", async ({ page }) => {
     await page.getByRole("button", { name: /Ouvrir le dossier 2026-2027/ }).click();
     await expect(page.getByRole("link", { name: "Télécharger Statuts" })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 900 });
+    // The elements past the right edge, named in the message when the page scrolls sideways.
+    const wide = await page.evaluate(() =>
+      [...document.querySelectorAll("main *")]
+        .filter((e) => {
+          if (e.getBoundingClientRect().right <= window.innerWidth + 1) return false;
+          // Inside a frame that scrolls or clips: not the page's width.
+          for (let a = e.parentElement; a && a.tagName !== "MAIN"; a = a.parentElement) if (getComputedStyle(a).overflowX !== "visible") return false;
+          return true;
+        })
+        .slice(0, 8)
+        .map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join(".")} ${Math.round(e.getBoundingClientRect().right)}`),
+    );
+    expect(wide, "drive at 390 px").toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await axe(page, "drive at 390 px");
     await page.setViewportSize({ width: 1280, height: 900 });

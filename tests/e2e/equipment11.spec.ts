@@ -44,7 +44,7 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     await page.getByRole("button", { name: "Prêter Vieux fauteuil" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("combobox", { name: /^Fauteuil/ })).toHaveValue(/.+/);
-    await dialog.getByLabel("Joueur").selectOption({ label: "Léa Martin" });
+    await dialog.getByRole("combobox", { name: /^Joueur/ }).selectOption({ label: "Léa Martin" });
     await dialog.getByLabel("Au").fill(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     await dialog.getByRole("button", { name: "Prêter maintenant" }).click();
 
@@ -68,7 +68,7 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     await loan.getByLabel("Du matériel").check();
     await loan.getByLabel("Matériel", { exact: true }).selectOption({ index: 1 });
     await loan.getByLabel("Quantité").fill("5");
-    await loan.getByLabel("Joueur").selectOption({ label: "Léa Martin" });
+    await loan.getByRole("combobox", { name: /^Joueur/ }).selectOption({ label: "Léa Martin" });
     await loan.getByLabel("Au").fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
     await loan.getByRole("button", { name: "Prêter maintenant" }).click();
     await expect(page.getByRole("rowheader", { name: "5 × Ballons de match" })).toBeVisible();
