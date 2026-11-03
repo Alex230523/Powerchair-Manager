@@ -42,6 +42,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/designations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/discipline` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/documents` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/documents/drive` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/documents/file/[id]` (+ écriture) | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/documents/sign/[id]` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/dues` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
@@ -105,6 +106,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/licences` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/licences/copy` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/licenses` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/mail-templates` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/matches` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/matches/journey` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
@@ -248,6 +250,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/coaches/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/coaches/former` |  |  |  |  |  |  |  |  |  |   |
 | `/communication` |  |  |  |  |  |  |  |  |  |   |
+| `/communication/templates` |  |  |  |  |  |  |  |  |  |   |
 | `/contacts` |  |  |  |  |  |  |  |  |  |   |
 | `/design` |  |  |  |  |  |  |  |  |  |   |
 | `/desinscription/[id]` |  |  |  |  |  |  |  |  |  |   |

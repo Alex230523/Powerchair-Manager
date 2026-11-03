@@ -16,6 +16,7 @@ import { errors } from "./access-copy";
 import { Modal } from "./modal";
 import { useData, usePost } from "./use-api";
 import { Badge, EmptyState, PageHeader, Tabs } from "./ui";
+import { mailTemplatesCopy } from "./mail-templates-copy";
 
 type View = Awaited<ReturnType<typeof communicationView>>;
 type Tab = "events" | "newsletter" | "groups" | "alumni" | "sender";
@@ -86,9 +87,15 @@ export function Communication({
         subtitle={t.intro}
         actions={
           // H3: a short question to a group; from an event being prepared, the poll is linked to it.
-          <Link className="button secondary" href={`/${locale}/sondages?new=1${eventId ? `&event=${eventId}` : ""}`}>
-            {pollsCopy[locale].create}
-          </Link>
+          <>
+            <Link className="button secondary" href={`/${locale}/sondages?new=1${eventId ? `&event=${eventId}` : ""}`}>
+              {pollsCopy[locale].create}
+            </Link>
+            {/* 10: the club's email templates, used everywhere. */}
+            <Link className="button secondary" href={`/${locale}/communication/templates`}>
+              {mailTemplatesCopy[locale].open}
+            </Link>
+          </>
         }
       />
       {error && <p role="alert">{error}</p>}

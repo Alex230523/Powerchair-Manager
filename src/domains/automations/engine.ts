@@ -1,3 +1,4 @@
+import { boundTemplate, logSend, viaTemplate } from "../mail-templates/service";
 import { belcotaxDeadline } from "../tax/rules";
 import type { Pool, PoolClient } from "pg";
 import { publish } from "../notifications/queue";
@@ -249,6 +250,8 @@ async function deliverGeneric(c: PoolClient, club: Club, s: Settings, o: Occurre
   const base = process.env.BETTER_AUTH_URL ?? "";
   let sent = 0;
   const notifying = s.actions.filter((a) => a !== "task");
+  // 10: the template chosen for this automation, if any, instead of its own text.
+  const template = notifying.length && isEditable(s.rule) ? await boundTemplate(c, club.id, `automation:${s.rule}`) : null;
   if (notifying.length && isEditable(s.rule))
     for (const r of o.recipients) {
       const k = key(s.rule, o, r.userId);
@@ -274,10 +277,13 @@ async function deliverGeneric(c: PoolClient, club: Club, s: Settings, o: Occurre
         locale: r.locale,
         inApp: notifying.includes("notify"),
         skipEmail: !notifying.includes("email"),
-        variables: { name: r.name, title: render(message.subject, vars).slice(0, 200), message: render(message.body, vars).slice(0, 4000), organization: club.name, url: `${base}/${r.locale}${o.url}` },
+        variables: template
+          ? viaTemplate(template, r.locale, r.name, club.name, { événement: o.about, date: dateLabel(o.due, r.locale), échéance: dateLabel(o.due, r.locale), lien: `${base}/${r.locale}${o.url}` }).variables
+          : { name: r.name, title: render(message.subject, vars).slice(0, 200), message: render(message.body, vars).slice(0, 4000), organization: club.name, url: `${base}/${r.locale}${o.url}` },
       });
       sent++;
     }
+  if (template && sent) await logSend(c, club.id, template.id, "automation", sent, null);
   if (s.actions.includes("task") && catalog[s.rule].category) {
     const k = key(s.rule, o, "task");
     const fresh = (

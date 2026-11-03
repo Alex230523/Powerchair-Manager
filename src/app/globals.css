@@ -8306,6 +8306,135 @@ details.event-section > summary {
   }
 }
 
+/* ---------- 10: documents in folders, email templates ---------- */
+.drive {
+  display: grid;
+  gap: var(--space-4);
+}
+.drive-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.drive-search {
+  flex: 1 1 260px;
+}
+.drive-crumbs ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.drive-crumbs li + li::before {
+  content: "›";
+  margin-right: var(--space-1);
+  color: var(--muted);
+}
+.drive-grid,
+.drive-thumbs,
+.template-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--card-gap);
+}
+.template-list {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.drive-folder {
+  width: 100%;
+  min-height: 120px;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+.drive-folder:hover,
+.drive-folder.is-over {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+}
+.drive-folder-icon,
+.drive-file-icon {
+  width: 36px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  background: var(--chart-3);
+}
+.drive-file-icon {
+  width: 28px;
+  height: 34px;
+  background: var(--info-soft);
+  border: 1px solid var(--info-ink);
+}
+.drive-files {
+  display: grid;
+  gap: var(--space-3);
+}
+.drive-drop {
+  padding: var(--space-3);
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+.drive-drop-hint,
+.drive-move,
+.template-insert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin: 0;
+}
+.drive-thumb,
+.template-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--card-padding);
+}
+.template-subject {
+  margin: 0;
+  font-weight: 600;
+}
+.template-texts,
+.template-preview {
+  display: grid;
+  gap: var(--space-3);
+}
+.template-mail {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+.template-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+  padding: var(--space-3);
+}
+.template-choice {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-3) 0;
+}
+
 /* ---------- 31: « Mon suivi » ---------- */
 .progress {
   display: grid;

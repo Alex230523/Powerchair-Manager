@@ -815,7 +815,8 @@ export async function unsubscribeInfo(db: Pool, id: string) {
   const row = (
     await db.query(
       `SELECT o.name AS club,EXISTS(SELECT 1 FROM mail_unsubscribe u WHERE u.organization_id=d.organization_id AND u.email_hash=d.email_hash) AS done
-         FROM newsletter_delivery d JOIN organization o ON o.id=d.organization_id WHERE d.id=$1`,
+         FROM (SELECT id,organization_id,email_hash FROM newsletter_delivery UNION ALL SELECT id,organization_id,email_hash FROM mail_template_delivery) d
+         JOIN organization o ON o.id=d.organization_id WHERE d.id=$1`,
       [id],
     )
   ).rows[0];
@@ -826,7 +827,8 @@ export async function unsubscribeInfo(db: Pool, id: string) {
 export async function unsubscribeExecute(db: Pool, id: string, stop: boolean) {
   const d = (
     await db.query(
-      "SELECT organization_id,email_hash FROM newsletter_delivery WHERE id=$1",
+      // 10: a newsletter or a template message one may stop.
+      "SELECT organization_id,email_hash FROM newsletter_delivery WHERE id=$1 UNION ALL SELECT organization_id,email_hash FROM mail_template_delivery WHERE id=$1",
       [id],
     )
   ).rows[0];

@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { remindersView } from "@/domains/reminders/service";
 import { errors } from "./access-copy";
 import { Badge, PageHeader, Card, EmptyState } from "./ui";
+import { TemplateChoice } from "./mail-templates";
 import { useScope } from "./use-scope";
 
 type View = Awaited<ReturnType<typeof remindersView>>;
@@ -502,6 +503,8 @@ export function Reminders({
             </Card>
             <Card title={t.template} labelledBy="reminders-template" headingId="reminders-template">
               <p className="muted">{t.templateHint}</p>
+              {/* 10: a template of the club's library instead of the text below. */}
+              <TemplateChoice locale={locale} target={kind === "dues" ? "dues_reminder" : "documents_reminder"} usage={kind === "dues" ? "dues_reminder" : "document_reminder"} />
               <label htmlFor="template-lang">
                 {t.language}
                 <select

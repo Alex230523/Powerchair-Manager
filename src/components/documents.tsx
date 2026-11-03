@@ -21,7 +21,9 @@ import {
   retiredCopy,
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel, Badge, PageHeader } from "./ui";
+import { Button, Panel, Badge, PageHeader, Tabs } from "./ui";
+import { DocumentsDrive } from "./documents-drive";
+import { driveCopy } from "./drive-copy";
 import { DataGrid, postCommand } from "./data-grid";
 import { bulkCopy } from "./bulk-copy";
 import { LoadMore } from "./use-api";
@@ -64,7 +66,9 @@ export function Documents({ locale }: { locale: Locale }) {
     [ruleId, setRule] = useState(""),
     [templateId, setTemplate] = useState(""),
     [moreBusy, setMoreBusy] = useState(false),
-    [purging, setPurging] = useState(false);
+    [purging, setPurging] = useState(false),
+    // 10: the « drive » first, the detailed list one tab away.
+    [tab, setTab] = useState<"drive" | "list">("drive");
   // The top bar's team (wave 12) narrows the list to its members' documents.
   const scope = useScope();
   const scopedUrl = "/api/documents" + (scope.teamId ? `?team=${scope.teamId}` : "");
@@ -177,6 +181,30 @@ export function Documents({ locale }: { locale: Locale }) {
     <>
       <main id="main" className="access documents">
         <PageHeader title={t.title} subtitle={t.intro} />
+        <Tabs
+          label={t.title}
+          idPrefix="documents-tab"
+          panelId={(id) => `documents-panel-${id}`}
+          value={tab}
+          onChange={(v) => setTab(v === "list" ? "list" : "drive")}
+          items={[
+            { id: "drive", label: driveCopy[locale].tabs.drive },
+            { id: "list", label: driveCopy[locale].tabs.list },
+          ]}
+        />
+        {tab === "drive" && (
+          <div id="documents-panel-drive" role="tabpanel" aria-labelledby="documents-tab-drive">
+            <DocumentsDrive
+              locale={locale}
+              onDetails={(name) => {
+                setQuery(name);
+                setTab("list");
+              }}
+            />
+          </div>
+        )}
+        {tab === "list" && (
+        <div id="documents-panel-list" role="tabpanel" aria-labelledby="documents-tab-list">
         {family.node}
         {data?.manage && (
           <p>
@@ -993,6 +1021,8 @@ export function Documents({ locale }: { locale: Locale }) {
         <Button disabled={busy} onClick={() => void task(load)}>
           {t.refresh}
         </Button>
+        </div>
+        )}
       </main>
     </>
   );

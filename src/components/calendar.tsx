@@ -33,6 +33,8 @@ import {
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
+import { EventInvitation } from "./mail-templates";
+import { mailTemplatesCopy } from "./mail-templates-copy";
 import { PlaceDialog } from "./place-dialog";
 import { placesCopy } from "./places-copy";
 import { placesFor, type PlaceCategory } from "@/domains/venues/schema";
@@ -268,6 +270,7 @@ export function Calendar({
   const t = calendarCopy[locale],
     kl = kindLabels[locale];
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const [inviting, setInviting] = useState<string | null>(null);
   const [data, setData] = useState<View | null>(null),
     [anchor, setAnchorState] = useState(() =>
       localAt(new Date(), "Europe/Brussels").slice(0, 10),
@@ -984,6 +987,14 @@ export function Calendar({
                   )}
                   <section aria-labelledby="event-sheet-invitations">
                     <h3 id="event-sheet-invitations">{p.invitations}</h3>
+                    {/* 10: an invitation written from the club's templates, filled with the event. */}
+                    {sheetEvent.canEdit && sheetEvent.status === "scheduled" && (
+                      <p>
+                        <Button size="sm" variant="secondary" icon="message" onClick={() => setInviting(sheetEvent.id)}>
+                          {mailTemplatesCopy[locale].invite}
+                        </Button>
+                      </p>
+                    )}
                     {sheetEvent.attendance.length > 0 && (
                       <p className="event-answers">
                         <strong>{ev.responses}</strong> : {ev.yes} {count(sheetEvent, "present")} · {ev.no} {count(sheetEvent, "absent")} · {ev.noAnswer} {count(sheetEvent, "none")}
@@ -1482,6 +1493,7 @@ export function Calendar({
         <Button variant="secondary" disabled={busy} onClick={() => void task(load)}>
           {t.refresh}
         </Button>
+        {inviting && <EventInvitation locale={locale} eventId={inviting} close={() => setInviting(null)} />}
       </main>
     </>
   );

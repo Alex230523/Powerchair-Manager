@@ -7,6 +7,7 @@ import { automationsCopy } from "./automations-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
 import { Badge, Button, Card, EmptyState } from "./ui";
+import { TemplateChoice } from "./mail-templates";
 
 type View = Awaited<ReturnType<typeof automationsView>>;
 type Rule = View["rules"][number];
@@ -220,6 +221,8 @@ function RuleCard({ locale, rule: r, busy, send }: { locale: Locale; rule: Rule;
           <details className="automation-message">
             <summary>{t.message}</summary>
             <p className="muted small">{t.messageHint}</p>
+            {/* 10: or one of the club's templates. */}
+            <TemplateChoice locale={locale} target={`automation:${r.rule}`} />
             {(["fr", "nl", "en"] as const).map((l) => (
               <fieldset key={l}>
                 <legend>{t.languages[l]}</legend>
