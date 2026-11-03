@@ -85,3 +85,5 @@ Le trait orange du logo est une partie d'un logotype (lettres sombres, trait de 
 ## Vérification
 
 `npm run check`, `npm run test:e2e:db`.
+
+Mise à jour du 03/11/2026 : les fichiers des polices sont dans le dépôt (`src/app/fonts/`, sous-ensemble « latin » de Fontsource, licence SIL OFL jointe) et chargés avec `next/font/local`. Le build ne contacte plus Google : une coupure du serveur de polices faisait échouer la CI sans rapport avec le code. Une lettre hors de ce sous-ensemble s'affiche dans la police du système.
