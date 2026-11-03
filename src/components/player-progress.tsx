@@ -32,7 +32,8 @@ function FiguresTable({ locale, now, before, labels }: { locale: Locale; now: Fi
     { label: t.cards, now: t.cardsValue(now.yellow, now.red), before: t.cardsValue(before.yellow, before.red), diff: "" },
   ];
   return (
-    <div className="table-wrap">
+    // A frame that may scroll on a phone: reachable with the keyboard, named by the table.
+    <div className="table-wrap" tabIndex={0} role="region" aria-label={t.tableCaption(labels.now, labels.before)}>
       <table className="data-table progress-table">
         <caption className="sr-only">{t.tableCaption(labels.now, labels.before)}</caption>
         <thead>
