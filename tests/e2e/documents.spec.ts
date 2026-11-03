@@ -158,6 +158,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
       }),
     ).toBeVisible();
     await page.reload();
+    await page.getByRole("tab", { name: "Liste détaillée" }).click();
     await page
       .getByRole("button", {
         name: "Consentement annuel · Déposé",

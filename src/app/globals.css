@@ -3562,6 +3562,14 @@ input.narrow {
   border-radius: var(--radius-md);
   background: var(--surface);
 }
+/* The states are sentences (« Cotisation en retard, certificat manquant… »): they wrap on a phone. */
+.person-overview .badge {
+  height: auto;
+  min-height: 22px;
+  padding-block: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .overview-blocking h2 {
   font-size: var(--text-lg);
   margin: 0 0 var(--space-2);
@@ -3576,6 +3584,12 @@ input.narrow {
 }
 .nav-new {
   margin-inline-start: auto;
+}
+/* On the current entry (filled with the primary colour), the badge takes the inverse colours. */
+.sidebar nav a[aria-current] .nav-new .badge {
+  background: var(--on-primary);
+  border-color: var(--on-primary);
+  color: var(--primary);
 }
 .news-popup {
   max-width: 40rem;
@@ -8358,6 +8372,11 @@ details.event-section > summary {
   display: grid;
   gap: var(--space-4);
 }
+/* A grid item takes the width of its widest content: the table scrolls in its frame instead. */
+.drive > *,
+.drive-files > * {
+  min-width: 0;
+}
 .drive-bar {
   display: flex;
   flex-wrap: wrap;
@@ -12437,8 +12456,17 @@ ul.task-page li {
   grid-auto-columns: minmax(15rem, 1fr);
   gap: var(--space-3);
   overflow-x: auto;
+  min-width: 0;
+  max-width: 100%;
   padding-block-end: var(--space-2);
   margin-block: var(--space-3);
+}
+/* On a phone the steps follow each other: no board wider than the screen. */
+@media (max-width: 640px) {
+  .prospect-board {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
 }
 .prospect-column {
   display: grid;

@@ -43,7 +43,7 @@ test("equipment: tabs, models, loans and categories", async ({ page }) => {
     await expect(page.getByRole("button", { name: "Choisir le modèle de Vieux fauteuil" })).toBeVisible();
     await page.getByRole("button", { name: "Prêter Vieux fauteuil" }).click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByLabel("Fauteuil")).toHaveValue(/.+/);
+    await expect(dialog.getByRole("combobox", { name: /^Fauteuil/ })).toHaveValue(/.+/);
     await dialog.getByLabel("Joueur").selectOption({ label: "Léa Martin" });
     await dialog.getByLabel("Au").fill(new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10));
     await dialog.getByRole("button", { name: "Prêter maintenant" }).click();
