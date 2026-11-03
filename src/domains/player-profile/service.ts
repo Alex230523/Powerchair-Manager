@@ -512,7 +512,7 @@ export async function personOverview(db: Pool, p: Principal, id: string) {
       blocks.licence =
         ((await c.query("SELECT status FROM license WHERE profile_id=$1 AND organization_id=$2 AND season=$3 ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'requested' THEN 1 ELSE 2 END LIMIT 1", [id, org, season])).rows[0]?.status as string | undefined) ?? null;
     }
-    blocks.chairs = (await chairsFor(c, org, [id])).map((ch) => ({ id: ch.id, name: ch.name, status: ch.status }));
+    blocks.chairs = (await chairsFor(c, org, [id])).map((ch) => ({ id: ch.id, name: ch.label ?? ch.name, status: ch.status }));
     if (can.viewMoney) {
       const m = (
         await c.query(

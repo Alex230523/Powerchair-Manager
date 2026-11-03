@@ -11,6 +11,9 @@ import type { Command } from "./schema";
 export type StoragePlace = {
   id: string;
   name: string;
+  /** 11: the place it is inside, if any (two levels). */
+  parent_id: string | null;
+  parent_name: string | null;
   place_id: string | null;
   place_name: string | null;
   address: string;
@@ -30,11 +33,11 @@ export async function storageView(s: Scope) {
   if (!see) return { places: [] as StoragePlace[], clubPlaces: [] as { id: string; name: string; address: string }[], can: false };
   const places = (
     await s.c.query(
-      `SELECT l.id,l.name,l.place_id,p.name AS place_name,l.address,l.contact,l.access,l.notes,l.archived,l.version,
-              COALESCE((SELECT json_agg(json_build_object('id',c.id,'name',c.name) ORDER BY c.name) FROM equipment_chair c WHERE c.storage_location_id=l.id AND c.status<>'retired'),'[]') AS chairs,
+      `SELECT l.id,l.name,l.parent_id,(SELECT pp.name FROM storage_location pp WHERE pp.id=l.parent_id) AS parent_name,l.place_id,p.name AS place_name,l.address,l.contact,l.access,l.notes,l.archived,l.version,
+              COALESCE((SELECT json_agg(json_build_object('id',c.id,'name',chair_label(c.id)) ORDER BY c.name) FROM equipment_chair c WHERE c.storage_location_id=l.id AND c.status<>'retired'),'[]') AS chairs,
               COALESCE((SELECT json_agg(json_build_object('id',i.id,'name',i.name,'quantity',i.quantity) ORDER BY i.name) FROM equipment_item i WHERE i.storage_location_id=l.id AND NOT i.archived),'[]') AS items
          FROM storage_location l LEFT JOIN calendar_place p ON p.id=l.place_id
-        WHERE l.organization_id=$1 ORDER BY l.archived,lower(l.name)`,
+        WHERE l.organization_id=$1 ORDER BY l.archived,lower(COALESCE((SELECT pp.name FROM storage_location pp WHERE pp.id=l.parent_id),l.name)),l.parent_id IS NOT NULL,lower(l.name)`,
       [org],
     )
   ).rows as StoragePlace[];
@@ -59,6 +62,13 @@ export async function storageExecute(s: Scope, input: Extract<Command, { action:
   if (input.placeId && !(await s.c.query("SELECT 1 FROM calendar_place WHERE id=$1 AND organization_id=$2", [input.placeId, org])).rowCount)
     throw new AccessError("NOT_FOUND", 404);
   const values = [input.name, input.placeId, input.address, input.contact, input.access, input.notes, input.archived];
+  // 11: inside another place of the club, two levels at most.
+  if (input.parentId) {
+    const parent = (await s.c.query("SELECT id,parent_id FROM storage_location WHERE id=$1 AND organization_id=$2 AND NOT archived", [input.parentId, org])).rows[0];
+    if (!parent) throw new AccessError("NOT_FOUND", 404);
+    if (parent.parent_id || parent.id === input.id || (input.id && (await s.c.query("SELECT 1 FROM storage_location WHERE parent_id=$1", [input.id])).rowCount))
+      throw new AccessError("TOO_DEEP", 409);
+  }
   let id = input.id;
   if (id) {
     const r = await s.c.query(
@@ -73,6 +83,7 @@ export async function storageExecute(s: Scope, input: Extract<Command, { action:
     id = (
       await s.c.query("INSERT INTO storage_location(organization_id,name,place_id,address,contact,access,notes,archived) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", [org, ...values])
     ).rows[0].id as string;
+  if (input.parentId !== undefined) await s.c.query("UPDATE storage_location SET parent_id=$2 WHERE id=$1", [id, input.parentId ?? null]);
   await audit(s.c, org, s.p.userId, "equipment.storage", id!);
   return { id: id! };
 }

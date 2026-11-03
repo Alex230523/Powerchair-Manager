@@ -16,6 +16,8 @@ import { setupCopy } from "./setup-copy";
 import { ChairDialog, LoanBadge, ModelCell, NewChairDialog, brusselsToday, dayOf, type View } from "./chair-sheet";
 import { BorrowedChairs, LendingTab, ModelsTab, PlacesTab } from "./fleet";
 import { WorkshopOverview } from "./workshop";
+import { CategoriesCard, DirectLoans, LendDialog } from "./equipment-more";
+import { equipmentMoreCopy } from "./equipment-more-copy";
 import { workshopCopy } from "./workshop-copy";
 
 const tones = {
@@ -52,9 +54,11 @@ export function Equipment({ locale }: { locale: Locale }) {
     [status, setStatus] = useState("active"),
     [model, setModel] = useState(""),
     [place, setPlace] = useState(""),
-    [tab, setTab] = useState<Tab>("chairs");
+    [tab, setTab] = useState<Tab>("chairs"),
+    // 11: « Prêter » from a row.
+    [lending, setLending] = useState<{ chairId?: string; itemId?: string } | null>(null);
   const today = brusselsToday();
-  const failure = (code: string) => f.errors[code] ?? t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
+  const failure = (code: string) => equipmentMoreCopy[locale].errors[code] ?? f.errors[code] ?? t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
 
   const scope = useScope();
   const scopedUrl = "/api/equipment" + (scope.teamId ? `?team=${scope.teamId}` : "");
@@ -126,7 +130,7 @@ export function Equipment({ locale }: { locale: Locale }) {
         // B3: the club's workshop, for the material managers and the coaches (chairs for their events).
         ...(view.kind === "club" && (view.manage || view.context.role === "coach") ? (["workshop"] as const) : []),
         ...(view.stockCan.seeItems || view.stockCan.propose || view.stockCan.decide ? (["small"] as const) : []),
-        ...(view.loans.can ? (["lending"] as const) : []),
+        ...(view.loans.can || view.manage ? (["lending"] as const) : []),
         ...(view.storage.can || view.storage.places.length ? (["places"] as const) : []),
         ...(view.models.canDecide ? (["models"] as const) : []),
       ]
@@ -162,7 +166,32 @@ export function Equipment({ locale }: { locale: Locale }) {
       )}
       {view && (
         <>
-          {tabs.length > 1 && <Tabs label={f.tabsLabel} items={tabs.map((k) => ({ id: k, label: k === "workshop" ? workshopCopy[locale].tab : f.tabs[k] }))} value={tab} onChange={(v) => setTab(v as Tab)} panelId="equipment-panel" idPrefix="equipment-tab" />}
+          {/* 11: two groups of tabs: what we own, and where it is and with whom; the models for the federation. */}
+          {tabs.length > 1 && (
+            <div className="tab-groups">
+              {(
+                [
+                  ["owned", tabs.filter((k) => k === "chairs" || k === "workshop" || k === "small")],
+                  ["where", tabs.filter((k) => k === "lending" || k === "places")],
+                  ["models", tabs.filter((k) => k === "models")],
+                ] as const
+              )
+                .filter(([, list]) => list.length)
+                .map(([group, list]) => (
+                  <div key={group} className="tab-group">
+                    {group !== "models" && <span className="tab-group-label" aria-hidden="true">{equipmentMoreCopy[locale][group]}</span>}
+                    <Tabs
+                      label={group === "models" ? f.tabs.models : equipmentMoreCopy[locale][group]}
+                      items={list.map((k) => ({ id: k, label: k === "workshop" ? workshopCopy[locale].tab : f.tabs[k] }))}
+                      value={list.includes(tab as never) ? tab : ""}
+                      onChange={(v) => setTab(v as Tab)}
+                      panelId="equipment-panel"
+                      idPrefix="equipment-tab"
+                    />
+                  </div>
+                ))}
+            </div>
+          )}
           <div id="equipment-panel" role={tabs.length > 1 ? "tabpanel" : undefined} aria-labelledby={tabs.length > 1 ? `equipment-tab-${tab}` : undefined}>
             {tab === "chairs" && (
               <>
@@ -271,9 +300,14 @@ export function Equipment({ locale }: { locale: Locale }) {
                                   {c.name}
                                 </button>
                                 <LoanBadge locale={locale} view={view} chairId={c.id} />
+                                {view.manage && c.status !== "retired" && (
+                                  <button type="button" className="text-button small" aria-label={equipmentMoreCopy[locale].lendOf(c.name)} onClick={() => setLending({ chairId: c.id })}>
+                                    {equipmentMoreCopy[locale].lend}
+                                  </button>
+                                )}
                               </th>
                               <td>
-                                <ModelCell locale={locale} chair={c} />
+                                <ModelCell locale={locale} chair={c} onChoose={view.manage ? () => setOpen(c.id) : undefined} name={c.name} />
                               </td>
                               <td>{dayOf(locale, c.acquired_on)}</td>
                               <td>
@@ -311,13 +345,24 @@ export function Equipment({ locale }: { locale: Locale }) {
                 <BorrowedChairs locale={locale} view={view} />
               </>
             )}
-            {tab === "small" && <Stock locale={locale} view={view} busy={busy} send={send} reload={load} />}
-            {tab === "lending" && <LendingTab locale={locale} view={view} busy={busy} send={send} />}
+            {tab === "small" && (
+              <>
+                <Stock locale={locale} view={view} busy={busy} send={send} reload={load} lend={(itemId) => setLending({ itemId })} />
+                <CategoriesCard locale={locale} view={view} busy={busy} send={send} />
+              </>
+            )}
+            {tab === "lending" && (
+              <>
+                <DirectLoans locale={locale} view={view} busy={busy} send={send} />
+                {view.loans.can && <LendingTab locale={locale} view={view} busy={busy} send={send} />}
+              </>
+            )}
             {tab === "places" && <PlacesTab locale={locale} view={view} busy={busy} send={send} />}
             {tab === "workshop" && <WorkshopOverview locale={locale} />}
             {tab === "models" && <ModelsTab locale={locale} view={view} busy={busy} send={send} />}
           </div>
           {open === "new" && view.manage && <NewChairDialog locale={locale} view={view} busy={busy} send={send} close={() => setOpen("")} opened={(id) => setOpen(id)} />}
+          {lending && <LendDialog locale={locale} view={view} initial={lending} busy={busy} send={send} close={() => setLending(null)} />}
           {current && <ChairDialog key={current.id} locale={locale} view={view} chair={current} busy={busy} send={send} close={() => setOpen("")} reload={load} />}
         </>
       )}

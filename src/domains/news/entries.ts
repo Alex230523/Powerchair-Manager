@@ -40,14 +40,15 @@ import e37 from "../../../content/changelog/2026-11-02-federation-asbl.json";
 import e38 from "../../../content/changelog/2026-11-02-fiches-tactiques.json";
 import e39 from "../../../content/changelog/2026-11-02-fonds-reserves.json";
 import e40 from "../../../content/changelog/2026-11-02-matchs.json";
-import e41 from "../../../content/changelog/2026-11-02-mon-suivi.json";
-import e42 from "../../../content/changelog/2026-11-02-nouveautes.json";
-import e43 from "../../../content/changelog/2026-11-02-previsions.json";
-import e44 from "../../../content/changelog/2026-11-02-rapport-impact.json";
-import e45 from "../../../content/changelog/2026-11-02-recrutement.json";
-import e46 from "../../../content/changelog/2026-11-02-signalements.json";
-import e47 from "../../../content/changelog/2026-11-02-sondages.json";
-import e48 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
+import e41 from "../../../content/changelog/2026-11-02-materiel.json";
+import e42 from "../../../content/changelog/2026-11-02-mon-suivi.json";
+import e43 from "../../../content/changelog/2026-11-02-nouveautes.json";
+import e44 from "../../../content/changelog/2026-11-02-previsions.json";
+import e45 from "../../../content/changelog/2026-11-02-rapport-impact.json";
+import e46 from "../../../content/changelog/2026-11-02-recrutement.json";
+import e47 from "../../../content/changelog/2026-11-02-signalements.json";
+import e48 from "../../../content/changelog/2026-11-02-sondages.json";
+import e49 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -91,12 +92,13 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-02-fiches-tactiques", data: e38 },
   { id: "2026-11-02-fonds-reserves", data: e39 },
   { id: "2026-11-02-matchs", data: e40 },
-  { id: "2026-11-02-mon-suivi", data: e41 },
-  { id: "2026-11-02-nouveautes", data: e42 },
-  { id: "2026-11-02-previsions", data: e43 },
-  { id: "2026-11-02-rapport-impact", data: e44 },
-  { id: "2026-11-02-recrutement", data: e45 },
-  { id: "2026-11-02-signalements", data: e46 },
-  { id: "2026-11-02-sondages", data: e47 },
-  { id: "2026-11-02-vue-ensemble", data: e48 },
+  { id: "2026-11-02-materiel", data: e41 },
+  { id: "2026-11-02-mon-suivi", data: e42 },
+  { id: "2026-11-02-nouveautes", data: e43 },
+  { id: "2026-11-02-previsions", data: e44 },
+  { id: "2026-11-02-rapport-impact", data: e45 },
+  { id: "2026-11-02-recrutement", data: e46 },
+  { id: "2026-11-02-signalements", data: e47 },
+  { id: "2026-11-02-sondages", data: e48 },
+  { id: "2026-11-02-vue-ensemble", data: e49 },
 ];

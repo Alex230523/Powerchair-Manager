@@ -229,7 +229,7 @@ export async function tripsView(db: Pool, p: Principal) {
       chairs: x.manage
         ? ((
             await x.c.query(
-              "SELECT ch.id,ch.name,ch.ownership FROM equipment_chair ch WHERE ch.organization_id=$1 AND ch.status<>'retired' ORDER BY ch.ownership,ch.name",
+              "SELECT ch.id,chair_label(ch.id) AS name,ch.ownership FROM equipment_chair ch WHERE ch.organization_id=$1 AND ch.status<>'retired' ORDER BY ch.ownership,ch.name",
               [x.org],
             )
           ).rows as { id: string; name: string; ownership: string }[])

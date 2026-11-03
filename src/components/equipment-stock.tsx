@@ -1,8 +1,10 @@
 "use client";
+import { CategoryPicker } from "./equipment-more";
+import { equipmentMoreCopy } from "./equipment-more-copy";
+import { placePath } from "@/domains/equipment/schema";
 import { useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { equipmentView } from "@/domains/equipment/service";
-import { itemCategories } from "@/domains/equipment/schema";
 import { stockCopy } from "./equipment-stock-copy";
 import { Badge, EmptyState, Card } from "./ui";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
@@ -32,6 +34,7 @@ export function Stock({
   busy,
   send,
   reload,
+  lend,
 }: {
   locale: Locale;
   view: View;
@@ -39,10 +42,16 @@ export function Stock({
   send: (body: Record<string, unknown>) => Promise<{ id: string } | null>;
   /** After a grouped action (wave 15, C8). */
   reload: () => Promise<void>;
+  /** 11: « Prêter » from a row. */
+  lend?: (itemId: string) => void;
 }) {
   const t = stockCopy[locale] as Copy;
   const [editing, setEditing] = useState<string | null>(null);
-  const [proposing, setProposing] = useState(false);
+  const [proposing, setProposing] = useState(false),
+    // 11: the small material keeps its place, with a filter by category.
+    [category, setCategory] = useState("");
+  const m = equipmentMoreCopy[locale];
+  const categoryOf = (i: Item) => i.category_name || t.categories[i.category as keyof typeof t.categories] || i.category;
   const can = view.stockCan;
   const b = bulkCopy[locale];
   if (!can.seeItems && !can.propose && !can.decide) return null;
@@ -65,7 +74,8 @@ export function Stock({
             action: "item",
             ...(item ? { id: item.id, expectedVersion: item.version } : {}),
             name: String(f.get("name") ?? "").trim(),
-            category: String(f.get("category")),
+            category: item?.category ?? "other",
+            categoryId: String(f.get("categoryId") ?? "") || null,
             quantity: Number(f.get("quantity") || 0),
             storage: "",
             storageLocationId: String(f.get("place") ?? "") || null,
@@ -80,16 +90,8 @@ export function Stock({
             {t.name}
             <input id={id("name")} name="name" required minLength={2} maxLength={120} defaultValue={item?.name} />
           </label>
-          <label htmlFor={id("category")}>
-            {t.category}
-            <select id={id("category")} name="category" defaultValue={item?.category ?? "ball"}>
-              {itemCategories.map((c) => (
-                <option key={c} value={c}>
-                  {t.categories[c]}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* 11: the club's categories, « + Créer « ‹texte› » » typed in the field. */}
+          <CategoryPicker locale={locale} view={view as never} initial={item?.category_id ?? view.categories.find((g) => g.system_key === (item?.category ?? "ball"))?.id ?? null} send={send} />
           <label htmlFor={id("quantity")}>
             {t.quantity}
             <input id={id("quantity")} name="quantity" type="number" min={0} max={10000} required defaultValue={item?.quantity ?? 1} />
@@ -103,7 +105,7 @@ export function Stock({
                 .filter((p) => !p.archived || p.id === item?.storage_location_id)
                 .map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {placePath(p)}
                   </option>
                 ))}
             </select>
@@ -152,11 +154,30 @@ export function Stock({
           {!view.items.length && <EmptyState title={t.noItem} />}
           {editing && editing !== "new" && itemForm(view.items.find((i) => i.id === editing))}
           {view.items.length > 0 && (
+            <label className="compact-field">
+              {m.categoryFilter}
+              <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">{m.all}</option>
+                {view.categories
+                  .filter((g) => !g.archived)
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          {view.items.length > 0 && (
             <DataGrid
               locale={locale}
               label={t.items}
               storageKey="stock"
-              rows={view.items}
+              rows={view.items.filter((i) => {
+                if (!category) return true;
+                const g = view.categories.find((x) => x.id === category);
+                return i.category_id === category || (!i.category_id && !!g?.system_key && i.category === g.system_key);
+              })}
               rowId={(i) => i.id}
               rowName={(i) => i.name}
               rowClassName={(i) => (i.archived ? "muted" : undefined)}
@@ -176,9 +197,20 @@ export function Stock({
                     </>
                   ),
                 },
-                { key: "category", header: t.category, sort: (i) => t.categories[i.category], cell: (i) => t.categories[i.category] },
-                { key: "quantity", header: t.quantity, className: "num", sort: (i) => i.quantity, cell: (i) => i.quantity },
-                { key: "storage", header: t.storage, sort: (i) => i.storage, cell: (i) => i.storage || "…" },
+                { key: "category", header: t.category, sort: (i) => categoryOf(i), cell: (i) => categoryOf(i) },
+                {
+                  key: "quantity",
+                  header: t.quantity,
+                  className: "num",
+                  sort: (i) => i.quantity,
+                  cell: (i) => (
+                    <>
+                      {i.quantity}
+                      {i.lent > 0 && <span className="muted small"> · {m.lentOut(i.lent)}</span>}
+                    </>
+                  ),
+                },
+                { key: "storage", header: t.storage, sort: (i) => i.storage_path ?? i.storage, cell: (i) => i.storage_path || i.storage || "…" },
                 {
                   key: "expires",
                   header: t.expires,
@@ -197,10 +229,20 @@ export function Stock({
                         header: t.edit,
                         hideable: false,
                         cell: (i: Item) => (
-                          <button type="button" className="text-button" onClick={() => setEditing(i.id)}>
-                            {t.edit}
-                            <span className="sr-only"> : {i.name}</span>
-                          </button>
+                          <>
+                            <button type="button" className="text-button" onClick={() => setEditing(i.id)}>
+                              {t.edit}
+                              <span className="sr-only"> : {i.name}</span>
+                            </button>
+                            {lend && !i.archived && i.quantity - i.lent > 0 && (
+                              <>
+                                {" "}
+                                <button type="button" className="text-button" aria-label={m.lendOf(i.name)} onClick={() => lend(i.id)}>
+                                  {m.lend}
+                                </button>
+                              </>
+                            )}
+                          </>
                         ),
                       },
                     ]
@@ -236,7 +278,7 @@ export function Stock({
                   label: b.export,
                   icon: "document",
                   run: async (rows) =>
-                    downloadCsv(`stock-${today}`, [t.name, t.category, t.quantity, t.storage, t.expires], rows.map((i) => [i.name, t.categories[i.category], i.quantity, i.storage, i.expires_on ?? ""])),
+                    downloadCsv(`stock-${today}`, [t.name, t.category, t.quantity, t.storage, t.expires], rows.map((i) => [i.name, categoryOf(i), i.quantity, i.storage_path ?? i.storage, i.expires_on ?? ""])),
                 },
               ]}
             />

@@ -852,7 +852,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged, initial
                 const link = c.links[0];
                 return (
                   <li key={c.id}>
-                    <strong>{c.name}</strong>
+                    {/* 11: « Nom du fauteuil · Marque Modèle ». */}
+                    <strong>{c.label ?? c.name}</strong>
                     {link?.is_primary && (
                       <Badge tone="success">
                         {t.primary}

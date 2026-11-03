@@ -87,6 +87,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     notes: text(1000),
     archived: z.boolean().default(false),
     storageLocationId: id.nullable().optional(),
+    /** 11: one of the club's categories (a system one keeps its alerts). */
+    categoryId: id.nullable().optional(),
   }),
   z.object({
     action: z.literal("wish"),
@@ -126,6 +128,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     access: text(500),
     notes: text(1000),
     archived: z.boolean().default(false),
+    /** 11: a place inside another (two levels at most). */
+    parentId: id.nullable().optional(),
   }),
   z.object({ action: z.literal("decideModel"), id, decision: z.enum(["validated", "refused"]), note: text(500) }),
   z.object({
@@ -142,6 +146,24 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("handOver"), id, condition: text(1000) }),
   z.object({ action: z.literal("returnLoan"), id, condition: text(1000) }),
   z.object({ action: z.literal("cancelLoan"), id }),
+  /* 11: the club's categories, created on the fly or in the settings. */
+  z.object({ action: z.literal("categoryCreate"), name: text(60).min(1) }),
+  z.object({ action: z.literal("categoryRename"), id, name: text(60).min(1) }),
+  z.object({ action: z.literal("categoryMerge"), id, into: id }),
+  z.object({ action: z.literal("categoryArchive"), id, archived: z.boolean() }),
+  /* 11: « Prêter » a chair or small material, to a club or to a player, straight away. */
+  z.object({
+    action: z.literal("lendDirect"),
+    chairId: id.optional(),
+    itemId: id.optional(),
+    quantity: z.number().int().min(1).max(10000).default(1),
+    borrowerId: id.optional(),
+    profileId: id.optional(),
+    startsOn: z.iso.date(),
+    endsOn: z.iso.date(),
+    conditions: text(1000).default(""),
+  }),
+  z.object({ action: z.literal("returnDirect"), id, condition: text(1000).default("") }),
 ]);
 /** Material other than chairs. */
 export type ExpiryState = "expired" | "soon" | "ok" | "none";
@@ -205,3 +227,13 @@ export const modelLabel = (m: { brand: string; name: string }) => (m.brand ? `${
 
 /** B3: the kinds of a chair's interventions (shared with the client). */
 export const interventionKinds = ["service", "breakdown", "repair", "battery", "adjustment", "speed_check"] as const;
+
+/** 11: « Nom du fauteuil · Marque Modèle ». */
+export function chairLabel(c: { name: string; model_brand?: string | null; model_name?: string | null }) {
+  const model = [c.model_brand?.trim(), c.model_name?.trim()].filter(Boolean).join(" ");
+  return model ? `${c.name} · ${model}` : c.name;
+}
+/** 11: « Local du club › Étagère A ». */
+export const placePath = (p: { name: string; parent_name?: string | null }) => (p.parent_name ? `${p.parent_name} › ${p.name}` : p.name);
+/** 11: what is left of an item once its loans going on are counted. */
+export const available = (quantity: number, lent: number) => Math.max(0, quantity - lent);

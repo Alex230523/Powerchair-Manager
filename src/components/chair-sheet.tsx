@@ -1,4 +1,5 @@
 "use client";
+import { equipmentMoreCopy } from "./equipment-more-copy";
 import Link from "next/link";
 import { ContactPicker } from "./contact-picker";
 import { crmCopy } from "./crm-copy";
@@ -29,9 +30,35 @@ const statusTones = { available: "success", in_use: "", maintenance: "warning", 
 const serviceTones = { ok: "success", soon: "warning", due: "danger", unknown: "" } as const;
 
 /** The model of a chair, with « En attente de validation » while the federation has not decided. */
-export function ModelCell({ locale, chair }: { locale: Locale; chair: Pick<Chair, "model_name" | "model_brand" | "model_status" | "model" | "brand"> }) {
-  const f = fleetCopy[locale];
-  if (!chair.model_name) return chair.model ? <>{[chair.brand, chair.model].filter(Boolean).join(" · ")}</> : <span className="muted">{f.noModel}</span>;
+export function ModelCell({
+  locale,
+  chair,
+  onChoose,
+  name,
+}: {
+  locale: Locale;
+  chair: Pick<Chair, "model_name" | "model_brand" | "model_status" | "model" | "brand">;
+  /** 11: « Choisir le modèle » for a chair without one, or one still waiting. */
+  onChoose?: () => void;
+  name?: string;
+}) {
+  const f = fleetCopy[locale],
+    m = equipmentMoreCopy[locale];
+  const choose = onChoose && (
+    <>
+      {" "}
+      <button type="button" className="text-button small" aria-label={name ? m.chooseModelOf(name) : m.chooseModel} onClick={onChoose}>
+        {m.chooseModel}
+      </button>
+    </>
+  );
+  if (!chair.model_name)
+    return (
+      <>
+        {chair.model ? [chair.brand, chair.model].filter(Boolean).join(" · ") : <span className="muted">{f.noModel}</span>} <Badge tone="warning">{m.noModel}</Badge>
+        {choose}
+      </>
+    );
   return (
     <>
       {modelLabel({ brand: chair.model_brand ?? "", name: chair.model_name })}
@@ -39,6 +66,7 @@ export function ModelCell({ locale, chair }: { locale: Locale; chair: Pick<Chair
         <>
           {" "}
           <Badge tone={chair.model_status === "refused" ? "danger" : "warning"}>{f.modelStatus[chair.model_status]}</Badge>
+          {choose}
         </>
       )}
     </>
@@ -562,7 +590,7 @@ export function ChairDialog({ locale, view, chair, busy, send, close, reload }: 
   return (
     <dialog ref={ref} className="player-dialog sheet-dialog" aria-labelledby="chair-sheet-title" onCancel={close}>
       <div className="dialog-heading sheet-heading">
-        <h2 id="chair-sheet-title">{chair.name}</h2>
+        <h2 id="chair-sheet-title">{chair.label ?? chair.name}</h2>
         <div className="sheet-tools">
           <button
             type="button"

@@ -99,7 +99,7 @@ export async function rounds(c: PoolClient, org: string, trip: { id: string; end
   ).rows as { trip_vehicle_id: string; profile_id: string; legs: string; full_name: string; phone: string; categories: string[] | null; valid_until: string | null; verified: boolean }[];
   const chairs = (
     await c.query(
-      `SELECT vc.trip_vehicle_id,ch.id,ch.name,ch.ownership FROM trip_vehicle_chair vc JOIN equipment_chair ch ON ch.id=vc.chair_id AND ch.organization_id=$2
+      `SELECT vc.trip_vehicle_id,ch.id,chair_label(ch.id) AS name,ch.ownership FROM trip_vehicle_chair vc JOIN equipment_chair ch ON ch.id=vc.chair_id AND ch.organization_id=$2
         WHERE vc.trip_vehicle_id=ANY($1::uuid[]) ORDER BY ch.name`,
       [ids, org],
     )

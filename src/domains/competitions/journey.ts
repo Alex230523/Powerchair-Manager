@@ -125,7 +125,7 @@ async function squad(c: PoolClient, org: string, m: Row) {
       `SELECT DISTINCT ON (cp.id) cp.id AS profile_id,cp.full_name,cp.jersey_number,COALESCE(NULLIF(tm.position,''),cp.playing_position) AS position,COALESCE(sp.classification,'not_classified') AS classification,
               (SELECT l.status FROM license l WHERE l.profile_id=cp.id AND l.organization_id=$1 AND l.season=$3 ORDER BY CASE l.status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 WHEN 'requested' THEN 2 ELSE 3 END LIMIT 1) AS licence,
               (SELECT count(*)::int FROM club_document d WHERE d.profile_id=cp.id AND d.organization_id=$1 AND NOT d.sensitive AND (d.status IN ('missing','requested','refused','expired') OR (d.status='valid' AND d.expires_on<CURRENT_DATE))) AS documents_due,
-              (SELECT json_build_object('name',ch.name,'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false),
+              (SELECT json_build_object('name',chair_label(ch.id),'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false),
                         'lastSpeed',(SELECT json_build_object('speed',i.speed_kmh::float,'on',i.occurred_on::text) FROM chair_intervention i WHERE i.chair_id=ch.id AND i.kind='speed_check' AND i.cancelled_at IS NULL ORDER BY i.occurred_on DESC,i.created_at DESC LIMIT 1))
                  FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
                 WHERE ea.profile_id=cp.id AND ea.ends_on IS NULL AND ch.organization_id=$1 ORDER BY ea.is_primary DESC,ea.starts_on DESC LIMIT 1) AS chair,

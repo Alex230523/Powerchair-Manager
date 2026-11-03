@@ -8306,6 +8306,53 @@ details.event-section > summary {
   }
 }
 
+/* ---------- 11: equipment, improved ---------- */
+.tab-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.tab-group {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--border-strong);
+}
+.tab-group:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.tab-group-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.storage-child {
+  margin-left: var(--space-6);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border);
+}
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+/* The search and the « État » filter, the same height, aligned with « Lieu du club ». */
+.directory-filters label,
+.directory-filters input,
+.directory-filters select {
+  min-height: var(--control-height);
+}
+.directory-filters {
+  align-items: end;
+}
+
 /* ---------- 10: documents in folders, email templates ---------- */
 .drive {
   display: grid;

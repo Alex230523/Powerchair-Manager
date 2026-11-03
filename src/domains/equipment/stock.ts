@@ -1,3 +1,4 @@
+import { categoryFor } from "./extras";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { AccessError, audit } from "../access/service";
 import { permissions } from "../access/policy";
@@ -31,7 +32,9 @@ export async function stockView(s: Scope) {
   const items = can.see
     ? (
         await s.c.query(
-          "SELECT id,name,category,quantity,storage,storage_location_id,expires_on::text AS expires_on,notes,archived,version FROM equipment_item WHERE organization_id=$1 ORDER BY archived,category,name",
+          `SELECT i.id,i.name,i.category,i.category_id,COALESCE(g.name,'') AS category_name,i.quantity,i.storage,i.storage_location_id,storage_path(i.storage_location_id) AS storage_path,i.expires_on::text AS expires_on,i.notes,i.archived,i.version,
+                  (SELECT COALESCE(sum(l.quantity),0)::int FROM equipment_loan l WHERE l.item_id=i.id AND l.status='ongoing') AS lent
+             FROM equipment_item i LEFT JOIN equipment_category g ON g.id=i.category_id WHERE i.organization_id=$1 ORDER BY i.archived,i.category,i.name`,
           [org],
         )
       ).rows.map((i) => ({ ...i, expiry: expiryState(i.expires_on, today) }))
@@ -54,9 +57,14 @@ export async function stockView(s: Scope) {
       id: string;
       name: string;
       category: string;
+      /** 11: the club's category, its name, the full place and what is lent. */
+      category_id: string | null;
+      category_name: string;
       quantity: number;
       storage: string;
       storage_location_id: string | null;
+      storage_path: string | null;
+      lent: number;
       expires_on: string | null;
       notes: string;
       archived: boolean;
@@ -111,9 +119,11 @@ export async function stockExecute(s: Scope, input: StockCommand) {
     if (!can.items) deny();
     // Wave 17 (Q1): a storage place of the club; the text follows its name.
     const place = input.storageLocationId ? await storageIn(s, input.storageLocationId) : null;
+    // 11: a club category; a system one gives its key to the alerts, the others are « other ».
+    const chosen = await categoryFor(s.c, org, input.categoryId);
     const values = [
       input.name,
-      input.category,
+      chosen?.key ?? input.category,
       input.quantity,
       place ? place.name.slice(0, 120) : input.storage,
       input.expiresOn,
@@ -136,6 +146,7 @@ export async function stockExecute(s: Scope, input: StockCommand) {
           [org, ...values],
         )
       ).rows[0].id as string;
+    if (input.categoryId !== undefined) await s.c.query("UPDATE equipment_item SET category_id=$2 WHERE id=$1", [id, chosen?.id ?? null]);
     await audit(s.c, org, s.p.userId, "equipment.item", id!);
     return { id: id! };
   }
