@@ -100,8 +100,12 @@ export function Exercises({ locale, genre }: { locale: Locale; genre?: string })
     [editing, setEditing] = useState<Exercise | "new" | null>(null);
   const load = useCallback(
     () =>
-      fetch("/api/exercises", { cache: "no-store" })
-        .then(async (r) => {
+      // 4: the federation has only the federal library here; asked first, so no refused request.
+      fetch("/api/exercises/library", { cache: "no-store" })
+        .then(async (r) => (r.ok ? ((await r.json()) as { kind?: string }) : null))
+        .then(async (lib) => {
+          if (lib?.kind === "federation") throw new Error("CLUB_ONLY");
+          const r = await fetch("/api/exercises", { cache: "no-store" });
           const v = await r.json();
           if (!r.ok) throw new Error(v.error);
           setView(v);
