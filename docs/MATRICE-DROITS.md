@@ -113,6 +113,9 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches/journey` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/tactic` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/national` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/national/care` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/national/player` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/news` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/notifications` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/notifications/preview` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
@@ -277,6 +280,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/courses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
+| `/federation/national` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/referees` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/team` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/teams` |  |  |  |  |  |  |  |  |  |   |

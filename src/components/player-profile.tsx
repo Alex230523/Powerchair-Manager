@@ -7,6 +7,7 @@ import { workshopCopy } from "./workshop-copy";
 import { BillingSplit } from "./billing-split";
 import { CareCard } from "./care-card";
 import { PlayerProgress, useProgress } from "./player-progress";
+import { NationalCard } from "./national";
 import { progressCopy } from "./progress-copy";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -658,6 +659,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged, initial
       >
         {/* 5: the player's matches, the same line as everywhere. */}
         {tab === "sport" && currentTeams.length > 0 && <TeamMatches locale={locale} teamIds={currentTeams.map((a) => a.team_id)} />}
+        {/* 6: « Sélection nationale »: teams, status, gatherings, caps; the player or the parent answers. */}
+        {tab === "sport" && <NationalCard locale={locale} profileId={id} />}
         <Card
           title={t.game}
           action={view.can.editSport ? editButton("sport", t.game) : null}

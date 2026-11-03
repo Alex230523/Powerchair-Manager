@@ -256,6 +256,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           ...item("/federation/clubs", "federationClubs", "club", fed("federation.licences")),
                           ...item("/federation/teams", "federationTeams", "players", fed("federation.licences")),
                           ...item("/tournaments", "tournaments", "trophy", fed("federation.competitions")),
+                          // 6: the federation's national teams.
+                          ...item("/federation/national", "national", "medal", fed("federation.competitions")),
                           ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
                           // 34: sanctions, appeals and fines.
                           ...item("/federation/discipline", "discipline", "shield", fed("federation.discipline")),

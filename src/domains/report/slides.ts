@@ -102,6 +102,8 @@ export function buildSlides(r: ActivityReport, o: ReportOptions, t: ReportCopy, 
         ...(r.staff.coaches.length ? [`${t.coaches} : ${r.staff.coaches.join(", ")}`] : []),
         ...(r.staff.volunteers ? [fill(t.volunteers, { n: r.staff.volunteers })] : []),
         ...(r.staff.courses.length ? [`${t.courses} : ${r.staff.courses.map((c) => (c.n > 1 ? `${c.title} (${c.n})` : c.title)).join(", ")}`] : []),
+        // 6: « 2 joueurs sélectionnés en équipe nationale ».
+        ...(r.national ? [fill(t.national, { n: r.national })] : []),
       ],
     });
   if (want("equipment"))

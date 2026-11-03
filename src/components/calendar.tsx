@@ -34,6 +34,7 @@ import {
 import { registrationErrors } from "./registrations-copy";
 import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
 import { EventInvitation } from "./mail-templates";
+import { NationalGatherings } from "./national";
 import { mailTemplatesCopy } from "./mail-templates-copy";
 import { PlaceDialog } from "./place-dialog";
 import { placesCopy } from "./places-copy";
@@ -122,6 +123,8 @@ type Item = {
   }[];
 };
 type View = {
+  /** 6: the national gatherings of the club's players (read only). */
+  national?: { id: string; kind: string; title: string; starts_at: string; ends_at: string; place: string; team: string; players: string[] }[];
   context: {
     organization_id: string;
     name: string;
@@ -564,6 +567,8 @@ export function Calendar({
           }
         />
         {family.node}
+        {/* 6: the national gatherings of the club's players, read only. */}
+        {data && <NationalGatherings locale={locale} items={data.national ?? []} />}
         {/* 2: the meetings of the tasks given to me, in my calendar. */}
         {data && (data.meetings ?? []).length > 0 && (
           <Card title={todoMoreCopy[locale].myMeetings} className="calendar-meetings">

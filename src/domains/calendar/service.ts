@@ -1,3 +1,4 @@
+import { nationalEventsFor } from "../national/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { bookingMissing } from "../venues/bookings";
 import { decodeCursor, encodeCursor, PAGE_SIZE } from "../../lib/cursor";
@@ -611,7 +612,22 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
             name: d.name,
             category: d.category,
           });
+    // 6: the national teams' gatherings where players of the club are expected, read only (a player or a parent: their own).
+    const club = (s.a as { kind?: string }).kind === "club";
+    const nationalProfiles =
+      club && (s.a.role === "player" || s.a.role === "guardian")
+        ? (
+            await s.c.query(
+              `SELECT cp.id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE pe.user_id=$1 AND cp.organization_id=$2
+               UNION SELECT g.subject_profile_id FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person pe ON pe.id=gp.person_id
+                WHERE pe.user_id=$1 AND g.organization_id=$2 AND g.revoked_at IS NULL AND g.can_view AND g.kind<>'declared'`,
+              [s.p.userId, s.a.organization_id],
+            )
+          ).rows.map((r) => r.id as string)
+        : null;
+    const national = club ? await nationalEventsFor(s.c, s.a.organization_id, nationalProfiles) : [];
     return {
+      national,
       next: listed && rows.length > PAGE_SIZE ? encodeCursor([shown[shown.length - 1].cursor_at, shown[shown.length - 1].id]) : null,
       sharedVenues: (
         await s.c.query(
