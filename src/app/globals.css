@@ -11482,3 +11482,9 @@ ul.task-page li {
   flex: 1;
   min-width: 0;
 }
+/* A list of links, one per line: each a target of 44 px. */
+.link-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
