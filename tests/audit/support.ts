@@ -1,6 +1,7 @@
 import type { APIRequestContext } from "@playwright/test";
 import type { Pool } from "pg";
 import { createAccount } from "../support/session";
+import { federationCompetences } from "../../src/domains/access/policy";
 
 /**
  * Audits 23 and 26: the demo accounts (scripts/demo-seed.ts, public
@@ -43,7 +44,8 @@ export async function prepareAudit(db: Pool) {
     const user = existing ?? (await createAccount(db, name, email, auditPassword)).id;
     await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [org, user]);
     if (!(await db.query("SELECT 1 FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND role=$3 AND revoked_at IS NULL", [org, user, role])).rowCount)
-      await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,$3)", [org, user, role]);
+      // 32: the secretariat holds every competence of its federation, as the migration gave the existing ones.
+      await db.query("INSERT INTO role_assignment(organization_id,user_id,role,grants) VALUES($1,$2,$3,$4)", [org, user, role, role === "federation_worker" ? [...federationCompetences] : []]);
     return user;
   }
   await member(extraRoles[0].email, "Secrétariat audit", demoFed, "federation_worker");
