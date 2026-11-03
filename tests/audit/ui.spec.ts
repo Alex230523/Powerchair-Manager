@@ -55,8 +55,15 @@ for (const role of roles)
       page.on("console", (m) => {
         // A failed request is reported below with its address, not as the browser's bare message.
         if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) errors.push(m.text().slice(0, 200));
-        if (m.text().includes("#418"))
-          void page
+        if (m.text().includes("#418")) diagnose();
+      });
+      // React reports the hydration failure as a page error too.
+      page.on("pageerror", (e) => {
+        if (e.message.includes("#418")) diagnose();
+      });
+      function diagnose() {
+        console.log(`AUDIT hydration\tseen on ${new URL(page.url()).pathname} (${role}, ${variant.id}), ${served.length} bytes served`);
+        void page
             .evaluate((html) => {
               const skip = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT", "LINK", "META"]);
               const sig = (root: Element) =>
@@ -68,8 +75,8 @@ for (const role of roles)
               return `first difference at element ${i}: server [${server.slice(Math.max(0, i - 2), i + 3).join(" ")}] client [${client.slice(Math.max(0, i - 2), i + 3).join(" ")}]`;
             }, served)
             .then((d) => console.log(`AUDIT hydration\t${new URL(page.url()).pathname}\t${role}\t${variant.id}\t${d.slice(0, 1200)}`))
-            .catch(() => undefined);
-      });
+            .catch((e: Error) => console.log(`AUDIT hydration\tnot compared: ${e.message.slice(0, 200)}`));
+      }
       page.on("pageerror", (e) => errors.push(e.message.slice(0, 200)));
       page.on("response", (r) => {
         const url = new URL(r.url());
