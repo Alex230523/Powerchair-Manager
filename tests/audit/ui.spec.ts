@@ -76,7 +76,15 @@ for (const role of roles)
                 client = sig(document.body);
               let i = 0;
               while (i < server.length && server[i] === client[i]) i++;
-              return `first difference at element ${i}: server [${server.slice(Math.max(0, i - 2), i + 3).join(" ")}] client [${client.slice(Math.max(0, i - 2), i + 3).join(" ")}]`;
+              // The head too (React hydrates <head>): each element with its main attributes.
+              const head = (root: Element | null) =>
+                [...(root?.children ?? [])].map((e) => `${e.tagName.toLowerCase()}[${["rel", "name", "property", "src", "href", "charset", "id"].map((a) => e.getAttribute(a)).filter(Boolean).join(" ").slice(0, 80)}]`);
+              const serverHead = head(new DOMParser().parseFromString(html, "text/html").head),
+                clientHead = head(document.head);
+              const missing = serverHead.filter((x) => !clientHead.includes(x)),
+                added = clientHead.filter((x) => !serverHead.includes(x));
+              const htmlAttrs = [...document.documentElement.attributes].map((a) => `${a.name}=${a.value}`).join(" ");
+              return `first difference at element ${i}: server [${server.slice(Math.max(0, i - 2), i + 3).join(" ")}] client [${client.slice(Math.max(0, i - 2), i + 3).join(" ")}] | head only on server: ${missing.join(" ").slice(0, 300)} | head only in browser: ${added.join(" ").slice(0, 300)} | html: ${htmlAttrs.slice(0, 200)}`;
             }, served)
             .then((d) => console.log(`AUDIT hydration\t${new URL(page.url()).pathname}\t${role}\t${variant.id}\t${d.slice(0, 1200)}`))
             .catch((e: Error) => console.log(`AUDIT hydration\tnot compared: ${e.message.slice(0, 200)}`));
