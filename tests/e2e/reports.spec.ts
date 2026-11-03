@@ -42,7 +42,7 @@ test("report a chair's breakdown and a problem in the application", async ({ pag
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Ce qui ne va pas").selectOption("wheels");
     await dialog.getByLabel("À surveiller").check();
-    await dialog.getByLabel(/Décrivez/).fill("Un bruit dans la roue avant gauche");
+    await dialog.getByLabel("Que se passe-t-il ?").fill("Un bruit dans la roue avant gauche");
     await axe(page, "chair report");
     await dialog.getByRole("button", { name: "Envoyer" }).click();
     await expect(page.getByText(/Problème signalé. Le fauteuil reste en service/)).toBeVisible();
