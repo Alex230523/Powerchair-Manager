@@ -14,11 +14,12 @@ export type Issue = {
  * A justified exception (tests/audit/exceptions.json): a rule, a page (or
  * « * »), optionally the element's path, and always the reason.
  */
-export type Exception = { rule: string; path: string; target?: string; reason: string };
+/** `detail`: a part of the finding's text, so that one known message is excused, not every console error of the page. */
+export type Exception = { rule: string; path: string; target?: string; detail?: string; reason: string };
 
 export function matches(e: Exception, i: Issue) {
   const path = i.path.replace(/^\/(nl|en)(?=\/|$)/, "/fr");
-  return e.rule === i.rule && (e.path === "*" || e.path === path) && (!e.target || e.target === i.target);
+  return e.rule === i.rule && (e.path === "*" || e.path === path) && (!e.target || e.target === i.target) && (!e.detail || i.detail.includes(e.detail));
 }
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
