@@ -821,7 +821,7 @@ export function HelpIndex({ locale }: { locale: Locale }) {
         return (
           <section key={role} aria-labelledby={`help-${role}`}>
             <h2 id={`help-${role}`}>{t.roles[role]}</h2>
-            <ul className="plain-list">
+            <ul className="plain-list link-list">
               {sheets.map((s) => (
                 <li key={s.id}>
                   <Link href={`/${locale}/guide/help/${s.id}`}>{t3(s.title, locale)}</Link>
