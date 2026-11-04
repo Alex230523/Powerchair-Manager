@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -344,7 +345,7 @@ export function Exercises({ locale, genre }: { locale: Locale; genre?: string })
               action={
                 !view.exercises.length && view.can.write ? (
                   <Button icon="plus" onClick={() => setEditing("new")}>
-                    {t.add}
+                    {emptyStart[locale]}
                   </Button>
                 ) : undefined
               }

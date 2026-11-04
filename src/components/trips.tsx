@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -412,7 +413,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
           action={
             data.can.manage && !creating ? (
               <button type="button" className="button" onClick={() => setCreating(true)}>
-                {t.create}
+                {emptyStart[locale]}
               </button>
             ) : undefined
           }

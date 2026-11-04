@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -321,7 +322,7 @@ export function Tasks({
           action={
             !embedded && all.some(canAdd) ? (
               <Button icon="plus" onClick={() => setEditing({ category: all.find(canAdd)! })}>
-                {t.add}
+                {emptyStart[locale]}
               </Button>
             ) : undefined
           }

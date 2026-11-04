@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { sidelineCopy } from "./sideline-copy";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -295,7 +296,7 @@ export function Matches({ locale }: { locale: Locale }) {
           action={
             manageable.length > 0 ? (
               <button type="button" className="button" onClick={() => (view.can.friendly ? setChoosing(true) : setEditing("new"))}>
-                {t.add}
+                {emptyStart[locale]}
               </button>
             ) : undefined
           }
