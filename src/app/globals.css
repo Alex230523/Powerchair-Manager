@@ -12799,3 +12799,64 @@ textarea:not(.command-input textarea) {
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4) var(--space-4);
 }
+
+/* The to-do, lighter (04/11/2026): one line per task, the details in its window. */
+ul.task-page > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+ul.task-page > li .task-check {
+  grid-column: 1;
+  min-height: 0;
+  font-weight: 500;
+}
+ul.task-page > li .task-meta {
+  grid-column: 1;
+  padding-inline-start: calc(var(--check-size) + var(--space-2));
+}
+ul.task-page > li .task-open {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 44px;
+}
+ul.task-page > li[data-status="done"] .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+ul.task-page > li[data-status="done"] {
+  opacity: 0.75;
+}
+.task-quick {
+  display: grid;
+  gap: var(--space-2);
+}
+.task-quick-main {
+  display: flex;
+  gap: var(--space-2);
+}
+.task-quick-main input {
+  flex: 1;
+  min-width: 0;
+}
+.task-quick-more > summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.task-quick-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-3);
+}
+.task-detail-tools {
+  align-items: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+}

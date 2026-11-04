@@ -124,7 +124,8 @@ test("grant file: standard check-list, a step for the coach, his home, next year
     await expect(coachPage.locator(".task-page li")).toContainText("Déposer le dossier");
     await axe(coachPage, "coach tasks");
     await coachPage.getByRole("checkbox", { name: "Déposer le dossier" }).click();
-    await expect(coachPage.locator(".task-page li")).toHaveCount(0);
+    // A ticked task stays in the list, struck through (04/11/2026).
+    await expect(coachPage.locator(".task-page li").first()).toHaveAttribute("data-status", "done");
 
     // 5. Next year's file, from the sheet.
     await sheet.getByRole("tab", { name: /^Détail/ }).click();
