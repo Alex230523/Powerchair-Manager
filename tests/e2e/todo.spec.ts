@@ -44,7 +44,7 @@ test("the club's to-do, by category", async ({ page }) => {
 
     // 2. Quick add in « Matériel ».
     const equipment = page.locator("details").filter({ has: page.locator("summary", { hasText: "Matériel" }) });
-    await equipment.locator("summary").click();
+    await equipment.locator(":scope > summary").click();
     await equipment.getByLabel("Nouvelle tâche dans Matériel").fill("Gonfler les pneus");
     await equipment.getByRole("button", { name: "Ajouter une tâche dans Matériel" }).click();
     await expect(equipment.getByText("Gonfler les pneus")).toBeVisible();
@@ -66,6 +66,7 @@ test("the club's to-do, by category", async ({ page }) => {
     await expect(page.getByText("Assurance en retard")).toBeVisible();
     await expect(page.getByText("Gonfler les pneus")).toHaveCount(0);
     await page.getByRole("checkbox", { name: "Marquer comme faite : Assurance en retard" }).click();
+    // Done: no longer late, so out of « En retard ».
     await expect(page.getByText("Assurance en retard")).toHaveCount(0);
 
     // 5. The yearly model, checked then applied.

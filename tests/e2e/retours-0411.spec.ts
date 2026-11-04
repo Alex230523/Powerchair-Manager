@@ -38,7 +38,7 @@ test("trips: a club vehicle and a licence are added in a window", async ({ page 
     await axe(page, "vehicle window");
     await vehicle.getByRole("button", { name: "Enregistrer" }).click();
     await expect(vehicle).toHaveCount(0);
-    await expect(page.getByText("Minibus du club")).toBeVisible();
+    await expect(page.getByText("Minibus du club", { exact: true })).toBeVisible();
 
     // « Ajouter un permis »: who, categories, since, valid until.
     await page.getByRole("button", { name: "Ajouter un permis" }).click();

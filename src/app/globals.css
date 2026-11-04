@@ -100,7 +100,7 @@
   /* 1: one height for the fields, menus and buttons that share a row. */
   --control-height: 2.75rem;
   /* 04/11/2026: 20 px, the label around it stays the 44 px target. */
-  --check-size: 20px;
+  --check-size: 24px;
 
   /* Text scale: nothing below 12 px. */
   --text-xs: 0.75rem;
@@ -8166,8 +8166,11 @@ details.event-section > summary {
   background: var(--surface-soft);
 }
 .chip-check input {
+  flex: none;
   width: 18px;
   height: 18px;
+  min-height: 0;
+  margin: 0;
 }
 .event-invited > summary {
   cursor: pointer;
@@ -12858,9 +12861,7 @@ ul.task-page > li[data-status="done"] .task-title {
   color: var(--muted);
   text-decoration: line-through;
 }
-ul.task-page > li[data-status="done"] {
-  opacity: 0.75;
-}
+/* A done task stays readable (contrast AA): struck through, never faded. */
 .task-quick {
   display: grid;
   gap: var(--space-2);
