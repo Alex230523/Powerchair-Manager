@@ -34,7 +34,7 @@ const words = {
     refRoles: { main: "Arbitre principal", assistant: "Arbitre assistant", table: "Table" } as Record<string, string>,
     noReferee: "Aucun arbitre désigné",
     events: "Faits du match",
-    live: { goal: "But", goal_against: "But adverse", yellow: "Carton jaune", red: "Carton rouge", sub_in: "Entrée", sub_out: "Sortie" } as Record<string, string>,
+    live: { goal: "But", goal_against: "But adverse", yellow: "Carton jaune", red: "Carton rouge", sub_in: "Entrée", sub_out: "Sortie", corner: "Corner", corner_against: "Corner adverse" } as Record<string, string>,
     signatures: "Signatures : capitaine ______________   coach ______________   arbitre ______________",
   },
   nl: {
@@ -56,7 +56,7 @@ const words = {
     refRoles: { main: "Hoofdscheidsrechter", assistant: "Assistent-scheidsrechter", table: "Tafel" } as Record<string, string>,
     noReferee: "Geen scheidsrechter aangeduid",
     events: "Feiten van de wedstrijd",
-    live: { goal: "Doelpunt", goal_against: "Doelpunt tegenstander", yellow: "Gele kaart", red: "Rode kaart", sub_in: "In", sub_out: "Uit" } as Record<string, string>,
+    live: { goal: "Doelpunt", goal_against: "Doelpunt tegenstander", yellow: "Gele kaart", red: "Rode kaart", sub_in: "In", sub_out: "Uit", corner: "Hoekschop", corner_against: "Hoekschop tegenstander" } as Record<string, string>,
     signatures: "Handtekeningen: kapitein ______________   coach ______________   scheidsrechter ______________",
   },
 };

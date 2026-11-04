@@ -283,7 +283,32 @@ function BeforeStep({ ctx }: { ctx: Ctx }) {
               </Button>
             )}
           </p>
-          <p className="muted small">{m.lineup_published_at ? t.published : t.notPublished}</p>
+          <p className="muted small">{m.lineup_revealed ? t.published : t.notPublished}</p>
+          {/* 04/11/2026: revealed on its own before kick-off, at the time chosen. */}
+          {!m.lineup_published_at && (
+            <>
+              <label className="journey-reveal">
+                {t.reveal}
+                <select
+                  value={m.lineup_reveal_minutes === null ? "" : String(m.lineup_reveal_minutes)}
+                  disabled={busy}
+                  onChange={(e) => void send({ action: "reveal", minutes: e.target.value === "" ? null : Number(e.target.value) }, t.revealSaved)}
+                >
+                  {Object.entries(t.revealOptions).map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+                  {m.lineup_reveal_minutes !== null && !(String(m.lineup_reveal_minutes) in t.revealOptions) && (
+                    <option value={String(m.lineup_reveal_minutes)}>{m.lineup_reveal_minutes} min</option>
+                  )}
+                </select>
+              </label>
+              {m.lineup_reveal_minutes !== null && !m.lineup_revealed && (
+                <p className="muted small">{t.revealPlanned.replace("{when}", t.revealOptions[String(m.lineup_reveal_minutes)] ?? `${m.lineup_reveal_minutes} min`)}</p>
+              )}
+            </>
+          )}
         </form>
       </Card>
 

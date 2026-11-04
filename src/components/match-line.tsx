@@ -299,7 +299,8 @@ export function TournamentMatches({ locale, view }: { locale: Locale; view: View
                       ours: m.at_home ? m.home_score : m.away_score,
                       theirs: m.at_home ? m.away_score : m.home_score,
                       status: m.home_score !== null && m.away_score !== null ? "played" : "scheduled",
-                      context: { kind: "tournament", name: g.tournament, day: `${g.label || day(g.day)} · ${t.stage[m.stage] ?? m.stage}`, href: `/${locale}/tournaments/${m.tournament_id}` },
+                      // 04/11/2026: the heading already says the tournament and the day; each line keeps only its stage.
+                      context: { kind: "tournament", name: t.stage[m.stage] ?? m.stage, href: `/${locale}/tournaments/${m.tournament_id}` },
                     }}
                   />
                 </li>

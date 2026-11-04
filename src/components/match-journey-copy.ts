@@ -27,6 +27,10 @@ export type JourneyCopy = {
   unpublish: string;
   published: string;
   notPublished: string;
+  reveal: string;
+  revealOptions: Record<string, string>;
+  revealSaved: string;
+  revealPlanned: string;
   trip: string;
   noTrip: string;
   planTrip: string;
@@ -55,7 +59,7 @@ export type JourneyCopy = {
   red: string;
   subIn: string;
   subOut: string;
-  live: Record<"goal" | "goal_against" | "yellow" | "red" | "sub_in" | "sub_out", string>;
+  live: Record<"goal" | "goal_against" | "yellow" | "red" | "sub_in" | "sub_out" | "corner" | "corner_against", string>;
   undo: string;
   undoOf: string;
   offline: string;
@@ -107,6 +111,10 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     unpublish: "Retirer la publication",
     published: "Composition publiée : joueurs et parents la voient.",
     notPublished: "Composition non publiée : seul le staff la voit.",
+    reveal: "Dévoiler automatiquement",
+    revealOptions: { "": "Non, je publie moi-même", "0": "Au coup d'envoi", "30": "30 min avant", "60": "1 h avant", "120": "2 h avant", "1440": "La veille (24 h avant)" },
+    revealSaved: "Dévoilement enregistré.",
+    revealPlanned: "Elle sera dévoilée automatiquement aux joueurs et aux parents : {when}.",
     trip: "Déplacement",
     noTrip: "Aucun déplacement relié à ce match.",
     planTrip: "Organiser le déplacement",
@@ -135,7 +143,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     red: "Rouge",
     subIn: "Entre",
     subOut: "Sort",
-    live: { goal: "But", goal_against: "But adverse", yellow: "Carton jaune", red: "Carton rouge", sub_in: "Entrée", sub_out: "Sortie" },
+    live: { goal: "But", goal_against: "But adverse", yellow: "Carton jaune", red: "Carton rouge", sub_in: "Entrée", sub_out: "Sortie", corner: "Corner", corner_against: "Corner adverse" },
     undo: "Annuler",
     undoOf: "Annuler : {what}",
     offline: "Hors connexion : {n} fait(s) en attente sur ce téléphone.",
@@ -195,6 +203,10 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     unpublish: "Publicatie intrekken",
     published: "Opstelling gepubliceerd: spelers en ouders zien ze.",
     notPublished: "Opstelling niet gepubliceerd: alleen de staf ziet ze.",
+    reveal: "Automatisch bekendmaken",
+    revealOptions: { "": "Nee, ik publiceer zelf", "0": "Bij de aftrap", "30": "30 min vooraf", "60": "1 u vooraf", "120": "2 u vooraf", "1440": "De dag ervoor (24 u vooraf)" },
+    revealSaved: "Bekendmaking opgeslagen.",
+    revealPlanned: "Ze wordt automatisch bekendgemaakt aan spelers en ouders: {when}.",
     trip: "Verplaatsing",
     noTrip: "Geen verplaatsing gekoppeld aan deze wedstrijd.",
     planTrip: "De verplaatsing regelen",
@@ -223,7 +235,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     red: "Rood",
     subIn: "In",
     subOut: "Uit",
-    live: { goal: "Doelpunt", goal_against: "Doelpunt tegenstander", yellow: "Gele kaart", red: "Rode kaart", sub_in: "In", sub_out: "Uit" },
+    live: { goal: "Doelpunt", goal_against: "Doelpunt tegenstander", yellow: "Gele kaart", red: "Rode kaart", sub_in: "In", sub_out: "Uit", corner: "Hoekschop", corner_against: "Hoekschop tegenstander" },
     undo: "Annuleren",
     undoOf: "Annuleren: {what}",
     offline: "Offline: {n} feit(en) wachten op deze telefoon.",
@@ -283,6 +295,10 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     unpublish: "Withdraw the publication",
     published: "Line-up published: players and parents see it.",
     notPublished: "Line-up not published: only the staff sees it.",
+    reveal: "Reveal automatically",
+    revealOptions: { "": "No, I publish it myself", "0": "At kick-off", "30": "30 min before", "60": "1 h before", "120": "2 h before", "1440": "The day before (24 h before)" },
+    revealSaved: "Reveal saved.",
+    revealPlanned: "It will be revealed to players and parents automatically: {when}.",
     trip: "Trip",
     noTrip: "No trip linked to this match.",
     planTrip: "Organise the trip",
@@ -311,7 +327,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     red: "Red",
     subIn: "On",
     subOut: "Off",
-    live: { goal: "Goal", goal_against: "Goal against", yellow: "Yellow card", red: "Red card", sub_in: "On", sub_out: "Off" },
+    live: { goal: "Goal", goal_against: "Goal against", yellow: "Yellow card", red: "Red card", sub_in: "On", sub_out: "Off", corner: "Corner", corner_against: "Corner against" },
     undo: "Undo",
     undoOf: "Undo: {what}",
     offline: "Offline: {n} fact(s) waiting on this phone.",

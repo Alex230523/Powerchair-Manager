@@ -123,6 +123,13 @@ it("flags a player without a valid licence and a broken chair, and lines up only
   const before = await journeyView(db, parent, match);
   expect(before).toMatchObject({ manage: false, lineup: null, result: null });
   if (!before.manage) expect(before.callUp.map((c) => [c.full_name, c.response])).toEqual([["Ana", "present"]]);
+  // 04/11/2026: an automatic reveal: 1 min before kick-off is not yet; a week before already is.
+  await run(coach, { action: "reveal", minutes: 1 });
+  expect(await journeyView(db, parent, match)).toMatchObject({ lineup: null });
+  await run(coach, { action: "reveal", minutes: 10080 });
+  expect(((await journeyView(db, parent, match)) as { lineup: unknown[] | null }).lineup).toHaveLength(1);
+  await run(coach, { action: "reveal", minutes: null });
+  expect(await journeyView(db, parent, match)).toMatchObject({ lineup: null });
   await run(coach, { action: "publish", published: true });
   const after = await journeyView(db, parent, match);
   expect(!after.manage && after.lineup?.map((x) => [x.full_name, x.jersey_number])).toEqual([["Ana", 7]]);
@@ -147,6 +154,10 @@ it("14: marks presences from the pitch side, takes an assist and a timeout, file
   expect(actual).toEqual([{ full_name: "Ana", actual: "present" }, { full_name: "Bilal", actual: "excused" }]);
   await run(coach, { action: "live", clientId: randomUUID(), kind: "assist", profileId: ana, minute: 5 });
   await run(coach, { action: "live", clientId: randomUUID(), kind: "timeout", profileId: null, minute: 6 });
+  // 04/11/2026: corners, ours and theirs, name nobody.
+  await run(coach, { action: "live", clientId: randomUUID(), kind: "corner", profileId: null, minute: 7 });
+  await run(coach, { action: "live", clientId: randomUUID(), kind: "corner_against", profileId: null, minute: 8 });
+  expect((await db.query("SELECT kind FROM match_live_event WHERE match_id=$1 AND kind LIKE 'corner%' ORDER BY minute", [match])).rows.map((r) => r.kind)).toEqual(["corner", "corner_against"]);
   const v = await journeyView(db, coach, match);
   if (!v.manage) throw new Error("manage");
   expect(v.liveScore).toEqual({ ours: 0, theirs: 0 });

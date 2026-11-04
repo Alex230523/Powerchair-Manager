@@ -43,7 +43,8 @@ describe("pitch side", () => {
   });
   it("counts the assist, and lets the goal against and the timeout name nobody", () => {
     expect(liveKinds).toContain("assist");
-    expect([...teamKinds]).toEqual(["goal_against", "timeout"]);
+    // 04/11/2026: corners, ours and theirs, name nobody either.
+    expect([...teamKinds]).toEqual(["goal_against", "timeout", "corner", "corner_against"]);
     const t = tally([
       { kind: "goal", profile_id: "a", cancelled_at: null },
       { kind: "assist", profile_id: "b", cancelled_at: null },

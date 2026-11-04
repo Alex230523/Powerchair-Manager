@@ -367,6 +367,13 @@ function MatchStep({ locale, data, events, act }: { locale: Locale; data: View; 
           <button type="button" className="button secondary sideline-big" onClick={() => void live(t.timeout, "timeout", null)}>
             {t.timeout}
           </button>
+          {/* 04/11/2026: corners, ours and theirs, as match facts. */}
+          <button type="button" className="button secondary sideline-big" onClick={() => void live(t.corner, "corner", null)}>
+            {t.corner}
+          </button>
+          <button type="button" className="button secondary sideline-big" onClick={() => void live(t.cornerAgainst, "corner_against", null)}>
+            {t.cornerAgainst}
+          </button>
         </div>
       )}
       <fieldset className="sideline-clock">
