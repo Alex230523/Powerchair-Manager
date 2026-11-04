@@ -397,10 +397,10 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         }
         const r = command.rules;
         await s.c.query(
-          `INSERT INTO transfer_rules(federation_id,windows,amounts_allowed,amount_cap_cents,max_per_club_season,federation_validation,rules_text,updated_by,updated_at,consented_anytime,max_per_pair_season) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now(),$9,$10)
-           ON CONFLICT (federation_id) DO UPDATE SET windows=EXCLUDED.windows,amounts_allowed=EXCLUDED.amounts_allowed,amount_cap_cents=EXCLUDED.amount_cap_cents,max_per_club_season=EXCLUDED.max_per_club_season,consented_anytime=EXCLUDED.consented_anytime,max_per_pair_season=EXCLUDED.max_per_pair_season,
+          `INSERT INTO transfer_rules(federation_id,windows,amounts_allowed,amount_cap_cents,max_per_club_season,federation_validation,rules_text,updated_by,updated_at,consented_anytime,max_per_pair_season,yearly_windows) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now(),$9,$10,$11)
+           ON CONFLICT (federation_id) DO UPDATE SET windows=EXCLUDED.windows,amounts_allowed=EXCLUDED.amounts_allowed,amount_cap_cents=EXCLUDED.amount_cap_cents,max_per_club_season=EXCLUDED.max_per_club_season,consented_anytime=EXCLUDED.consented_anytime,max_per_pair_season=EXCLUDED.max_per_pair_season,yearly_windows=EXCLUDED.yearly_windows,
              federation_validation=EXCLUDED.federation_validation,rules_text=EXCLUDED.rules_text,updated_by=EXCLUDED.updated_by,updated_at=now()`,
-          [s.fed, JSON.stringify(r.windows), r.amountsAllowed, r.amountCapCents, r.maxPerClubSeason, r.federationValidation, r.rulesText, s.userId, r.consentedAnytime ?? false, r.maxPerPairSeason ?? null],
+          [s.fed, JSON.stringify(r.windows), r.amountsAllowed, r.amountCapCents, r.maxPerClubSeason, r.federationValidation, r.rulesText, s.userId, r.consentedAnytime ?? false, r.maxPerPairSeason ?? null, r.yearlyWindows ?? false],
         );
         await audit(s.c, s.org, s.userId, "transfer.rules", s.org);
         return { ok: true as const };

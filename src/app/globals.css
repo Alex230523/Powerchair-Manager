@@ -12468,6 +12468,20 @@ ul.task-page li {
 .match-score[data-outcome="draw"] {
   background: var(--surface-soft);
 }
+/* Point 3 (04/11/2026): a shape as well as the colour (WCAG 1.4.1): ▲ won, ▼ lost, = draw. */
+.match-score[data-outcome] > [aria-hidden]::before {
+  margin-inline-end: 0.25em;
+  font-size: 0.75em;
+}
+.match-score[data-outcome="win"] > [aria-hidden]::before {
+  content: "▲";
+}
+.match-score[data-outcome="loss"] > [aria-hidden]::before {
+  content: "▼";
+}
+.match-score[data-outcome="draw"] > [aria-hidden]::before {
+  content: "=";
+}
 .match-context {
   font-size: var(--text-sm);
   color: var(--muted);
@@ -12908,42 +12922,64 @@ ul.task-page > li[data-status="done"] {
   position: relative;
   display: grid;
 }
-.metric-split-bubble {
-  position: absolute;
-  z-index: 20;
-  inset-inline-start: 0;
-  top: calc(100% + var(--space-1));
+/* Points 2 and 18 (04/11/2026): the grey bubble, placed against the window (HoverBubble). */
+.hover-bubble {
+  position: relative;
+}
+.hover-bubble-panel {
+  position: fixed;
+  z-index: 60;
+  inset-inline-start: var(--bubble-x, 0);
+  top: var(--bubble-y, 0);
   width: max-content;
   min-width: 14rem;
-  max-width: min(18rem, 80vw);
+  max-width: min(18rem, calc(100vw - 16px));
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--heading);
   color: var(--surface);
   font-size: var(--text-sm);
   box-shadow: var(--shadow-card);
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity var(--transition);
-  pointer-events: none;
+  display: none;
 }
-.metric-split:hover .metric-split-bubble,
-.metric-split:focus-within .metric-split-bubble {
-  visibility: visible;
-  opacity: 1;
+.hover-bubble-panel[data-open] {
+  display: block;
 }
-.metric-split-title {
+.hover-bubble-title {
   margin: 0 0 var(--space-2);
   font-weight: 600;
 }
-.metric-split-bubble ul {
+/* A touch screen hovers nothing: the content shows under the trigger, in the page. */
+@media (hover: none) {
+  .hover-bubble-panel,
+  .hover-bubble-panel[data-open] {
+    position: static;
+    display: block;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+  }
+  .hover-bubble-panel .metric-split-bar {
+    background: var(--border);
+  }
+  .hover-bubble-panel .metric-split-bar > span {
+    background: var(--primary);
+  }
+}
+.metric-split-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: var(--space-1);
 }
-.metric-split-bubble li {
+.metric-split-list li {
   display: grid;
   grid-template-columns: 7.5rem minmax(4rem, 1fr) auto;
   align-items: center;

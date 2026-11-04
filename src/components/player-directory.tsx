@@ -1,4 +1,5 @@
 "use client";
+import { HoverBubble } from "./hover-bubble";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -649,17 +650,14 @@ export function PlayerDirectory({
                       cell: (r: Profile) => {
                         const k = data.coachExtras?.[r.id]?.tasks ?? { open: 0, late: 0 };
                         const next = data.coachExtras?.[r.id]?.next ?? [];
-                        const link = (
-                          <Link href={`/${locale}/coaches/${r.id}#todo`} aria-describedby={next.length ? `coach-tasks-${r.id}` : undefined}>
+                        const link = (describedBy?: string) => (
+                          <Link href={`/${locale}/coaches/${r.id}#todo`} aria-describedby={describedBy}>
                             {fillIn(staffRolesCopy[locale].tasksCount, { open: String(k.open), late: String(k.late) })}
                           </Link>
                         );
                         // 04/11/2026: on hover or focus, a grey bubble with the next tasks; the link leads to them.
                         return next.length ? (
-                          <span className="metric-split coach-tasks">
-                            {link}
-                            <span className="metric-split-bubble" role="tooltip" id={`coach-tasks-${r.id}`}>
-                              <span className="metric-split-title">{staffRolesCopy[locale].nextTasks}</span>
+                          <HoverBubble className="coach-tasks" title={staffRolesCopy[locale].nextTasks} trigger={link}>
                               <span className="coach-tasks-list">
                                 {next.map((x, i) => (
                                   <span key={i}>
@@ -668,10 +666,9 @@ export function PlayerDirectory({
                                   </span>
                                 ))}
                               </span>
-                            </span>
-                          </span>
+                          </HoverBubble>
                         ) : (
-                          link
+                          link()
                         );
                       },
                     },

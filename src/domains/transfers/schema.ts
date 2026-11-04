@@ -20,9 +20,11 @@ export const rulesSchema = z.object({
   consentedAnytime: z.boolean().default(false),
   /** BPCF 1/12: at most this many transfers from one club to another per season. */
   maxPerPairSeason: z.number().int().min(0).max(100).nullable().default(null),
+  /** Point 5: the periods come back every year on the same days and months. */
+  yearlyWindows: z.boolean().default(false),
 });
 export type Rules = z.infer<typeof rulesSchema>;
-export const defaultRules: Rules = { windows: [], amountsAllowed: false, amountCapCents: null, maxPerClubSeason: null, federationValidation: true, rulesText: "", consentedAnytime: false, maxPerPairSeason: null };
+export const defaultRules: Rules = { windows: [], amountsAllowed: false, amountCapCents: null, maxPerClubSeason: null, federationValidation: true, rulesText: "", consentedAnytime: false, maxPerPairSeason: null, yearlyWindows: false };
 
 /**
  * 04/11/2026: the BPCF rules (règlement 2025, art. 1/12) for the season of
@@ -46,6 +48,7 @@ export function bpcfRules(today: string, rulesText: string): Rules {
     rulesText,
     consentedAnytime: true,
     maxPerPairSeason: 1,
+    yearlyWindows: true,
   };
 }
 
@@ -83,21 +86,30 @@ export function rulesOf(row: Record<string, unknown> | undefined): Rules {
     rulesText: (row.rules_text as string) ?? "",
     consentedAnytime: row.consented_anytime === true,
     maxPerPairSeason: (row.max_per_pair_season as number | null) ?? null,
+    yearlyWindows: row.yearly_windows === true,
   };
 }
 /** Open all year without windows; otherwise only within one of them (ends included). */
-export function marketOpen(rules: Pick<Rules, "windows">, today: string) {
-  return !rules.windows.length || rules.windows.some((w) => w.from <= today && today <= w.to);
+export function marketOpen(rules: Pick<Rules, "windows"> & { yearlyWindows?: boolean }, today: string) {
+  return !rules.windows.length || rules.windows.some((w) => inWindow(w, today, !!rules.yearlyWindows));
+}
+/** Point 5: a yearly period compares days and months only, across the new year when it runs over it. */
+export function inWindow(w: { from: string; to: string }, today: string, yearly: boolean) {
+  if (!yearly) return w.from <= today && today <= w.to;
+  const f = w.from.slice(5),
+    t = w.to.slice(5),
+    d = today.slice(5);
+  return w.from.slice(0, 4) < w.to.slice(0, 4) || f > t ? d >= f || d <= t : f <= d && d <= t;
 }
 /** A request or an acceptance: within a period, or at any time when consented transfers are allowed all season. */
-export function requestOpen(rules: Pick<Rules, "windows" | "consentedAnytime">, today: string) {
+export function requestOpen(rules: Pick<Rules, "windows" | "consentedAnytime"> & { yearlyWindows?: boolean }, today: string) {
   return rules.consentedAnytime || marketOpen(rules, today);
 }
 /**
  * BPCF 1/12 « libre » / « litigieux »: the current club refused, the player
  * agreed; during a transfer period the federation may still validate.
  */
-export function freeLeave(o: { status: string; player_consent: string; from_organization_id: string | null; federation_at?: string | null }, rules: Pick<Rules, "windows" | "consentedAnytime" | "federationValidation">, today: string) {
+export function freeLeave(o: { status: string; player_consent: string; from_organization_id: string | null; federation_at?: string | null }, rules: Pick<Rules, "windows" | "consentedAnytime" | "federationValidation"> & { yearlyWindows?: boolean }, today: string) {
   return rules.consentedAnytime && rules.federationValidation && !!o.from_organization_id && o.status === "refused" && o.player_consent === "given" && !o.federation_at && rules.windows.length > 0 && marketOpen(rules, today);
 }
 /** An amount is allowed only when the rules say so, and up to the cap. */

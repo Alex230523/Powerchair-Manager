@@ -206,7 +206,7 @@ export function TripForm({
         )}
         <label htmlFor={`${id}-title`}>
           {f.title}
-          <input id={`${id}-title`} name="title" required minLength={2} maxLength={120} defaultValue={trip?.title} placeholder="Ex. Tournoi de Gand" />
+          <input id={`${id}-title`} name="title" required minLength={2} maxLength={120} defaultValue={trip?.title} placeholder={t.examples.title} />
         </label>
         <label htmlFor={`${id}-kind`}>
           {f.kind}
@@ -266,7 +266,7 @@ export function TripForm({
         </label>
         <label htmlFor={`${id}-meet`}>
           {f.meetingPoint}
-          <input id={`${id}-meet`} name="meetingPoint" maxLength={300} defaultValue={trip?.meeting_point} placeholder="Ex. Parking du club" />
+          <input id={`${id}-meet`} name="meetingPoint" maxLength={300} defaultValue={trip?.meeting_point} placeholder={t.examples.meeting} />
         </label>
         <label htmlFor={`${id}-dep`}>
           {f.departureAt}
@@ -293,7 +293,7 @@ export function TripForm({
         )}
         <label htmlFor={`${id}-contact`}>
           {f.contact}
-          <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder="Ex. Sophie, 0470 12 34 56" />
+          <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder={t.examples.contact} />
         </label>
       </div>
       {/* 3: the accommodation belongs to a stay; a transport keeps what it had, hidden. */}
@@ -512,7 +512,7 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
         </label>
         <label>
           {t.kind}
-          <input name="kind" maxLength={60} defaultValue={v?.kind} placeholder="Ex. Minibus adapté" />
+          <input name="kind" maxLength={60} defaultValue={v?.kind} placeholder={t.examples.vehicleKind} />
         </label>
         <label>
           {t.plate}

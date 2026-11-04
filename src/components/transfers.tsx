@@ -20,6 +20,7 @@ type Send = (body: Record<string, unknown>, done: string) => Promise<boolean>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const money = (l: Locale, cents: number) => new Intl.NumberFormat(tag(l), { style: "currency", currency: "EUR" }).format(cents / 100);
 const day = (l: Locale, d: string) => new Intl.DateTimeFormat(tag(l), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
+const dayMonth = (l: Locale, d: string) => new Intl.DateTimeFormat(tag(l), { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
 const statusTone: Record<string, string> = { sent: "info", discussing: "info", accepted: "warning", refused: "danger", withdrawn: "neutral", validated: "success" };
 
 /**
@@ -78,7 +79,12 @@ function RulesCard({ locale, view }: { locale: Locale; view: View }) {
       {r.rulesText && <p className="transfer-rules-text">{r.rulesText}</p>}
       <ul className="plain-list small">
         <li>
-          {t.windows} : {r.windows.length ? r.windows.map((w) => `${day(locale, w.from)} → ${day(locale, w.to)}`).join(" · ") : t.allYear}
+          {t.windows} :{" "}
+          {r.windows.length
+            ? r.yearlyWindows
+              ? `${r.windows.map((w) => `${dayMonth(locale, w.from)} → ${dayMonth(locale, w.to)}`).join(" · ")}, ${t.yearly}`
+              : r.windows.map((w) => `${day(locale, w.from)} → ${day(locale, w.to)}`).join(" · ")
+            : t.allYear}
         </li>
         <li>
           {t.amounts} : {r.amountsAllowed ? (r.amountCapCents !== null ? fill(t.cap, { amount: money(locale, r.amountCapCents) }) : t.noCap) : t.noAmounts}
@@ -703,6 +709,7 @@ function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; b
               rulesText: String(d.get("text") ?? ""),
               consentedAnytime: d.get("consented") === "on",
               maxPerPairSeason: pair ? Number(pair) : null,
+              yearlyWindows: d.get("yearly") === "on",
             },
           },
           t.saved,
@@ -730,6 +737,10 @@ function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; b
           </div>
         ))}
         {!windows.length && <p className="muted">{t.allYear}</p>}
+        <label className="check">
+          <input type="checkbox" name="yearly" defaultChecked={r.yearlyWindows} />
+          {f.yearly}
+        </label>
         <button type="button" className="button secondary sm" onClick={() => setWindows([...windows, { from: view.today, to: view.today }])}>
           {f.addWindow}
         </button>

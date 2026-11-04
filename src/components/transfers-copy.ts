@@ -17,6 +17,7 @@ type Copy = {
   maxPerPair: string;
   consentedAnytime: string;
   consentedOnly: string;
+  yearly: string;
   bpcf: Record<"apply" | "hint" | "text", string>;
   validation: string;
   noValidation: string;
@@ -80,7 +81,7 @@ type Copy = {
   post: string;
   threadsTitle: string;
   threadsIntro: string;
-  rulesForm: Record<"from" | "to" | "addWindow" | "removeWindow" | "amountsAllowed" | "cap" | "max" | "validation" | "text" | "save" | "windowOf" | "consentedAnytime" | "maxPair", string>;
+  rulesForm: Record<"from" | "to" | "addWindow" | "removeWindow" | "amountsAllowed" | "cap" | "max" | "validation" | "text" | "save" | "windowOf" | "consentedAnytime" | "maxPair" | "yearly", string>;
   provinceOf: string;
   provinces: Record<string, string>;
   saved: string;
@@ -121,6 +122,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     maxPerPair: "Au plus {n} transfert(s) d'un club vers un même club par saison",
     consentedAnytime: "Transfert consenti (tous d'accord) possible toute la saison ; sinon, départ libre pendant une période, validé par la fédération",
     consentedOnly: "Hors période : transferts consentis uniquement",
+    yearly: "chaque année",
     bpcf: {
       apply: "Reprendre le règlement BPCF 2025",
       hint: "Remplit les périodes de la saison (1er juillet au 31 août, 20 décembre au 10 janvier), le plafond de 500 €, un transfert par saison d'un club vers un autre et le texte ; vérifiez puis enregistrez.",
@@ -202,6 +204,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       windowOf: "Période {n}",
       consentedAnytime: "Transfert consenti possible toute la saison (hors période : départ libre validé par la fédération pendant une période)",
       maxPair: "Transferts au plus d'un club vers un même club par saison (facultatif)",
+      yearly: "Les mêmes périodes chaque année (seuls le jour et le mois comptent)",
     },
     provinceOf: "Province : {name}",
     provinces: provincesFr,
@@ -237,6 +240,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     maxPerPair: "Hoogstens {n} transfer(s) van een club naar dezelfde club per seizoen",
     consentedAnytime: "Transfer met akkoord van iedereen het hele seizoen mogelijk; anders vrij vertrek tijdens een periode, gevalideerd door de federatie",
     consentedOnly: "Buiten de periode: enkel transfers met akkoord",
+    yearly: "elk jaar",
     bpcf: {
       apply: "Het BPCF-reglement 2025 overnemen",
       hint: "Vult de periodes van het seizoen in (1 juli tot 31 augustus, 20 december tot 10 januari), het plafond van 500 €, één transfer per seizoen van een club naar een andere en de tekst; controleer en sla op.",
@@ -318,6 +322,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       windowOf: "Periode {n}",
       consentedAnytime: "Transfer met akkoord het hele seizoen mogelijk (buiten de periode: vrij vertrek gevalideerd door de federatie tijdens een periode)",
       maxPair: "Hoogstens transfers van een club naar dezelfde club per seizoen (optioneel)",
+      yearly: "Elk jaar dezelfde periodes (enkel dag en maand tellen)",
     },
     provinceOf: "Provincie: {name}",
     provinces: {
@@ -366,6 +371,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     maxPerPair: "At most {n} transfer(s) from one club to the same club per season",
     consentedAnytime: "A transfer everyone agrees to is possible all season; otherwise, a free leave during a period, validated by the federation",
     consentedOnly: "Outside a period: agreed transfers only",
+    yearly: "every year",
     bpcf: {
       apply: "Use the BPCF 2025 rules",
       hint: "Fills in the season's periods (1 July to 31 August, 20 December to 10 January), the 500 € cap, one transfer per season from one club to another and the text; check, then save.",
@@ -447,6 +453,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       windowOf: "Period {n}",
       consentedAnytime: "Agreed transfer possible all season (outside a period: free leave validated by the federation during a period)",
       maxPair: "Transfers at most from one club to the same club per season (optional)",
+      yearly: "The same periods every year (only the day and month count)",
     },
     provinceOf: "Province: {name}",
     provinces: {

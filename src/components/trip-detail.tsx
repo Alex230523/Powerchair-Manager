@@ -458,7 +458,7 @@ function Schedule({ locale, d, busy, send }: Props) {
           </label>
           <label htmlFor="sch-title">
             {t.what}
-            <input id="sch-title" name="title" required minLength={2} maxLength={160} placeholder="Ex. Match contre Gand" />
+            <input id="sch-title" name="title" required minLength={2} maxLength={160} placeholder={t.examples.schedule} />
           </label>
           <label htmlFor="sch-place">
             {t.where}
