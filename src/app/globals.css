@@ -6499,7 +6499,7 @@ ul.task-list {
 .board-day:focus-within header button {
   opacity: 1;
 }
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
   .board-day header button {
     opacity: 1;
   }
@@ -12951,7 +12951,7 @@ ul.task-page > li[data-status="done"] .task-title {
   font-weight: 600;
 }
 /* A touch screen hovers nothing: the content shows under the trigger, in the page. */
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
   .hover-bubble-panel,
   .hover-bubble-panel[data-open] {
     position: static;
@@ -13149,4 +13149,118 @@ input[type="search"] {
 }
 .driver-badges:empty {
   display: none;
+}
+
+/*
+ * Point 16 (04/11/2026): every window the same. A form window is 640 px wide
+ * at most (the wide ones keep their own width), its title stays at the top
+ * while scrolling, and its buttons sit at the bottom right, on one line
+ * above a thin border, always within reach.
+ */
+.player-dialog:not(.side-sheet, .wide-dialog, .event-editor-dialog, .sheet-dialog, .tournament-dialog, .subscribe-dialog, .issue-wizard, .preview-dialog) {
+  width: min(640px, calc(100% - 24px));
+}
+.player-dialog:not(.side-sheet) > .dialog-heading {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  margin: -20px -20px 12px;
+  padding: 16px 20px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.player-dialog:not(.side-sheet) > .dialog-heading h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.player-dialog:not(.side-sheet) > :is(form, div) > :is(.actions, .form-actions):last-child,
+.player-dialog:not(.side-sheet) > div > form > :is(.actions, .form-actions):last-child {
+  position: sticky;
+  bottom: -20px;
+  z-index: 1;
+  justify-content: flex-end;
+  margin: 16px -20px -20px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/*
+ * Point 17 (04/11/2026): on a phone (under 600 px) the lists of DataGrid read
+ * as cards: the row's name on top, then each value with its column's name.
+ * The sortable headers stay on top as a row of buttons.
+ */
+@media (max-width: 600px) {
+  .data-table.dg-cards {
+    overflow: visible;
+    border: 0;
+  }
+  .dg-cards > table,
+  .dg-cards > table > tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .dg-cards > table > thead {
+    display: block;
+    margin-bottom: var(--space-2);
+  }
+  .dg-cards > table > thead > tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+  }
+  .dg-cards > table > thead th {
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .dg-cards > table > thead,
+  .dg-cards > table > thead > tr {
+    background: none;
+  }
+  .dg-cards > table > thead th:not(:has(.dg-sort), .dg-select) {
+    display: none;
+  }
+  .dg-cards > table > tbody > tr {
+    display: grid;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+  .dg-cards > table > tbody > tr > :is(td, th) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    height: auto;
+    min-height: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    text-align: start;
+  }
+  .dg-cards > table > tbody > tr > :is(td, th)[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: 400;
+  }
+  .dg-cards > table > tbody > tr > th[scope="row"] {
+    font-size: var(--text-base);
+    font-weight: 600;
+  }
+  .dg-cards > table > tbody > tr > th[scope="row"]::before {
+    display: none;
+  }
+  .dg-cards > table > tbody > tr > td.dg-select {
+    justify-content: flex-start;
+  }
 }

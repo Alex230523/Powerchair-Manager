@@ -22,7 +22,7 @@ describe("points 1 to 5: corrections", () => {
   it("2 and 18: the bubbles are placed against the window and show on a touch screen", () => {
     const css = read("src/app/globals.css");
     expect(css).toMatch(/\.hover-bubble-panel \{[^}]*position: fixed/);
-    expect(css).toMatch(/@media \(hover: none\) \{\s*\.hover-bubble-panel/);
+    expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\) \{\s*\.hover-bubble-panel/);
     expect(read("src/components/hover-bubble.tsx")).toContain('e.key === "Escape"');
     expect(read("src/components/home.tsx")).toContain("<HoverBubble");
     expect(read("src/components/player-directory.tsx")).toContain("<HoverBubble");

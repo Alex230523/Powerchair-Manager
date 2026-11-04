@@ -337,7 +337,18 @@ export function Exercises({ locale, genre }: { locale: Locale; genre?: string })
             </label>
           </Toolbar>
           {!shown.length ? (
-            <EmptyState icon="clipboardList" title={view.exercises.length ? t.noMatch : t.empty} />
+            <EmptyState
+              icon="clipboardList"
+              title={view.exercises.length ? t.noMatch : t.empty}
+              // Point 19: an empty page says what to do, with the button to start.
+              action={
+                !view.exercises.length && view.can.write ? (
+                  <Button icon="plus" onClick={() => setEditing("new")}>
+                    {t.add}
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : layout === "cards" ? (
             <ul className="exercise-grid">
               {shown.map((x) => (

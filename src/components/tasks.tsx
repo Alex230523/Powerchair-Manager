@@ -315,7 +315,17 @@ export function Tasks({
           );
         })
       ) : (
-        <EmptyState title={view === "mine" || embedded ? t.emptyMine : t.empty} />
+        <EmptyState
+          title={view === "mine" || embedded ? t.emptyMine : t.empty}
+          // Point 19: the way to start, right there.
+          action={
+            !embedded && all.some(canAdd) ? (
+              <Button icon="plus" onClick={() => setEditing({ category: all.find(canAdd)! })}>
+                {t.add}
+              </Button>
+            ) : undefined
+          }
+        />
       )}
       {editing && (
         <TaskForm

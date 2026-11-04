@@ -114,7 +114,7 @@ describe("EmptyState, DataTable and Field", () => {
         </tbody>
       </DataTable>,
     );
-    expect(out).toContain('<div class="data-table table-scroll" role="region" aria-label="Joueurs" tabindex="0"><table><caption class="sr-only">Trois joueurs</caption>');
+    expect(out).toContain('<div class="data-table table-scroll" role="region" aria-label="Joueurs" tabindex="0"><table role="table"><caption class="sr-only">Trois joueurs</caption>');
   });
   it("labels a control, with help and an error that the control can describe itself by", () => {
     const out = html(

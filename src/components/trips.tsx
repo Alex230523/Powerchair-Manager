@@ -406,7 +406,17 @@ export function TripsPage({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <EmptyState title={t.none} />
+        <EmptyState
+          title={t.none}
+          // Point 19: the way to start, right there.
+          action={
+            data.can.manage && !creating ? (
+              <button type="button" className="button" onClick={() => setCreating(true)}>
+                {t.create}
+              </button>
+            ) : undefined
+          }
+        />
       )}
       {preview && <TripPreview locale={locale} id={preview} close={() => setPreview(null)} />}
       {(data.can.manage || data.fleet.length > 0) && (

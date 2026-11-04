@@ -188,7 +188,18 @@ export function Contacts({ locale, start }: { locale: Locale; start?: string }) 
                 ]}
               />
             ) : (
-              <EmptyState title={c.empty} icon="message" />
+              <EmptyState
+                title={c.empty}
+                icon="message"
+                // Point 19: the way to start, right there.
+                action={
+                  data.can.manage ? (
+                    <Button icon="plus" onClick={() => setEditing("new")}>
+                      {c.new}
+                    </Button>
+                  ) : undefined
+                }
+              />
             )}
           </Card>
         )}

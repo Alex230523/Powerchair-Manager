@@ -231,7 +231,8 @@ export function DataGrid<T>({
       )}
       </div>
       )}
-      <DataTable label={label} caption={caption}>
+      {/* Point 17: under 600 px each row becomes a card, each value with its column's name. */}
+      <DataTable label={label} caption={caption} className="dg-cards">
         <thead>
           <tr>
             {selectable && (
@@ -248,7 +249,7 @@ export function DataGrid<T>({
               </th>
             )}
             {visible.map((c) => (
-              <th key={c.key} scope="col" className={c.className} aria-sort={sort?.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
+              <th key={c.key} scope="col" role="columnheader" className={c.className} aria-sort={sort?.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
                 {c.sort ? (
                   <button type="button" className="dg-sort" onClick={() => changeSort(c.key)}>
                     {c.header}
@@ -267,7 +268,7 @@ export function DataGrid<T>({
           {shown.map((row) => {
             const id = rowId(row);
             return (
-              <tr key={id} className={rowClassName?.(row)} data-state={rowState?.(row)} data-selected={selected.has(id) ? "" : undefined}>
+              <tr key={id} role="row" className={rowClassName?.(row)} data-state={rowState?.(row)} data-selected={selected.has(id) ? "" : undefined}>
                 {selectable && (
                   <td className="dg-select">
                     <input
@@ -282,11 +283,11 @@ export function DataGrid<T>({
                 )}
                 {visible.map((c) =>
                   c.rowHeader ? (
-                    <th key={c.key} scope="row" className={c.className}>
+                    <th key={c.key} scope="row" role="rowheader" className={c.className} data-label={c.header}>
                       {c.cell(row)}
                     </th>
                   ) : (
-                    <td key={c.key} className={c.className}>
+                    <td key={c.key} role="cell" className={c.className} data-label={c.header}>
                       {c.cell(row)}
                     </td>
                   ),
