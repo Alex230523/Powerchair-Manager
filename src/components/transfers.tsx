@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { sheetView, threadsView, transfersView } from "@/domains/transfers/service";
-import { provinces } from "@/domains/transfers/schema";
+import { bpcfRules, provinces } from "@/domains/transfers/schema";
 import { ageBands } from "@/domains/statistics/club-math";
 import { transfersCopy, fill } from "./transfers-copy";
 import { statisticsCopy } from "./statistics-copy";
@@ -73,7 +73,7 @@ function RulesCard({ locale, view }: { locale: Locale; view: View }) {
   return (
     <Card title={t.rulesTitle} labelledBy="transfer-rules" headingId="transfer-rules" className="transfer-rules">
       <p>
-        <Badge tone={view.open ? "success" : "danger"}>{view.open ? t.open : t.closed}</Badge>
+        <Badge tone={view.open ? "success" : view.consentedOnly ? "warning" : "danger"}>{view.open ? t.open : view.consentedOnly ? t.consentedOnly : t.closed}</Badge>
       </p>
       {r.rulesText && <p className="transfer-rules-text">{r.rulesText}</p>}
       <ul className="plain-list small">
@@ -84,6 +84,8 @@ function RulesCard({ locale, view }: { locale: Locale; view: View }) {
           {t.amounts} : {r.amountsAllowed ? (r.amountCapCents !== null ? fill(t.cap, { amount: money(locale, r.amountCapCents) }) : t.noCap) : t.noAmounts}
         </li>
         {r.maxPerClubSeason !== null && <li>{fill(t.maxPerClub, { n: r.maxPerClubSeason })}</li>}
+        {r.maxPerPairSeason !== null && <li>{fill(t.maxPerPair, { n: r.maxPerPairSeason })}</li>}
+        {r.consentedAnytime && <li>{t.consentedAnytime}</li>}
         <li>{r.federationValidation ? t.validation : t.noValidation}</li>
       </ul>
     </Card>
@@ -655,10 +657,29 @@ export function InterclubThreads({ locale }: { locale: Locale }) {
 function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; busy: boolean; send: Send }) {
   const t = transfersCopy[locale],
     f = t.rulesForm;
-  const r = view.rules;
+  // 04/11/2026: « Reprendre le règlement BPCF 2025 » fills the form; the federation checks, then saves.
+  const [r, setR] = useState(view.rules),
+    [round, setRound] = useState(0);
   const [windows, setWindows] = useState(r.windows.length ? r.windows : []);
   return (
+    <>
+    <div className="transfer-bpcf">
+      <button
+        type="button"
+        className="button secondary"
+        onClick={() => {
+          const b = bpcfRules(view.today, t.bpcf.text);
+          setR(b);
+          setWindows(b.windows);
+          setRound(round + 1);
+        }}
+      >
+        {t.bpcf.apply}
+      </button>
+      <p className="muted small">{t.bpcf.hint}</p>
+    </div>
     <form
+      key={round}
       className="stack-form"
       aria-label={t.tabs.rules}
       onSubmit={(e) => {
@@ -668,7 +689,8 @@ function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; b
           const v = String(d.get(k) ?? "").replace(",", ".").trim();
           return v ? Math.round(Number(v) * 100) : null;
         };
-        const max = String(d.get("max") ?? "").trim();
+        const max = String(d.get("max") ?? "").trim(),
+          pair = String(d.get("pair") ?? "").trim();
         void send(
           {
             action: "rules",
@@ -679,6 +701,8 @@ function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; b
               maxPerClubSeason: max ? Number(max) : null,
               federationValidation: d.get("validation") === "on",
               rulesText: String(d.get("text") ?? ""),
+              consentedAnytime: d.get("consented") === "on",
+              maxPerPairSeason: pair ? Number(pair) : null,
             },
           },
           t.saved,
@@ -723,7 +747,15 @@ function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; b
           {f.max}
           <input name="max" type="number" min={0} max={100} defaultValue={r.maxPerClubSeason ?? ""} />
         </label>
+        <label>
+          {f.maxPair}
+          <input name="pair" type="number" min={0} max={100} defaultValue={r.maxPerPairSeason ?? ""} />
+        </label>
       </div>
+      <label className="check">
+        <input type="checkbox" name="consented" defaultChecked={r.consentedAnytime} />
+        {f.consentedAnytime}
+      </label>
       <label className="check">
         <input type="checkbox" name="validation" defaultChecked={r.federationValidation} />
         {f.validation}
@@ -738,6 +770,7 @@ function RulesForm({ locale, view, busy, send }: { locale: Locale; view: View; b
         </button>
       </p>
     </form>
+    </>
   );
 }
 

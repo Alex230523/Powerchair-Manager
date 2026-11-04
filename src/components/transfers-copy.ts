@@ -14,6 +14,10 @@ type Copy = {
   cap: string;
   noCap: string;
   maxPerClub: string;
+  maxPerPair: string;
+  consentedAnytime: string;
+  consentedOnly: string;
+  bpcf: Record<"apply" | "hint" | "text", string>;
   validation: string;
   noValidation: string;
   mineTitle: string;
@@ -76,7 +80,7 @@ type Copy = {
   post: string;
   threadsTitle: string;
   threadsIntro: string;
-  rulesForm: Record<"from" | "to" | "addWindow" | "removeWindow" | "amountsAllowed" | "cap" | "max" | "validation" | "text" | "save" | "windowOf", string>;
+  rulesForm: Record<"from" | "to" | "addWindow" | "removeWindow" | "amountsAllowed" | "cap" | "max" | "validation" | "text" | "save" | "windowOf" | "consentedAnytime" | "maxPair", string>;
   provinceOf: string;
   provinces: Record<string, string>;
   saved: string;
@@ -114,6 +118,14 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     cap: "jusqu'à {amount}",
     noCap: "sans plafond",
     maxPerClub: "Au plus {n} transfert(s) par club et par saison",
+    maxPerPair: "Au plus {n} transfert(s) d'un club vers un même club par saison",
+    consentedAnytime: "Transfert consenti (tous d'accord) possible toute la saison ; sinon, départ libre pendant une période, validé par la fédération",
+    consentedOnly: "Hors période : transferts consentis uniquement",
+    bpcf: {
+      apply: "Reprendre le règlement BPCF 2025",
+      hint: "Remplit les périodes de la saison (1er juillet au 31 août, 20 décembre au 10 janvier), le plafond de 500 €, un transfert par saison d'un club vers un autre et le texte ; vérifiez puis enregistrez.",
+      text: "Règlement BPCF 2025, art. 1/12. La saison va du 1er septembre au 30 juin. Transfert consenti (club sortant, club entrant et joueur ou parents d'accord) : toute la saison. Transfert libre ou litigieux (le club sortant refuse) : pendant la période principale, du 1er juillet au 31 août (période secondaire du 20 décembre au 10 janvier). Cas de force majeure : commission BPCF d'urgence. Chaque transfert est validé par la commission BPCF. Indemnité de formation (transfert national) : 50 € par année (académie), 125 € (élite), 250 € (élite avec entraîneurs diplômés BPCF), 500 € au plus par joueur ; la preuve de paiement est fournie à BPCF. Pas plus d'un transfert par an d'une structure vers une autre.",
+    },
     validation: "Validation par la fédération",
     noValidation: "Sans validation de la fédération",
     mineTitle: "Ma visibilité",
@@ -188,6 +200,8 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       text: "Texte des règles, affiché en tête de la bourse",
       save: "Enregistrer les règles",
       windowOf: "Période {n}",
+      consentedAnytime: "Transfert consenti possible toute la saison (hors période : départ libre validé par la fédération pendant une période)",
+      maxPair: "Transferts au plus d'un club vers un même club par saison (facultatif)",
     },
     provinceOf: "Province : {name}",
     provinces: provincesFr,
@@ -197,6 +211,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       AMOUNT_NOT_ALLOWED: "Ce montant n'est pas autorisé par les règles de la fédération.",
       OWN_PLAYER: "Ce joueur est déjà dans votre club.",
       TRANSFER_LIMIT: "Le nombre maximum de transferts pour cette saison est atteint.",
+      TRANSFER_PAIR_LIMIT: "Un transfert entre ces deux clubs a déjà eu lieu cette saison.",
       CONSENT_REQUIRED: "Le joueur, ou un parent, doit d'abord donner son accord.",
       DUPLICATE: "Une demande est déjà en cours pour ce joueur, ou il est déjà dans ce club.",
       NO_FEDERATION: "Votre club n'est rattaché à aucune fédération.",
@@ -219,6 +234,14 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     cap: "tot {amount}",
     noCap: "zonder plafond",
     maxPerClub: "Hoogstens {n} transfer(s) per club en per seizoen",
+    maxPerPair: "Hoogstens {n} transfer(s) van een club naar dezelfde club per seizoen",
+    consentedAnytime: "Transfer met akkoord van iedereen het hele seizoen mogelijk; anders vrij vertrek tijdens een periode, gevalideerd door de federatie",
+    consentedOnly: "Buiten de periode: enkel transfers met akkoord",
+    bpcf: {
+      apply: "Het BPCF-reglement 2025 overnemen",
+      hint: "Vult de periodes van het seizoen in (1 juli tot 31 augustus, 20 december tot 10 januari), het plafond van 500 €, één transfer per seizoen van een club naar een andere en de tekst; controleer en sla op.",
+      text: "BPCF-reglement 2025, art. 1/12. Het seizoen loopt van 1 september tot 30 juni. Transfer met akkoord (vertrekkende club, ontvangende club en speler of ouders): het hele seizoen. Vrije of betwiste transfer (de vertrekkende club weigert): tijdens de hoofdperiode, van 1 juli tot 31 augustus (tweede periode van 20 december tot 10 januari). Overmacht: dringende BPCF-commissie. Elke transfer wordt gevalideerd door de BPCF-commissie. Opleidingsvergoeding (nationale transfer): 50 € per jaar (academie), 125 € (elite), 250 € (elite met door BPCF gediplomeerde trainers), hoogstens 500 € per speler; het betalingsbewijs wordt aan BPCF bezorgd. Niet meer dan één transfer per jaar van een structuur naar een andere.",
+    },
     validation: "Validatie door de federatie",
     noValidation: "Zonder validatie door de federatie",
     mineTitle: "Mijn zichtbaarheid",
@@ -293,6 +316,8 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       text: "Tekst van de regels, bovenaan de beurs",
       save: "De regels opslaan",
       windowOf: "Periode {n}",
+      consentedAnytime: "Transfer met akkoord het hele seizoen mogelijk (buiten de periode: vrij vertrek gevalideerd door de federatie tijdens een periode)",
+      maxPair: "Hoogstens transfers van een club naar dezelfde club per seizoen (optioneel)",
     },
     provinceOf: "Provincie: {name}",
     provinces: {
@@ -315,6 +340,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       AMOUNT_NOT_ALLOWED: "Dit bedrag is niet toegestaan door de regels van de federatie.",
       OWN_PLAYER: "Deze speler zit al in uw club.",
       TRANSFER_LIMIT: "Het maximum aantal transfers voor dit seizoen is bereikt.",
+      TRANSFER_PAIR_LIMIT: "Er was dit seizoen al een transfer tussen deze twee clubs.",
       CONSENT_REQUIRED: "De speler, of een ouder, moet eerst akkoord gaan.",
       DUPLICATE: "Er loopt al een aanvraag voor deze speler, of hij zit al in deze club.",
       NO_FEDERATION: "Uw club is bij geen enkele federatie aangesloten.",
@@ -337,6 +363,14 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     cap: "up to {amount}",
     noCap: "no cap",
     maxPerClub: "At most {n} transfer(s) per club and per season",
+    maxPerPair: "At most {n} transfer(s) from one club to the same club per season",
+    consentedAnytime: "A transfer everyone agrees to is possible all season; otherwise, a free leave during a period, validated by the federation",
+    consentedOnly: "Outside a period: agreed transfers only",
+    bpcf: {
+      apply: "Use the BPCF 2025 rules",
+      hint: "Fills in the season's periods (1 July to 31 August, 20 December to 10 January), the 500 € cap, one transfer per season from one club to another and the text; check, then save.",
+      text: "BPCF rules 2025, art. 1/12. The season runs from 1 September to 30 June. Agreed transfer (leaving club, receiving club and player or parents agree): all season. Free or disputed transfer (the leaving club refuses): during the main period, 1 July to 31 August (second period 20 December to 10 January). Force majeure: urgent BPCF commission. Every transfer is validated by the BPCF commission. Training compensation (national transfer): 50 € per year (academy), 125 € (elite), 250 € (elite with BPCF-qualified coaches), at most 500 € per player; proof of payment goes to BPCF. No more than one transfer a year from one structure to another.",
+    },
     validation: "Validation by the federation",
     noValidation: "Without validation by the federation",
     mineTitle: "My visibility",
@@ -411,6 +445,8 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       text: "Text of the rules, shown at the top of the market",
       save: "Save the rules",
       windowOf: "Period {n}",
+      consentedAnytime: "Agreed transfer possible all season (outside a period: free leave validated by the federation during a period)",
+      maxPair: "Transfers at most from one club to the same club per season (optional)",
     },
     provinceOf: "Province: {name}",
     provinces: {
@@ -433,6 +469,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       AMOUNT_NOT_ALLOWED: "This amount is not allowed by the federation's rules.",
       OWN_PLAYER: "This player is already in your club.",
       TRANSFER_LIMIT: "The maximum number of transfers for this season is reached.",
+      TRANSFER_PAIR_LIMIT: "A transfer between these two clubs already took place this season.",
       CONSENT_REQUIRED: "The player, or a parent, must agree first.",
       DUPLICATE: "A request is already under way for this player, or they are already in this club.",
       NO_FEDERATION: "Your club is not affiliated to a federation.",

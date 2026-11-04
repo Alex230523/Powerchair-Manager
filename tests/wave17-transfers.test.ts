@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { adultOn, amountAllowed, marketOpen, offerMoves, provinces, rulesOf, transferCommand } from "../src/domains/transfers/schema";
+import { adultOn, amountAllowed, bpcfRules, freeLeave, marketOpen, offerMoves, provinces, requestOpen, rulesOf, transferCommand } from "../src/domains/transfers/schema";
 import { transfersCopy } from "../src/components/transfers-copy";
 import { shellCopy } from "../src/components/shell-copy";
 import { welcomeCopy } from "../src/components/welcome-copy";
@@ -42,6 +42,29 @@ describe("wave 17, J3: transfer market", () => {
     expect(offerMoves({ ...base, status: "accepted" }, "federation", true)).toEqual(["validate", "refuse"]);
     expect(offerMoves({ ...base, status: "accepted" }, "federation", false)).toEqual([]);
     expect(offerMoves({ ...base, from_organization_id: null }, "from", true)).toEqual([]);
+  });
+
+  it("04/11/2026: follows the BPCF rules (art. 1/12)", () => {
+    const r = bpcfRules("2026-11-04", "Texte");
+    expect(r.windows).toEqual([
+      { from: "2026-07-01", to: "2026-08-31" },
+      { from: "2026-12-20", to: "2027-01-10" },
+    ]);
+    expect(bpcfRules("2027-03-01", "").windows[0].from).toBe("2026-07-01");
+    expect(r).toMatchObject({ amountsAllowed: true, amountCapCents: 50000, consentedAnytime: true, maxPerPairSeason: 1, federationValidation: true });
+    // Outside a period: closed, but a consented transfer stays possible.
+    expect(marketOpen(r, "2026-11-04")).toBe(false);
+    expect(requestOpen(r, "2026-11-04")).toBe(true);
+    expect(requestOpen({ ...r, consentedAnytime: false }, "2026-11-04")).toBe(false);
+    // A refused transfer, agreed by the player: a free leave during a period only.
+    const refused = { status: "refused", player_consent: "given", from_organization_id: uuid, federation_at: null };
+    expect(freeLeave(refused, r, "2026-12-24")).toBe(true);
+    expect(freeLeave(refused, r, "2026-11-04")).toBe(false);
+    expect(freeLeave({ ...refused, player_consent: "refused" }, r, "2026-12-24")).toBe(false);
+    expect(freeLeave({ ...refused, federation_at: "2026-12-24" }, r, "2026-12-24")).toBe(false);
+    expect(offerMoves(refused, "federation", true, true)).toEqual(["validate"]);
+    expect(rulesOf({ consented_anytime: true, max_per_pair_season: 1 })).toMatchObject({ consentedAnytime: true, maxPerPairSeason: 1 });
+    expect(rulesOf({})).toMatchObject({ consentedAnytime: false, maxPerPairSeason: null });
   });
 
   it("accepts only well formed commands", () => {

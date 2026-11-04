@@ -13080,3 +13080,9 @@ input[type="search"] {
   display: grid;
   gap: var(--space-1);
 }
+/* BPCF rules (04/11/2026): the preset above the federation's rules form. */
+.transfer-bpcf {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
