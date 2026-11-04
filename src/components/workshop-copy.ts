@@ -84,6 +84,14 @@ type Copy = {
   closeReport: string;
   withPhoto: string;
   reportButton: string;
+  category: string;
+  categories: Record<"battery" | "motor" | "wheels" | "joystick" | "safety" | "body" | "other", string>;
+  severity: string;
+  severities: Record<"usable" | "watch" | "unusable", string>;
+  qrAlt: string;
+  qrHint: string;
+  qrDownload: string;
+  reportWhich: string;
   reportTitle: string;
   describe: string;
   photo: string;
@@ -91,6 +99,7 @@ type Copy = {
   photoTooBig: string;
   send: string;
   reported: string;
+  reportedKept: string;
   pdfTitle: string;
   club: string;
   brand: string;
@@ -184,6 +193,14 @@ export const workshopCopy: Record<Locale, Copy> = {
     closeReport: "Clore",
     withPhoto: "Photo",
     reportButton: "Signaler une panne",
+    category: "Ce qui ne va pas",
+    categories: { battery: "Batterie", motor: "Moteur", wheels: "Roues ou pneus", joystick: "Joystick ou commande", safety: "Ceinture ou sécurité", body: "Carrosserie", other: "Autre" },
+    severity: "Le fauteuil est",
+    severities: { usable: "Utilisable", watch: "À surveiller", unusable: "Inutilisable" },
+    qrAlt: "Code QR pour signaler une panne du fauteuil {chair}",
+    qrHint: "À coller sur le fauteuil : le scanner ouvre « Signaler une panne », même sur le téléphone d'un parent.",
+    qrDownload: "Télécharger l'étiquette",
+    reportWhich: "Fauteuil en panne",
     reportTitle: "Signaler une panne : {chair}",
     describe: "Que se passe-t-il ?",
     photo: "Photo (facultatif)",
@@ -191,6 +208,7 @@ export const workshopCopy: Record<Locale, Copy> = {
     photoTooBig: "La photo dépasse 1 Mo.",
     send: "Envoyer",
     reported: "Panne signalée. Le fauteuil est hors service et les responsables du matériel sont prévenus.",
+    reportedKept: "Problème signalé. Le fauteuil reste en service et les responsables du matériel sont prévenus.",
     pdfTitle: "Rapport du fauteuil {chair}",
     club: "Club",
     brand: "Marque et modèle",
@@ -288,6 +306,14 @@ export const workshopCopy: Record<Locale, Copy> = {
     closeReport: "Afsluiten",
     withPhoto: "Foto",
     reportButton: "Defect melden",
+    category: "Wat er mis is",
+    categories: { battery: "Batterij", motor: "Motor", wheels: "Wielen of banden", joystick: "Joystick of bediening", safety: "Gordel of veiligheid", body: "Carrosserie", other: "Andere" },
+    severity: "De rolstoel is",
+    severities: { usable: "Bruikbaar", watch: "Op te volgen", unusable: "Onbruikbaar" },
+    qrAlt: "QR-code om een defect aan rolstoel {chair} te melden",
+    qrHint: "Op de rolstoel te kleven: scannen opent « Defect melden », ook op de telefoon van een ouder.",
+    qrDownload: "Etiket downloaden",
+    reportWhich: "Defecte rolstoel",
     reportTitle: "Defect melden: {chair}",
     describe: "Wat is er aan de hand?",
     photo: "Foto (optioneel)",
@@ -295,6 +321,7 @@ export const workshopCopy: Record<Locale, Copy> = {
     photoTooBig: "De foto is groter dan 1 MB.",
     send: "Versturen",
     reported: "Defect gemeld. De rolstoel is buiten dienst en de materiaalverantwoordelijken zijn verwittigd.",
+    reportedKept: "Probleem gemeld. De rolstoel blijft in dienst en de materiaalverantwoordelijken zijn verwittigd.",
     pdfTitle: "Rapport van rolstoel {chair}",
     club: "Club",
     brand: "Merk en model",
@@ -392,6 +419,14 @@ export const workshopCopy: Record<Locale, Copy> = {
     closeReport: "Close",
     withPhoto: "Photo",
     reportButton: "Report a breakdown",
+    category: "What is wrong",
+    categories: { battery: "Battery", motor: "Motor", wheels: "Wheels or tyres", joystick: "Joystick or controls", safety: "Belt or safety", body: "Body", other: "Other" },
+    severity: "The chair is",
+    severities: { usable: "Usable", watch: "To watch", unusable: "Unusable" },
+    qrAlt: "QR code to report a breakdown of the chair {chair}",
+    qrHint: "To stick on the chair: scanning it opens « Report a breakdown », even on a parent's phone.",
+    qrDownload: "Download the label",
+    reportWhich: "Broken chair",
     reportTitle: "Report a breakdown: {chair}",
     describe: "What is happening?",
     photo: "Photo (optional)",
@@ -399,6 +434,7 @@ export const workshopCopy: Record<Locale, Copy> = {
     photoTooBig: "The photo is larger than 1 MB.",
     send: "Send",
     reported: "Breakdown reported. The chair is out of service and the equipment managers have been told.",
+    reportedKept: "Problem reported. The chair stays in service and the equipment managers are told.",
     pdfTitle: "Report of the chair {chair}",
     club: "Club",
     brand: "Brand and model",

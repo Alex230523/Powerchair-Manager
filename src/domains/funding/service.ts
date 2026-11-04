@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { randomBytes } from "node:crypto";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { AccessError, account, active, type Principal } from "../access/service";
-import { permissions } from "../access/policy";
+import { moneyRights, permissions } from "../access/policy";
 import { ownProfiles } from "../calendar/access";
 import { brusselsToday } from "../people/service";
 import { receiptMaxBytes, receiptType } from "../finance/schema";
@@ -36,6 +36,7 @@ export type Scope = {
   contactsManage: boolean;
   /** The actor's own club profiles: a task's person in charge sees and ticks it (wave 15). */
   own: Set<string>;
+  federation?: boolean;
 };
 
 /** Also the scope of the contact book (A4, crm/service). */
@@ -54,21 +55,24 @@ export async function scope<T>(
       a.organization_id,
     ]);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
     const user = await account(c, p);
     const mfa = mfaSatisfied(!!user.twoFactorEnabled);
     const rights = permissions(a.role, a.grants);
-    const has = (...r: string[]) => mfa && r.some((x) => rights.includes(x as (typeof rights)[number]));
-    const staff = a.role === "club_president" || a.role === "coach";
+    const has = (...r: string[]) => mfa && a.kind === "club" && r.some((x) => rights.includes(x as (typeof rights)[number]));
+    const staff = a.kind === "club" && (a.role === "club_president" || a.role === "coach");
+    // 35: the federation's grants and sponsors, with its finance competence.
+    const money = moneyRights(a);
     const s: Scope = {
       c,
       org: a.organization_id,
       userId: p.userId,
-      moneyRead: has("dues.read", "dues.manage"),
-      moneyManage: has("dues.manage"),
+      moneyRead: mfa && money.read,
+      moneyManage: mfa && money.manage,
       contactsRead: staff && mfa,
       contactsManage: has("mandates.manage", "people.manage", "notifications.manage"),
       own: mfa ? await ownProfiles(c, { ...a, twoFactorEnabled: !!user.twoFactorEnabled }) : new Set(),
+      federation: a.kind === "federation",
     };
     const out = await fn(s);
     await c.query("COMMIT");
@@ -208,9 +212,12 @@ export type TaskRow = {
   origin: "condition" | "manual" | "template";
   condition_id: string | null;
   proofs: { id: string; filename: string }[];
+  /** 9: a yearly reminder comes back each year. */
+  recurrence: string;
+  source_kind: string;
 };
 const selectTasks =
-  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
+  "SELECT t.id,t.partner_id,t.grant_id,t.title,t.detail,t.due_on::text AS due_on,t.responsible_id,cp.full_name AS responsible_name,t.status,t.recurrence,t.source_kind,t.done_on::text AS done_on,t.proof_url,t.position,t.origin,t.condition_id,COALESCE((SELECT json_agg(json_build_object('id',f.id,'filename',f.filename) ORDER BY f.uploaded_at) FROM task_proof f WHERE f.task_id=t.id AND f.removed_at IS NULL),'[]') AS proofs FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.source_key IS NULL";
 /** The nearest open date of a partner: a condition to deliver, the payment, the renewal or a planned step. */
 export function partnerNearest(
   p: { status: string; paid_on: string | null; payment_due_on: string | null; renewal_on: string | null; next_action_on: string | null },
@@ -314,6 +321,8 @@ export async function fundingView(db: Pool, p: Principal) {
       /** The actor's own club profiles, for "my tasks". */
       own: [...s.own],
       grants,
+      /** H13: the impact reports filed with each grant. */
+      attachments: (await s.c.query("SELECT id,grant_id,filename,period_from::text AS period_from,period_to::text AS period_to,created_at FROM grant_attachment WHERE organization_id=$1 ORDER BY created_at DESC", [s.org])).rows as { id: string; grant_id: string; filename: string; period_from: string; period_to: string; created_at: string }[],
       payments,
       funders,
       chairs,
@@ -570,6 +579,32 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           await log(s, "grant.checklist", cmd.grantId, { added });
           return { id: cmd.grantId, added };
         }
+        case "annualReminder": {
+          if (!!cmd.grantId === !!cmd.partnerId) throw new AccessError("INVALID_INPUT", 400);
+          const file = cmd.grantId
+            ? (await s.c.query("SELECT funder AS name FROM grant_application WHERE id=$1 AND organization_id=$2", [cmd.grantId, s.org])).rows[0]
+            : (await s.c.query("SELECT name FROM partner WHERE id=$1 AND organization_id=$2", [cmd.partnerId, s.org])).rows[0];
+          if (!file) throw new AccessError("NOT_FOUND", 404);
+          if (cmd.responsibleId && !(await s.c.query("SELECT 1 FROM club_person WHERE id=$1 AND organization_id=$2", [cmd.responsibleId, s.org])).rowCount) throw new AccessError("NOT_FOUND", 404);
+          // One running reminder per file: changed in place, otherwise created.
+          const open = (
+            await s.c.query("SELECT id FROM task WHERE organization_id=$1 AND source_kind='annualReminder' AND status<>'done' AND (grant_id=$2 OR partner_id=$3) LIMIT 1", [s.org, cmd.grantId, cmd.partnerId])
+          ).rows[0];
+          const params = JSON.stringify({ about: file.name });
+          if (open) {
+            await s.c.query("UPDATE task SET title=$3,due_on=$4,responsible_id=$5,source_params=$6::jsonb,updated_at=now() WHERE id=$1 AND organization_id=$2", [open.id, s.org, cmd.title, cmd.dueOn, cmd.responsibleId, params]);
+            return { id: open.id as string };
+          }
+          const id = (
+            await s.c.query(
+              `INSERT INTO task(organization_id,kind,category,title,due_on,responsible_id,grant_id,partner_id,origin,recurrence,created_by,source_kind,source_params,position)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,'manual','yearly',$9,'annualReminder',$10::jsonb,999) RETURNING id`,
+              [s.org, cmd.grantId ? "grant" : "sponsor", cmd.grantId ? (s.federation ? "fed_finance" : "grants") : s.federation ? "fed_finance" : "sponsors", cmd.title, cmd.dueOn, cmd.responsibleId, cmd.grantId, cmd.partnerId, s.userId, params],
+            )
+          ).rows[0].id as string;
+          await log(s, cmd.grantId ? "grant.annualReminder" : "partner.annualReminder", (cmd.grantId ?? cmd.partnerId)!, { dueOn: cmd.dueOn });
+          return { id };
+        }
         case "nextYear": {
           const g = (
             await s.c.query(
@@ -711,6 +746,15 @@ export async function fundingExecute(db: Pool, p: Principal, cmd: FundingCommand
           );
           if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
           await logTask(s, cmd.id, cmd.done ? "task.done" : "task.reopen");
+          // 9: a yearly reminder done here comes back next year (once), on the same file.
+          if (cmd.done)
+            await s.c.query(
+              `INSERT INTO task(organization_id,kind,category,title,due_on,responsible_id,grant_id,partner_id,origin,recurrence,created_by,source_kind,source_params,position)
+               SELECT o.organization_id,o.kind,o.category,o.title,(o.due_on+interval '1 year')::date,o.responsible_id,o.grant_id,o.partner_id,o.origin,o.recurrence,$3,o.source_kind,o.source_params,o.position
+                 FROM task o WHERE o.id=$1 AND o.organization_id=$2 AND o.recurrence='yearly' AND o.source_kind='annualReminder' AND o.due_on IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM task n WHERE n.organization_id=o.organization_id AND n.source_kind='annualReminder' AND n.status<>'done' AND (n.grant_id=o.grant_id OR n.partner_id=o.partner_id))`,
+              [cmd.id, s.org, s.userId],
+            );
           return { id: cmd.id };
         }
         case "deleteTask": {
@@ -916,7 +960,8 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
   const out: MoneyDeadline[] = [];
   const tasks = (
     await c.query(
-      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND t.kind IN ('sponsor','grant') AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
+      // 2 (7): a task with an amount is a money deadline too (« Échéances à 30 jours »).
+      "SELECT t.id,t.partner_id,t.grant_id,t.title,t.amount_cents,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id WHERE t.organization_id=$1 AND (t.kind IN ('sponsor','grant') OR (t.amount_cents IS NOT NULL AND t.transaction_id IS NULL AND $4)) AND t.status<>'done' AND t.due_on BETWEEN $2 AND $3 AND ($4 OR t.responsible_id=ANY($5::uuid[]))",
       [org, from, to, all, own],
     )
   ).rows;
@@ -926,8 +971,8 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
       date: t.due_on,
       kind: t.partner_id ? "condition" : "task",
       source: t.partner_id ? "partner" : "grant",
-      title: `${t.file} · ${t.title}`,
-      href: all ? (t.partner_id ? `/funding/grants-sponsors?vue=sponsoring&partner=${t.partner_id}` : `/funding/grants-sponsors?vue=subsides&grant=${t.grant_id}`) : "/tasks",
+      title: [t.file, t.title, t.amount_cents !== null ? new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(t.amount_cents / 100) : null].filter(Boolean).join(" · "),
+      href: !t.partner_id && !t.grant_id ? `/tasks?task=${t.id}` : all ? (t.partner_id ? `/funding/grants-sponsors?vue=sponsoring&partner=${t.partner_id}` : `/funding/grants-sponsors?vue=subsides&grant=${t.grant_id}`) : "/tasks",
     });
   if (all) {
     for (const p of (
@@ -1053,10 +1098,11 @@ export async function fundingTaskTick(db: Pool, parts: FundingTickParts = {}) {
   const tomorrow = eve.toISOString().slice(0, 10);
   const tasks = !(all || parts.tasks) ? [] : (
     await db.query(
-      `SELECT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
-         FROM task t JOIN organization o ON o.id=t.organization_id
-         LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
-         JOIN "user" u ON u.id=COALESCE(t.responsible_user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
+      // 2: each person in charge, once (in « each » mode, not those who did their part).
+      `SELECT DISTINCT t.id,t.organization_id,o.name AS club,t.title,t.due_on::text AS due_on,COALESCE(pa.name,g.funder) AS file,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
+         FROM task t JOIN organization o ON o.id=t.organization_id JOIN task_assignee a ON a.task_id=t.id AND a.done_on IS NULL
+         LEFT JOIN club_person cp ON cp.id=a.profile_id AND cp.organization_id=t.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
+         JOIN "user" u ON u.id=COALESCE(a.user_id,cpe.user_id) LEFT JOIN person pe ON pe.user_id=u.id
          LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
         WHERE t.status<>'done' AND t.due_on IN ($1::date,$2::date) AND u.active AND (t.category NOT IN ('sponsors','grants','fundraising') OR NOT ('finance'=ANY(o.disabled_modules)))`,
       [week, tomorrow],

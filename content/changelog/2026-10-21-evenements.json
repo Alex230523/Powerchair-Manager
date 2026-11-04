@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/calendar",
+  "image": null,
+  "fr": {
+    "title": "Créer un événement, simplement",
+    "text": "Les types d'événement sont ceux du club, les invitations partent par groupe avec une réponse, et un événement se supprime proprement."
+  },
+  "nl": {
+    "title": "Eenvoudig een activiteit aanmaken",
+    "text": "De soorten activiteiten zijn die van de club, uitnodigingen vertrekken per groep met een antwoord, en een activiteit wordt netjes verwijderd."
+  },
+  "en": {
+    "title": "Create an event, simply",
+    "text": "Event types are the club's own, invitations leave by group with an answer, and an event is deleted cleanly."
+  }
+}

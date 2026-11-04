@@ -1,5 +1,14 @@
 "use client";
+import { PersonOverview, useOverview } from "./person-overview";
+import { overviewCopy } from "./person-overview-copy";
+import { DisciplineHistory } from "./discipline";
+import { disciplineCopy } from "./discipline-copy";
+import { workshopCopy } from "./workshop-copy";
+import { BillingSplit } from "./billing-split";
 import { CareCard } from "./care-card";
+import { PlayerProgress, useProgress } from "./player-progress";
+import { NationalCard } from "./national";
+import { progressCopy } from "./progress-copy";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -22,6 +31,7 @@ import { Icon, type IconName } from "./icons";
 import { initials } from "./app-shell";
 import { MoveDialog } from "./teams";
 import { teamsCopy } from "./teams-copy";
+import { TeamMatches } from "./match-cards";
 import { ClassificationBadge } from "./classification-badge";
 import { Badge, Tabs, EmptyState } from "./ui";
 import { undoToast } from "./toast";
@@ -31,7 +41,7 @@ import { toastCopy } from "./toast-copy";
 const moveCopy = { fr: "Déplacer vers…", nl: "Verplaatsen naar…", en: "Move to…" };
 
 type View = Awaited<ReturnType<typeof playerProfileView>>;
-type Tab = "personal" | "sport";
+type Tab = "overview" | "personal" | "sport" | "progress";
 type Editing = "" | "support" | "confidential" | "sport" | "identity" | "game";
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
@@ -40,7 +50,7 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
  * the directory (`embedded`) or as a full page (/players/[id]); the identity,
  * the position and number and the team assignment are edited here too.
  */
-export function PlayerProfile({ locale, id, embedded = false, onChanged }: { locale: Locale; id: string; embedded?: boolean; onChanged?: () => void }) {
+export function PlayerProfile({ locale, id, embedded = false, onChanged, initialTab }: { locale: Locale; id: string; embedded?: boolean; onChanged?: () => void; initialTab?: string }) {
   const t = playerProfileCopy[locale],
     sc = sheetCopy[locale],
     pc = peopleCopy[locale];
@@ -50,8 +60,13 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [tab, setTab] = useState<Tab>("personal"),
+    [chosenTab, setTab] = useState<Tab | null>(initialTab === "progress" ? "progress" : null),
     [editing, setEditing] = useState<Editing>("");
+  // 40: the overview, and the first tab it decides (the overview for the presidency, « Personnel » otherwise).
+  const { data: overview } = useOverview(id);
+  // 31: « Mon suivi » for the player and his parents, « Suivi » for his coaches and the presidency.
+  const { data: progress, reload: reloadProgress } = useProgress(locale, id);
+  const tab: Tab = chosenTab ?? (overview?.overviewFirst ? "overview" : "personal");
   const failure = (code: string) =>
     t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable;
   const day = (d: string | null | undefined) =>
@@ -219,15 +234,30 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <Tabs label={p.full_name} items={(["personal", "sport"] as const).map((key) => ({
+      <Tabs label={p.full_name} items={([...(overview ? (["overview"] as const) : []), "personal", "sport", ...(progress ? (["progress"] as const) : [])] as Tab[]).map((key) => ({
           id: key,
           label: (
             <>
-              <Icon name={key === "personal" ? "user" : "chart"} />
-              {key === "personal" ? t.personalTab : t.sportTab}
+              <Icon name={key === "overview" ? "eye" : key === "personal" ? "user" : key === "progress" ? "star" : "chart"} />
+              {key === "overview"
+                ? overviewCopy[locale].tab
+                : key === "personal"
+                  ? t.personalTab
+                  : key === "progress"
+                    ? progress?.access === "self" || progress?.access === "parent"
+                      ? progressCopy[locale].tabSelf
+                      : progressCopy[locale].tabStaff
+                    : t.sportTab}
             </>
           ),
-        }))} value={tab} onChange={(id) => setTab(id as typeof tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
+        }))} value={tab} onChange={(id) => setTab(id as Tab)} idPrefix="tab" panelId={(id) => `panel-${id}`} />
+
+      {/* 40: « Vue d'ensemble », first for the presidency and those who manage the players. */}
+      {overview && (
+        <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={tab !== "overview"}>
+          {tab === "overview" && <PersonOverview locale={locale} data={overview} go={(to) => setTab(to === "todo" ? "personal" : to)} />}
+        </section>
+      )}
 
       <section
         id="panel-personal"
@@ -459,6 +489,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
             ) : (
               <EmptyState title={t.noGuardians} />
             )}
+            {/* 29: two homes, who receives the dues and the attestations. */}
+            {view.can.managePeople && view.guardians.length > 1 && <BillingSplit locale={locale} subjectId={id} />}
           </Card>
         )}
 
@@ -625,6 +657,10 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
         hidden={tab !== "sport"}
         className="profile-grid"
       >
+        {/* 5: the player's matches, the same line as everywhere. */}
+        {tab === "sport" && currentTeams.length > 0 && <TeamMatches locale={locale} teamIds={currentTeams.map((a) => a.team_id)} />}
+        {/* 6: « Sélection nationale »: teams, status, gatherings, caps; the player or the parent answers. */}
+        {tab === "sport" && <NationalCard locale={locale} profileId={id} />}
         <Card
           title={t.game}
           action={view.can.editSport ? editButton("sport", t.game) : null}
@@ -819,7 +855,8 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
                 const link = c.links[0];
                 return (
                   <li key={c.id}>
-                    <strong>{c.name}</strong>
+                    {/* 11: « Nom du fauteuil · Marque Modèle ». */}
+                    <strong>{c.label ?? c.name}</strong>
                     {link?.is_primary && (
                       <Badge tone="success">
                         {t.primary}
@@ -836,6 +873,11 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
                         &gt; 10 km/h
                       </Badge>
                     )}
+                    {/* 19: a breakdown reported from the player's sheet. */}
+                    <Link className="button secondary sm" href={`/${locale}/equipment/${c.id}?report=1`}>
+                      {workshopCopy[locale].reportButton}
+                      <span className="sr-only"> : {c.name}</span>
+                    </Link>
                   </li>
                 );
               })}
@@ -929,7 +971,18 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged }: { loc
           )}
           <Link href={`/${locale}/matches`}>{matchCopy[locale].link} →</Link>
         </Card>
+        {/* 34: the disciplinary history, for the club's presidency and coaches. */}
+        {view.can.discipline && (
+          <Card title={disciplineCopy[locale].history} icon="shield" wide>
+            <DisciplineHistory locale={locale} profileId={id} />
+          </Card>
+        )}
       </section>
+      {progress && (
+        <section id="panel-progress" role="tabpanel" aria-labelledby="tab-progress" hidden={tab !== "progress"}>
+          {tab === "progress" && <PlayerProgress locale={locale} data={progress} reload={reloadProgress} />}
+        </section>
+      )}
     {moving && currentTeams.length > 0 && (
         <MoveDialog
           locale={locale}
@@ -972,6 +1025,7 @@ export function Card({
   action,
   wide,
   children,
+  id,
 }: {
   title: string;
   icon?: IconName;
@@ -979,9 +1033,12 @@ export function Card({
   action?: ReactNode;
   wide?: boolean;
   children: ReactNode;
+  /** An anchor for links to this card (7: the coach's courses). */
+  id?: string;
 }) {
   return (
     <article
+      id={id}
       className="profile-card"
       data-tone={tone}
       data-wide={wide || undefined}

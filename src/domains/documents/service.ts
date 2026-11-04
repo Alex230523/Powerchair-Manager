@@ -18,15 +18,17 @@ import {
 import { ageOn } from "../people/schema";
 import { seal, unseal } from "../notifications/crypto";
 import { publish } from "../notifications/queue";
+import { authorizationSigned } from "../authorizations/service";
 import {
   docAccess,
+  folderAllows,
   notificationAllowed,
   manages,
   day,
   type Actor,
   type Doc,
 } from "./access";
-import { commandSchema, validFile, templateText, type Command } from "./schema";
+import { commandSchema, retiredCategories, validFile, templateText, type Command } from "./schema";
 export { commandSchema };
 type Scope = { c: PoolClient; p: Principal; a: Actor; name: string };
 async function transaction<T>(db: Pool, fn: (c: PoolClient) => Promise<T>) {
@@ -364,7 +366,7 @@ export async function documentView(db: Pool, p: Principal, raw: { season?: strin
       templates: admin
         ? (
             await s.c.query(
-              "SELECT DISTINCT ON(name,locale) id,name,locale,version,body FROM document_template WHERE organization_id=$1 ORDER BY name,locale,version DESC",
+              "SELECT DISTINCT ON(name,locale) id,name,locale,version,body FROM document_template WHERE organization_id=$1 AND authorization_kind IS NULL ORDER BY name,locale,version DESC",
               [s.a.organization_id],
             )
           ).rows
@@ -460,7 +462,50 @@ export async function documentExecute(
       manage(s);
       if (input.action === "request") {
         health(s, input.sensitive || input.category === "fitness");
-        return { id: (await slot(s, input))!.id };
+        const created = (await slot(s, input))!;
+        // 10: dropped in a free folder, it lands there.
+        if (input.folderId) {
+          if (!(await s.c.query("SELECT 1 FROM document_folder WHERE id=$1 AND organization_id=$2", [input.folderId, s.a.organization_id])).rowCount) throw new AccessError("NOT_FOUND", 404);
+          await s.c.query("UPDATE club_document SET folder_id=$2 WHERE id=$1 AND organization_id=$3", [created.id, input.folderId, s.a.organization_id]);
+        }
+        return { id: created.id };
+      }
+      if (input.action === "folderSave") {
+        if (input.parentId && !(await s.c.query("SELECT 1 FROM document_folder WHERE id=$1 AND organization_id=$2", [input.parentId, s.a.organization_id])).rowCount) throw new AccessError("NOT_FOUND", 404);
+        if (input.id) {
+          if (input.parentId === input.id) throw new AccessError("INVALID_INPUT", 400);
+          const r = await s.c.query("UPDATE document_folder SET name=$3,visibility=$4,parent_id=$5,version=version+1 WHERE id=$1 AND organization_id=$2 RETURNING id", [
+            input.id,
+            s.a.organization_id,
+            input.name,
+            input.visibility,
+            input.parentId,
+          ]);
+          if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+          return { id: input.id };
+        }
+        const fid = (
+          await s.c.query("INSERT INTO document_folder(organization_id,parent_id,name,visibility,created_by) VALUES($1,$2,$3,$4,$5) RETURNING id", [s.a.organization_id, input.parentId, input.name, input.visibility, s.p.userId])
+        ).rows[0].id as string;
+        await audit(s.c, s.a.organization_id, s.p.userId, "document.folder_created", fid);
+        return { id: fid };
+      }
+      if (input.action === "folderDelete") {
+        const busy = (
+          await s.c.query("SELECT (SELECT count(*) FROM club_document WHERE folder_id=$1)+(SELECT count(*) FROM document_folder WHERE parent_id=$1) AS n", [input.id])
+        ).rows[0].n;
+        if (Number(busy)) throw new AccessError("FOLDER_NOT_EMPTY", 409);
+        const r = await s.c.query("DELETE FROM document_folder WHERE id=$1 AND organization_id=$2", [input.id, s.a.organization_id]);
+        if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+        return { id: input.id };
+      }
+      if (input.action === "move") {
+        const d = await record(s, input.id, true);
+        health(s, d.sensitive);
+        if (input.folderId && !(await s.c.query("SELECT 1 FROM document_folder WHERE id=$1 AND organization_id=$2", [input.folderId, s.a.organization_id])).rowCount) throw new AccessError("NOT_FOUND", 404);
+        await s.c.query("UPDATE club_document SET folder_id=$2,updated_at=now() WHERE id=$1", [d.id, input.folderId]);
+        await audit(s.c, s.a.organization_id, s.p.userId, "document.moved", d.id);
+        return { id: d.id };
       }
       if (input.action === "rule") {
         if (input.maxAge < input.minAge)
@@ -629,6 +674,23 @@ export async function documentExecute(
           id,
         );
         return { id };
+      }
+      if (input.action === "purgeRetired") {
+        // 1: fewer personal data; the president decides, the health right covers sensitive ones.
+        if (s.a.role !== "club_president") throw new AccessError("FORBIDDEN");
+        const docs = (
+          await s.c.query("SELECT id,sensitive FROM club_document WHERE organization_id=$1 AND category=ANY($2::text[]) FOR UPDATE", [s.a.organization_id, [...retiredCategories]])
+        ).rows as { id: string; sensitive: boolean }[];
+        health(s, docs.some((d) => d.sensitive));
+        const ids = docs.map((d) => d.id);
+        if (ids.length) {
+          await s.c.query("UPDATE club_document SET current_version_id=NULL WHERE id=ANY($1::uuid[])", [ids]);
+          for (const table of ["document_share", "document_signature", "document_task", "calendar_document", "document_history", "document_version"])
+            await s.c.query(`DELETE FROM ${table} WHERE document_id=ANY($1::uuid[])`, [ids]);
+          await s.c.query("DELETE FROM club_document WHERE id=ANY($1::uuid[]) AND organization_id=$2", [ids, s.a.organization_id]);
+          await audit(s.c, s.a.organization_id, p.userId, "document.purgeRetired", s.a.organization_id, { count: ids.length });
+        }
+        return { id: s.a.organization_id, count: ids.length };
       }
       if (input.action === "revoke") {
         const sh = (
@@ -974,8 +1036,61 @@ export async function documentSign(
         [d.organization_id, d.id, source.id, after, p.userId, name, sha, png],
       );
       await log(s.c, d, p.userId, "signed");
+      // 28: a parental authorization is answered; a signed image right allows the name in public.
+      await authorizationSigned(s.c, d.id, p.userId);
       return { id: d.id };
     },
     org,
   );
+}
+
+/**
+ * 10: the documents as a « drive ». One folder per type (and the club's own
+ * documents), sub-folders by season, and the free folders. Every document
+ * goes through the same rights as the list: a folder never shows more.
+ */
+export async function documentDrive(db: Pool, p: Principal) {
+  return scope(db, p, async (s) => {
+    const rows = (
+      await s.c.query(
+        `SELECT d.*,d.expires_on::text AS expires_on,c.full_name AS owner_name,se.name AS season_name,se.starts_on::text AS season_start
+           FROM club_document d JOIN season se ON se.id=d.season_id LEFT JOIN club_person c ON c.id=d.profile_id
+          WHERE d.organization_id=$1 ORDER BY se.starts_on DESC,d.name LIMIT 5000`,
+        [s.a.organization_id],
+      )
+    ).rows;
+    const documents = [];
+    for (const d of rows)
+      if (await docAccess(s.c, s.a, d))
+        documents.push({
+          id: d.id as string,
+          name: d.name as string,
+          category: d.category as string,
+          status: d.status as string,
+          sensitive: d.sensitive as boolean,
+          expires_on: d.expires_on as string | null,
+          owner_name: (d.owner_name ?? null) as string | null,
+          profile_id: (d.profile_id ?? null) as string | null,
+          folder_id: (d.folder_id ?? null) as string | null,
+          season_id: d.season_id as string,
+          season_name: d.season_name as string,
+          season_start: d.season_start as string,
+          current_version_id: (d.current_version_id ?? null) as string | null,
+          version: d.version as number,
+          updated_at: d.updated_at as string,
+        });
+    const folders = (await s.c.query("SELECT id,parent_id,name,visibility,version FROM document_folder WHERE organization_id=$1 ORDER BY lower(name)", [s.a.organization_id])).rows.filter((f) =>
+      folderAllows(f.visibility, s.a),
+    ) as { id: string; parent_id: string | null; name: string; visibility: string; version: number }[];
+    return {
+      organization_id: s.a.organization_id,
+      manage: manages(s.a),
+      sensitiveGrant: s.a.grants.includes("documents.sensitive"),
+      today: day(),
+      documents,
+      folders,
+      seasons: (await s.c.query("SELECT id,name FROM season WHERE organization_id=$1 AND NOT archived ORDER BY starts_on DESC", [s.a.organization_id])).rows as { id: string; name: string }[],
+      profiles: manages(s.a) ? ((await s.c.query("SELECT id,full_name FROM club_person WHERE organization_id=$1 AND status='active' ORDER BY full_name", [s.a.organization_id])).rows as { id: string; full_name: string }[]) : [],
+    };
+  });
 }

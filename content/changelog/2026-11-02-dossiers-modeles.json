@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach",
+    "player",
+    "parent"
+  ],
+  "link": "/documents",
+  "image": null,
+  "fr": {
+    "title": "Documents en dossiers et modèles d'emails",
+    "text": "Les documents se rangent en dossiers par type et par saison, avec des dossiers libres pour les statuts ou les PV ; les droits ne changent pas. Le club a aussi sa bibliothèque de modèles d'emails, utilisée pour les invitations, les relances et les automatisations, dans la langue de chacun."
+  },
+  "nl": {
+    "title": "Documenten in mappen en e-mailsjablonen",
+    "text": "Documenten worden gerangschikt in mappen per type en per seizoen, met vrije mappen voor statuten of verslagen; de rechten veranderen niet. De club heeft ook een bibliotheek met e-mailsjablonen, voor uitnodigingen, herinneringen en automatiseringen, in ieders taal."
+  },
+  "en": {
+    "title": "Documents in folders and email templates",
+    "text": "Documents are kept in folders by type and season, with free folders for statutes or minutes; the rights do not change. The club also has its library of email templates, used for invitations, reminders and automations, in everyone's language."
+  }
+}

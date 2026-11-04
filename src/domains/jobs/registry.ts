@@ -14,6 +14,24 @@ import { affiliationTick } from "../affiliations/service";
 import { equipmentLoanTick } from "../equipment/loans";
 import { taskSourcesTick } from "../tasks/sources";
 import { runAutomations } from "../automations/engine";
+import { majorityTick } from "../people/service";
+import { seasonCheckTick } from "../season-check/service";
+import { authorizationTick } from "../authorizations/service";
+import { seasonPlanTick } from "../seasons/plan";
+import { bookingsTick } from "../venues/bookings";
+import { associationTick } from "../association/service";
+import { onboardingTick } from "../onboarding/service";
+import { offboardingTick } from "../offboarding/service";
+import { circularsTick } from "../circulars/service";
+import { refereeingTick } from "../referees/service";
+import { feedbackTick } from "../feedback/service";
+import { pollsTick } from "../polls/service";
+import { allocationsTick } from "../finance/allocations";
+import { forecastTick } from "../finance/forecast";
+import { recruitmentTick } from "../recruitment/service";
+import { attestationTick } from "../dues/attestation-send";
+import { seasonSlotInviteTick } from "../calendar/season-schedule";
+import { closureTick, exportTick, retentionTick } from "../legal/service";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { watchdog } from "./watchdog";
@@ -88,6 +106,43 @@ export const jobs = {
         loans: await equipmentLoanTick(db),
         // B5: claims close to their deadline, first-aid items about to expire.
         incidents: await incidentTick(db),
+        // 8: a player who turns 18 is invited to manage his own account.
+        majority: await majorityTick(db),
+        // 8: a season that starts opens its check.
+        seasonChecks: await seasonCheckTick(db),
+        // 28: the parental authorizations still unsigned after three days are recalled.
+        authorizationReminders: await authorizationTick(db),
+        // 16: what the season assistant scheduled (dues issue, data check, « Nouvelle saison » email).
+        seasonPlan: await seasonPlanTick(db),
+        // H9: the planned sessions get their invitations 14 days before.
+        seasonInvites: await seasonSlotInviteTick(db),
+        // 18: the halls' bookings follow the calendar (ask, follow up, pay, tell the hall).
+        bookings: await bookingsTick(db),
+        // 17: the assembly's date to set, its invitation at J-notice and the reminder at J-5.
+        association: await associationTick(db),
+        // Parcours d'accueil: steps checked by themselves, a gentle reminder for the late ones.
+        onboarding: await onboardingTick(db),
+        // Fin de coach: departures checked; at the end date the rights end, the president told of what is left.
+        offboarding: await offboardingTick(db),
+        // 33: the circulars whose date came leave.
+        circulars: await circularsTick(db),
+        // 39: proposals left unanswered, the eve's reminder, reports validated after 48 hours.
+        refereeing: await refereeingTick(db),
+        // 19: the remarks not yet sent leave; the issues' states are read.
+        feedback: await feedbackTick(db).then((r) => r.sent + r.checked),
+        // H3: one relaunch the day before a poll closes; past polls close.
+        polls: await pollsTick(db),
+        // 9: reserved funds whose use-by date comes (60 and 30 days); attestations sent once the season is paid.
+        allocations: await allocationsTick(db),
+        attestations: await attestationTick(db),
+        // H4: the certain forecast under the threshold within three months.
+        forecast: await forecastTick(db),
+        // H1: call back after a trial, follow up a silence, delete after the delay.
+        recruitment: await recruitmentTick(db),
+        // 21: the full exports asked for, the closures whose 30 days are over, the retention purge.
+        clubExports: await exportTick(db),
+        clubClosures: await closureTick(db),
+        retention: await retentionTick(db),
       };
     },
   },

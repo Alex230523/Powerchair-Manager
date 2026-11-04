@@ -14,6 +14,8 @@ export type Doc = {
   name: string;
   version: number;
   category: string;
+  /** 10: the free folder it is kept in, if any. */
+  folder_id?: string | null;
 };
 export type Actor = Mandate & { twoFactorEnabled: boolean };
 type Db = Pool | PoolClient;
@@ -30,8 +32,25 @@ export function manages(a: Actor) {
     permissions(a.role, a.grants).includes("documents.manage")
   );
 }
+/**
+ * 10: who sees a free folder. « Présidence »: the president and those who
+ * manage the documents; « Staff »: every mandate but players and parents;
+ * « Tous les membres »: everyone in the club.
+ */
+export function folderAllows(visibility: string, a: Actor) {
+  if (visibility === "members") return true;
+  if (visibility === "staff") return a.role !== "player" && a.role !== "guardian";
+  return a.role === "club_president" || manages(a);
+}
 export async function docAccess(db: Db, a: Actor, d: Doc, write = false) {
   if (d.sensitive && !mfaSatisfied(!!a.twoFactorEnabled)) return false;
+  // 10: a folder narrows, never widens: outside its circle nothing in it is seen.
+  // Inside, the club's own document (no owner, not sensitive, with a file) is read by that circle.
+  if (d.folder_id && d.organization_id === a.organization_id) {
+    const f = (await db.query("SELECT visibility FROM document_folder WHERE id=$1 AND organization_id=$2", [d.folder_id, d.organization_id])).rows[0];
+    if (!f || !folderAllows(f.visibility, a)) return false;
+    if (!write && !d.profile_id && !d.sensitive && ["uploaded", "review", "valid"].includes(d.status)) return true;
+  }
   if (d.organization_id !== a.organization_id) {
     if (
       write ||

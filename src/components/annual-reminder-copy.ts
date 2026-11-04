@@ -1,0 +1,47 @@
+import type { Locale } from "../lib/locale";
+
+const copy = {
+  fr: {
+    title: "Rappel annuel",
+    none: "Aucun rappel annuel.",
+    current: "Chaque année, prochain rappel le {date} · {who}",
+    nobody: "sans responsable",
+    label: "Libellé",
+    grantDefault: "L'appel rouvre : préparer le dossier",
+    partnerDefault: "Renouveler le contrat de sponsoring",
+    date: "Date du prochain rappel",
+    who: "Responsable",
+    save: "Enregistrer le rappel",
+    saved: "Rappel annuel enregistré.",
+    renewHint: "Le dossier de l'année est clos : « Préparer l'an prochain » le renouvelle.",
+  },
+  nl: {
+    title: "Jaarlijkse herinnering",
+    none: "Geen jaarlijkse herinnering.",
+    current: "Elk jaar, volgende herinnering op {date} · {who}",
+    nobody: "zonder verantwoordelijke",
+    label: "Omschrijving",
+    grantDefault: "De oproep gaat weer open: het dossier voorbereiden",
+    partnerDefault: "Het sponsorcontract vernieuwen",
+    date: "Datum van de volgende herinnering",
+    who: "Verantwoordelijke",
+    save: "Herinnering opslaan",
+    saved: "Jaarlijkse herinnering opgeslagen.",
+    renewHint: "Het dossier van dit jaar is afgesloten: « Volgend jaar voorbereiden » vernieuwt het.",
+  },
+  en: {
+    title: "Yearly reminder",
+    none: "No yearly reminder.",
+    current: "Every year, next reminder on {date} · {who}",
+    nobody: "nobody in charge",
+    label: "Label",
+    grantDefault: "The call reopens: prepare the application",
+    partnerDefault: "Renew the sponsorship contract",
+    date: "Date of the next reminder",
+    who: "Person in charge",
+    save: "Save the reminder",
+    saved: "Yearly reminder saved.",
+    renewHint: "This year's file is closed: « Prepare next year » renews it.",
+  },
+};
+export const annualCopy: Record<Locale, (typeof copy)["fr"]> = copy;

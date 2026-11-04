@@ -50,6 +50,8 @@ export type NavGroup = {
 export function menuGroups(state: Workspace | null): NavGroup[] {
   const perms = new Set(state?.permissions ?? []);
   const has = (...p: string[]) => p.some((x) => perms.has(x));
+  // 32: the federation's presidency holds every competence; a delegate, those of his roles.
+  const fed = (...p: string[]) => role === "federation_president" || has(...p);
   const manager = perms.has("registrations.manage");
   const kind = state?.selected?.kind;
   const role = state?.contexts.find((c) => c.id === state.selected?.id)?.role;
@@ -71,6 +73,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             label: "mySpace",
             icon: "user",
             items: [
+              // 27: the parents' space, every child of every club.
+              ...item("/family", "family", "home", role === "guardian"),
               ...item("/calendar", "calendar", "calendar"),
               ...item("/tournaments", "tournaments", "trophy"),
               ...item("/players", "myFile", "players"),
@@ -82,6 +86,10 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/transfers", "transfers", "handshake"),
               // 22: the tasks given to them (A1 sends reminders that lead here).
               ...item("/tasks", "tasks", "clipboardList"),
+              // 33: the federation's circulars, for every member of an affiliated club.
+              ...item("/circulars", "circulars", "megaphone"),
+              // H3: the polls to answer (and, for who may ask, to create).
+              ...item("/sondages", "polls", "clipboardList"),
             ],
           },
         ]
@@ -99,7 +107,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                 // Wave 16 (E2): the coaches' exercise sheets.
                 ...item("/exercises", "exercises", "clipboardList", true),
-                ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
+                ...item("/classification", "classification", "badgeCheck", has("people.read")),
                 // Wave 17 (J3): the transfer market between the federation's clubs.
                 ...item("/transfers", "transfers", "handshake", has("people.read")),
                 ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage")),
@@ -138,6 +146,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
                 // A2: grants and sponsors in one page, two views.
                 ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
+                // 9: the fundraising in the menu (no more row of « Rentrées »).
+                ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
               ],
             },
             {
@@ -145,25 +155,24 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupClub",
               icon: "club",
               items: [
-                ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
                 // B6: the public page, widgets, API keys and webhooks.
                 ...item("/club/public", "publicPage", "globe"),
+                // 17: the register of members and the assemblies, for the presidency (the secretary reaches it from the invitation).
+                ...item("/club/association", "association", "landmark", president || has("mandates.manage")),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 // B5: incidents and their insurance declaration.
                 ...item("/incidents", "incidents", "alert", has("people.manage", "mandates.manage")),
+                // 34: the federation's sanctions, the club's appeals and fines.
+                ...item("/discipline", "discipline", "shield"),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
+                // H1: new players, from the first contact to the registration.
+                ...item("/recrutement", "recruitment", "userPlus", has("recruitment.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
-              ],
-            },
-            {
-              id: "more",
-              label: "groupMore",
-              icon: "settings",
-              folded: true,
-              items: [
-                ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
-                ...item("/settings", "settings", "settings"),
+                // 33: the federation's circulars, for every member of an affiliated club.
+                ...item("/circulars", "circulars", "megaphone"),
+                // H3: the polls to answer (and, for who may ask, to create).
+                ...item("/sondages", "polls", "clipboardList"),
               ],
             },
           ]
@@ -179,7 +188,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...(manager ? [registrations] : []),
                   ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                   ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
-                  ...item("/licenses", "licenses", "badgeCheck", has("people.read")),
+                  ...item("/classification", "classification", "badgeCheck", has("people.read")),
                   ...item("/transfers", "transfers", "handshake", has("people.read")),
                   ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
                 ],
@@ -204,14 +213,20 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 label: "groupManagement",
                 icon: "club",
                 items: [
-                  ...item("/club/manage", "clubManage", "club", has("mandates.manage")),
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
+                  ...item("/recrutement", "recruitment", "userPlus", has("recruitment.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                   // B5: a coach reports an incident of his players.
                   ...item("/incidents", "incidents", "alert", role === "coach" || has("people.manage")),
+                  // 34: the sanctions of the club's players (the coaches see them).
+                  ...item("/discipline", "discipline", "shield", role === "coach"),
                   // A1: everyone has a to-do (only one's own tasks unless one plans).
                   ...item("/tasks", "tasks", "clipboardList"),
+                  // 33: the federation's circulars, for every member of an affiliated club.
+                  ...item("/circulars", "circulars", "megaphone"),
+                  // H3: the polls to answer (and, for who may ask, to create).
+                  ...item("/sondages", "polls", "clipboardList"),
                 ],
               },
               {
@@ -223,6 +238,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
                   // A2: grants and sponsors in one page, two views.
                   ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
+                  ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
                 ],
               },
             ]
@@ -236,24 +252,47 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     ...((role === "referee"
                       ? [{ route: "/referee", label: "refereeSpace", icon: "whistle" }]
                       : [
-                          // Wave 16 (I3): the order of the federation president's day.
-                          { route: "/federation/clubs", label: "federationClubs", icon: "club" },
-                          { route: "/federation/teams", label: "federationTeams", icon: "players" },
-                          { route: "/tournaments", label: "tournaments", icon: "trophy" },
-                          { route: "/federation/referees", label: "designations", icon: "whistle" },
-                          { route: "/federation/licenses", label: "federationLicenses", icon: "badgeCheck" },
-                          { route: "/transfers", label: "transfers", icon: "handshake" },
-                          { route: "/federation/affiliations", label: "affiliations", icon: "landmark" },
-                          { route: "/federation/courses", label: "courses", icon: "team" },
+                          // Wave 16 (I3): the order of the federation president's day; 32: each entry by competence.
+                          ...item("/federation/clubs", "federationClubs", "club", fed("federation.licences")),
+                          ...item("/federation/teams", "federationTeams", "players", fed("federation.licences")),
+                          ...item("/tournaments", "tournaments", "trophy", fed("federation.competitions")),
+                          // 6: the federation's national teams.
+                          ...item("/federation/national", "national", "medal", fed("federation.competitions")),
+                          ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
+                          // 34: sanctions, appeals and fines.
+                          ...item("/federation/discipline", "discipline", "shield", fed("federation.discipline")),
+                          ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
+                          ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
+                          ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),
+                          ...item("/federation/courses", "courses", "team", fed("federation.courses")),
+                          // 4: the federal library of exercise and tactic sheets.
+                          ...item("/exercises", "exercises", "clipboardList", fed("federation.courses")),
                           // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
-                          { route: "/equipment", label: "equipment", icon: "wheelchair" },
+                          ...item("/equipment", "equipment", "wheelchair", fed("federation.competitions")),
+                          // 32: the presidency's delegates and their roles.
+                          ...item("/federation/team", "federationTeam", "userPlus", role === "federation_president"),
                         ]) satisfies NavItem[]),
+                    // 33: the circulars (written by communication, read by the referees).
+                    ...item("/circulars", "circulars", "megaphone"),
+                    // H3: the polls to answer (and, for who may ask, to create).
+                    ...item("/sondages", "polls", "clipboardList"),
                     ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
                     { route: "/venues", label: "venues", icon: "pin" },
                     { route: "/documents", label: "documents", icon: "document" },
                     // A1: the federation's own to-do.
                     { route: "/tasks", label: "tasks", icon: "clipboardList" },
+                  ],
+                },
+                // 35: the federation as an ASBL: its own books and its assembly, by the finance competence.
+                {
+                  id: "finance",
+                  label: "groupFinance",
+                  icon: "funding",
+                  items: [
+                    ...item("/funding", "finances", "funding", role !== "referee" && fed("federation.finance")),
+                    ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", role !== "referee" && fed("federation.finance")),
+                    ...item("/club/association", "association", "landmark", role !== "referee" && fed("federation.finance")),
                   ],
                 },
               ]
@@ -266,25 +305,13 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
     });
   const groups = club.map((g) => ({ ...g, items: shown(g.items) })).filter((g) => g.items.length > 0);
   if (president) return groups;
+  // 12: without a profile chosen, the registrations; « Réglages » is the shell's last entry (settingsItem).
   const admin: NavGroup = {
-      id: "admin",
-      label: "admin",
-      icon: "settings",
-      items: [
-        ...(state?.selected
-          ? ([
-              ...(kind === "club" && !member
-                ? ([
-                    ...item("/privacy", "privacy", "shield", has("audit.read", "mandates.manage")),
-                  ] satisfies NavItem[])
-                : []),
-              { route: "/settings", label: "settings", icon: "settings" },
-            ] satisfies NavItem[])
-          : state
-            ? ([registrations] satisfies NavItem[])
-            : []),
-      ],
-    };
+    id: "admin",
+    label: "admin",
+    icon: "settings",
+    items: !state?.selected && state ? [registrations] : [],
+  };
   return [...groups, admin].filter((g) => g.items.length > 0);
 }
 
@@ -296,6 +323,13 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
  * Player or parent: calendar, my file (or the child's), dues.
  * With a task of one's own open (22), « Tâches » replaces the third.
  */
+/**
+ * 12: one « Réglages » at the foot of the menu, for every profile, under the
+ * groups (no « Plus » group any more). Personal data, the club's identity,
+ * members, seasons and modules are categories of Réglages.
+ */
+export const settingsItem: NavItem = { route: "/settings", label: "settings", icon: "settings" };
+
 export function bottomNav(state: Workspace | null, openTasks = 0): NavItem[] {
   if (!state?.selected) return [];
   const all = menuGroups(state).flatMap((g) => g.items);
@@ -305,8 +339,11 @@ export function bottomNav(state: Workspace | null, openTasks = 0): NavItem[] {
       ? ["/calendar", "/players", "/dues"]
       : role === "coach"
         ? ["/calendar", "/attendance", "/players"]
-        : role === "player" || role === "guardian"
-          ? ["/calendar", "/players", "/dues"]
+        : role === "guardian"
+          ? // 27: a parent's first shortcut is the family.
+            ["/family", "/calendar", "/dues"]
+          : role === "player"
+            ? ["/calendar", "/players", "/dues"]
           : null;
   const items = wanted
     ? wanted.map((route) => all.find((i) => i.route === route)).filter((i): i is NavItem => !!i)

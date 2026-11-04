@@ -99,6 +99,39 @@ export function StatisticsGame({ locale }: { locale: Locale }) {
         }
       />
       <StatisticsTabs locale={locale} current="game" />
+      {/* 5: « Toutes les équipes », then one tab per team (the top bar's order), each with its address. */}
+      {scope.seasonTeams.length > 1 && (
+        <nav className="game-team-tabs" aria-label={g.teamTabs}>
+          <ul>
+            <li>
+              <a
+                href="?"
+                aria-current={!scope.teamId ? "page" : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  scope.setTeam(null);
+                }}
+              >
+                {g.allTeams}
+              </a>
+            </li>
+            {scope.seasonTeams.map((x) => (
+              <li key={x.id}>
+                <a
+                  href={`?team=${x.id}`}
+                  aria-current={scope.teamId === x.id ? "page" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scope.setTeam(x.id);
+                  }}
+                >
+                  {x.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
       {summary.error && <Failed locale={locale} retry={summary.retry} />}
       <p className="muted small">{g.note}</p>
       {s?.tiles && (

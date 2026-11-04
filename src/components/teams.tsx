@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { pollsCopy } from "./polls-copy";
+import { TeamMatches } from "./match-cards";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { teamsView, teamDetail, TeamCard, RosterRow } from "@/domains/teams/service";
@@ -15,6 +17,7 @@ import { teamBoardCopy } from "./team-board-copy";
 import { shellCopy } from "./shell-copy";
 import { kindLabels } from "./calendar-copy";
 import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
+import { ClubIdentity } from "./club-identity";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
@@ -268,6 +271,8 @@ export function Teams({ locale }: { locale: Locale }) {
           />
         </Modal>
       )}
+      {/* 12: the teams' colours, here since « Gestion du club » is gone. */}
+      {data.can.manage && <ClubIdentity locale={locale} only="teams" />}
       <p className="muted small">
         <Icon name="team" /> {s.teams}
       </p>
@@ -314,6 +319,13 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
             <TeamPlaces locale={locale} players={team.players} capacity={team.capacity} />
           </span>
         }
+        actions={
+          data.can.manage || data.can.convene || data.can.write ? (
+            <Link className="button secondary" href={`/${locale}/sondages?new=1&team=${team.id}`}>
+              {pollsCopy[locale].create}
+            </Link>
+          ) : null
+        }
       />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -321,6 +333,8 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
       {tab === "overview" && (
         <div role="tabpanel" id="team-panel-overview" aria-labelledby="team-tab-overview">
           <TeamBoard locale={locale} data={data} />
+          {/* 5: the team's matches, the same line as on the Matches page. */}
+          <TeamMatches locale={locale} teamIds={[team.id]} />
         </div>
       )}
       {tab === "roster" && (

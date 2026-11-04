@@ -106,6 +106,7 @@ export function clearOfflineData() {
     window.localStorage.removeItem(QUEUE);
     window.localStorage.removeItem(SNAPSHOT);
     window.localStorage.removeItem(MATCH_QUEUE);
+    window.localStorage.removeItem("pfm-referee-report-queue");
   } catch {
     /* Nothing to clear. */
   }
@@ -115,4 +116,95 @@ export function clearOfflineData() {
   } catch {
     /* No storage: nothing to clear. */
   }
+}
+
+/**
+ * 25: the referee's report written in a hall without network waits here and
+ * leaves when the connection comes back. The players are named by their ids
+ * (the server writes the names); one report per match, the newer replaces.
+ */
+const REPORT_QUEUE = "pfm-referee-report-queue";
+export type QueuedReport = { key: string; body: Record<string, unknown>; queuedAt: number };
+export function pendingReports(): QueuedReport[] {
+  return read<QueuedReport[]>(REPORT_QUEUE, []);
+}
+export function queueReport(matchId: string, body: Record<string, unknown>) {
+  const next = pendingReports().filter((m) => m.key !== matchId);
+  next.push({ key: matchId, body, queuedAt: Date.now() });
+  write(REPORT_QUEUE, next);
+  return next.length;
+}
+/** Sends the waiting reports; a network failure keeps the rest, a refusal drops it and is counted. */
+export async function flushReports(send: (body: Record<string, unknown>) => Promise<Response>) {
+  let sent = 0,
+    refused = 0;
+  for (const m of pendingReports()) {
+    try {
+      const r = await send(m.body);
+      write(REPORT_QUEUE, pendingReports().filter((x) => x.key !== m.key));
+      if (r.ok) sent++;
+      else refused++;
+    } catch {
+      break;
+    }
+  }
+  return { sent, refused, left: pendingReports().length };
+}
+
+/**
+ * 14: « Bord de terrain ». Every action of the day (a presence, a goal, a
+ * card, a timeout) waits here in the order it was made and leaves as soon as
+ * the network comes back. A refusal by the server (the match changed in the
+ * meantime) is told with its label and never blocks the next ones. Only ids,
+ * the action and a short label are kept, never a health datum.
+ */
+const SIDELINE_QUEUE = "pfm-sideline-queue";
+export type QueuedAction = { key: string; matchId: string; label: string; body: Record<string, unknown>; queuedAt: number };
+export function pendingActions(matchId?: string): QueuedAction[] {
+  const all = read<QueuedAction[]>(SIDELINE_QUEUE, []);
+  return matchId ? all.filter((a) => a.matchId === matchId) : all;
+}
+export function queueAction(a: Omit<QueuedAction, "queuedAt">) {
+  const next = pendingActions().filter((x) => x.key !== a.key);
+  next.push({ ...a, queuedAt: Date.now() });
+  write(SIDELINE_QUEUE, next);
+  return next.filter((x) => x.matchId === a.matchId).length;
+}
+export function dropAction(key: string) {
+  write(SIDELINE_QUEUE, pendingActions().filter((a) => a.key !== key));
+}
+/** The last action still waiting for this match, taken back before it leaves. */
+export function popAction(matchId: string) {
+  const mine = pendingActions(matchId);
+  const last = mine[mine.length - 1];
+  if (last) dropAction(last.key);
+  return last ?? null;
+}
+/** Sends in order; a network failure stops and keeps the rest, a refusal is counted with its label and dropped. */
+export async function flushActions(matchId: string, send: (body: Record<string, unknown>) => Promise<Response>) {
+  let sent = 0;
+  const refused: string[] = [];
+  for (const a of pendingActions(matchId).sort((x, y) => x.queuedAt - y.queuedAt)) {
+    try {
+      const r = await send(a.body);
+      dropAction(a.key);
+      if (r.ok) sent++;
+      else refused.push(a.label);
+    } catch {
+      break;
+    }
+  }
+  return { sent, refused, left: pendingActions(matchId).length };
+}
+/** The match's data kept on the device for a day, so the screen opens without network. */
+const SIDELINE_SNAPSHOT = "pfm-sideline-snapshot";
+export function saveSideline(matchId: string, data: unknown) {
+  const all = read<Record<string, { savedAt: number; data: unknown }>>(SIDELINE_SNAPSHOT, {});
+  for (const [k, v] of Object.entries(all)) if (Date.now() - v.savedAt > DAY) delete all[k];
+  all[matchId] = { savedAt: Date.now(), data };
+  write(SIDELINE_SNAPSHOT, all);
+}
+export function loadSideline<T>(matchId: string): T | null {
+  const v = read<Record<string, { savedAt: number; data: T }>>(SIDELINE_SNAPSHOT, {})[matchId];
+  return v && Date.now() - v.savedAt <= DAY ? v.data : null;
 }

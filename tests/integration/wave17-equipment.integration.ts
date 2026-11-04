@@ -108,7 +108,7 @@ it("stores chairs and small material by place, each club its own places", async 
   await run(presidentA, clubA, { action: "item", name: "Cônes", category: "cone", quantity: 20, storage: "", expiresOn: null, notes: "", archived: false, storageLocationId: placeA });
   const places = (await view(presidentA)).storage.places;
   expect(places).toHaveLength(1);
-  expect(places[0]).toMatchObject({ name: "Local d'Uccle", chairs: [{ name: "Rouge" }], items: [{ name: "Cônes", quantity: 20 }] });
+  expect(places[0]).toMatchObject({ name: "Local d'Uccle", chairs: [{ name: "Rouge · Acme Viper" }], items: [{ name: "Cônes", quantity: 20 }] });
   expect((await db.query("SELECT storage FROM equipment_chair WHERE id=$1", [chairA])).rows[0].storage).toBe("Local d'Uccle");
   // Another club cannot use it; the coach reads the places, cannot change them.
   await expect(run(presidentB, clubB, chair({ name: "Vert", modelId: rouge.model_id, storageLocationId: placeA }))).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -145,7 +145,7 @@ it("lends between two clubs: request, acceptance, hand-over, return", async () =
   await expect(run(presidentB, clubB, { action: "requestLoan", chairId: chairA, startsOn: await day(5), endsOn: await day(12), message: "" })).rejects.toMatchObject({ code: "LOAN_OVERLAP" });
   await run(presidentA, clubA, { action: "handOver", id: loan, condition: "Batteries chargées, pneus neufs" });
   const borrowed = (await view(presidentB)).loans.borrowed[0];
-  expect(borrowed).toMatchObject({ status: "ongoing", lender: "Club A", chair: "Rouge", condition_out: "Batteries chargées, pneus neufs", storage_name: "Local d'Uccle" });
+  expect(borrowed).toMatchObject({ status: "ongoing", lender: "Club A", chair: "Rouge · Acme Viper", condition_out: "Batteries chargées, pneus neufs", storage_name: "Local d'Uccle" });
   expect((await view(presidentB)).loans.available[0].busy).toEqual([{ starts_on: from, ends_on: to, status: "ongoing" }]);
   // Reminder seven days before the end, once, to both clubs.
   await db.query("UPDATE equipment_loan SET ends_on=$2 WHERE id=$1", [loan, await day(5)]);

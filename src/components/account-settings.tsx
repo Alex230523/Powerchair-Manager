@@ -6,6 +6,7 @@ import { accessCopy, errors } from "./access-copy";
 import { contextChanged, DisplayChoice, initials, shellCopy, ThemeChoice } from "./app-shell";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { Button, Card } from "./ui";
+import { LexiconChoice } from "./knowledge";
 
 type Account = {
   user: { name: string };
@@ -137,6 +138,8 @@ export function AccountPanels({ locale }: { locale: Locale }) {
       </Card>
       <Card title={shellCopy[locale].textSize} subtitle={h.displayIntro} labelledBy="settings-display" headingId="settings-display">
         <DisplayChoice t={shellCopy[locale]} />
+        {/* G12: the lexicon's dotted words and their definitions. */}
+        <LexiconChoice locale={locale} />
       </Card>
     </>
   );

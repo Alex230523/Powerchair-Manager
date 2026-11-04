@@ -12,5 +12,7 @@ export default defineConfig({
   globalSetup: "./tests/audit/global-setup.ts",
   workers: 4,
   fullyParallel: true,
+  // G10: the how-to captures are the reference images themselves (served from public/help).
+  snapshotPathTemplate: "public/help/{arg}{ext}",
   reporter: process.env.GITHUB_ACTIONS ? [["github"], ["list"]] : "list",
 });

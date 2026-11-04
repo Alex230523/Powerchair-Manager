@@ -8,12 +8,15 @@ import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
 import { BrandMark, Icon } from "./icons";
 import { languageNames, shellCopy } from "./shell-copy";
+import { helpFor, helpRole } from "@/domains/guide/help";
+import { FeedbackDialog } from "./feedback";
 import { CommandPalette, scopeFocusEvent } from "./command-palette";
 import { paletteActions } from "./palette";
 import { ToastHost } from "./toast";
 import { defaultSeasonId, ScopeProvider, useScope } from "./use-scope";
 import type { Todo } from "@/domains/dashboard/summary";
-import { bottomNav, menuGroups, type NavItem, type Workspace } from "./menu";
+import { SeasonCheckPrompt } from "./season-check";
+import { bottomNav, menuGroups, settingsItem, type NavItem, type Workspace } from "./menu";
 export { menuGroups, type Workspace };
 import { Badge } from "./ui";
 import { settingsEntries, visibleCategories } from "./settings-nav";
@@ -39,7 +42,23 @@ export function contextChanged() {
 }
 // Runs before paint (see layout) so the stored theme never flashes.
 // Text size and contrast (wave 15, C4) are applied the same way.
-export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast");if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
+export const themeScript = `try{var d=document.documentElement,t=localStorage.getItem("pfm-theme"),z=localStorage.getItem("pfm-text-size"),c=localStorage.getItem("pfm-contrast"),x=localStorage.getItem("pfm-lexicon");if(x==="off")d.dataset.lexicon="off";if(t==="light"||t==="dark")d.dataset.theme=t;if(z==="large"||z==="xlarge")d.dataset.textSize=z;if(c==="more"||c==="normal")d.dataset.contrast=c}catch(e){}`;
+/** What themeScript does, again after mounting (same keys, same values). */
+function reapplyDisplay() {
+  try {
+    const d = document.documentElement.dataset,
+      read = (k: string) => window.localStorage.getItem(k);
+    const theme = read("pfm-theme"),
+      size = read("pfm-text-size"),
+      contrast = read("pfm-contrast");
+    if (read("pfm-lexicon") === "off") d.lexicon = "off";
+    if (theme === "light" || theme === "dark") d.theme = theme;
+    if (size === "large" || size === "xlarge") d.textSize = size;
+    if (contrast === "more" || contrast === "normal") d.contrast = contrast;
+  } catch {
+    /* Storage refused: the defaults stay. */
+  }
+}
 const darkQuery = "(prefers-color-scheme: dark)";
 function subscribeTheme(change: () => void) {
   const media = window.matchMedia(darkQuery);
@@ -234,6 +253,13 @@ function GuestShell({ locale, children }: { locale: Locale; children: ReactNode 
 export function AppShell({ locale, signedIn = true, children }: { locale: Locale; signedIn?: boolean; children: ReactNode }) {
   const path = usePathname(),
     t = shellCopy[locale];
+  // The display preferences on <html>, set again once mounted: when React redraws the
+  // document after a hydration mismatch, <html> loses what the head script had set.
+  useEffect(() => {
+    reapplyDisplay();
+    window.dispatchEvent(new Event("pfm-theme"));
+    window.dispatchEvent(new Event("pfm-display"));
+  }, []);
   const [state, setState] = useState<Workspace | null>(null),
     [signedOut, setSignedOut] = useState(false),
     [busy, setBusy] = useState(false),
@@ -243,7 +269,11 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     [brief, setBrief] = useState<Brief | null>(null),
     [drawer, setDrawer] = useState(false),
     [bell, setBell] = useState(false),
-    [typing, setTyping] = useState(false);
+    [typing, setTyping] = useState(false),
+    // 19: « Signaler un problème », over the page the person is on.
+    [feedback, setFeedback] = useState(false),
+    // 20: the « Nouveau » badges of the menu.
+    [news, setNews] = useState<{ badges: string[] } | null>(null);
   const menuButton = useRef<HTMLButtonElement>(null),
     closeButton = useRef<HTMLButtonElement>(null),
     aside = useRef<HTMLElement>(null),
@@ -304,6 +334,15 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
         })
         .catch(() => {
           if (!cancelled) setBrief(null);
+        });
+      // 20: « Nouveautés » for this profile's role.
+      fetch("/api/news", { cache: "no-store" })
+        .then(async (r) => (r.ok ? ((await r.json()) as { badges: string[] }) : null))
+        .then((n) => {
+          if (!cancelled) setNews(n && { badges: n.badges });
+        })
+        .catch(() => {
+          if (!cancelled) setNews(null);
         });
       // 22: the tasks given to me, for the menu's counter and the phone's shortcut.
       fetch("/api/tasks?count=mine", { cache: "no-store" })
@@ -397,13 +436,20 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   const badgeOf = (route: string): { count: number; tone: string } | undefined =>
     route === "/tasks" ? { count: myTasks.open, tone: myTasks.late ? "danger" : "warning" } : counterRoutes[route] ? counts.get(counterRoutes[route]) : undefined;
   function item({ route, label, icon }: NavItem) {
-    const todo = badgeOf(route);
+    const todo = badgeOf(route),
+      fresh = news?.badges.includes(route);
+    // 20: « Nouveau » is a description, not part of the entry's name.
     return (
-      <Link key={route} href={`/${locale}${route}`} aria-current={current(route)}>
+      <Link key={route} href={`/${locale}${route}`} aria-current={current(route)} aria-describedby={fresh ? "nav-new-description" : undefined}>
         <span className="nav-icon">
           <Icon name={icon} />
         </span>
         <span className="nav-label">{t[label]}</span>
+        {fresh && (
+          <span className="nav-new" aria-hidden="true">
+            <Badge tone="info">{t.newBadge}</Badge>
+          </span>
+        )}
         {todo && todo.count > 0 && (
           <>
             <span className="nav-count" aria-hidden="true">
@@ -452,6 +498,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   const shownSettings = state?.selected
     ? visibleCategories({ kind: state.selected.kind, role, permissions: state.permissions ?? [], disabled: state.selected.disabled_modules })
     : [];
+  const sheet = helpFor(path, helpRole(role));
+  const helpHref = sheet ? `/${locale}/guide/help/${sheet.id}` : `/${locale}/guide/help`;
   const settingsPages = [
     ...shownSettings.map((c) => ({ route: `/settings/${c}`, label: `${t.settings} · ${h.categories[c].title}` })),
     ...settingsEntries
@@ -464,6 +512,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}
       taxApproved={state?.selected?.kind === "club" && !!state.selected.tax_approved}
+      federation={state?.selected?.kind === "federation"}
       seasons={state?.seasons ?? []}
       teams={state?.teams ?? []}
     >
@@ -493,6 +542,9 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
               if ((e.target as Element).closest("a")) setDrawer(false);
             }}
           >
+            <span id="nav-new-description" hidden>
+              {t.newBadge}
+            </span>
             {item({ route: "", label: "home", icon: "home" })}
             {groups.map((group) => {
               const holds = group.items.some((i) => current(i.route) !== undefined);
@@ -508,6 +560,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 </details>
               );
             })}
+            {/* 12: « Réglages » closes the menu, for every profile. */}
+            {state?.selected && <div className="nav-settings">{item(settingsItem)}</div>}
           </nav>
           {/* The account corner: photo, name and role open the account menu. */}
           <details className="profile-menu" ref={account}>
@@ -553,6 +607,28 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
               {state && (
                 <Link className="menu-link" href={`/${locale}/settings`}>
                   <Icon name="settings" size={16} /> {t.settings}
+                </Link>
+              )}
+              {/* Guide du powerchair football, for every profile. */}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/guide`}>
+                  <Icon name="document" size={16} /> {t.guide}
+                </Link>
+              )}
+              {/* 19: a remark on the application, for every profile; its follow-up in « Mes signalements ». */}
+              {state && (
+                <button type="button" className="menu-link" onClick={() => setFeedback(true)}>
+                  <Icon name="alert" size={16} /> {t.feedback}
+                </button>
+              )}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/nouveautes`}>
+                  <Icon name="megaphone" size={16} /> {t.news}
+                </Link>
+              )}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/signalements`}>
+                  <Icon name="clipboardList" size={16} /> {t.myReports}
                 </Link>
               )}
               {/* Wave 16 (M1): one line per setting, label left, compact control right. */}
@@ -604,7 +680,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, { route: "/signalements?new=1", label: t.feedback }, { route: "/nouveautes", label: t.news }, { route: "/sondages?new=1", label: t.newPoll }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
                 actions={paletteActions({
                   kind: state?.selected?.kind,
                   role,
@@ -623,6 +699,12 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 </Link>
               )}
               {club && !member && <ScopeBar t={t} />}
+              {/* G10: « Aide », the how-to sheet of this page for the reader's role (or all the sheets). */}
+              {state?.selected && (
+                <Link className="icon-button help-link" href={helpHref} aria-label={t.help} title={t.help}>
+                  <Icon name="help" size={18} />
+                </Link>
+              )}
               {state?.selected && (
                 <div className="bell">
                   <button
@@ -684,6 +766,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           <ToastHost locale={locale} />
         </div>
         {signedIn && <FirstSteps locale={locale} role={role} />}
+        {/* 8: « Vos informations sont-elles toujours exactes ? » once a season, at sign-in. */}
+        {signedIn && club && <SeasonCheckPrompt locale={locale} contextId={selectedId} />}
         {bottom.length > 0 && (
           <nav className="bottom-nav" aria-label={t.bottomNav} data-hidden={typing || undefined}>
             {bottom.map((i) => {
@@ -712,6 +796,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           </nav>
         )}
       </div>
+      {feedback && <FeedbackDialog locale={locale} close={() => setFeedback(false)} />}
     </ScopeProvider>
   );
 }

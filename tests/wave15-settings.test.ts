@@ -4,7 +4,7 @@ import { categoryIcons, isSettingsCategory, legacyAnchors, searchSettings, setti
 import { settingsHubCopy } from "../src/components/settings-hub-copy";
 
 /** Wave 15 (C13): settings split into categories, with a search and the old anchors still served. */
-const all = ["people.read", "mandates.manage", "audit.read", "dues.manage", "calendar.manage", "notifications.manage"];
+const all = ["people.read", "mandates.manage", "audit.read", "dues.manage", "calendar.manage", "notifications.manage", "documents.manage"];
 const keys = (o: object): string[] =>
   Object.entries(o)
     .flatMap(([k, v]) => (v && typeof v === "object" ? keys(v).map((x) => `${k}.${x}`) : [k]))
@@ -15,17 +15,17 @@ describe("settings categories", () => {
   it("shows every category to a president, in menu order", () => {
     expect(visibleCategories({ kind: "club", role: "club_president", permissions: all })).toEqual([...settingsCategories]);
   });
-  it("keeps a coach, a player and a parent to their own account and notifications", () => {
+  it("keeps a coach, a player and a parent to their own account, notifications and data (12)", () => {
     for (const role of ["coach", "player", "guardian"])
-      expect(visibleCategories({ kind: "club", role, permissions: ["calendar.read", "people.read"] })).toEqual(["account", "notifications"]);
+      expect(visibleCategories({ kind: "club", role, permissions: ["calendar.read", "people.read"] })).toEqual(["account", "notifications", "data"]);
   });
   it("follows the rights, not the role name: a member trusted with mandates sees the club categories", () => {
-    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["mandates.manage"] })).toEqual(["account", "notifications", "club", "members", "activities", "money", "journals"]);
-    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["audit.read"] })).toEqual(["account", "notifications", "journals"]);
+    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["mandates.manage"] })).toEqual(["account", "notifications", "data", "club", "members", "seasons", "activities", "money", "journals"]);
+    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "journals"]);
   });
   it("hides Money when the dues module is off, and the club categories outside a club", () => {
     expect(visibleCategories({ kind: "club", role: "club_president", permissions: all, disabled: ["dues"] })).not.toContain("money");
-    expect(visibleCategories({ kind: "federation", role: "federation_president", permissions: ["audit.read"] })).toEqual(["account", "notifications", "journals"]);
+    expect(visibleCategories({ kind: "federation", role: "federation_president", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "members", "journals"]);
   });
   it("recognises its own names only", () => {
     expect(isSettingsCategory("money")).toBe(true);

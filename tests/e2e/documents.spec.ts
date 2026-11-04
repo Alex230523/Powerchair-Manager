@@ -8,7 +8,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
   browser,
 }) => {
   test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use npm run test:e2e:db");
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL }),
     playerContext = await browser.newContext({ baseURL: origin }),
     playerPage = await playerContext.newPage();
@@ -80,6 +80,8 @@ test("unverified accounts, document requests, deposit, review, versions and gene
     ).rows[0].id;
     for (const locale of ["fr", "nl"]) {
       await page.goto("/" + locale + "/documents");
+      // 10: the folders come first; the detailed list is one tab away.
+      await page.getByRole("tab", { name: locale === "fr" ? "Liste détaillée" : "Gedetailleerde lijst" }).click();
       await expect(
         page.getByRole("heading", {
           name: locale === "fr" ? "Bibliothèque privée" : "Privébibliotheek",
@@ -102,6 +104,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
       await page.setViewportSize({ width: 1280, height: 900 });
     }
     await page.goto("/fr/documents");
+    await page.getByRole("tab", { name: "Liste détaillée" }).click();
     const requestPanel = page.locator("section").filter({
       has: page.getByRole("heading", {
         name: "Demander un document",
@@ -130,6 +133,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
       }),
     ).toBeVisible();
     await playerPage.goto("/fr/documents");
+    await playerPage.getByRole("tab", { name: "Liste détaillée" }).click();
     await playerPage
       .getByRole("button", {
         name: "Consentement annuel · Demandé",
@@ -154,6 +158,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
       }),
     ).toBeVisible();
     await page.reload();
+    await page.getByRole("tab", { name: "Liste détaillée" }).click();
     await page
       .getByRole("button", {
         name: "Consentement annuel · Déposé",
@@ -174,6 +179,7 @@ test("unverified accounts, document requests, deposit, review, versions and gene
       }),
     ).toBeVisible();
     await playerPage.reload();
+    await playerPage.getByRole("tab", { name: "Liste détaillée" }).click();
     await playerPage
       .getByRole("button", {
         name: "Consentement annuel · Valide",

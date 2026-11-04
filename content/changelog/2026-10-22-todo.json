@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach",
+    "federation"
+  ],
+  "link": "/tasks",
+  "image": null,
+  "fr": {
+    "title": "Une to-do pour tout le club",
+    "text": "Les tâches du club et de la fédération au même endroit, avec un responsable, une échéance et des rappels."
+  },
+  "nl": {
+    "title": "Eén takenlijst voor de hele club",
+    "text": "De taken van de club en van de federatie op één plek, met een verantwoordelijke, een deadline en herinneringen."
+  },
+  "en": {
+    "title": "One to-do list for the whole club",
+    "text": "The club's and the federation's tasks in one place, with someone responsible, a due date and reminders."
+  }
+}

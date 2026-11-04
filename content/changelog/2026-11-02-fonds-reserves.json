@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "federation"
+  ],
+  "link": "/funding/reserved",
+  "image": null,
+  "fr": {
+    "title": "Les fonds réservés",
+    "text": "L'argent d'un subside prévu pour un achat reste réservé jusqu'à ce qu'il soit dépensé. Les finances montrent la trésorerie totale, la part réservée et ce qui est vraiment disponible, avec une alerte avant la date limite."
+  },
+  "nl": {
+    "title": "De bestemde fondsen",
+    "text": "Het geld van een subsidie voor een aankoop blijft gereserveerd tot het uitgegeven is. De financiën tonen de totale kas, het gereserveerde deel en wat echt beschikbaar is, met een waarschuwing vóór de einddatum."
+  },
+  "en": {
+    "title": "Reserved funds",
+    "text": "Money from a grant meant for a purchase stays reserved until it is spent. The finances show the total cash, the reserved part and what is really available, with an alert before the deadline."
+  }
+}

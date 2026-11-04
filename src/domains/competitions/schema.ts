@@ -162,7 +162,24 @@ export type Result = {
   our_score: number | null;
   their_score: number | null;
   status: string;
+  /** A score the other club proposed and nobody confirmed yet stays out of the figures (5). */
+  score_status?: string;
 };
+export type Outcome = "win" | "draw" | "loss";
+/** 5: the result of a played match, from our side (null while not played). */
+export function outcomeOf(ours: number | null, theirs: number | null): Outcome | null {
+  if (ours === null || theirs === null) return null;
+  return ours > theirs ? "win" : ours < theirs ? "loss" : "draw";
+}
+/** 5: the last results of a team, oldest first, the latest last (confirmed scores only). */
+export function formOf(matches: (Result & { starts_at: string | Date })[], n = 5) {
+  return matches
+    .filter((m) => m.status === "played" && m.score_status !== "proposed" && m.our_score !== null && m.their_score !== null)
+    .sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime())
+    .slice(0, n)
+    .reverse()
+    .map((m) => outcomeOf(m.our_score, m.their_score)!);
+}
 /** Won, drawn, lost, goals and points (3, 1, 0) of played matches. */
 export function teamRecord(matches: Result[]) {
   const out = {
@@ -175,7 +192,7 @@ export function teamRecord(matches: Result[]) {
     points: 0,
   };
   for (const m of matches) {
-    if (m.status !== "played" || m.our_score === null || m.their_score === null)
+    if (m.status !== "played" || m.score_status === "proposed" || m.our_score === null || m.their_score === null)
       continue;
     out.played++;
     out.goalsFor += m.our_score;

@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "all"
+  ],
+  "link": "/calendar",
+  "image": null,
+  "fr": {
+    "title": "« Invité » partout",
+    "text": "On parle désormais d'invitation à un entraînement ou à un match, dans tous les écrans et tous les messages."
+  },
+  "nl": {
+    "title": "Overal « uitgenodigd »",
+    "text": "We spreken voortaan van een uitnodiging voor een training of wedstrijd, in alle schermen en berichten."
+  },
+  "en": {
+    "title": "« Invited » everywhere",
+    "text": "We now speak of an invitation to a training or a match, in every screen and every message."
+  }
+}

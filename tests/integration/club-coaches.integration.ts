@@ -35,6 +35,7 @@ let club: string,
   coachMandate: string,
   fedPresident: Principal,
   fedWorker: Principal,
+  fedOther: Principal,
   coachProfile: string;
 
 async function actor(org: string, role: string, grants: string[] = []) {
@@ -105,7 +106,9 @@ beforeAll(async () => {
   coach = c.p;
   coachMandate = c.mandateId;
   fedPresident = (await actor(federation, "federation_president")).p;
-  fedWorker = (await actor(federation, "federation_worker")).p;
+  // 32: a delegate for the training (competence « formations ») and one for something else.
+  fedWorker = (await actor(federation, "federation_worker", ["federation.courses"])).p;
+  fedOther = (await actor(federation, "federation_worker", ["federation.referees"])).p;
   const person = (
     await db.query("SELECT id FROM person WHERE user_id=$1", [coach.userId])
   ).rows[0].id;
@@ -327,10 +330,12 @@ it("runs the course workflow: federation creates, club asks, federation confirms
     },
     federation,
   );
+  // 32: a delegate without the « formations » competence neither reads nor creates the courses.
+  await expect(coursesView(db, fedOther)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(
     coursesExecute(
       db,
-      fedWorker,
+      fedOther,
       {
         action: "createCourse",
         title: "Autre",
@@ -396,7 +401,8 @@ it("runs the course workflow: federation creates, club asks, federation confirms
   expect(pending.clubs.map((c: { name: string }) => c.name)).toEqual([
     "Club renommé",
   ]);
-  expect(pending.can.manage).toBe(false);
+  // 32: the training delegate decides the requests.
+  expect(pending.can.manage).toBe(true);
   expect(
     pending.requests.map((r: { coach: string; status: string }) => [
       r.coach,

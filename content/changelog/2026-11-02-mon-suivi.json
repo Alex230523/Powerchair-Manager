@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "player",
+    "parent",
+    "coach",
+    "president"
+  ],
+  "link": "/players",
+  "image": null,
+  "fr": {
+    "title": "Mon suivi",
+    "text": "Sur la fiche du joueur, un onglet montre la saison : présences, matchs, temps de jeu, buts et passes, comparés à la saison passée. Le coach fixe des objectifs et laisse des retours que le joueur et ses parents lisent et commentent ; ses notes privées restent entre coachs."
+  },
+  "nl": {
+    "title": "Mijn opvolging",
+    "text": "Op de fiche van de speler toont een tabblad het seizoen: aanwezigheden, wedstrijden, speeltijd, doelpunten en assists, vergeleken met vorig seizoen. De coach legt doelen vast en geeft feedback die de speler en zijn ouders lezen en beantwoorden; zijn privénotities blijven onder coaches."
+  },
+  "en": {
+    "title": "My progress",
+    "text": "On the player's sheet, a tab shows the season: attendance, matches, playing time, goals and assists, compared with last season. The coach sets objectives and leaves feedback the player and his parents read and answer; his private notes stay between coaches."
+  }
+}

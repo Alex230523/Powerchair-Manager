@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach",
+    "parent"
+  ],
+  "link": "/players",
+  "image": null,
+  "fr": {
+    "title": "La vue d'ensemble d'une personne",
+    "text": "La fiche d'un joueur ou d'un coach s'ouvre sur un résumé : équipes, tâches, documents, cotisations, fauteuil, présences, et ce qui bloque. Chacun n'y voit que ce qu'il a le droit de voir."
+  },
+  "nl": {
+    "title": "Het overzicht van een persoon",
+    "text": "De fiche van een speler of coach opent met een samenvatting: ploegen, taken, documenten, lidgelden, rolstoel, aanwezigheden, en wat blokkeert. Iedereen ziet enkel wat hij mag zien."
+  },
+  "en": {
+    "title": "A person's overview",
+    "text": "A player's or coach's file opens on a summary: teams, tasks, documents, fees, chair, attendance, and what blocks. Everyone sees only what they are allowed to see."
+  }
+}

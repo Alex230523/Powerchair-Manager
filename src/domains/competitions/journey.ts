@@ -1,3 +1,4 @@
+import { suspensionsFor } from "../discipline/service";
 import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
@@ -8,6 +9,7 @@ import { seasonOf } from "../finance/schema";
 import { manageable } from "./service";
 import { matchEvent, proposeScore } from "./friendly";
 import { speedState } from "../equipment/workshop";
+import { exerciseRights, tacticOptions, tacticsOf } from "../exercises/service";
 
 /**
  * A5: one match sheet in three steps (Avant | Jour J | Après), built on the
@@ -21,7 +23,9 @@ import { speedState } from "../equipment/workshop";
  */
 const id = z.uuid();
 export const checklistKeys = ["chairs", "batteries", "balls", "shirts", "firstAid", "transport"] as const;
-export const liveKinds = ["goal", "goal_against", "yellow", "red", "sub_in", "sub_out"] as const;
+export const liveKinds = ["goal", "goal_against", "assist", "yellow", "red", "sub_in", "sub_out", "timeout"] as const;
+/** 14: the events that name nobody. */
+export const teamKinds = ["goal_against", "timeout"] as const;
 export const journeyCommand = z.discriminatedUnion("action", [
   /** A match created before A5, or whose event was removed: the call-up now. */
   z.object({ action: z.literal("convene"), id }),
@@ -36,20 +40,26 @@ export const journeyCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("checklist"), id, items: z.array(z.object({ key: z.enum(checklistKeys), responsibleId: id.nullable() })).min(1).max(checklistKeys.length) }),
   z.object({ action: z.literal("live"), id, clientId: id, kind: z.enum(liveKinds), profileId: id.nullable(), minute: z.number().int().min(0).max(200).nullable() }),
   z.object({ action: z.literal("undoLive"), id, eventId: id }),
+  /** 14: a presence marked from the side of the pitch (a tap: present; otherwise absent or excused). */
+  z.object({ action: z.literal("presence"), id, profileId: id, actual: z.enum(["present", "absent", "excused", "unchecked"]) }),
+  /** 14: the photo of the paper match sheet. */
+  z.object({ action: z.literal("sheetPhoto"), id, type: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]), base64: z.string().min(8).max(8500000) }),
   z.object({ action: z.literal("validate"), id, version: z.number().int().positive(), ourScore: z.number().int().min(0).max(99), theirScore: z.number().int().min(0).max(99) }),
 ]);
 export type JourneyCommand = z.infer<typeof journeyCommand>;
 
-export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck";
+export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended";
 const broken = (status: string) => status === "maintenance" || status === "out_of_service";
 /**
  * What stops a player from playing (blocking) or deserves a look (warning).
  * B3: a chair over the speed limit, never checked or checked too long ago
  * is a warning. Pure.
  */
-export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null }) {
+export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null; suspended?: boolean }) {
   const blocking: Problem[] = [],
     warnings: Problem[] = [];
+  // 34: a suspension still running keeps the player off the sheet.
+  if (p.suspended) blocking.push("suspended");
   if (p.licence !== "active") blocking.push("licence");
   if (p.chair && broken(p.chair.status)) blocking.push("chairBroken");
   if (p.documentsDue > 0) warnings.push("documents");
@@ -61,11 +71,12 @@ export function eligibility(p: { licence: string | null; documentsDue: number; c
 /** The live score and each player's goals and cards, from the day's events (cancelled ones left out). Pure. */
 export function tally(events: { kind: string; profile_id: string | null; cancelled_at: unknown }[]) {
   const live = events.filter((e) => !e.cancelled_at);
-  const per = new Map<string, { goals: number; yellow: number; red: boolean }>();
+  const per = new Map<string, { goals: number; yellow: number; red: boolean; assists: number }>();
   for (const e of live) {
     if (!e.profile_id) continue;
-    const v = per.get(e.profile_id) ?? { goals: 0, yellow: 0, red: false };
+    const v = per.get(e.profile_id) ?? { goals: 0, yellow: 0, red: false, assists: 0 };
     if (e.kind === "goal") v.goals++;
+    if (e.kind === "assist") v.assists++;
     if (e.kind === "yellow") v.yellow = Math.min(2, v.yellow + 1);
     if (e.kind === "red") v.red = true;
     per.set(e.profile_id, v);
@@ -109,24 +120,32 @@ async function matchOf(c: PoolClient, org: string, matchId: string, lock = false
 async function squad(c: PoolClient, org: string, m: Row) {
   const r = (await c.query("SELECT chair_speed_limit_kmh::float AS limit,speed_check_days AS days FROM organization WHERE id=$1", [org])).rows[0];
   const rules = { limit: Number(r.limit), days: Number(r.days) };
-  return (
+  const rows = (
     await c.query(
       `SELECT DISTINCT ON (cp.id) cp.id AS profile_id,cp.full_name,cp.jersey_number,COALESCE(NULLIF(tm.position,''),cp.playing_position) AS position,COALESCE(sp.classification,'not_classified') AS classification,
               (SELECT l.status FROM license l WHERE l.profile_id=cp.id AND l.organization_id=$1 AND l.season=$3 ORDER BY CASE l.status WHEN 'active' THEN 0 WHEN 'suspended' THEN 1 WHEN 'requested' THEN 2 ELSE 3 END LIMIT 1) AS licence,
               (SELECT count(*)::int FROM club_document d WHERE d.profile_id=cp.id AND d.organization_id=$1 AND NOT d.sensitive AND (d.status IN ('missing','requested','refused','expired') OR (d.status='valid' AND d.expires_on<CURRENT_DATE))) AS documents_due,
-              (SELECT json_build_object('name',ch.name,'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false),
+              (SELECT json_build_object('name',chair_label(ch.id),'status',ch.status,'serviceDue',COALESCE(ch.next_service_on<CURRENT_DATE,false),
                         'lastSpeed',(SELECT json_build_object('speed',i.speed_kmh::float,'on',i.occurred_on::text) FROM chair_intervention i WHERE i.chair_id=ch.id AND i.kind='speed_check' AND i.cancelled_at IS NULL ORDER BY i.occurred_on DESC,i.created_at DESC LIMIT 1))
                  FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
                 WHERE ea.profile_id=cp.id AND ea.ends_on IS NULL AND ch.organization_id=$1 ORDER BY ea.is_primary DESC,ea.starts_on DESC LIMIT 1) AS chair,
-              (SELECT i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS answer
+              (SELECT i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS answer,
+              (SELECT i.actual FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS actual
          FROM team_membership tm JOIN club_person cp ON cp.id=tm.profile_id LEFT JOIN player_sport_profile sp ON sp.profile_id=cp.id
         WHERE tm.organization_id=$1 AND tm.team_id=$2 AND tm.role='player' AND NOT tm.cancelled AND tm.closed_at IS NULL AND tm.starts_on<=CURRENT_DATE AND (tm.ends_on IS NULL OR tm.ends_on>=CURRENT_DATE) AND cp.status='active'
         ORDER BY cp.id`,
       [org, m.team_id, seasonOf(brusselsToday()).label, m.calendar_event_id],
     )
-  ).rows.map((r) => ({
+  ).rows;
+  const suspended = await suspensionsFor(
+    c,
+    org,
+    rows.map((x) => x.profile_id as string),
+  );
+  return rows.map((r) => ({
     ...r,
-    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) } }),
+    suspension: suspended.get(r.profile_id) ?? null,
+    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) }, suspended: suspended.has(r.profile_id) }),
   })) as {
     profile_id: string;
     full_name: string;
@@ -137,6 +156,9 @@ async function squad(c: PoolClient, org: string, m: Row) {
     documents_due: number;
     chair: { name: string; status: string; serviceDue: boolean } | null;
     answer: "present" | "absent" | "uncertain" | "none" | null;
+    /** 14: the presence seen on the day. */
+    actual: string | null;
+    suspension: { remaining: number; summary: string; cause: string } | null;
     blocking: Problem[];
     warnings: Problem[];
   }[];
@@ -205,6 +227,8 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
         manage: false as const,
         match: m,
         callUp,
+        // 4: the tactics, read only and without the coach's notes, for the invited and their parents only.
+        tactics: callUp.length ? await tacticsOf(c, org, matchId, false) : [],
         lineup: published ? (await lineupOf(c, org, matchId)).map(({ profile_id, full_name, starter, jersey_number, position }) => ({ profile_id, full_name, starter, jersey_number, position })) : null,
         result: done ? { ours: m.our_score, theirs: m.their_score } : null,
       };
@@ -213,9 +237,14 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
     const lineup = await lineupOf(c, org, matchId);
     const live = await liveOf(c, org, matchId);
     const t = tally(live);
-    const trip = m.calendar_event_id
-      ? (((await c.query("SELECT id,title FROM trip WHERE calendar_event_id=$1 AND organization_id=$2 ORDER BY created_at LIMIT 1", [m.calendar_event_id, org])).rows[0] ?? null) as { id: string; title: string } | null)
-      : null;
+    // 3: the trip serving the match directly, or its event.
+    const trip = ((
+      await c.query("SELECT id,title FROM trip WHERE organization_id=$1 AND (match_id=$2 OR ($3::uuid IS NOT NULL AND calendar_event_id=$3)) ORDER BY match_id IS NULL,created_at LIMIT 1", [
+        org,
+        matchId,
+        m.calendar_event_id ?? null,
+      ])
+    ).rows[0] ?? null) as { id: string; title: string } | null;
     const tasks = (
       await c.query("SELECT t.id,t.title,t.source_kind,t.status,COALESCE(cp.full_name,'') AS responsible FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id WHERE t.organization_id=$1 AND t.match_id=$2 ORDER BY t.created_at", [
         org,
@@ -223,9 +252,14 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
       ])
     ).rows as { id: string; title: string; source_kind: string; status: string; responsible: string }[];
     const officials = await officialsOf(c, org, m);
+    const canTactics = exerciseRights(s.context).write;
     return {
       organization_id: org,
       manage: true as const,
+      // 4: « Ajouter une tactique ».
+      tactics: await tacticsOf(c, org, matchId, true),
+      tacticOptions: canTactics ? await tacticOptions(c, org, s.p.userId) : [],
+      canTactics,
       match: m,
       players,
       lineup,
@@ -245,6 +279,15 @@ const words = {
   en: { about: "{team} · {opponent}", result: "Result: {team} {ours}-{theirs} {opponent}", scorers: "Scorers: {names}.", none: "Thanks to all the players, the staff and the supporters!", heading: "{team} against {opponent}" },
 };
 const fill = (x: string, v: Record<string, string | number>) => x.replace(/\{(\w+)\}/g, (k, n: string) => (n in v ? String(v[n]) : k));
+
+/** 4: the image or PDF of a tactic, for those who see it from the match. */
+export async function journeyTacticDiagram(db: Pool, p: Principal, matchId: string, exerciseId: string) {
+  const v = await journeyView(db, p, matchId);
+  if (!v.tactics.some((x) => x.id === exerciseId && x.has_diagram)) throw new AccessError("NOT_FOUND", 404);
+  const d = (await db.query("SELECT media_type,content FROM exercise_diagram WHERE exercise_id=$1 AND organization_id=$2", [exerciseId, v.organization_id])).rows[0] as { media_type: string; content: Buffer } | undefined;
+  if (!d) throw new AccessError("NOT_FOUND", 404);
+  return d;
+}
 
 export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand, expected: string) {
   return peopleScope(db, p, true, async (s: PeopleScope) => {
@@ -313,17 +356,43 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
       }
       case "live": {
         if (m.status === "played" && m.validated_at) throw new AccessError("INVALID_TRANSITION", 409);
-        if (cmd.kind !== "goal_against") {
+        if (!(teamKinds as readonly string[]).includes(cmd.kind)) {
           if (!cmd.profileId) throw new AccessError("INVALID_INPUT", 400);
           if (!(await c.query("SELECT 1 FROM match_player WHERE match_id=$1 AND organization_id=$2 AND profile_id=$3", [m.id, org, cmd.profileId])).rowCount) throw new AccessError("NOT_IN_LINEUP", 400);
         }
         // The same event sent twice (from the offline queue) is written once.
         await c.query(
           "INSERT INTO match_live_event(organization_id,match_id,client_id,kind,profile_id,minute,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (client_id) DO NOTHING",
-          [org, m.id, cmd.clientId, cmd.kind, cmd.kind === "goal_against" ? null : cmd.profileId, cmd.minute, p.userId],
+          [org, m.id, cmd.clientId, cmd.kind, (teamKinds as readonly string[]).includes(cmd.kind) ? null : cmd.profileId, cmd.minute, p.userId],
         );
         const t = tally(await liveOf(c, org, m.id));
         out = { id: m.id, ours: t.ours, theirs: t.theirs };
+        break;
+      }
+      case "presence": {
+        // The match's call-up (its calendar event): the presence seen on the day.
+        const inv = m.calendar_event_id
+          ? (
+              await c.query(
+                "SELECT i.id,i.actual,i.register_id FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$1 AND i.profile_id=$2 AND i.organization_id=$3 AND i.withdrawn_at IS NULL FOR UPDATE OF i",
+                [m.calendar_event_id, cmd.profileId, org],
+              )
+            ).rows[0]
+          : null;
+        if (!inv) throw new AccessError("NOT_INVITED", 404);
+        await c.query("UPDATE attendance_invitation SET actual=$2,marked_at=now(),marked_by=$3,version=version+1 WHERE id=$1", [inv.id, cmd.actual, p.userId]);
+        await c.query("INSERT INTO attendance_history(register_id,invitation_id,actor_id,action,before_data,after_data) VALUES($1,$2,$3,'mark',$4,$5)", [inv.register_id, inv.id, p.userId, JSON.stringify({ actual: inv.actual }), JSON.stringify({ actual: cmd.actual })]);
+        out = { id: m.id };
+        break;
+      }
+      case "sheetPhoto": {
+        const bytes = Buffer.from(cmd.base64, "base64");
+        if (!bytes.length || bytes.length > 6291456) throw new AccessError("INVALID_FILE", 400);
+        await c.query(
+          "INSERT INTO match_sheet_photo(match_id,organization_id,media_type,content,uploaded_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT (match_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,uploaded_by=EXCLUDED.uploaded_by,uploaded_at=now()",
+          [m.id, org, cmd.type, bytes, p.userId],
+        );
+        out = { id: m.id };
         break;
       }
       case "undoLive": {
@@ -339,8 +408,8 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
         // The statistics follow the day's events; without any, the line-up keeps what was typed.
         if (live.some((e) => !e.cancelled_at))
           for (const row of await lineupOf(c, org, m.id)) {
-            const x = t.per.get(row.profile_id) ?? { goals: 0, yellow: 0, red: false };
-            await c.query("UPDATE match_player SET goals=$3,yellow_cards=$4,red_card=$5 WHERE match_id=$1 AND profile_id=$2", [m.id, row.profile_id, x.goals, x.yellow, x.red]);
+            const x = t.per.get(row.profile_id) ?? { goals: 0, yellow: 0, red: false, assists: 0 };
+            await c.query("UPDATE match_player SET goals=$3,yellow_cards=$4,red_card=$5,assists=$6 WHERE match_id=$1 AND profile_id=$2", [m.id, row.profile_id, x.goals, x.yellow, x.red, x.assists]);
           }
         await c.query("UPDATE match SET status='played',our_score=$3,their_score=$4,validated_at=now(),validated_by=$5,version=version+1 WHERE id=$1 AND organization_id=$2", [
           m.id,

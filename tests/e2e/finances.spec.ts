@@ -42,12 +42,14 @@ test("finance tabs, add and delete an operation with undo, bank statements", asy
     await page.goto("/fr/funding");
     await expect(page.locator("nav summary").filter({ hasText: "Finances" })).toHaveCount(1);
     const tabs = page.getByRole("navigation", { name: "Sections des finances" });
-    await expect(tabs.getByRole("link")).toHaveText(["Vue d'ensemble", "Opérations", "Budget", "Rentrées", "Affiliations", "Relevés de compte", "Comptes annuels et rapports"]);
+    await expect(tabs.getByRole("link")).toHaveText(["Vue d'ensemble", "Opérations", "Budget", "Prévisions", "Fonds réservés", "Affiliations", "Relevés de compte", "Comptes annuels et rapports"]);
     await expect(tabs.getByRole("link", { name: "Vue d'ensemble" })).toHaveAttribute("aria-current", "page");
     await axe(page, "overview");
-    await tabs.getByRole("link", { name: "Rentrées" }).click();
-    await expect(page).toHaveURL(/\/fr\/funding\/grants-sponsors$/);
-    await expect(page.getByRole("navigation", { name: "Rentrées" }).getByRole("link", { name: "Subsides & sponsors" })).toHaveAttribute("aria-current", "page");
+    // 9: grants and sponsors are in the menu; their page has no row of finance tabs.
+    await tabs.getByRole("link", { name: "Fonds réservés" }).click();
+    await expect(page).toHaveURL(/\/fr\/funding\/reserved$/);
+    await page.goto("/fr/funding/grants-sponsors");
+    await expect(page.getByRole("navigation", { name: "Sections des finances" })).toHaveCount(0);
 
     // 2. Add an expense with its receipt.
     await page.goto("/fr/funding/operations");

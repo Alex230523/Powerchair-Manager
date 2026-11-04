@@ -138,82 +138,85 @@ export async function rolloverExecute(
     db,
     p,
     true,
-    async ({ c, org, money }) => {
-      if (cmd.endsOn < cmd.startsOn) throw new AccessError("INVALID_DATE", 400);
-      const from = (
-        await c.query("SELECT *,starts_on::text AS starts_on,ends_on::text AS ends_on FROM season WHERE id=$1 AND organization_id=$2 FOR UPDATE", [
-          cmd.fromSeasonId,
-          org,
-        ])
-      ).rows[0];
-      if (!from) throw new AccessError("NOT_FOUND", 404);
-      if (cmd.startsOn <= from.starts_on) throw new AccessError("INVALID_DATE", 400);
-      if (cmd.copyPlans && !money) throw new AccessError("FORBIDDEN");
-      const season = (
-        await c.query(
-          "INSERT INTO season(organization_id,name,starts_on,ends_on,rolled_from) VALUES($1,$2,$3,$4,$5) RETURNING id",
-          [org, cmd.name, cmd.startsOn, cmd.endsOn, from.id],
-        )
-      ).rows[0].id as string;
-      let enrolled = 0;
-      for (const team of cmd.teams) {
-        const old = (
-          await c.query(
-            "SELECT * FROM team WHERE id=$1 AND organization_id=$2 AND season_id=$3",
-            [team.teamId, org, from.id],
-          )
-        ).rows[0];
-        if (!old) throw new AccessError("NOT_FOUND", 404);
-        const copy = (
-          await c.query(
-            // The places per team (wave 16, R1) and the colour follow the team into the new season.
-            "INSERT INTO team(organization_id,season_id,name,category,level,home_location,capacity,color) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
-            [org, season, old.name, old.category, old.level, old.home_location, old.capacity ?? null, old.color ?? null],
-          )
-        ).rows[0].id as string;
-        // The chosen people keep the role they had in the team.
-        const members = (
-          await c.query(
-            "SELECT DISTINCT ON (m.profile_id,m.role) m.profile_id,m.role,m.position FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=$1 AND NOT m.cancelled AND m.closed_at IS NULL AND cp.status='active' AND m.profile_id=ANY($2::uuid[])",
-            [old.id, team.profiles],
-          )
-        ).rows;
-        for (const m of members) {
-          await c.query(
-            "INSERT INTO team_membership(organization_id,team_id,profile_id,role,position,starts_on) VALUES($1,$2,$3,$4,$5,$6)",
-            [org, copy, m.profile_id, m.role, m.position, cmd.startsOn],
-          );
-          enrolled++;
-        }
-      }
-      // Memberships of the old season end with it (history is kept).
-      await c.query(
-        `UPDATE team_membership m SET ends_on=GREATEST(m.starts_on,LEAST($2::date,$3::date-1))
-           FROM team t WHERE t.id=m.team_id AND t.season_id=$1 AND m.ends_on IS NULL AND NOT m.cancelled`,
-        [from.id, from.ends_on, cmd.startsOn],
-      );
-      let plans = 0;
-      if (cmd.copyPlans)
-        plans =
-          (
-            await c.query(
-              `INSERT INTO dues_plan(organization_id,season_id,category,amount_cents,max_installments,first_due,sibling_second_percent,sibling_next_percent)
-               SELECT organization_id,$2,category,amount_cents,max_installments,(first_due+interval '1 year')::date,sibling_second_percent,sibling_next_percent
-                 FROM dues_plan WHERE organization_id=$1 AND season_id=$3 AND NOT archived`,
-              [org, season, from.id],
-            )
-          ).rowCount ?? 0;
-      if (cmd.archiveOld)
-        await c.query("UPDATE season SET archived=true WHERE id=$1", [from.id]);
-      await audit(c, org, p.userId, "season.rollover", season, {
-        from: from.id,
-        teams: cmd.teams.length,
-        enrolled,
-        plans,
-        archived: cmd.archiveOld,
-      });
-      return { id: season, enrolled, plans };
-    },
+    ({ c, org, money }) => performRollover(c, org, p.userId, cmd, money),
     expected,
   );
+}
+
+/** The rollover itself, inside the caller's transaction (16: the season assistant launches it too). */
+export async function performRollover(c: PoolClient, org: string, userId: string, cmd: RolloverCommand, money: boolean) {
+  if (cmd.endsOn < cmd.startsOn) throw new AccessError("INVALID_DATE", 400);
+  const from = (
+    await c.query("SELECT *,starts_on::text AS starts_on,ends_on::text AS ends_on FROM season WHERE id=$1 AND organization_id=$2 FOR UPDATE", [
+      cmd.fromSeasonId,
+      org,
+    ])
+  ).rows[0];
+  if (!from) throw new AccessError("NOT_FOUND", 404);
+  if (cmd.startsOn <= from.starts_on) throw new AccessError("INVALID_DATE", 400);
+  if (cmd.copyPlans && !money) throw new AccessError("FORBIDDEN");
+  const season = (
+    await c.query(
+      "INSERT INTO season(organization_id,name,starts_on,ends_on,rolled_from) VALUES($1,$2,$3,$4,$5) RETURNING id",
+      [org, cmd.name, cmd.startsOn, cmd.endsOn, from.id],
+    )
+  ).rows[0].id as string;
+  let enrolled = 0;
+  for (const team of cmd.teams) {
+    const old = (
+      await c.query(
+        "SELECT * FROM team WHERE id=$1 AND organization_id=$2 AND season_id=$3",
+        [team.teamId, org, from.id],
+      )
+    ).rows[0];
+    if (!old) throw new AccessError("NOT_FOUND", 404);
+    const copy = (
+      await c.query(
+        // The places per team (wave 16, R1) and the colour follow the team into the new season.
+        "INSERT INTO team(organization_id,season_id,name,category,level,home_location,capacity,color) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+        [org, season, old.name, old.category, old.level, old.home_location, old.capacity ?? null, old.color ?? null],
+      )
+    ).rows[0].id as string;
+    // The chosen people keep the role they had in the team.
+    const members = (
+      await c.query(
+        "SELECT DISTINCT ON (m.profile_id,m.role) m.profile_id,m.role,m.position FROM team_membership m JOIN club_person cp ON cp.id=m.profile_id WHERE m.team_id=$1 AND NOT m.cancelled AND m.closed_at IS NULL AND cp.status='active' AND m.profile_id=ANY($2::uuid[])",
+        [old.id, team.profiles],
+      )
+    ).rows;
+    for (const m of members) {
+      await c.query(
+        "INSERT INTO team_membership(organization_id,team_id,profile_id,role,position,starts_on) VALUES($1,$2,$3,$4,$5,$6)",
+        [org, copy, m.profile_id, m.role, m.position, cmd.startsOn],
+      );
+      enrolled++;
+    }
+  }
+  // Memberships of the old season end with it (history is kept).
+  await c.query(
+    `UPDATE team_membership m SET ends_on=GREATEST(m.starts_on,LEAST($2::date,$3::date-1))
+       FROM team t WHERE t.id=m.team_id AND t.season_id=$1 AND m.ends_on IS NULL AND NOT m.cancelled`,
+    [from.id, from.ends_on, cmd.startsOn],
+  );
+  let plans = 0;
+  if (cmd.copyPlans)
+    plans =
+      (
+        await c.query(
+          `INSERT INTO dues_plan(organization_id,season_id,category,amount_cents,max_installments,first_due,sibling_second_percent,sibling_next_percent)
+           SELECT organization_id,$2,category,amount_cents,max_installments,(first_due+interval '1 year')::date,sibling_second_percent,sibling_next_percent
+             FROM dues_plan WHERE organization_id=$1 AND season_id=$3 AND NOT archived`,
+          [org, season, from.id],
+        )
+      ).rowCount ?? 0;
+  if (cmd.archiveOld)
+    await c.query("UPDATE season SET archived=true WHERE id=$1", [from.id]);
+  await audit(c, org, userId, "season.rollover", season, {
+    from: from.id,
+    teams: cmd.teams.length,
+    enrolled,
+    plans,
+    archived: cmd.archiveOld,
+  });
+  return { id: season, enrolled, plans };
 }

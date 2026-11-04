@@ -62,6 +62,8 @@ test("player listing, personal then sporting profile, former players and dedicat
     ).toBeVisible();
     // Wave 17 (J1): one sheet, in a window: the sporting tab edits position and number.
     modal = page.getByRole("dialog");
+    // 40: the presidency lands on « Vue d'ensemble ».
+    await modal.getByRole("tab", { name: "Vue personnelle" }).click();
     await expect(
       modal.getByRole("heading", { name: "Informations personnelles" }),
     ).toBeVisible();
@@ -131,7 +133,6 @@ test("player listing, personal then sporting profile, former players and dedicat
     await page.screenshot({ path: "test-results/player-mobile.png" });
     for (const [url, title] of [
       ["/en/coaches", "Coach management"],
-      ["/fr/club/manage", "Gestion du club"],
       ["/nl/funding", "Financiën"],
       ["/fr/settings", "Réglages"],
     ]) {

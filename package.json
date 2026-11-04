@@ -18,6 +18,7 @@
     "test:e2e:db": "node --env-file=.env.local scripts/e2e-db.mjs",
     "audit:ui": "node --env-file=.env.local scripts/audit.mjs ui",
     "audit:access": "node --env-file=.env.local scripts/audit.mjs access",
+    "audit:help": "node --env-file=.env.local scripts/audit.mjs help",
     "db:local": "node scripts/local-db.mjs",
     "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
     "db:test": "node --env-file=.env.local scripts/db-test.mjs",

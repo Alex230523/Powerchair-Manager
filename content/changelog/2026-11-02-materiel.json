@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/equipment",
+  "image": null,
+  "fr": {
+    "title": "Matériel : prêter partout, catégories et sous-lieux",
+    "text": "Le modèle du fauteuil s'affiche partout. On prête un fauteuil ou du petit matériel (par exemple 5 ballons) à un club ou à un joueur, depuis la ligne ou « Nouveau prêt ». Le club crée ses catégories en tapant leur nom et range son matériel dans des sous-lieux (Local du club › Étagère A)."
+  },
+  "nl": {
+    "title": "Materiaal: overal uitlenen, categorieën en onderdelen",
+    "text": "Het model van de rolstoel wordt overal getoond. Men leent een rolstoel of klein materiaal (bijvoorbeeld 5 ballen) uit aan een club of een speler, vanuit de regel of « Nieuwe uitlening ». De club maakt zijn categorieën door hun naam te typen en bergt zijn materiaal op in onderdelen (Clublokaal › Rek A)."
+  },
+  "en": {
+    "title": "Equipment: lend from anywhere, categories and sub-places",
+    "text": "The chair's model shows everywhere. You lend a chair or small equipment (5 balls, say) to a club or a player, from its row or « New loan ». The club creates its categories by typing their name and keeps its equipment in sub-places (Club room › Shelf A)."
+  }
+}

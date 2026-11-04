@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "federation",
+    "player",
+    "parent",
+    "coach",
+    "president"
+  ],
+  "link": "/federation/national",
+  "image": null,
+  "fr": {
+    "title": "Les équipes nationales",
+    "text": "La fédération compose ses équipes nationales parmi les joueurs licenciés de ses clubs. Le joueur, ses parents et son club sont prévenus, le joueur répond s'il est disponible, et les consignes de soins ne sont partagées qu'avec son accord."
+  },
+  "nl": {
+    "title": "De nationale ploegen",
+    "text": "De federatie stelt haar nationale ploegen samen uit de spelers met een licentie bij haar clubs. De speler, zijn ouders en zijn club worden verwittigd, de speler laat weten of hij beschikbaar is, en verzorgingsinstructies worden enkel met zijn akkoord gedeeld."
+  },
+  "en": {
+    "title": "National teams",
+    "text": "The federation builds its national teams from the licensed players of its clubs. The player, the parents and the club are told, the player says whether they are available, and care instructions are shared only with their consent."
+  }
+}

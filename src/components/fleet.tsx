@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import type { Locale } from "@/lib/locale";
-import { loanMoves, modelLabel } from "@/domains/equipment/schema";
+import { loanMoves, modelLabel, placePath } from "@/domains/equipment/schema";
+import { equipmentMoreCopy } from "./equipment-more-copy";
 import type { Loan } from "@/domains/equipment/loans";
 import { fleetCopy, fill } from "./fleet-copy";
 import { Badge, Card, EmptyState } from "./ui";
@@ -247,7 +248,8 @@ export function LendingTab({ locale, view, busy, send }: { locale: Locale; view:
 
 /** Storage places and what each one holds. */
 export function PlacesTab({ locale, view, busy, send }: { locale: Locale; view: View; busy: boolean; send: Send }) {
-  const f = fleetCopy[locale];
+  const f = fleetCopy[locale],
+    m = equipmentMoreCopy[locale];
   const [editing, setEditing] = useState("");
   const form = (p?: View["storage"]["places"][number]) => {
     const id = (k: string) => `place-${p?.id ?? "new"}-${k}`;
@@ -269,6 +271,7 @@ export function PlacesTab({ locale, view, busy, send }: { locale: Locale; view: 
             access: v("access"),
             notes: v("notes"),
             archived: d.get("archived") === "on",
+            parentId: v("parent") || null,
           }).then((r) => r && setEditing(""));
         }}
       >
@@ -276,6 +279,20 @@ export function PlacesTab({ locale, view, busy, send }: { locale: Locale; view: 
           <label htmlFor={id("name")}>
             {f.placeName}
             <input id={id("name")} name="name" required minLength={2} maxLength={120} defaultValue={p?.name} />
+          </label>
+          {/* 11: inside another place, two levels at most. */}
+          <label htmlFor={id("parent")}>
+            {m.parent}
+            <select id={id("parent")} name="parent" defaultValue={p?.parent_id ?? ""}>
+              <option value="">{m.noParent}</option>
+              {view.storage.places
+                .filter((x) => !x.parent_id && !x.archived && x.id !== p?.id)
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+            </select>
           </label>
           <label htmlFor={id("place")}>
             {f.clubPlace}
@@ -339,9 +356,12 @@ export function PlacesTab({ locale, view, busy, send }: { locale: Locale; view: 
       {editing === "new" && form()}
       {view.storage.places.length ? (
         <ul className="storage-places">
-          {view.storage.places.map((p) => (
-            <li key={p.id} className={p.archived ? "muted" : undefined}>
-              <h3>{fill(f.storedAt, { name: p.name })}</h3>
+          {/* 11: a tree: each place, then its sub-places with what each level holds. */}
+          {[...view.storage.places.filter((p) => !p.parent_id || !view.storage.places.some((x) => x.id === p.parent_id))]
+            .flatMap((top) => [top, ...view.storage.places.filter((x) => x.parent_id === top.id)])
+            .map((p) => (
+            <li key={p.id} className={[p.archived ? "muted" : "", p.parent_id ? "storage-child" : ""].filter(Boolean).join(" ") || undefined}>
+              <h3>{fill(f.storedAt, { name: placePath(p) })}</h3>
               <p className="muted small">
                 {[p.place_name, p.address, p.contact, p.access, p.archived ? f.archivedPlace : ""].filter(Boolean).join(" · ")}
               </p>

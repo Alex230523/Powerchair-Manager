@@ -28,9 +28,55 @@ export const delegable = [
   "equipment.manage",
   "people.sensitive",
   "dues.read",
+  /** H1: the recruitment of new players (prospects, trial sessions). */
+  "recruitment.manage",
   /** B8: a donor's national number, for the tax receipts (each opening is logged). */
   "tax.identity",
+  /** 32: the federation's competences, given to its delegates (the presidency holds them all). */
+  "federation.referees",
+  "federation.competitions",
+  "federation.discipline",
+  "federation.classification",
+  "federation.licences",
+  "federation.courses",
+  "federation.communication",
+  "federation.finance",
 ] as const;
+export const federationCompetences = [
+  "federation.referees",
+  "federation.competitions",
+  "federation.discipline",
+  "federation.classification",
+  "federation.licences",
+  "federation.courses",
+  "federation.communication",
+  "federation.finance",
+] as const;
+export type FederationCompetence = (typeof federationCompetences)[number];
+/**
+ * 32: may this mandate act for the federation in this competence? The
+ * presidency always; a delegate (federation_worker) when one of his roles
+ * gives it. Without a competence named: any of them.
+ */
+export function fedCan(role: string, grants: readonly string[], competence?: FederationCompetence) {
+  if (role === "federation_president") return true;
+  if (role !== "federation_worker") return false;
+  return competence ? grants.includes(competence) : grants.some((g) => g.startsWith("federation."));
+}
+/**
+ * 35: who reads and who manages an organisation's money. A club: « Lire » or
+ * « Gérer les cotisations ». A federation: the finance competence (the
+ * presidency has it). Never one organisation's rights over another's books.
+ */
+export function moneyRights(a: { kind: string; role: string; grants: readonly string[] }) {
+  if (a.kind === "federation") {
+    const ok = fedCan(a.role, a.grants, "federation.finance");
+    return { read: ok, manage: ok };
+  }
+  if (a.kind !== "club") return { read: false, manage: false };
+  const r = permissions(a.role as Role, a.grants as never) as readonly string[];
+  return { read: r.includes("dues.read") || r.includes("dues.manage"), manage: r.includes("dues.manage") };
+}
 export type Permission =
   "organization.read" | "mandates.manage" | (typeof delegable)[number];
 export type OrganizationKind = "club" | "federation";
@@ -78,14 +124,17 @@ export function permissions(
           "mandates.manage",
           ...delegable.filter(
             (p) =>
-              role === "club_president" ||
-              (!p.startsWith("people.") &&
+              // A club's presidency never holds the federation's competences.
+              (role === "club_president" && !p.startsWith("federation.")) ||
+              (role !== "club_president" &&
+                !p.startsWith("people.") &&
                 p !== "teams.manage" &&
                 p !== "registrations.manage" &&
                 p !== "documents.manage" &&
                 p !== "attendance.manage" &&
                 p !== "dues.manage" &&
                 p !== "dues.read" &&
+                p !== "recruitment.manage" &&
                 p !== "equipment.manage"),
           ),
         ]

@@ -5,6 +5,9 @@ import { localAt, shiftLocal } from "../../src/domains/calendar/time";
 import { signUpVia } from "../support/session";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
+  // A view button clicked low on the page scrolls it: the header's actions then sit under the
+  // sticky top bar, which axe reads as covered targets. The check runs from the top of the page.
+  await page.evaluate(() => window.scrollTo(0, 0));
   expect(
     (
       await new AxeBuilder({ page })
@@ -119,13 +122,7 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
     await expect
       .poll(async () => (await db.query("SELECT count(*)::int AS n FROM calendar_place WHERE organization_id=$1 AND name='Salle pilote'", [org])).rows[0].n)
       .toBe(1);
-    const place = (
-        await db.query(
-          "SELECT id FROM calendar_place WHERE organization_id=$1",
-          [org],
-        )
-      ).rows[0].id,
-      date = shiftLocal(localAt(new Date(), "Europe/Brussels"), 14).slice(
+    const date = shiftLocal(localAt(new Date(), "Europe/Brussels"), 14).slice(
         0,
         10,
       );
@@ -152,7 +149,9 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
       }),
     });
     await editor.getByRole("combobox", { name: "Équipe", exact: true }).selectOption(team);
-    await editor.getByRole("combobox", { name: "Lieu", exact: true }).selectOption(place);
+    // 1: one search for the place.
+    await editor.getByRole("combobox", { name: "Lieu", exact: true }).fill("Salle pil");
+    await page.locator("li[role=option]").filter({ hasText: /^Salle pilote/ }).click();
     // Wave 16 (E1): responsible, visibility and attachments live in « Avancé ».
     await editor.locator("summary", { hasText: "Avancé" }).click();
     await editor.getByRole("combobox", { name: "Visibilité", exact: true }).selectOption("team");
@@ -327,7 +326,8 @@ test("calendar venue, recurring exceptions, cancellation, views and revoked priv
         exact: true,
       }),
     });
-    await fresh.getByRole("combobox", { name: "Lieu", exact: true }).selectOption(place);
+    await fresh.getByRole("combobox", { name: "Lieu", exact: true }).fill("Salle pil");
+    await page.locator("li[role=option]").filter({ hasText: /^Salle pilote/ }).click();
     await fresh
       .getByRole("button", { name: "Enregistrer l’événement", exact: true })
       .click();

@@ -8,7 +8,11 @@ import { journeyCopy, type JourneyCopy } from "./match-journey-copy";
 import { errors } from "./access-copy";
 import { fill } from "./fleet-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
+import { HeadToHead } from "./match-cards";
+import { sidelineCopy } from "./sideline-copy";
+import { ReportReview } from "./refereeing";
 import { useData } from "./use-api";
+import { MatchTactics } from "./match-tactics";
 
 /**
  * A5: one match sheet, three steps. « Avant »: the invitation and its answers,
@@ -74,11 +78,35 @@ export function MatchJourney({ locale, id }: { locale: Locale; id: string }) {
       <p>
         <Link href={`/${locale}/matches`}>← {t.back}</Link>
       </p>
-      <PageHeader title={m.home ? `${m.team} · ${m.opponent}` : `${m.opponent} · ${m.team}`} subtitle={[when, m.venue].filter(Boolean).join(" · ")} />
+      <PageHeader
+        title={m.home ? `${m.team} · ${m.opponent}` : `${m.opponent} · ${m.team}`}
+        subtitle={[when, m.venue].filter(Boolean).join(" · ")}
+        actions={
+          <>
+            {/* 14: the match day on a phone, for those who manage the team. */}
+            {data.manage && m.status !== "played" && (
+              <Link className="button" href={`/${locale}/matches/${m.id}/terrain`}>
+                {sidelineCopy[locale].open}
+              </Link>
+            )}
+            <Link className="button secondary" href={`/${locale}/guide/game`}>
+              {t.guideGame}
+            </Link>
+          </>
+        }
+      />
       {error && <p role="alert">{error}</p>}
       <p role="status" className="sr-only">
         {message}
       </p>
+      {/* 5: before a match, the last results against the same opponent. */}
+      {m.status !== "played" && <HeadToHead locale={locale} matchId={m.id} opponent={m.opponent} teamId={m.team_id} />}
+      {/* 4: the tactic sheets, for the staff and, read only, for the invited. */}
+      {data.manage ? (
+        <MatchTactics locale={locale} matchId={m.id} organizationId={data.organization_id} tactics={data.tactics} options={data.tacticOptions} canEdit={data.canTactics} staff reload={reload} />
+      ) : (
+        data.tactics.length > 0 && <MatchTactics locale={locale} matchId={m.id} organizationId={data.organization_id} tactics={data.tactics} options={[]} canEdit={false} staff={false} reload={reload} />
+      )}
       {data.manage ? (
         <>
           <Tabs
@@ -214,7 +242,7 @@ function BeforeStep({ ctx }: { ctx: Ctx }) {
                     {p.answer && <Badge tone={p.answer === "present" ? "success" : p.answer === "absent" ? "danger" : "neutral"}>{t.answers[p.answer]}</Badge>}
                     {p.blocking.map((b) => (
                       <Badge key={b} tone="danger" dot>
-                        {t.blocking} : {t.problems[b]}
+                        {t.blocking} : {b === "suspended" && p.suspension ? fill(t.suspendedFor, { n: p.suspension.remaining }) : t.problems[b]}
                       </Badge>
                     ))}
                     {p.warnings.map((w) => (
@@ -391,6 +419,10 @@ function DayStep({ ctx }: { ctx: Ctx }) {
         {data.match.team} {ours} - {theirs} {data.match.opponent}
       </p>
       {waiting.length > 0 && <p className="notice">{fill(t.offline, { n: waiting.length })}</p>}
+      {/* Guide, Le fauteuil de match: the speed is checked at least 15 minutes before kick-off. */}
+      <p className="notice">
+        {t.speedReminder} <Link href={`/${locale}/guide/chair`}>{t.guideChair}</Link>
+      </p>
       <p role="status">{note}</p>
       <div className="journey-day-tools">
         <label htmlFor="journey-minute">
@@ -515,20 +547,7 @@ function AfterStep({ ctx }: { ctx: Ctx }) {
         ) : (
           <p className="muted">{t.noReferee}</p>
         )}
-        <h3>{t.report}</h3>
-        {data.report ? (
-          <p>
-            {data.report.home_score} - {data.report.away_score}
-            {data.report.incidents && (
-              <>
-                <br />
-                {data.report.incidents}
-              </>
-            )}
-          </p>
-        ) : (
-          <p className="muted">{t.noReport}</p>
-        )}
+        <ReportReview locale={locale} matchId={data.match.id} />
       </Card>
     </div>
   );

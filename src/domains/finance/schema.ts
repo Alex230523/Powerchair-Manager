@@ -34,6 +34,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     tripId: z.uuid().nullable().optional(),
     /** Team the line belongs to (wave 12); null or absent means the whole club. */
     teamId: z.uuid().nullable().optional(),
+    /** 9: the reserved fund this line feeds (income) or uses (expense). */
+    allocationId: z.uuid().nullable().optional(),
   }),
   z.object({
     action: z.literal("budget"),

@@ -30,6 +30,7 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
     const mfa = mfaSatisfied(!!user.twoFactorEnabled);
     const rights = permissions(a.role, a.grants);
     const all = mfa && (rights.includes("dues.manage") || rights.includes("dues.read"));
+    const send = mfa && rights.includes("dues.manage");
     const own = await ownProfiles(c, { ...a, twoFactorEnabled: !!user.twoFactorEnabled });
     const org = a.organization_id;
     const club = (
@@ -64,20 +65,61 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
           )
         ).rows
       : [];
+    // 29: two homes. A representative receives the attestation of a child when the club's split names him (his share), or when there is no split.
+    const mine = all
+      ? []
+      : (await c.query("SELECT cp.id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE cp.organization_id=$1 AND pe.user_id=$2", [org, p.userId])).rows.map((r) => r.id as string);
+    const splits = (
+      await c.query(
+        "SELECT b.subject_profile_id,b.guardian_profile_id,b.percent,cp.full_name FROM billing_split b JOIN club_person cp ON cp.id=b.guardian_profile_id WHERE b.organization_id=$1 AND b.subject_profile_id=ANY($2::uuid[])",
+        [org, rows.map((r) => r.profile_id)],
+      )
+    ).rows as { subject_profile_id: string; guardian_profile_id: string; percent: number; full_name: string }[];
+    // 9: what was sent, and the mutuals' own forms of the people in view.
+    const ids = rows.map((r) => r.profile_id as string);
+    const sends = season
+      ? ((
+          await c.query(
+            `SELECT a.profile_id,a.number,extract(year FROM a.issued_at)::int AS year,max(x.sent_at) AS last_sent,count(x.id)::int AS sends
+               FROM dues_attestation a LEFT JOIN dues_attestation_send x ON x.attestation_id=a.id
+              WHERE a.organization_id=$1 AND a.season_id=$2 AND a.profile_id=ANY($3::uuid[]) GROUP BY a.id`,
+            [org, season.id, ids],
+          )
+        ).rows as { profile_id: string; number: number; year: number; last_sent: string | null; sends: number }[])
+      : [];
+    const forms = season
+      ? ((
+          await c.query(
+            "SELECT f.id,f.profile_id,cp.full_name,f.blank_name,f.filled_name,f.created_at,f.done_at FROM mutual_form f JOIN club_person cp ON cp.id=f.profile_id WHERE f.organization_id=$1 AND f.season_id=$2 AND f.profile_id=ANY($3::uuid[]) ORDER BY f.done_at IS NOT NULL,f.created_at",
+            [org, season.id, ids],
+          )
+        ).rows as { id: string; profile_id: string; full_name: string; blank_name: string; filled_name: string | null; created_at: string; done_at: string | null }[])
+      : [];
+    const visible = (r: { profile_id: string }) => all || mine.includes(r.profile_id) || !splits.some((x) => x.subject_profile_id === r.profile_id) || splits.some((x) => x.subject_profile_id === r.profile_id && mine.includes(x.guardian_profile_id));
     await c.query("COMMIT");
     return {
+      organization_id: org,
       club,
-      can: { all },
+      can: { all, send },
+      forms: forms.filter(visible),
       seasons: seasons.map(({ id, name }) => ({ id, name })),
       season: season ?? null,
       issuedOn: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date()),
-      people: rows.map((r) => ({
+      people: rows
+        .filter(visible)
+        .map((r) => ({
         profile_id: r.profile_id as string,
         full_name: r.full_name as string,
         birth_date: r.birth_date as string | null,
         paid_cents: r.paid_cents as number,
         last_paid_on: r.last_paid_on as string | null,
         eligible: paidInFull(r.dues, r.paid_cents),
+        /** 9: its number and its sendings. */
+        sent: ((x) => (x ? { number: `${x.year}-${String(x.number).padStart(4, "0")}`, last: x.last_sent, count: x.sends } : null))(sends.find((x) => x.profile_id === r.profile_id)),
+        /** 29: the shares of the payment, one attestation part per representative. */
+        shares: splits
+          .filter((x) => x.subject_profile_id === r.profile_id && (all || mine.includes(x.guardian_profile_id)))
+          .map((x) => ({ name: x.full_name, percent: x.percent, cents: Math.round((r.paid_cents * x.percent) / 100) })),
       })),
     };
   } catch (e) {

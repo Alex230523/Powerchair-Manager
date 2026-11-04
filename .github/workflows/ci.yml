@@ -71,7 +71,7 @@ jobs:
           scripts/backup.sh ci-backup.dump.enc
           RESTORE_URL=postgresql://pfm:pfm_ci@localhost:5432/pfm_restore SOURCE_URL="$DATABASE_URL" scripts/restore-check.sh ci-backup.dump.enc
       - name: Build
-        run: scripts/ci-annotate.sh "Build" npm run build
+        run: scripts/ci-annotate.sh "Build" scripts/build-retry.sh
 
   e2e:
     name: End-to-end (Playwright)
@@ -104,13 +104,22 @@ jobs:
             echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
           } > .env.local
       - name: Build (failures shown as annotations; Playwright reuses the output)
-        run: scripts/ci-annotate.sh "Build for end-to-end" npm run build
+        run: scripts/ci-annotate.sh "Build for end-to-end" scripts/build-retry.sh
         env:
           PFM_BUILD_DIR: .next-e2e
           PFM_LOCAL_MAIL: "true"
           PFM_MAIL_DIR: .local/mail-e2e
       - name: End-to-end tests
         run: scripts/ci-annotate.sh "End-to-end" npm run test:e2e:db
+      # The page as the failed test saw it (accessibility tree), readable in the log without downloading the artifact.
+      - name: Page snapshots of the failed tests
+        if: failure()
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r f; do
+            echo "::group::$f"
+            head -n 250 "$f"
+            echo "::endgroup::"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -152,20 +161,22 @@ jobs:
             echo "BETTER_AUTH_SECRET=$(openssl rand -hex 48)"
           } > .env.local
       - name: Build
-        run: scripts/ci-annotate.sh "Build for the audits" npm run build
+        run: scripts/ci-annotate.sh "Build for the audits" scripts/build-retry.sh
         env:
           PFM_BUILD_DIR: .next-e2e
           PFM_LOCAL_MAIL: "true"
           PFM_MAIL_DIR: .local/mail-e2e
+      # 23 and 26: the matrix is filled and the findings reviewed; any difference now fails.
       - name: Rights matrix (npm run audit:access)
         run: npm run audit:access
-        env:
-          AUDIT_RECORD: "1"
       - name: Display audit (npm run audit:ui)
         if: always()
         run: npm run audit:ui
-        env:
-          AUDIT_RECORD: "1"
+      # G10: the how-to captures; a changed screen is reported (never fails the run), new captures land in the report.
+      - name: How-to captures (npm run audit:help)
+        if: always()
+        continue-on-error: true
+        run: npm run audit:help
       - uses: actions/upload-artifact@v4
         if: always()
         with:

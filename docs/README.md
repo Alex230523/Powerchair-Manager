@@ -120,8 +120,46 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 22/10/2026 | [B6 : pages publiques, widgets, API et webhooks](evolutions/2026-10-22-zd-b6-pages-publiques-api.md) |
 | 02/11/2026 | [Connexion : sans menu, langue discrète](evolutions/2026-11-02-ze-connexion-langues.md) |
 | 02/11/2026 | [13 : corrections techniques (base par aperçu, table task, pagination)](evolutions/2026-11-02-zg-13-corrections-techniques.md) |
+| 02/11/2026 | [23 et 26 : audits d'affichage et de droits, matrice remplie et constats corrigés](evolutions/2026-11-02-zh-23-26-audits.md) |
 | 02/11/2026 | [22 et 24 : tâches dans tous les menus, fin de la messagerie](evolutions/2026-11-02-zi-22-24-taches-fin-messagerie.md) |
 | 02/11/2026 | [24 (suite) : suppression des données de la messagerie](evolutions/2026-11-02-zj-24b-messagerie-donnees.md) |
+| 02/11/2026 | [1 : lot de corrections d'interface et écran de connexion](evolutions/2026-11-02-zk-01-corrections-interface.md) |
+| 02/11/2026 | [12 : navigation, « Gestion du club » et « Plus » rangés dans Réglages](evolutions/2026-11-02-zl-12-navigation-reglages.md) |
+| 02/11/2026 | [15 : accueil par rôle](evolutions/2026-11-02-zm-15-accueil-par-role.md) |
+| 02/11/2026 | [8 : joueurs et familles, représentant dès l'ajout, vérification de début de saison](evolutions/2026-11-02-zn-08-joueurs-familles.md) |
+| 02/11/2026 | [27 à 29 : parents (vue famille, autorisations signées, deux foyers)](evolutions/2026-11-02-zo-27-29-parents.md) |
+| 02/11/2026 | [16 : assistant de fin de saison](evolutions/2026-11-02-zp-16-fin-de-saison.md) |
+| 02/11/2026 | [H9 et H10 : saison type en un clic, clés dans le profil du coach](evolutions/2026-11-02-zq-h9-h10-saison-type-cles.md) |
+| 02/11/2026 | [2 : to-do à plusieurs responsables, modèles à la demande, vue de l'année](evolutions/2026-11-02-zr-02-todo-enrichie.md) |
+| 02/11/2026 | [3 : déplacements repensés en logistique de transport](evolutions/2026-11-02-zs-03-deplacements-transport.md) |
+| 02/11/2026 | [18 : réservations de salles et factures, calculées depuis l'agenda](evolutions/2026-11-02-zt-18-reservations-salles.md) |
+| 02/11/2026 | [17 : registre des membres et assemblée générale, automatisés](evolutions/2026-11-02-zu-17-registre-ag.md) |
+| 02/11/2026 | [Parcours d'accueil personnalisables (club et fédération)](evolutions/2026-11-02-zv-parcours-accueil.md) |
+| 02/11/2026 | [Fin de coach : le parcours de départ](evolutions/2026-11-02-zw-fin-de-coach.md) |
+| 02/11/2026 | [Guide du powerchair football : deux pages à lire](evolutions/2026-11-02-zx-guide-du-jeu.md) |
+| 02/11/2026 | [Guide : un petit centre de connaissances (G1 à G12)](evolutions/2026-11-02-zy-centre-de-connaissances.md) |
+| 02/11/2026 | [Rôles de staff](evolutions/2026-11-02-zz-roles-de-staff.md) |
+| 02/11/2026 | [Fédération : rôles délégués, tableau de bord et circulaires](evolutions/2026-11-02-zza-federation-delegues-circulaires.md) |
+| 02/11/2026 | [Arbitrage : un seul circuit, rapport sur téléphone, frais et formations](evolutions/2026-11-02-zzb-arbitrage.md) |
+| 02/11/2026 | [Discipline et suspensions](evolutions/2026-11-02-zzc-discipline.md) |
+| 02/11/2026 | [La fédération comme ASBL](evolutions/2026-11-02-zzd-federation-asbl.md) |
+| 02/11/2026 | [Signaler un problème : application et fauteuil](evolutions/2026-11-02-zze-signalements.md) |
+| 02/11/2026 | [Page « Nouveautés »](evolutions/2026-11-02-zzf-nouveautes.md) |
+| 02/11/2026 | [Fiche de la personne : « Vue d'ensemble »](evolutions/2026-11-02-zzg-vue-ensemble.md) |
+| 02/11/2026 | [Mini-sondages du club et de la fédération](evolutions/2026-11-02-zzh-sondages.md) |
+| 02/11/2026 | [Argent : fonds réservés, attestations, levée de fonds, rappels annuels](evolutions/2026-11-02-zzi-argent.md) |
+| 02/11/2026 | [Trésorerie prévisionnelle sur 12 mois](evolutions/2026-11-02-zzj-previsions.md) |
+| 02/11/2026 | [Rapport d'impact pour les subsides](evolutions/2026-11-02-zzk-rapport-impact.md) |
+| 02/11/2026 | [Recrutement de nouveaux joueurs](evolutions/2026-11-02-zzl-recrutement.md) |
+| 02/11/2026 | [Matchs : une seule ligne, cartes d'équipe, statistiques par équipe](evolutions/2026-11-02-zzm-matchs.md) |
+| 02/11/2026 | [Mode « bord de terrain » sur téléphone](evolutions/2026-11-02-zzn-bord-de-terrain.md) |
+| 02/11/2026 | [Fiches exercice et tactique](evolutions/2026-11-02-zzo-fiches-exercice-tactique.md) |
+| 02/11/2026 | [Joueur : « Mon suivi »](evolutions/2026-11-02-zzp-mon-suivi.md) |
+| 02/11/2026 | [Documents en dossiers et modèles d'emails](evolutions/2026-11-02-zzq-documents-dossiers-modeles.md) |
+| 02/11/2026 | [Matériel, amélioré](evolutions/2026-11-02-zzr-materiel.md) |
+| 02/11/2026 | [Préparer l'ouverture à d'autres clubs](evolutions/2026-11-02-zzs-ouverture-autres-clubs.md) |
+| 02/11/2026 | [Sélection nationale](evolutions/2026-11-02-zzt-selection-nationale.md) |
+| 03/11/2026 | [CI au vert](evolutions/2026-11-03-zzu-ci-verte.md) |
 
 ## Convention
 

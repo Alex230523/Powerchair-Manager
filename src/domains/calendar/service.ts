@@ -1,4 +1,6 @@
+import { nationalEventsFor } from "../national/service";
 import { mfaSatisfied } from "../../lib/security-policy";
+import { bookingMissing } from "../venues/bookings";
 import { decodeCursor, encodeCursor, PAGE_SIZE } from "../../lib/cursor";
 import { Pool, type PoolClient } from "pg";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
@@ -543,6 +545,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
               reminder_sent_at: string | null;
             } | null)
           : null,
+        // 18: a session in a hall that must be booked, without a confirmed booking.
+        bookingMissing: staff && e.status === "scheduled" ? await bookingMissing(s.c, s.a.organization_id, e.id, e.place_id) : false,
         trip: ((
           await s.c.query(
             `SELECT t.id,t.title,t.status,t.departure_at,t.meeting_point,
@@ -608,7 +612,22 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
             name: d.name,
             category: d.category,
           });
+    // 6: the national teams' gatherings where players of the club are expected, read only (a player or a parent: their own).
+    const club = (s.a as { kind?: string }).kind === "club";
+    const nationalProfiles =
+      club && (s.a.role === "player" || s.a.role === "guardian")
+        ? (
+            await s.c.query(
+              `SELECT cp.id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE pe.user_id=$1 AND cp.organization_id=$2
+               UNION SELECT g.subject_profile_id FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person pe ON pe.id=gp.person_id
+                WHERE pe.user_id=$1 AND g.organization_id=$2 AND g.revoked_at IS NULL AND g.can_view AND g.kind<>'declared'`,
+              [s.p.userId, s.a.organization_id],
+            )
+          ).rows.map((r) => r.id as string)
+        : null;
+    const national = club ? await nationalEventsFor(s.c, s.a.organization_id, nationalProfiles) : [];
     return {
+      national,
       next: listed && rows.length > PAGE_SIZE ? encodeCursor([shown[shown.length - 1].cursor_at, shown[shown.length - 1].id]) : null,
       sharedVenues: (
         await s.c.query(
@@ -623,6 +642,8 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
         name: s.name,
         user_id: s.p.userId,
         role: s.a.role,
+        // Audit 23: a federation or a referee does not probe the club's money layer.
+        kind: (s.a as { kind?: string }).kind ?? null,
       },
       manage: manager(s.a),
       canPlan,
@@ -694,6 +715,16 @@ export async function calendarView(db: Pool, p: Principal, range: Range) {
             )
           ).rows
         : [{ id: s.p.userId, name: (await account(s.c, s.p)).name }],
+      // 2: the meetings of the tasks given to me in this period (« a lieu le »).
+      meetings: (
+        await s.c.query(
+          `SELECT DISTINCT t.id,t.title,t.meeting_starts_at,t.meeting_ends_at,COALESCE(pl.name,sv.name,NULLIF(t.free_location,'')) AS place FROM task t JOIN task_assignee a ON a.task_id=t.id
+             LEFT JOIN calendar_place pl ON pl.id=t.place_id LEFT JOIN shared_venue sv ON sv.id=t.shared_venue_id
+            WHERE t.organization_id=$1 AND t.status<>'done' AND t.meeting_starts_at IS NOT NULL AND t.meeting_starts_at<$4::date AND COALESCE(t.meeting_ends_at,t.meeting_starts_at)>=$3::date
+              AND (a.user_id=$2 OR a.profile_id=ANY($5::uuid[])) ORDER BY t.meeting_starts_at LIMIT 50`,
+          [s.a.organization_id, s.p.userId, range.from, range.to, [...own]],
+        )
+      ).rows as { id: string; title: string; meeting_starts_at: string; meeting_ends_at: string | null; place: string | null }[],
       feeds: (
         await s.c.query(
           "SELECT id,name,team_id,only_mine,include_money,created_at,expires_at,revoked_at FROM calendar_feed WHERE organization_id=$1 AND user_id=$2 AND mandate_id=$3 ORDER BY created_at DESC",
@@ -856,16 +887,17 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine,family) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
               [
                 s.a.organization_id,
                 p.userId,
                 s.a.id,
                 createHash("sha256").update(token).digest("hex"),
                 input.name,
-                input.teamId,
-                !!input.includeMoney,
-                !!input.mine && !input.teamId,
+                input.family ? null : input.teamId,
+                !input.family && !!input.includeMoney,
+                !!input.family || (!!input.mine && !input.teamId),
+                !!input.family,
               ],
             )
           ).rows[0].id;
@@ -879,7 +911,7 @@ export async function calendarExecute(
         // Same choices, a new secret: the old link stops at once (C9).
         const old = (
           await s.c.query(
-            "UPDATE calendar_feed SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 AND user_id=$3 AND mandate_id=$4 RETURNING name,team_id,include_money,only_mine",
+            "UPDATE calendar_feed SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 AND user_id=$3 AND mandate_id=$4 RETURNING name,team_id,include_money,only_mine,family",
             [input.id, s.a.organization_id, p.userId, s.a.id],
           )
         ).rows[0];
@@ -887,8 +919,8 @@ export async function calendarExecute(
         const token = randomBytes(32).toString("base64url"),
           id = (
             await s.c.query(
-              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
-              [s.a.organization_id, p.userId, s.a.id, createHash("sha256").update(token).digest("hex"), old.name, old.team_id, old.include_money, old.only_mine],
+              "INSERT INTO calendar_feed(organization_id,user_id,mandate_id,token_hash,name,team_id,include_money,only_mine,family) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+              [s.a.organization_id, p.userId, s.a.id, createHash("sha256").update(token).digest("hex"), old.name, old.team_id, old.include_money, old.only_mine, old.family],
             )
           ).rows[0].id;
         await audit(s.c, s.a.organization_id, p.userId, "calendar.feed.renewed", id);
@@ -938,11 +970,16 @@ export async function calendarExecute(
         const plan = await resolveInvite(s, typed);
         const base = plan ? { ...typed, participants: [...new Set([...typed.participants, ...plan.invited])] } : typed;
         await validate(s, base);
-        const schedule = Array.from({ length: input.occurrences }, (_, i) => ({
-          ...base,
-          localStart: shiftLocal(input.localStart, i * input.intervalDays),
-          localEnd: shiftLocal(input.localEnd, i * input.intervalDays),
-        }));
+        if (input.dates && (input.intervalDays !== 7 || input.dates.length !== input.occurrences || input.localEnd.slice(0, 10) !== input.localStart.slice(0, 10)))
+          throw new AccessError("INVALID_INPUT", 400);
+        const schedule = input.dates
+          ? // H9: the days of the season plan, each at the slot's time.
+            [...input.dates].sort().map((d) => ({ ...base, localStart: d + input.localStart.slice(10), localEnd: d + input.localEnd.slice(10) }))
+          : Array.from({ length: input.occurrences }, (_, i) => ({
+              ...base,
+              localStart: shiftLocal(input.localStart, i * input.intervalDays),
+              localEnd: shiftLocal(input.localEnd, i * input.intervalDays),
+            }));
         for (const item of schedule) await seasonDate(s, item);
         const instants = schedule.map(times);
         for (const t of instants)
@@ -1053,7 +1090,8 @@ export async function calendarExecute(
         const place = e as Event & { place_name?: string | null; place_address?: string | null };
         const trip = (
           await s.c.query(
-            "INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,destination,place_id,created_by,calendar_event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+            // 3: one day is a transport, several days a stay.
+            "INSERT INTO trip(organization_id,title,kind,starts_on,ends_on,destination,place_id,created_by,calendar_event_id,mode) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $5::date>$4::date THEN 'stay' ELSE 'transport' END) RETURNING id",
             [
               s.a.organization_id,
               e.title.slice(0, 120),
@@ -1387,6 +1425,47 @@ async function concerns(c: PoolClient, e: Event, own: string[]) {
     )
   ).rowCount;
 }
+/**
+ * 27: the family feed. For each club where the account holds a current player
+ * or guardian mandate, the events that concern one of the children (invited
+ * or participant), each title prefixed with the children's first names and
+ * the club's name, so a parent of two clubs reads one calendar.
+ */
+async function familyFeedEvents(c: PoolClient, userId: string) {
+  const mandates = (
+    await c.query(
+      `SELECT r.*,u."twoFactorEnabled",o.name AS club FROM role_assignment r JOIN organization o ON o.id=r.organization_id AND o.kind='club'
+         JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id
+        WHERE r.user_id=$1 AND r.role IN ('guardian','player') AND u.active AND m.active AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())
+        ORDER BY o.name`,
+      [userId],
+    )
+  ).rows as (Actor & { club: string })[];
+  const out: (Event & { location: string })[] = [];
+  const seen = new Set<string>();
+  for (const a of mandates) {
+    if (seen.has(a.organization_id)) continue;
+    seen.add(a.organization_id);
+    const own = [...(await ownProfiles(c, a))];
+    if (!own.length) continue;
+    const names = new Map(
+      (await c.query("SELECT id,split_part(full_name,' ',1) AS first FROM club_person WHERE id=ANY($1::uuid[])", [own])).rows.map((r) => [r.id as string, r.first as string]),
+    );
+    const rows = (
+      await c.query(
+        "SELECT e.*,concat_ws(', ',COALESCE(v.name,NULLIF(e.free_location,''),p.name),COALESCE(v.address,p.address)) AS location FROM calendar_event e LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.starts_at>now()-interval '30 days' AND e.starts_at<now()+interval '366 days' ORDER BY starts_at",
+        [a.organization_id],
+      )
+    ).rows as (Event & { location: string })[];
+    for (const e of rows) {
+      if (!(await canRead(c, a, e))) continue;
+      const who = [];
+      for (const id of own) if (await concerns(c, e, [id])) who.push(names.get(id) ?? "");
+      if (who.length) out.push({ ...e, title: `${who.sort((x, y) => x.localeCompare(y)).join(", ")} · ${e.title} (${a.club})` });
+    }
+  }
+  return out.sort((x, y) => +new Date(x.starts_at) - +new Date(y.starts_at));
+}
 export async function calendarFeed(db: Pool, token: string) {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token))
     throw new AccessError("NOT_FOUND", 404);
@@ -1415,6 +1494,8 @@ export async function calendarFeed(db: Pool, token: string) {
       )
     ).rows[0] as Actor | undefined;
     if (!a) throw new AccessError("NOT_FOUND", 404);
+    // 27: the family feed gathers the children's events of every club where the account answers for them.
+    if (f.family) return calendarIcs(await familyFeedEvents(c, f.user_id), process.env.BETTER_AUTH_URL!);
     const rows = (
       await c.query(
         "SELECT e.*,concat_ws(', ',COALESCE(v.name,NULLIF(e.free_location,''),p.name),COALESCE(v.address,p.address)) AS location FROM calendar_event e LEFT JOIN calendar_place p ON p.id=e.place_id LEFT JOIN shared_venue v ON v.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.starts_at>now()-interval '30 days' AND e.starts_at<now()+interval '366 days' AND ($2::uuid IS NULL OR e.team_id=$2) ORDER BY starts_at",
@@ -1427,6 +1508,25 @@ export async function calendarFeed(db: Pool, token: string) {
     for (const e of rows)
       if (await canRead(c, a, e))
         if (!f.only_mine || e.responsible_user_id === a.user_id || (await concerns(c, e, own))) allowed.push(e);
+    // 2: the meetings of the tasks given to me (« a lieu le »), in my own feed only.
+    if (f.only_mine) {
+      const meetings = (
+        await c.query(
+          `SELECT DISTINCT t.id,t.title,t.meeting_starts_at AS starts_at,COALESCE(t.meeting_ends_at,t.meeting_starts_at+interval '1 hour') AS ends_at,t.updated_at,1 AS version,
+                  'scheduled' AS status,concat_ws(', ',COALESCE(pl.name,sv.name,NULLIF(t.free_location,'')),COALESCE(pl.address,sv.address)) AS location
+             FROM task t JOIN task_assignee a ON a.task_id=t.id LEFT JOIN calendar_place pl ON pl.id=t.place_id LEFT JOIN shared_venue sv ON sv.id=t.shared_venue_id
+            WHERE t.organization_id=$1 AND t.meeting_starts_at IS NOT NULL AND t.meeting_starts_at>now()-interval '30 days' AND t.meeting_starts_at<now()+interval '366 days'
+              AND (a.user_id=$2 OR a.profile_id=ANY($3::uuid[]))`,
+          [f.organization_id, a.user_id, own],
+        )
+      ).rows as (Event & { location: string })[];
+      allowed.push(...meetings.map((m) => ({ ...m, id: "task-" + m.id })));
+    }
+    // 39: a referee's accepted designations (club and tournament matches), in his own feed.
+    if (a.role === "referee") {
+      const { designationEvents } = await import("../referees/service");
+      allowed.push(...(await designationEvents(c, f.organization_id, a.user_id)));
+    }
     // Wave 15: money deadlines, when asked and while the person keeps money rights.
     let days: { uid: string; date: string; title: string }[] = [];
     if (f.include_money) {

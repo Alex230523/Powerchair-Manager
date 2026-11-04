@@ -315,6 +315,8 @@ function DraftForm({ locale, data, busy, save }: { locale: Locale; data: View; b
   const suggestions = [
     ...data.suggestions.loans.map((name) => fill(a.loanSuggestion, { name })),
     ...data.suggestions.partners.map((x) => fill(a.partnerSuggestion, { name: x.name, date: x.ends_on, amount: money(x.amount_cents) })),
+    // 9: the reserved funds left at the closing are a commitment of the association.
+    ...data.reserved.items.map((x) => fill(a.reservedSuggestion, { name: x.label, amount: money(x.remaining) })),
   ].filter((s) => !commitments.includes(s));
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -1,3 +1,5 @@
+import { nationalCount } from "../national/service";
+import { seasonOf } from "../finance/schema";
 import type { Pool, PoolClient } from "pg";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, AccessError, type Principal } from "../access/service";
@@ -181,6 +183,8 @@ export async function activityReport(db: Pool, p: Principal, raw: { season?: str
       equipment,
       finances,
       thanks,
+      // 6: the club's players in a national team this season.
+      national: await nationalCount(c, org, seasonOf(season.starts_on).label),
     };
   });
 }

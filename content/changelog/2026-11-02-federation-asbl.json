@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "federation"
+  ],
+  "link": "/funding",
+  "image": null,
+  "fr": {
+    "title": "Les finances et l'AG de la fédération",
+    "text": "La fédération tient ses propres comptes et son assemblée générale, où ses clubs votent. Affiliations et amendes payées arrivent toutes seules dans ses recettes."
+  },
+  "nl": {
+    "title": "Financiën en AV van de federatie",
+    "text": "De federatie houdt haar eigen rekeningen en haar algemene vergadering bij, waar haar clubs stemmen. Betaalde aansluitingen en boetes komen vanzelf bij haar inkomsten."
+  },
+  "en": {
+    "title": "The federation's books and assembly",
+    "text": "The federation keeps its own accounts and its general assembly, where its clubs vote. Paid affiliations and fines land in its income by themselves."
+  }
+}

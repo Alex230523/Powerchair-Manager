@@ -53,6 +53,7 @@ beforeAll(async () => {
   fedA = (await db.query("INSERT INTO organization(name,kind) VALUES('Fédération A','federation') RETURNING id")).rows[0].id;
   fedB = (await db.query("INSERT INTO organization(name,kind) VALUES('Fédération B','federation') RETURNING id")).rows[0].id;
   presidentA = await actor(fedA, "federation_president");
+  // 32: a delegate of the federation without the licences competence.
   workerA = await actor(fedA, "federation_worker");
   presidentB = await actor(fedB, "federation_president");
 });
@@ -89,8 +90,8 @@ it("keeps every club to its own federation", async () => {
   expect((await federationClubsView(db, presidentB)).clubs).toEqual([]);
   expect((await federationTeamsView(db, presidentB)).teams).toEqual([]);
   await expect(federationClubsExecute(db, presidentB, { action: "invitePresident", clubId: club, firstName: "Pirate", lastName: "B", email: "pirate@example.test" }, fedB)).rejects.toMatchObject({ code: "NOT_FOUND" });
-  // A federation worker reads but does not create.
-  expect((await federationClubsView(db, workerA)).can.manage).toBe(false);
+  // 32: a delegate without the licences competence neither reads the clubs nor creates one.
+  await expect(federationClubsView(db, workerA)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(newClub(workerA, fedA, "Par le travailleur", "w@example.test")).rejects.toMatchObject({ code: "FORBIDDEN" });
 });
 

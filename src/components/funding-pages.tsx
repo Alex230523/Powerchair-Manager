@@ -10,7 +10,6 @@ import { useData, usePost } from "./use-api";
 import { fundingCopy } from "./funding-copy";
 import { shellCopy } from "./shell-copy";
 import { Badge, Card, EmptyState, ExportButton, PageHeader, StatCard, Tabs, Toolbar, type Tone } from "./ui";
-import { FinanceNav } from "./finance-nav";
 import { SupportTabs } from "./grants-sponsors";
 import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { DataGrid } from "./data-grid";
@@ -151,7 +150,6 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
           </>
         }
       />
-      <FinanceNav locale={locale} current="income" income="support" />
       <SupportTabs locale={locale} current="sponsoring" />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -429,7 +427,7 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
             </label>
             <p className="muted small" id="renewal-hint">{sp.renewalHint}</p>
             {/* A4: one field to choose or create the contact, as everywhere. */}
-            <ContactPicker locale={locale} name="contact" value={editing === "new" ? null : editing.contact_id} label={sp.contactPerson} none={t.noContact} />
+            {data.can.contacts && <ContactPicker locale={locale} name="contact" value={editing === "new" ? null : editing.contact_id} label={sp.contactPerson} none={t.noContact} />}
             <label>
               {p.inKind}
               <input name="inKind" maxLength={400} defaultValue={editing === "new" ? "" : editing.in_kind} />

@@ -1,4 +1,7 @@
 "use client";
+import { NewsPopup } from "./news";
+import { WelcomeJourney } from "./onboarding";
+import { SeasonPlanCard } from "./season-plan";
 import { plannerCopy } from "./calendar-planner-copy";
 import { CollectionBar } from "./collection-bar";
 import Link from "next/link";
@@ -12,6 +15,7 @@ import {
 import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
 import { boardCopy } from "./home-board-copy";
+import { HomeFocus } from "./home-focus";
 import { cssVars } from "./css-vars";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
@@ -145,11 +149,12 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   documentsMissing: "document",
   documentsExpiring: "document",
   teamsOverCapacity: "team",
+  minorsWithoutGuardian: "players",
 };
 /** The four figures read first; the rest unfolds behind "Tous les chiffres". */
 const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendingResponses", "waitingList"];
 /** The president's key figures (wave 16, A), in this order, the treasury first and full width. */
-const presidentMetrics: Metric["key"][] = ["treasury", "seasonPlayers", "seasonTeams", "seasonCoaches", "chairs", "trainingsDone", "matchesPlayed"];
+const presidentMetrics: Metric["key"][] = ["treasury", "available", "forecastLow", "seasonPlayers", "seasonTeams", "seasonCoaches", "chairs", "trainingsDone", "matchesPlayed"];
 const mondayOf = (iso: string) => {
   const d = new Date(iso.slice(0, 10) + "T12:00:00Z");
   const day = (d.getUTCDay() + 6) % 7;
@@ -214,6 +219,13 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
                   {s.statistics}
                 </Link>
               )}
+              {/* 12: the president's shortcut to the club's settings (former « Gestion du club »). */}
+              {data.context.role === "club_president" && (
+                <Link className="button secondary" href={href("/settings/club")}>
+                  <Icon name="settings" />
+                  {t.clubSettings}
+                </Link>
+              )}
               {createItems.length > 0 && (
                 <div className="create-menu">
                   <Button icon="plus" aria-haspopup="menu" aria-expanded={creating} onClick={() => setCreating((v) => !v)}>
@@ -239,6 +251,10 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           {t.noContext} <Link href={href("/access")}>{t.chooseProfile}</Link>
         </p>
       )}
+      {/* Parcours d'accueil: the newcomer's card until his journey ends. */}
+      <WelcomeJourney locale={locale} />
+      {/* 16: from 45 days before the end of the season, the yearly assistant. */}
+      {data.context?.role === "club_president" && <SeasonPlanCard locale={locale} />}
       {data.start && !data.start.calendarSubscribed && <StartCard locale={locale} href={href("/calendar?subscribe=1")} />}
       {data.setup && organizationId && !setupClosed && (
         <SetupCard locale={locale} organizationId={organizationId} state={data.setup} where="home" changed={(next) => setSetupClosed(next.hidden)} />
@@ -252,7 +268,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           <Board locale={locale} board={data.board} href={href} />
         ) : data.todos.length ? (
           <ul className="todo-list">
-            {data.todos.slice(0, 6).map((item) => (
+            {data.todos.slice(0, 5).map((item) => (
               <li key={item.key}>
                 <Card className="todo-card" href={href(item.href)} data={{ tone: item.tone }}>
                   <span className="todo-row">
@@ -274,6 +290,10 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
           <EmptyState icon="check" tone="success" title={t.allClear} />
         )}
       </section>
+      {/* 15: the home by role: the next appointment with its answer, a coach's teams, the federation's day. */}
+      {/* 20: the newest delivery for this role, once. */}
+      <NewsPopup locale={locale} />
+      {data.focus && <HomeFocus locale={locale} focus={data.focus} organizationId={organizationId} href={href} reload={() => window.dispatchEvent(new Event("pfm-workspace"))} />}
       {data.context && (
         <div className="dash-grid dash-section">
           <Card
@@ -465,6 +485,8 @@ const metricIcons: Record<Metric["key"], IconName> = {
   acceptedRecently: "check",
   duesNext30: "dues",
   treasury: "funding",
+  available: "check",
+  forecastLow: "alert",
   myNextDue: "dues",
   seasonPlayers: "players",
   seasonTeams: "team",

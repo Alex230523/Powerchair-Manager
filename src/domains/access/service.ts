@@ -41,6 +41,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     grants: z.array(z.enum(delegable)).max(delegable.length),
     validUntil: expiry,
     validFrom: z.iso.datetime({ offset: true }).optional(),
+    /** 7: the staff roles chosen first (their rights prefill the grants). */
+    staffRoleIds: z.array(uuid).max(10).optional(),
   }),
   z.object({
     action: z.literal("accept"),
@@ -436,8 +438,14 @@ export async function execute(
         )
           throw new AccessError("INVALID_DATE", 400);
         const token = randomBytes(32).toString("hex");
+        const staffRoleIds = [...new Set(command.staffRoleIds ?? [])];
+        if (staffRoleIds.length) {
+          if (command.role !== (context.kind === "federation" ? "federation_worker" : "coach")) throw new AccessError("INVALID_ROLE", 400);
+          const found = await client.query("SELECT id FROM staff_role WHERE organization_id=$1 AND id=ANY($2::uuid[]) AND NOT archived", [context.organization_id, staffRoleIds]);
+          if (found.rowCount !== staffRoleIds.length) throw new AccessError("NOT_FOUND", 404);
+        }
         const created = await client.query(
-          "INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,valid_until,created_by,valid_from) VALUES($1,lower($2),$3,$4,$5,now()+interval '7 days',$6,$7,$8) RETURNING id",
+          "INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,valid_until,created_by,valid_from,staff_role_ids) VALUES($1,lower($2),$3,$4,$5,now()+interval '7 days',$6,$7,$8,$9) RETURNING id",
           [
             context.organization_id,
             command.email,
@@ -447,6 +455,7 @@ export async function execute(
             command.validUntil,
             p.userId,
             validFrom,
+            staffRoleIds,
           ],
         );
         await audit(
@@ -512,6 +521,9 @@ export async function execute(
           "UPDATE role_assignment SET grants=$3 WHERE id=$1 AND organization_id=$2",
           [command.id, context.organization_id, [...new Set([...command.grants, ...kept])]],
         );
+        // 7: a grid saved by hand is read as additions and removals against the person's staff roles (« personnalisé »).
+        const { rememberAdjustments } = await import("./staff-roles");
+        await rememberAdjustments(client, command.id, [...new Set(command.grants)]);
         // The rights journal shows what changed, not only that something did.
         await audit(
           client,

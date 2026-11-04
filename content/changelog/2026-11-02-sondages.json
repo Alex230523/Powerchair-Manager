@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach",
+    "player",
+    "parent",
+    "federation"
+  ],
+  "link": "/sondages",
+  "image": null,
+  "fr": {
+    "title": "Des mini-sondages",
+    "text": "Posez une question courte à une équipe, aux parents, au staff ou aux clubs : une date, un choix, quelques options. Chacun répond en deux clics, même sans se connecter, et une date choisie devient l'événement."
+  },
+  "nl": {
+    "title": "Mini-peilingen",
+    "text": "Stel een korte vraag aan een ploeg, de ouders, de staf of de clubs: een datum, een keuze, enkele opties. Iedereen antwoordt in twee klikken, zelfs zonder aan te melden, en een gekozen datum wordt de activiteit."
+  },
+  "en": {
+    "title": "Mini polls",
+    "text": "Ask a short question to a team, the parents, the staff or the clubs: a date, a choice, a few options. Everyone answers in two clicks, even without signing in, and a chosen date becomes the event."
+  }
+}

@@ -20,7 +20,8 @@ describe("bottom bar", () => {
     expect(routes(ws("club_president", all))).toEqual(["", "/calendar", "/players", "/dues"]);
     expect(routes(ws("coach", ["attendance.manage", "people.read"]))).toEqual(["", "/calendar", "/attendance", "/players"]);
     expect(routes(ws("player", []))).toEqual(["", "/calendar", "/players", "/dues"]);
-    expect(bottomNav(ws("guardian", []))[2].label).toBe("myFile");
+    // 27: a parent's first shortcut is « Ma famille ».
+    expect(routes(ws("guardian", []))).toEqual(["", "/family", "/calendar", "/dues"]);
   });
   it("keeps to the rights and the modules switched on", () => {
     expect(routes(ws("coach", ["calendar.read"]))).toEqual(["", "/calendar"]);

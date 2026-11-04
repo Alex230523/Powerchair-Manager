@@ -11,6 +11,7 @@ import { useData } from "./use-api";
 import { useScope } from "./use-scope";
 import { cssVars } from "./css-vars";
 import { Button, Card, EmptyState, PageHeader } from "./ui";
+import { impactCopy } from "./impact-copy";
 import { Icon } from "./icons";
 
 /**
@@ -32,9 +33,15 @@ export function ActivityReportPage({ locale }: { locale: Locale }) {
         title={t.title}
         subtitle={t.intro}
         actions={
-          <Link className="button secondary no-print" href={`/${locale}/statistics`}>
-            <Icon name="back" size={16} /> {t.back}
-          </Link>
+          <>
+            <Link className="button secondary no-print" href={`/${locale}/statistics`}>
+              <Icon name="back" size={16} /> {t.back}
+            </Link>
+            {/* H13: the figures funders ask for. */}
+            <Link className="button secondary no-print" href={`/${locale}/statistics/impact`}>
+              {impactCopy[locale].title}
+            </Link>
+          </>
         }
       />
       {denied ? (

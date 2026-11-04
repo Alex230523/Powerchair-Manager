@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president"
+  ],
+  "link": "/recrutement",
+  "image": null,
+  "fr": {
+    "title": "Le suivi du recrutement",
+    "text": "Les nouveaux joueurs se suivent du premier contact à l'inscription : séance d'essai avec un fauteuil du club réservé, invitation au parent, relances, et inscription sans rien retaper. Les centres et écoles partenaires ont leur compteur."
+  },
+  "nl": {
+    "title": "De opvolging van de rekrutering",
+    "text": "Nieuwe spelers worden opgevolgd van het eerste contact tot de inschrijving: proeftraining met een gereserveerde clubrolstoel, uitnodiging aan de ouder, opvolging, en inschrijving zonder iets opnieuw te typen. De partnercentra en scholen hebben hun teller."
+  },
+  "en": {
+    "title": "Recruitment follow-up",
+    "text": "New players are followed from the first contact to the registration: a trial session with a club chair booked, an invitation to the parent, follow-ups, and a registration with nothing typed again. Partner centres and schools have their counter."
+  }
+}

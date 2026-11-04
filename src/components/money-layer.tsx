@@ -11,11 +11,12 @@ import { Icon } from "./icons";
  * partner payments and renewals, grant dates. Read from the files each time;
  * offered only when the server answers (finance module on, a right or a task).
  */
-export function useMoneyDeadlines(from: string, to: string, on: boolean) {
+export function useMoneyDeadlines(from: string, to: string, on: boolean, probe = true) {
   const [available, setAvailable] = useState(false);
   const [state, setState] = useState<{ key: string; items: MoneyDeadline[] }>({ key: "", items: [] });
   useEffect(() => {
-    // Probed once per page: rights do not change with the period.
+    // Probed once per page (a club only): rights do not change with the period.
+    if (!probe) return;
     let cancelled = false;
     const day = new Date().toISOString().slice(0, 10);
     fetch(`/api/funding/deadlines?from=${day}&to=${day}`, { cache: "no-store" })
@@ -28,10 +29,10 @@ export function useMoneyDeadlines(from: string, to: string, on: boolean) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [probe]);
   const key = `${from}:${to}`;
   useEffect(() => {
-    if (!on || !available) return;
+    if (!on || !available || !probe) return;
     let cancelled = false;
     fetch(`/api/funding/deadlines?from=${from}&to=${to}`, { cache: "no-store" })
       .then(async (r) => (r.ok ? ((await r.json()) as { items: MoneyDeadline[] }) : { items: [] }))
@@ -42,8 +43,8 @@ export function useMoneyDeadlines(from: string, to: string, on: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [on, available, from, to]);
-  return { available, items: on && state.key === key ? state.items : [] };
+  }, [on, available, probe, from, to]);
+  return { available: available && probe, items: on && state.key === key ? state.items : [] };
 }
 
 /** A whole-day capsule of the layer: icon, kind in words, title; a link to the file. */

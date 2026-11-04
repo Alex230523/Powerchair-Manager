@@ -4,6 +4,8 @@ const fr = {
   refereeTitle: "Mon espace arbitre",
   refereeIntro:
     "Vos disponibilités, vos désignations et vos rapports de match.",
+  guideGame: "Le jeu en une page",
+  guideChair: "Le fauteuil de match",
   designTitle: "Désignations des arbitres",
   designIntro:
     "Matchs de championnat et de coupe des clubs affiliés. Désignez un arbitre (les disponibilités indiquées par les arbitres sont affichées).",
@@ -64,6 +66,8 @@ type Copy = typeof fr;
 const nl: Copy = {
   refereeTitle: "Mijn scheidsrechtersruimte",
   refereeIntro: "Uw beschikbaarheden, aanduidingen en wedstrijdverslagen.",
+  guideGame: "Het spel op één pagina",
+  guideChair: "De wedstrijdrolstoel",
   designTitle: "Aanduiding van scheidsrechters",
   designIntro:
     "Competitie- en bekerwedstrijden van de aangesloten clubs. Duid een scheidsrechter aan (de opgegeven beschikbaarheden worden getoond).",
@@ -123,6 +127,8 @@ const nl: Copy = {
 const en: Copy = {
   refereeTitle: "My referee space",
   refereeIntro: "Your availability, designations and match reports.",
+  guideGame: "The game on one page",
+  guideChair: "The match chair",
   designTitle: "Referee designations",
   designIntro:
     "League and cup matches of affiliated clubs. Designate a referee (availability given by referees is shown).",

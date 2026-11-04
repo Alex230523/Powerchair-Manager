@@ -11,8 +11,10 @@ import {
   AccessError,
   type Principal,
 } from "../access/service";
-import { permissions } from "../access/policy";
+import { moneyRights } from "../access/policy";
 import { offerUndo } from "../undo/service";
+import { allocationsOf, reservedAt, reservedTotal } from "./allocations";
+import { treasury } from "./allocations-schema";
 import { brusselsToday } from "../people/service";
 import {
   budgetComparison,
@@ -54,21 +56,17 @@ async function scope<T>(
     const user = await account(c, p);
     if (expected && expected !== a.organization_id)
       throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
-    // dues.read opens the accounts without changing them (auditor, committee).
-    const rights = permissions(a.role, a.grants);
-    if (
-      !rights.includes("dues.manage") &&
-      (write || !rights.includes("dues.read"))
-    )
-      throw new AccessError("FORBIDDEN");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
+    // dues.read opens the accounts without changing them (auditor, committee); 35: the federation's finance competence.
+    const money = moneyRights(a);
+    if (!money.manage && (write || !money.read)) throw new AccessError("FORBIDDEN");
     if (!mfaSatisfied(!!user.twoFactorEnabled))
       throw new AccessError("MFA_REQUIRED");
     const out = await fn(
       c,
       a.organization_id,
       p.userId,
-      rights.includes("dues.manage"),
+      money.manage,
       { role: a.role, team_id: a.team_id ?? null },
     );
     await c.query("COMMIT");
@@ -126,6 +124,9 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       paid_cents: number;
     }[];
     const summary = ledgerSummary(all, season.from, season.to);
+    // 9: the cash in three figures (the whole club: reserved funds are not split by team).
+    const reserved = await reservedTotal(c, org);
+    const allocations = (await allocationsOf(c, org, true)).map((a) => ({ id: a.id, label: a.label }));
     const budget = await budgetLines(c, org, season.label, teamId);
     // Trips a line can be attached to (recent and upcoming).
     const trips = (
@@ -144,6 +145,8 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
       season,
       seasons: seasonsOf(all, season.label),
       summary,
+      treasury: teamId ? null : treasury(summary.balance, reserved),
+      allocations,
       dues: {
         season: dues.total as number,
         next30: dues.next30 as number,
@@ -293,13 +296,14 @@ export async function financeExecute(
           !(await c.query("SELECT 1 FROM team WHERE id=$1 AND organization_id=$2", [input.teamId, organization])).rowCount
         )
           throw new AccessError("NOT_FOUND", 404);
+        if (input.allocationId && !(await c.query("SELECT 1 FROM fund_allocation WHERE id=$1 AND organization_id=$2", [input.allocationId, organization])).rowCount) throw new AccessError("NOT_FOUND", 404);
         // An expense of a team trip counts for that team unless another team is chosen (wave 15).
         const team =
           input.teamId ??
           (input.tripId ? ((await c.query("SELECT team_id FROM trip WHERE id=$1 AND organization_id=$2", [input.tripId, organization])).rows[0]?.team_id ?? null) : null);
         const row = (
           await c.query(
-            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id,trip_id,team_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id",
+            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id,trip_id,team_id,allocation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id",
             [
               organization,
               input.occurredOn,
@@ -315,6 +319,7 @@ export async function financeExecute(
               input.receivableId ?? null,
               input.tripId ?? null,
               team,
+              input.allocationId ?? null,
             ],
           )
         ).rows[0];
@@ -504,6 +509,8 @@ export async function financeReport(db: Pool, p: Principal, label: string, raw: 
       generated_on: brusselsToday(),
       opening,
       closing: summary.balance,
+      /** 9: the reserved funds still left at the season's end. */
+      reservedAtClose: teamId ? null : await reservedAt(c, org, season.to),
       summary,
       comparison: budgetComparison(budget, summary.byCategory),
       entries: all.filter(

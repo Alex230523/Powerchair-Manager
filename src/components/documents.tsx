@@ -1,4 +1,5 @@
 "use client";
+import { useClubChildFilter } from "./child-switcher";
 import Link from "next/link";
 import { compressFormImages } from "@/lib/image-compress";
 import {
@@ -11,15 +12,18 @@ import {
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
 import type { documentView } from "@/domains/documents/service";
-import { categories, statuses } from "@/domains/documents/schema";
+import { categories, offeredCategories, retiredCategories, statuses } from "@/domains/documents/schema";
 import {
   documentCopy,
   categoryLabels,
   documentStatuses,
   documentErrors,
+  retiredCopy,
 } from "./documents-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Button, Panel, Badge, PageHeader } from "./ui";
+import { Button, Panel, Badge, PageHeader, Tabs } from "./ui";
+import { DocumentsDrive } from "./documents-drive";
+import { driveCopy } from "./drive-copy";
 import { DataGrid, postCommand } from "./data-grid";
 import { bulkCopy } from "./bulk-copy";
 import { LoadMore } from "./use-api";
@@ -61,7 +65,10 @@ export function Documents({ locale }: { locale: Locale }) {
     [category, setCategory] = useState(""),
     [ruleId, setRule] = useState(""),
     [templateId, setTemplate] = useState(""),
-    [moreBusy, setMoreBusy] = useState(false);
+    [moreBusy, setMoreBusy] = useState(false),
+    [purging, setPurging] = useState(false),
+    // 10: the « drive » first, the detailed list one tab away.
+    [tab, setTab] = useState<"drive" | "list">("drive");
   // The top bar's team (wave 12) narrows the list to its members' documents.
   const scope = useScope();
   const scopedUrl = "/api/documents" + (scope.teamId ? `?team=${scope.teamId}` : "");
@@ -147,14 +154,23 @@ export function Documents({ locale }: { locale: Locale }) {
         {s.name}
       </option>
     )),
-    categoryOptions = categories.map((c) => (
+    // 1: a retired category is offered no more; the filter still finds its documents.
+    categoryOptions = offeredCategories.map((c) => (
       <option key={c} value={c}>
         {cl[c]}
       </option>
+    )),
+    filterOptions = categories.map((c) => (
+      <option key={c} value={c}>
+        {retiredCategories.includes(c) ? `${cl[c]} (${retiredCopy[locale].label})` : cl[c]}
+      </option>
     ));
+  // 27: a family keeps one child at a time if it chose so (« Tous » by default).
+  const family = useClubChildFilter(locale, data?.context.organization_id, !!data && data.context.role === "guardian");
   const visible =
     data?.documents.filter(
       (d) =>
+        (!family.child || d.profile_id === family.child) &&
         (!status || d.status === status) &&
         (!category || d.category === category) &&
         (d.name + " " + (d.owner_name ?? ""))
@@ -165,6 +181,31 @@ export function Documents({ locale }: { locale: Locale }) {
     <>
       <main id="main" className="access documents">
         <PageHeader title={t.title} subtitle={t.intro} />
+        <Tabs
+          label={t.title}
+          idPrefix="documents-tab"
+          panelId={(id) => `documents-panel-${id}`}
+          value={tab}
+          onChange={(v) => setTab(v === "list" ? "list" : "drive")}
+          items={[
+            { id: "drive", label: driveCopy[locale].tabs.drive },
+            { id: "list", label: driveCopy[locale].tabs.list },
+          ]}
+        />
+        {tab === "drive" && (
+          <div id="documents-panel-drive" role="tabpanel" aria-labelledby="documents-tab-drive">
+            <DocumentsDrive
+              locale={locale}
+              onDetails={(name) => {
+                setQuery(name);
+                setTab("list");
+              }}
+            />
+          </div>
+        )}
+        {tab === "list" && (
+        <div id="documents-panel-list" role="tabpanel" aria-labelledby="documents-tab-list">
+        {family.node}
         {data?.manage && (
           <p>
             <Link
@@ -189,24 +230,35 @@ export function Documents({ locale }: { locale: Locale }) {
             <p className="notice">{data.context.name}</p>
             {!data.mfa && <p>{t.mfa}</p>}
             <p className="muted">{t.sensitiveHint}</p>
+            {/* 1: the documents of a retired category, offered for deletion to the president. */}
+            {data.context.role === "club_president" &&
+              retiredCategories.map((c) => {
+                const n = data.documents.filter((d) => d.category === c && d.organization_id === data.context.organization_id).length;
+                if (!n) return null;
+                const rc = retiredCopy[locale],
+                  vars = (text: string) => text.replace("{n}", String(n)).replace("{category}", cl[c]);
+                return (
+                  <div key={c} className="notice retired-notice">
+                    <p>{vars(rc.notice)}</p>
+                    {purging ? (
+                      <p className="actions">
+                        <span>{vars(rc.confirm)}</span>
+                        <Button variant="danger" disabled={busy} onClick={() => void task(async () => void (await send({ action: "purgeRetired" }))).then(() => setPurging(false))}>
+                          {rc.purge}
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPurging(false)}>
+                          {rc.cancel}
+                        </Button>
+                      </p>
+                    ) : (
+                      <Button variant="secondary" onClick={() => setPurging(true)}>
+                        {rc.purge}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
             <div className="actions">
-              {/* Licences and transfers keep their own page; the documents page points to it (wave 11). */}
-              <Link className="button secondary" href={"/" + locale + "/licenses"}>
-                {locale === "fr" ? "Licences et transferts" : locale === "en" ? "Licences and transfers" : "Licenties en transfers"}
-              </Link>
-              <Button
-                onClick={() => {
-                  setCategory("training");
-                  setStatus("");
-                  setQuery("");
-                }}
-              >
-                {locale === "fr"
-                  ? "Fiches d’exercice"
-                  : locale === "en"
-                    ? "Exercise sheets"
-                    : "Oefenfiches"}
-              </Button>
               <Link href={"/" + locale + "/calendar"}>
                 {locale === "fr"
                   ? "Associer à un entraînement"
@@ -245,7 +297,7 @@ export function Documents({ locale }: { locale: Locale }) {
                   onChange={(e) => setCategory(e.target.value)}
                 >
                   <option value="">{t.all}</option>
-                  {categoryOptions}
+                  {filterOptions}
                 </select>
               </Field>
               <DataGrid
@@ -265,9 +317,12 @@ export function Documents({ locale }: { locale: Locale }) {
                     hideable: false,
                     sort: (d) => d.name,
                     cell: (d) => (
-                      <Button onClick={() => setSelected(d.id)}>
-                        {d.name} · {sl[d.status as (typeof statuses)[number]]}
-                      </Button>
+                      <>
+                        <Button onClick={() => setSelected(d.id)}>
+                          {d.name} · {sl[d.status as (typeof statuses)[number]]}
+                        </Button>
+                        {retiredCategories.includes(d.category) && <Badge tone="neutral">{retiredCopy[locale].label}</Badge>}
+                      </>
                     ),
                   },
                   { key: "owner", header: b.person, sort: (d) => d.owner_name ?? "", cell: (d) => d.owner_name ?? t.org },
@@ -966,6 +1021,8 @@ export function Documents({ locale }: { locale: Locale }) {
         <Button disabled={busy} onClick={() => void task(load)}>
           {t.refresh}
         </Button>
+        </div>
+        )}
       </main>
     </>
   );

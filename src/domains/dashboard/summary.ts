@@ -1,3 +1,4 @@
+import type { Focus } from "./focus";
 // Pure dashboard shaping. No I/O here so ordering and visibility rules are unit-tested.
 import type { Readiness } from "./presence";
 import type { SetupState } from "../setup/schema";
@@ -21,6 +22,7 @@ export const todoKeys = [
   "documentsMissing",
   "documentsExpiring",
   "teamsOverCapacity",
+  "minorsWithoutGuardian",
 ] as const;
 export type TodoKey = (typeof todoKeys)[number];
 export type Todo = { key: TodoKey; count: number; href: string; tone: Tone };
@@ -43,6 +45,8 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   documentsMissing: { href: "/documents", tone: "info" },
   documentsExpiring: { href: "/documents", tone: "info" },
   teamsOverCapacity: { href: "/teams", tone: "warning" },
+  // 8: minors nobody answers for.
+  minorsWithoutGuardian: { href: "/players?missing=guardian", tone: "danger" },
 };
 /**
  * Keeps only actionable items (count > 0) that the caller computed under the
@@ -120,6 +124,10 @@ export const metricKeys = [
   "acceptedRecently",
   "duesNext30",
   "treasury",
+  // 9: the cash minus the reserved funds.
+  "available",
+  // H4: the certain forecast under the threshold within three months.
+  "forecastLow",
   "myNextDue",
   // The president's key figures (wave 16, A), for the season in view.
   "seasonPlayers",
@@ -225,6 +233,8 @@ export type Dashboard = {
   start?: { calendarSubscribed: boolean };
   /** Getting started of a new club, for its president (wave 15, C3). */
   setup?: SetupState;
+  /** 15: the home by role (player or parent, coach, federation). */
+  focus?: Focus;
 };
 export function formatCents(cents: number, locale: string) {
   return new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, {

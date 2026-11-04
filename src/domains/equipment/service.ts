@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { resolveScope, teamMembers } from "../scope/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -16,6 +17,7 @@ import { stockExecute, stockView } from "./stock";
 import { modelsView, resolveModel, decideModel } from "./models";
 import { storageView, storageExecute, storageIn } from "./storage";
 import { loansView, loanExecute } from "./loans";
+import { categoriesOf, categoryExecute, directLoanExecute, directLoansView, ensureCategories } from "./extras";
 export { commandSchema };
 
 /**
@@ -26,6 +28,8 @@ export type Scope = { c: PoolClient; p: Principal; a: Actor; manage: boolean; ki
 export type Chair = {
   id: string;
   name: string;
+  /** 11: « Nom · Marque Modèle ». */
+  label: string;
   brand: string;
   model: string;
   serial_number: string;
@@ -63,7 +67,7 @@ export type ChairLink = {
 const chairColumns =
   "c.id,c.name,c.brand,c.model,c.serial_number,c.ownership,c.status,c.max_speed_kmh::text,c.battery,c.acquired_on::text,c.last_service_on::text,c.next_service_on::text,c.notes,c.storage,c.version,c.model_id,c.storage_location_id,c.lendable,c.created_at,c.supplier_contact_id";
 /** Reads: the model and the storage place by name (wave 17, Q1). */
-const chairSelect = `${chairColumns},cm.brand AS model_brand,cm.name AS model_name,cm.status AS model_status,sl.name AS storage_name,sup.full_name AS supplier_name
+const chairSelect = `${chairColumns},cm.brand AS model_brand,cm.name AS model_name,cm.status AS model_status,storage_path(sl.id) AS storage_name,sup.full_name AS supplier_name,chair_label(c.id) AS label
   FROM equipment_chair c LEFT JOIN chair_model cm ON cm.id=c.model_id LEFT JOIN storage_location sl ON sl.id=c.storage_location_id
   LEFT JOIN contact sup ON sup.id=c.supplier_contact_id AND sup.organization_id=c.organization_id`;
 const linkColumns =
@@ -115,7 +119,7 @@ export async function scope<T>(
       manage:
         mfaSatisfied(a.twoFactorEnabled) &&
         (federation
-          ? ["federation_president", "federation_worker"].includes(a.role)
+          ? fedCan(a.role, a.grants, "federation.competitions")
           : permissions(a.role, a.grants).includes("equipment.manage")),
     });
     await c.query("COMMIT");
@@ -237,6 +241,12 @@ export async function equipmentView(db: Pool, p: Principal, raw: { season?: stri
       models: await modelsView(s),
       storage: await storageView(s),
       loans: await loansView(s),
+      // 11: the club's categories and its direct loans (small material, chairs lent to players).
+      categories: s.kind === "club" ? (await ensureCategories(s.c, org), await categoriesOf(s.c, org)) : [],
+      directLoans: await directLoansView(s),
+      partners: s.manage && s.fed
+        ? ((await s.c.query("SELECT id,name FROM organization WHERE id<>$1 AND (id=$2 OR (federation_id=$2 AND kind='club')) ORDER BY name", [org, s.fed])).rows as { id: string; name: string }[])
+        : [],
     };
   });
 }
@@ -288,6 +298,8 @@ export async function equipmentExecute(
       )
         return stockExecute(s, input);
       if (input.action === "storage") return storageExecute(s, input);
+      if (input.action === "categoryCreate" || input.action === "categoryRename" || input.action === "categoryMerge" || input.action === "categoryArchive") return categoryExecute(s, input);
+      if (input.action === "lendDirect" || input.action === "returnDirect") return directLoanExecute(s, input);
       if (input.action === "decideModel") return decideModel(s, input);
       if (
         input.action === "lend" ||

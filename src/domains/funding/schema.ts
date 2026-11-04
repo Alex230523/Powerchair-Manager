@@ -20,6 +20,7 @@ export const contactTags = [
   "supplier",
   "medical",
   "volunteer",
+  "rental",
   "other",
 ] as const;
 export type ContactTag = (typeof contactTags)[number];
@@ -96,6 +97,15 @@ export const fundingCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("grantChecklist"), grantId: z.uuid(), locale: z.enum(["fr", "nl", "en"]) }),
   /** Next year's application: same funder, programme, texts and check-list (unticked, one year later). */
   z.object({ action: z.literal("nextYear"), grantId: z.uuid() }),
+  /** 9: « Rappel annuel », a task that comes back every year on this date (the call reopens, the contract renews), kept when the file closes. */
+  z.object({
+    action: z.literal("annualReminder"),
+    grantId: z.uuid().nullable().default(null),
+    partnerId: z.uuid().nullable().default(null),
+    title: text(200).min(2),
+    dueOn: z.iso.date(),
+    responsibleId: z.uuid().nullable().default(null),
+  }),
   /** Equipment financed by the grant, with its purchase value. */
   z.object({
     action: z.literal("grantChairs"),

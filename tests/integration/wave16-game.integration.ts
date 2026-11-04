@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { gameStatistics } from "../../src/domains/statistics/game";
+import { matchesView } from "../../src/domains/competitions/service";
 
 /** Wave 16 (S2): the « Jeu » tab, two clubs, a coach limited to his team, only played matches. */
 const schema = "w16game_" + randomUUID().replaceAll("-", ""),
@@ -182,4 +183,21 @@ it("keeps each club to itself, a coach to his teams, a parent out", async () => 
   expect(((await gameStatistics(db, coach, "summary", { team: eagles })) as { tiles: { played: number } }).tiles.played).toBe(3);
   await expect(gameStatistics(db, guardian, "summary", {})).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(gameStatistics(db, president, "nope", {})).rejects.toMatchObject({ code: "NOT_FOUND" });
+});
+
+it("5: keeps a score not confirmed out of the figures, and gives each team its card (a coach his teams only)", async () => {
+  const before = ((await gameStatistics(db, president, "summary", {})) as { tiles: Record<string, number | null> }).tiles;
+  const proposed = await match(clubA, lions, 2, 9, 0, { opponent: "Mons" });
+  await db.query("UPDATE match SET score_status='proposed' WHERE id=$1", [proposed]);
+  expect(((await gameStatistics(db, president, "summary", {})) as { tiles: Record<string, number | null> }).tiles).toEqual(before);
+  const v = await matchesView(db, president);
+  const card = v.teams.find((t) => t.id === lions)!;
+  expect(card).toMatchObject({ color: "blue", form: ["win", "draw", "loss"] });
+  expect(card.record.played).toBe(3);
+  expect(v.teams.find((t) => t.id === eagles)!.next).toMatchObject({ opponent: "Gand" });
+  expect(v.matches.find((m) => m.id === proposed)).toMatchObject({ score_status: "proposed", team_color: "blue" });
+  // The coach of the Lions sees the Lions only.
+  const c = await matchesView(db, coach);
+  expect([...new Set(c.matches.map((m) => m.team_id))]).toEqual([lions]);
+  expect(c.teams.map((t) => t.id)).toEqual([lions]);
 });

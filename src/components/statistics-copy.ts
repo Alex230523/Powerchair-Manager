@@ -158,6 +158,8 @@ const fr = {
       difference: "Différence de buts",
       noMatch: "Aucun match joué",
     },
+    teamTabs: "Équipes",
+    allTeams: "Toutes les équipes",
     outcomes: { W: "V", D: "N", L: "D" },
     outcomeNames: { W: "victoire", D: "nul", L: "défaite" },
     teams: {
@@ -441,6 +443,8 @@ const nl: Copy = {
       difference: "Doelsaldo",
       noMatch: "Geen wedstrijd gespeeld",
     },
+    teamTabs: "Ploegen",
+    allTeams: "Alle ploegen",
     outcomes: { W: "W", D: "G", L: "V" },
     outcomeNames: { W: "overwinning", D: "gelijkspel", L: "nederlaag" },
     teams: {
@@ -723,6 +727,8 @@ const en: Copy = {
       difference: "Goal difference",
       noMatch: "No match played",
     },
+    teamTabs: "Teams",
+    allTeams: "All teams",
     outcomes: { W: "W", D: "D", L: "L" },
     outcomeNames: { W: "win", D: "draw", L: "loss" },
     teams: {

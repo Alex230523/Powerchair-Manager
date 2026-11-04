@@ -1,4 +1,7 @@
 "use client";
+import { useClubChildFilter } from "./child-switcher";
+import { seasonScheduleCopy } from "./season-schedule-copy";
+import { todoMoreCopy } from "./todo-more-copy";
 import Link from "next/link";
 import { EventList, MonthBoard, WeekGrid, colorAttrs, dayName, kindName, type ColorBy } from "./calendar-board";
 import { SubscribePanel } from "./calendar-subscribe";
@@ -8,10 +11,12 @@ import { Icon } from "./icons";
 import { movePeriod, planRange, type PlannerView } from "@/domains/calendar/planner";
 import { DeadlineChip, LayerToggle, useMoneyDeadlines, useTournamentDays } from "./money-layer";
 import { sponsorsCopy } from "./sponsors-copy";
+import { PlaceCombobox } from "./place-combobox";
 import { attendanceCopy } from "./attendance-copy";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
   type FormEvent,
@@ -28,6 +33,9 @@ import {
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
 import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
+import { EventInvitation } from "./mail-templates";
+import { NationalGatherings } from "./national";
+import { mailTemplatesCopy } from "./mail-templates-copy";
 import { PlaceDialog } from "./place-dialog";
 import { placesCopy } from "./places-copy";
 import { placesFor, type PlaceCategory } from "@/domains/venues/schema";
@@ -85,6 +93,7 @@ type Item = {
   status: string;
   version: number;
   is_exception: boolean;
+  bookingMissing?: boolean;
   canEdit: boolean;
   starts_at: string;
   ends_at: string;
@@ -114,11 +123,14 @@ type Item = {
   }[];
 };
 type View = {
+  /** 6: the national gatherings of the club's players (read only). */
+  national?: { id: string; kind: string; title: string; starts_at: string; ends_at: string; place: string; team: string; players: string[] }[];
   context: {
     organization_id: string;
     name: string;
     user_id: string;
     role: string;
+    kind?: string;
   };
   /** 13.3: in the list of every event, the cursor of the next page. */
   next: string | null;
@@ -145,6 +157,8 @@ type View = {
   profiles: { id: string; full_name: string }[];
   documentOptions: { id: string; name: string; category: string }[];
   responsibles: { id: string; name: string }[];
+  /** 2: the meetings of the tasks given to me. */
+  meetings: { id: string; title: string; meeting_starts_at: string; meeting_ends_at: string | null; place: string | null }[];
   feeds: {
     id: string;
     name: string;
@@ -259,6 +273,7 @@ export function Calendar({
   const t = calendarCopy[locale],
     kl = kindLabels[locale];
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const [inviting, setInviting] = useState<string | null>(null);
   const [data, setData] = useState<View | null>(null),
     [anchor, setAnchorState] = useState(() =>
       localAt(new Date(), "Europe/Brussels").slice(0, 10),
@@ -276,6 +291,7 @@ export function Calendar({
     [selected, setSelected] = useState(eventId ?? ""),
     [placeDialog, setPlaceDialog] = useState(false),
     [newPlace, setNewPlace] = useState<string | null>(null),
+    [placeName, setPlaceName] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -298,7 +314,7 @@ export function Calendar({
     if (value >= "2000-01-01" && value <= "2099-12-31") setAnchorState(value);
   }
   const range = planRange(anchor, view),
-    money = useMoneyDeadlines(range.from, range.to, moneyLayer),
+    money = useMoneyDeadlines(range.from, range.to, moneyLayer, data?.context.kind === "club"),
     tournamentDays = useTournamentDays(range.from, range.to),
     dayChips = [...tournamentDays, ...money.items],
     params =
@@ -427,11 +443,36 @@ export function Calendar({
       <option value="all">{t.whole}</option>
     </>
   );
-  const visible = data?.events;
+  // 27: a family keeps one child at a time if it chose so (« Tous » by default).
+  const family = useClubChildFilter(locale, data?.context.organization_id, !!data && data.context.role === "guardian");
+  const concerns = (e: NonNullable<typeof data>["events"][number], id: string) => e.participants.some((x) => x.id === id) || e.attendance.some((x: { id: string }) => x.id === id);
+  // With two children or more, each event carries the first names of the children it concerns (never a colour alone).
+  const visible = (family.child ? data?.events.filter((e) => concerns(e, family.child!)) : data?.events)?.map((e) => {
+    if (family.items.length < 2) return e;
+    const who = family.items.filter((k) => concerns(e, k.id)).map((k) => k.first);
+    return who.length ? { ...e, title: `${who.join(", ")} · ${e.title}` } : e;
+  });
+  // 1: the element that opened the event's window gets the focus back when it closes.
+  const opener = useRef<HTMLElement | null>(null);
+  /** 1: the open event travels in the address (?event=), so its link can be shared. */
+  function remember(id: string) {
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("event", id);
+    else url.searchParams.delete("event");
+    history.replaceState(null, "", url);
+  }
   function openEvent(id: string) {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setRemoving(false);
     setSelected(id);
     setEditorOpen(false);
+    remember(id);
+  }
+  function closeEvent() {
+    setSelected("");
+    remember("");
+    const back = opener.current;
+    setTimeout(() => back?.isConnected && back.focus(), 0);
   }
   function newEvent(day = anchor, hour = "") {
     setAnchor(day);
@@ -470,7 +511,7 @@ export function Calendar({
       },
     ).format(new Date(value));
   const p = plannerCopy[locale];
-  const kindsShown = (data?.events ?? []).filter((e) => !kindFilter || e.kind === kindFilter);
+  const kindsShown = (visible ?? []).filter((e) => !kindFilter || e.kind === kindFilter);
   const fmt = (o: Intl.DateTimeFormatOptions, d: string) => new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { ...o, timeZone: "UTC" }).format(new Date(d + "T12:00Z"));
   const lastDay = shiftLocal(range.to + "T12:00", -1).slice(0, 10);
   const period =
@@ -504,6 +545,12 @@ export function Calendar({
                 {data.canPlan && (
                   <Link className="button secondary" href={"/" + locale + "/venues"}>{pc.manage}</Link>
                 )}
+                {/* H9: the whole season's trainings at once. */}
+                {data.manage && (
+                  <Link className="button secondary" href={"/" + locale + "/calendar/season"}>
+                    {seasonScheduleCopy[locale].open}
+                  </Link>
+                )}
                 {data.manage && (
                   <Button variant="secondary" icon="pin" onClick={() => setPlaceDialog(true)}>
                     {pc.add}
@@ -519,6 +566,26 @@ export function Calendar({
             )
           }
         />
+        {family.node}
+        {/* 6: the national gatherings of the club's players, read only. */}
+        {data && <NationalGatherings locale={locale} items={data.national ?? []} />}
+        {/* 2: the meetings of the tasks given to me, in my calendar. */}
+        {data && (data.meetings ?? []).length > 0 && (
+          <Card title={todoMoreCopy[locale].myMeetings} className="calendar-meetings">
+            <ul className="plain-list">
+              {data.meetings.map((m) => (
+                <li key={m.id}>
+                  <Link href={`/${locale}/tasks?task=${m.id}`}>{m.title}</Link>
+                  <span className="muted small">
+                    {" · "}
+                    {new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(m.meeting_starts_at))}
+                    {m.place && ` · ${m.place}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
         <div role="status">{loading ? t.loading : message}</div>
         {error && (
           <p role="alert" className="error-message">
@@ -782,7 +849,7 @@ export function Calendar({
               </Modal>
             )}
             {sheetEvent && (
-              <Modal title={sheetEvent.title} close={() => setSelected("")} className="player-dialog side-sheet event-sheet">
+              <Modal title={sheetEvent.title} close={closeEvent} className="player-dialog side-sheet event-sheet event-modal">
                 <div id="event-details">
                   <p className="event-sheet-badges">
                     <Badge tone={sheetEvent.status === "cancelled" ? "neutral" : "success"} dot>{sheetEvent.status === "cancelled" ? t.cancelled : t.scheduled}</Badge>{" "}
@@ -797,6 +864,13 @@ export function Calendar({
                       </span>
                     )}
                     {sheetEvent.is_exception && <Badge tone="info">{t.exception}</Badge>}
+                    {/* 18: the hall must be booked and the booking is not confirmed yet. */}
+                    {sheetEvent.bookingMissing && (
+                      <>
+                        {" "}
+                        <Badge tone="warning">{plannerCopy[locale].bookingMissing}</Badge> <Link href={`/${locale}/venues#bookings`}>{plannerCopy[locale].bookingOpen}</Link>
+                      </>
+                    )}
                   </p>
                   <section aria-labelledby="event-sheet-details">
                     <h3 id="event-sheet-details">{p.details}</h3>
@@ -918,6 +992,14 @@ export function Calendar({
                   )}
                   <section aria-labelledby="event-sheet-invitations">
                     <h3 id="event-sheet-invitations">{p.invitations}</h3>
+                    {/* 10: an invitation written from the club's templates, filled with the event. */}
+                    {sheetEvent.canEdit && sheetEvent.status === "scheduled" && (
+                      <p>
+                        <Button size="sm" variant="secondary" icon="message" onClick={() => setInviting(sheetEvent.id)}>
+                          {mailTemplatesCopy[locale].invite}
+                        </Button>
+                      </p>
+                    )}
                     {sheetEvent.attendance.length > 0 && (
                       <p className="event-answers">
                         <strong>{ev.responses}</strong> : {ev.yes} {count(sheetEvent, "present")} · {ev.no} {count(sheetEvent, "absent")} · {ev.noAnswer} {count(sheetEvent, "none")}
@@ -1213,44 +1295,28 @@ export function Calendar({
                     </fieldset>
                     <fieldset className="event-section">
                       <legend>{ev.sections.place}</legend>
-                      <div className="field-with-action">
-                        <Field id="event-place" label={t.place}>
-                          {/* Wave 17 (C4): training and match places first for a training or a match. */}
-                          <select id="event-place" name="place" key={newPlace ?? "place"} defaultValue={newPlace ?? base?.place_id ?? ""}>
-                            <option value="">{t.none}</option>
-                            {[...new Set(placesFor(data.places, formFamily).map((v) => v.category as PlaceCategory))].map((c) => (
-                              <optgroup key={c} label={pc.categories[c]}>
-                                {placesFor(data.places, formFamily)
-                                  .filter((v) => v.category === c && (!v.archived || v.id === event?.place_id))
-                                  .map((v) => (
-                                    <option key={v.id} value={v.id}>
-                                      {v.name}
-                                    </option>
-                                  ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                        </Field>
-                        {data.manage && (
+                      {/* 1: one search for the place: our places, the shared directory, free text, « + Créer ce lieu ». */}
+                      <PlaceCombobox
+                        key={`${event?.id ?? copyOf?.id ?? requestId}:${newPlace ?? ""}:${data.places.length}`}
+                        locale={locale}
+                        places={placesFor(data.places, formFamily)
+                          .filter((v) => !v.archived || v.id === event?.place_id)
+                          .map((v) => ({ id: v.id, name: v.name, address: v.address }))}
+                        shared={data.sharedVenues.map((v) => ({ id: v.id, name: v.name, address: v.address }))}
+                        initial={{ placeId: newPlace ?? base?.place_id ?? null, sharedId: newPlace ? null : (base?.shared_venue_id ?? null), free: newPlace ? "" : (base?.free_location ?? "") }}
+                        canCreate={data.manage}
+                        create={(name) => {
+                          setPlaceName(name);
+                          setPlaceDialog(true);
+                        }}
+                      />
+                      {data.manage && (
+                        <p>
                           <Button type="button" variant="secondary" icon="plus" onClick={() => setPlaceDialog(true)}>
                             {pc.add}
                           </Button>
-                        )}
-                      </div>
-                      <p className="muted small">{extra.location}</p>
-                      <Field id="event-shared" label={extra.shared}>
-                        <select id="event-shared" name="sharedVenue" defaultValue={base?.shared_venue_id ?? ""}>
-                          <option value="">{t.none}</option>
-                          {data.sharedVenues.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name} · {v.address}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field id="event-free" label={extra.free}>
-                        <input id="event-free" name="freeLocation" maxLength={500} defaultValue={base?.free_location ?? ""} />
-                      </Field>
+                        </p>
+                      )}
                       {base && (base.place_address || base.free_location) && (
                         <a href={mapLink(base.place_address || base.free_location)} target="_blank" rel="noopener noreferrer">
                           {ev.openMap}
@@ -1383,9 +1449,14 @@ export function Calendar({
               <PlaceDialog
                 locale={locale}
                 category={placeCategory}
-                close={() => setPlaceDialog(false)}
+                initialName={placeName}
+                close={() => {
+                  setPlaceDialog(false);
+                  setPlaceName("");
+                }}
                 saved={(id) => {
                   setPlaceDialog(false);
+                  setPlaceName("");
                   setNewPlace(id);
                   void load();
                 }}
@@ -1427,6 +1498,7 @@ export function Calendar({
         <Button variant="secondary" disabled={busy} onClick={() => void task(load)}>
           {t.refresh}
         </Button>
+        {inviting && <EventInvitation locale={locale} eventId={inviting} close={() => setInviting(null)} />}
       </main>
     </>
   );

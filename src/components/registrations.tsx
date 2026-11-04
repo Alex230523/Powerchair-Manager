@@ -20,7 +20,7 @@ import {
   registrationExtras,
   fieldExtras,
 } from "./registrations-copy";
-import { platformTemplate } from "@/domains/registrations/templates";
+import { fillDues, platformTemplate } from "@/domains/registrations/templates";
 import { moveField, removeField, restoreField } from "@/domains/registrations/editor";
 import {
   DecisionButtons,
@@ -273,20 +273,21 @@ function Questions({
               </fieldset>
             );
           }
+          // A consent is a box with its sentence, never a stretched field under a label (audit 23).
+          if (f.type === "consent")
+            return (
+              <div key={f.key} className="consent-field">
+                <label className="check" htmlFor={fid}>
+                  <input id={fid} type="checkbox" checked={answers[f.key] === true} disabled={disabled} onChange={(e) => setAnswers({ ...answers, [f.key]: e.target.checked })} />
+                  <span>{label}</span>
+                </label>
+                {notes}
+              </div>
+            );
           return (
             <FieldLabel key={f.key} id={fid} label={label}>
               {notes}
-              {f.type === "consent" ? (
-                <input
-                  id={fid}
-                  type="checkbox"
-                  checked={answers[f.key] === true}
-                  disabled={disabled}
-                  onChange={(e) =>
-                    setAnswers({ ...answers, [f.key]: e.target.checked })
-                  }
-                />
-              ) : f.type === "choice" ? (
+              {f.type === "choice" ? (
                 <select
                   id={fid}
                   value={String(answers[f.key] ?? "")}
@@ -459,7 +460,16 @@ function FormEditor({
     [mobile, setMobile] = useState(false),
     [answers, setAnswers] = useState<Answers>({}),
     [dragging, setDragging] = useState<number | null>(null),
-    [moved, setMoved] = useState("");
+    [moved, setMoved] = useState(""),
+    // 1: the questions folded by the editor (their title stays visible).
+    [folded, setFolded] = useState<Set<string>>(() => new Set());
+  const toggle = (key: string) =>
+    setFolded((cur) => {
+      const next = new Set(cur);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const list = useRef<HTMLDivElement>(null);
   const change = (i: number, next: Field) => setFields((cur) => cur.map((v, n) => (n === i ? next : v)));
   /** Moves a question and keeps the focus on the control that moved it. */
@@ -530,7 +540,22 @@ function FormEditor({
         <FieldLabel id="form-capacity" label={t.capacity}>
           <input id="form-capacity" name="capacity" type="number" min={1} max={10000} defaultValue={form?.capacity ?? template?.capacity ?? ""} />
         </FieldLabel>
-        <div className="question-list" ref={list}>
+        {fields.length > 1 && (
+          <p className="question-fold-all">
+            <button type="button" className="text-button" onClick={() => setFolded(folded.size ? new Set() : new Set(fields.map((f) => f.key)))}>
+              {folded.size ? q.unfoldAll : q.foldAll}
+            </button>
+          </p>
+        )}
+        <div
+          className="question-list"
+          ref={list}
+          onInvalidCapture={(e) => {
+            // A required field of a folded question: the question opens so it can be filled.
+            const key = (e.target as HTMLElement).closest("[data-key]")?.getAttribute("data-key");
+            if (key && folded.has(key)) toggle(key);
+          }}
+        >
           {fields.map((f, i) => (
             <fieldset
               key={f.key}
@@ -551,8 +576,22 @@ function FormEditor({
               }}
               onDragEnd={() => setDragging(null)}
             >
-              <legend>{fill(q.question, { n: i + 1 })}</legend>
+              <legend>
+                {fill(q.question, { n: i + 1 })}
+                <span className="question-title"> · {fillDues(label(f), null) || q.untitled}</span>
+              </legend>
               <div className="question-tools">
+                <button
+                  type="button"
+                  className="icon-button sm"
+                  aria-expanded={!folded.has(f.key)}
+                  aria-controls={"question-body-" + f.key}
+                  aria-label={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: fillDues(label(f), null) || q.untitled })}
+                  title={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: fillDues(label(f), null) || q.untitled })}
+                  onClick={() => toggle(f.key)}
+                >
+                  <Icon name={folded.has(f.key) ? "chevronDown" : "chevronUp"} size={16} />
+                </button>
                 <button
                   type="button"
                   className="icon-button sm question-grip"
@@ -587,13 +626,14 @@ function FormEditor({
                 <button
                   type="button"
                   className="icon-button sm question-remove"
-                  aria-label={fill(q.removeQuestion, { n: i + 1, label: label(f) })}
-                  title={fill(q.removeQuestion, { n: i + 1, label: label(f) })}
+                  aria-label={fill(q.removeQuestion, { n: i + 1, label: fillDues(label(f), null) })}
+                  title={fill(q.removeQuestion, { n: i + 1, label: fillDues(label(f), null) })}
                   onClick={() => remove(i)}
                 >
                   <Icon name="trash" size={16} />
                 </button>
               </div>
+              <div className="question-body" id={"question-body-" + f.key} hidden={folded.has(f.key)}>
               <FieldLabel id={"label-fr-" + i} label={t.labelFr}>
                 <input
                   id={"label-fr-" + i}
@@ -672,6 +712,7 @@ function FormEditor({
                   />
                 </FieldLabel>
               )}
+              </div>
             </fieldset>
           ))}
         </div>

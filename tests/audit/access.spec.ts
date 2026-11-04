@@ -24,6 +24,8 @@ const concrete = (path: string) =>
     .replace("[job]", "inconnu")
     .replace("[widget]", "palmares");
 
+const privateB = secretsB.filter((s) => !s.startsWith("Fédération"));
+
 test("each role reaches exactly what the matrix says", async () => {
   test.setTimeout(40 * 60000);
   const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
@@ -60,7 +62,8 @@ test("each role reaches exactly what the matrix says", async () => {
           if (!/json|text|calendar|csv/.test(type)) continue;
           const body = await response.text();
           // Never the other club's or the other federation's data.
-          if (!["president_b", "federation_b"].includes(role)) for (const s of secretsB) if (body.includes(s)) problems.push(`GET ${path} as ${role}: shows « ${s} » of club or federation B`);
+          // The federations' names are public (a club picks its federation from the list): only B's private data count.
+          if (!["president_b", "federation_b"].includes(role)) for (const s of privateB) if (body.includes(s)) problems.push(`GET ${path} as ${role}: shows « ${s} » of club or federation B`);
           if (["president_b", "federation_b"].includes(role) && !route.sharedAcrossClubs) for (const s of demoNames) if (body.includes(s)) problems.push(`GET ${path} as ${role}: shows « ${s} » of the demo club`);
         }
       }

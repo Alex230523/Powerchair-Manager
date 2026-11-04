@@ -109,6 +109,8 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await db.query("UPDATE training_request SET status='approved',decided_at=now(),completed_on='2026-06-20' WHERE profile_id=$1", [profile]);
     await switchTo(page, presidentMandate);
     await page.goto(`/fr/coaches/${profile}`);
+    // 40: the presidency lands on « Vue d'ensemble ».
+    await page.getByRole("tab", { name: "Profil" }).click();
     await page.getByRole("button", { name: "Marquer comme vérifié" }).click();
     await expect(page.getByText(/Vérifié par le club/)).toBeVisible();
     await page.goto("/fr/coaches");

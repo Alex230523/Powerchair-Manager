@@ -25,8 +25,8 @@ describe("A5 match journey", () => {
       { kind: "red", profile_id: "b", cancelled_at: null },
     ]);
     expect([t.ours, t.theirs]).toEqual([2, 1]);
-    expect(t.per.get("a")).toEqual({ goals: 1, yellow: 2, red: false });
-    expect(t.per.get("b")).toEqual({ goals: 1, yellow: 0, red: true });
+    expect(t.per.get("a")).toEqual({ goals: 1, yellow: 2, red: false, assists: 0 });
+    expect(t.per.get("b")).toEqual({ goals: 1, yellow: 0, red: true, assists: 0 });
   });
   it("refuses a live event without its own id (the offline queue relies on it)", () => {
     expect(() => journeyCommand.parse({ action: "live", id: crypto.randomUUID(), kind: "goal", profileId: null, minute: 3 })).toThrow();

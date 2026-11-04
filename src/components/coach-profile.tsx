@@ -1,6 +1,8 @@
 "use client";
+import { PersonOverview, useOverview } from "./person-overview";
+import { overviewCopy } from "./person-overview-copy";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { coachProfileView } from "@/domains/coaches/service";
 import { rate } from "@/domains/player-profile/schema";
@@ -10,8 +12,10 @@ import { errors } from "./access-copy";
 import { Icon } from "./icons";
 import { initials } from "./app-shell";
 import { Card, Stat } from "./player-profile";
+import { StaffKeys } from "./staff-keys";
 import { Badge, EmptyState, Tabs } from "./ui";
 import { DriverLicence } from "./driver-licence";
+import { CoachDeparture } from "./offboarding";
 import { Tasks } from "./tasks";
 import { coachSpaceCopy } from "./coach-space-copy";
 
@@ -34,6 +38,10 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** Coach profile: details, teams, upcoming sessions, attendance and courses. */
 /** Wave 17 (J1): also shown in a window from the directory (`embedded`). */
+function subscribeHash(change: () => void) {
+  window.addEventListener("hashchange", change);
+  return () => window.removeEventListener("hashchange", change);
+}
 export function CoachProfile({ locale, id, embedded = false }: { locale: Locale; id: string; embedded?: boolean }) {
   const Root = embedded ? "div" : "main";
   const rootId = embedded ? undefined : "main";
@@ -43,7 +51,12 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [tab, setTab] = useState<"profile" | "todo">("profile");
+    // 7: « #todo » (from the coaches' list) opens the person's to-do, until a tab is chosen.
+    fromList = useSyncExternalStore(subscribeHash, () => window.location.hash === "#todo", () => false),
+    [chosen, setTab] = useState<"overview" | "profile" | "todo" | null>(null);
+  // 40: « Vue d'ensemble », first for the presidency and those who manage the people.
+  const { data: overview } = useOverview(id);
+  const tab = chosen ?? (fromList ? "todo" : overview?.overviewFirst ? "overview" : "profile");
   const space = coachSpaceCopy[locale];
   const failure = useCallback(
     (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
@@ -181,25 +194,30 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      {view.can.tasks && (
+      {(view.can.tasks || overview) && (
         <Tabs
           label={space.tabs}
           items={[
+            ...(overview ? [{ id: "overview", label: overviewCopy[locale].tab }] : []),
             { id: "profile", label: space.profile },
-            { id: "todo", label: space.todo },
+            ...(view.can.tasks ? [{ id: "todo", label: space.todo }] : []),
           ]}
           value={tab}
-          onChange={(v) => setTab(v as "profile" | "todo")}
+          onChange={(v) => setTab(v as "overview" | "profile" | "todo")}
           idPrefix={`coach-tab-${id}`}
           panelId={(v) => `coach-panel-${id}-${v}`}
         />
       )}
-      {view.can.tasks && tab === "todo" ? (
+      {overview && tab === "overview" ? (
+        <div role="tabpanel" id={`coach-panel-${id}-overview`} aria-labelledby={`coach-tab-${id}-overview`}>
+          <PersonOverview locale={locale} data={overview} go={(to) => setTab(to === "todo" && view.can.tasks ? "todo" : "profile")} />
+        </div>
+      ) : view.can.tasks && tab === "todo" ? (
         <div role="tabpanel" id={`coach-panel-${id}-todo`} aria-labelledby={`coach-tab-${id}-todo`}>
           <Tasks locale={locale} embedded responsibleId={view.can.self ? undefined : id} />
         </div>
       ) : (
-      <div className="profile-grid" {...(view.can.tasks ? { role: "tabpanel", id: `coach-panel-${id}-profile`, "aria-labelledby": `coach-tab-${id}-profile` } : {})}>
+      <div className="profile-grid" {...(view.can.tasks || overview ? { role: "tabpanel", id: `coach-panel-${id}-profile`, "aria-labelledby": `coach-tab-${id}-profile` } : {})}>
         <Card title={t.identity} icon="user">
           {view.details ? (
             <dl className="facts">
@@ -221,6 +239,9 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
             <EmptyState title={t.noDetails} />
           )}
         </Card>
+
+        {/* H10: the keys and badges held (the person, the president, equipment or members). */}
+        <StaffKeys locale={locale} profileId={id} />
 
         <Card title={t.teams} icon="team">
           {view.teams.length ? (
@@ -301,7 +322,7 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
           )}
         </Card>
 
-        <Card title={t.formations} icon="check" wide>
+        <Card title={t.formations} icon="check" wide id="formations">
           <p className="muted">{t.formationsHint}</p>
           {view.formations.length ? (
             <ul className="records">
@@ -398,6 +419,8 @@ export function CoachProfile({ locale, id, embedded = false }: { locale: Locale;
             ))}
         </Card>
         {view.can.licence && <DriverLicence locale={locale} profileId={id} />}
+        {/* « Fin de coach »: the departure, for who manages the members and for the coach himself. */}
+        {!embedded && <CoachDeparture locale={locale} profileId={id} />}
       </div>
       )}
     </Root>

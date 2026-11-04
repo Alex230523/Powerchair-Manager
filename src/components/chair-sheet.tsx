@@ -1,4 +1,5 @@
 "use client";
+import { equipmentMoreCopy } from "./equipment-more-copy";
 import Link from "next/link";
 import { ContactPicker } from "./contact-picker";
 import { crmCopy } from "./crm-copy";
@@ -13,8 +14,10 @@ import { errors } from "./access-copy";
 import { Badge, EmptyState, PageHeader, Tabs } from "./ui";
 import { Icon } from "./icons";
 import { LoanActions, loanTone } from "./fleet";
-import { ChairWorkshop, ReportBreakdown } from "./workshop";
+import { ChairQr, ChairWorkshop, ReportBreakdown } from "./workshop";
 import { workshopCopy } from "./workshop-copy";
+import { ChairCompliance } from "./chair-compliance";
+import { knowledgeCopy } from "./knowledge-copy";
 
 export type View = Awaited<ReturnType<typeof equipmentView>>;
 export type Chair = View["chairs"][number];
@@ -27,9 +30,35 @@ const statusTones = { available: "success", in_use: "", maintenance: "warning", 
 const serviceTones = { ok: "success", soon: "warning", due: "danger", unknown: "" } as const;
 
 /** The model of a chair, with « En attente de validation » while the federation has not decided. */
-export function ModelCell({ locale, chair }: { locale: Locale; chair: Pick<Chair, "model_name" | "model_brand" | "model_status" | "model" | "brand"> }) {
-  const f = fleetCopy[locale];
-  if (!chair.model_name) return chair.model ? <>{[chair.brand, chair.model].filter(Boolean).join(" · ")}</> : <span className="muted">{f.noModel}</span>;
+export function ModelCell({
+  locale,
+  chair,
+  onChoose,
+  name,
+}: {
+  locale: Locale;
+  chair: Pick<Chair, "model_name" | "model_brand" | "model_status" | "model" | "brand">;
+  /** 11: « Choisir le modèle » for a chair without one, or one still waiting. */
+  onChoose?: () => void;
+  name?: string;
+}) {
+  const f = fleetCopy[locale],
+    m = equipmentMoreCopy[locale];
+  const choose = onChoose && (
+    <>
+      {" "}
+      <button type="button" className="text-button small" aria-label={name ? m.chooseModelOf(name) : m.chooseModel} onClick={onChoose}>
+        {m.chooseModel}
+      </button>
+    </>
+  );
+  if (!chair.model_name)
+    return (
+      <>
+        {chair.model ? [chair.brand, chair.model].filter(Boolean).join(" · ") : <span className="muted">{f.noModel}</span>} <Badge tone="warning">{m.noModel}</Badge>
+        {choose}
+      </>
+    );
   return (
     <>
       {modelLabel({ brand: chair.model_brand ?? "", name: chair.model_name })}
@@ -37,6 +66,7 @@ export function ModelCell({ locale, chair }: { locale: Locale; chair: Pick<Chair
         <>
           {" "}
           <Badge tone={chair.model_status === "refused" ? "danger" : "warning"}>{f.modelStatus[chair.model_status]}</Badge>
+          {choose}
         </>
       )}
     </>
@@ -81,6 +111,13 @@ export function ChairSheet({ locale, view, chair, busy, send, reload }: { locale
           <dt>{f.cols.model}</dt>
           <dd>
             <ModelCell locale={locale} chair={chair} />
+            {/* G4: the model's sheet in the guide's catalogue. */}
+            {chair.model_id && chair.model_status === "validated" && (
+              <>
+                {" "}
+                <Link href={`/${locale}/guide/chairs/${chair.model_id}`}>{knowledgeCopy[locale].chairs.modelLink}</Link>
+              </>
+            )}
           </dd>
         </div>
         <div>
@@ -156,6 +193,9 @@ export function ChairSheet({ locale, view, chair, busy, send, reload }: { locale
         {tab === "facts" && view.kind === "club" && chair.status !== "retired" && (
           <ReportBreakdown locale={locale} chairId={chair.id} chairName={chair.name} organizationId={view.context.organization_id} done={() => void reload?.()} />
         )}
+        {tab === "facts" && view.kind === "club" && view.manage && chair.status !== "retired" && <ChairQr locale={locale} chairId={chair.id} chairName={chair.name} />}
+        {/* Guide, Le fauteuil de match: « Conforme pour un match », ticked at a service. */}
+        {tab === "facts" && view.kind === "club" && chair.status !== "retired" && <ChairCompliance locale={locale} chairId={chair.id} today={today} />}
         {tab === "workshop" && <ChairWorkshop locale={locale} chairId={chair.id} />}
         {tab === "edit" && <ChairForm key={chair.id + chair.version} locale={locale} view={view} chair={chair} busy={busy} send={send} />}
         {tab === "lend" && <LendPanel locale={locale} view={view} chair={chair} busy={busy} send={send} />}
@@ -550,7 +590,7 @@ export function ChairDialog({ locale, view, chair, busy, send, close, reload }: 
   return (
     <dialog ref={ref} className="player-dialog sheet-dialog" aria-labelledby="chair-sheet-title" onCancel={close}>
       <div className="dialog-heading sheet-heading">
-        <h2 id="chair-sheet-title">{chair.name}</h2>
+        <h2 id="chair-sheet-title">{chair.label ?? chair.name}</h2>
         <div className="sheet-tools">
           <button
             type="button"

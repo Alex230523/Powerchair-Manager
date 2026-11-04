@@ -1,4 +1,5 @@
 "use client";
+import { reservedCopy } from "./reserved-funds-copy";
 import { FinanceNav } from "./finance-nav";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -134,6 +135,14 @@ export function FinanceReport({
               <dt>{x.closing}</dt>
               <dd>{money(report.closing)}</dd>
             </div>
+            {report.reservedAtClose && report.reservedAtClose.total > 0 && (
+              <div>
+                <dt>{reservedCopy[locale].atClose}</dt>
+                <dd>
+                  {money(report.reservedAtClose.total)} ({report.reservedAtClose.items.map((r) => `${r.label} : ${money(r.remaining)}`).join(", ")})
+                </dd>
+              </div>
+            )}
           </dl>
           {report.byTeam.length > 1 && (
             <Card title={x.byTeam} labelledBy="report-teams" headingId="report-teams">

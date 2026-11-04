@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { sidelineCopy } from "./sideline-copy";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam, ApplyScope } from "./use-scope";
@@ -14,18 +15,20 @@ import { matchLineCopy } from "./match-line-copy";
 import { FriendlyDialog, Invitations, MatchLine, ScoreToConfirm, TournamentMatches } from "./match-line";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
-import { Badge, EmptyState, ExportButton, PageHeader } from "./ui";
+import { EmptyState, ExportButton, PageHeader } from "./ui";
+import { MatchRow } from "./match-row";
+import { TeamCard, rowOf } from "./match-cards";
 
 type View = Awaited<ReturnType<typeof matchesView>>;
 type Match = View["matches"][number];
 type Detail = Awaited<ReturnType<typeof matchDetail>>;
-const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** Club matches: fixtures, line-ups, results and player statistics. */
 export function Matches({ locale }: { locale: Locale }) {
   const t = matchesCopy[locale];
   const lc = matchLineCopy[locale];
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const [competition, setCompetition] = useState("");
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
@@ -33,6 +36,7 @@ export function Matches({ locale }: { locale: Locale }) {
     [show, setShow] = useState<"upcoming" | "played" | "all">("upcoming"),
     [editing, setEditing] = useState<Match | "new" | null>(null),
     [friendly, setFriendly] = useState(false),
+    [choosing, setChoosing] = useState(false),
     [dialog, setDialog] = useState<{
       kind: "lineup" | "result";
       match: Match;
@@ -96,16 +100,6 @@ export function Matches({ locale }: { locale: Locale }) {
     if (!r.ok) return setError(failure(v.error));
     setDialog({ kind, match, detail: v });
   }
-  const when = (d: string) =>
-    new Intl.DateTimeFormat(tag(locale), {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Europe/Brussels",
-    }).format(new Date(d));
 
   function saveMatch(e: FormEvent<HTMLFormElement>, current: Match | null) {
     e.preventDefault();
@@ -139,6 +133,7 @@ export function Matches({ locale }: { locale: Locale }) {
   const now = view.today;
   const list = view.matches
     .filter((m) => !team || m.team_id === team)
+    .filter((m) => !competition || m.kind === competition)
     .filter((m) =>
       show === "all"
         ? true
@@ -157,16 +152,8 @@ export function Matches({ locale }: { locale: Locale }) {
     <main id="main" className="access matches">
       <PageHeader title={t.title} subtitle={t.intro} actions={manageable.length > 0 && (
           <div className="directory-actions">
-            {view.can.friendly && (
-              <button type="button" className="button secondary" onClick={() => setFriendly(true)}>
-                {lc.newFriendly}
-              </button>
-            )}
-            <button
-              type="button"
-              className="button"
-              onClick={() => setEditing("new")}
-            >
+            {/* 1: one « Nouveau match »; the window asks friendly or competition first. */}
+            <button type="button" className="button" onClick={() => (view.can.friendly ? setChoosing(true) : setEditing("new"))}>
               {t.add}
             </button>
           </div>
@@ -175,21 +162,12 @@ export function Matches({ locale }: { locale: Locale }) {
       {message && <p role="status">{message}</p>}
       <Invitations locale={locale} view={view} busy={busy} send={send} />
 
+      {/* 5: one card per team, in its colour, to the team's game statistics. */}
       {view.teams.length > 0 && (
         <ul className="team-cards">
           {view.teams.map((x) => (
             <li key={x.id}>
-              <strong>{x.name}</strong>
-              <span className="muted">
-                {t.record
-                  .replace("{p}", String(x.record.played))
-                  .replace("{w}", String(x.record.won))
-                  .replace("{d}", String(x.record.drawn))
-                  .replace("{l}", String(x.record.lost))
-                  .replace("{pts}", String(x.record.points))
-                  .replace("{gf}", String(x.record.goalsFor))
-                  .replace("{ga}", String(x.record.goalsAgainst))}
-              </span>
+              <TeamCard locale={locale} team={x} />
             </li>
           ))}
         </ul>
@@ -219,6 +197,17 @@ export function Matches({ locale }: { locale: Locale }) {
             <option value="all">{t.all}</option>
           </select>
         </label>
+        <label>
+          {t.kind}
+          <select value={competition} onChange={(e) => setCompetition(e.target.value)}>
+            <option value="">{t.allKinds}</option>
+            {matchKinds.map((k) => (
+              <option key={k} value={k}>
+                {t.kinds[k]}
+              </option>
+            ))}
+          </select>
+        </label>
         {/* Wave 17 (G2): the matches shown, with the filters chosen. */}
         <ExportButton
           locale={locale}
@@ -245,144 +234,97 @@ export function Matches({ locale }: { locale: Locale }) {
       </form>
 
       {list.length ? (
-        <div
-          className="table-scroll"
-          role="region"
-          aria-label={t.title}
-          tabIndex={0}
-        >
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col">{t.date2}</th>
-                <th scope="col">{t.team}</th>
-                <th scope="col">{t.opponent}</th>
-                <th scope="col">{t.kind}</th>
-                <th scope="col">{t.score}</th>
-                <th scope="col">{t.referees}</th>
-                <th scope="col">
-                  <span className="sr-only">{t.edit}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((m) => {
-                const report = m.report as {
-                  home_score: number;
-                  away_score: number;
-                  incidents: string;
-                } | null;
-                const official = report
-                  ? fromOurSide(m.home, report.home_score, report.away_score)
-                  : null;
-                const canEdit = manageable.some((x) => x.id === m.team_id);
-                return (
-                  <tr
-                    key={m.id}
-                    data-cancelled={m.status === "cancelled" || undefined}
-                  >
-                    <td>{when(m.starts_at)}</td>
-                    <td>{m.team}</td>
-                    <td>
-                      {/* A5: the match sheet, before, on the day and after. */}
-                      <Link href={`/${locale}/matches/${m.id}`}>
-                        <strong>{m.opponent}</strong>
-                      </Link>
-                      <span className="muted">
-                        {" "}
-                        · {m.home ? t.home : t.away}
-                      </span>
-                      {m.venue && <span className="muted"> · {m.venue}</span>}
-                      <MatchLine locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />
-                    </td>
-                    <td>
-                      {t.kinds[m.kind]}
-                      {m.competition && (
-                        <span className="muted"> · {m.competition}</span>
-                      )}
-                    </td>
-                    <td>
-                      {m.status === "played" ? (
-                        <strong
-                          className={
-                            m.our_score! > m.their_score!
-                              ? "amount-in"
-                              : m.our_score! < m.their_score!
-                                ? "amount-out"
-                                : ""
-                          }
-                        >
-                          {m.our_score}-{m.their_score}
-                        </strong>
-                      ) : (
-                        <Badge tone={
-                            m.status === "cancelled"
-                              ? "danger"
-                              : m.status === "postponed"
-                                ? "warning"
-                                : ""
-                          }>
-                          {t.statuses[m.status]}
-                        </Badge>
-                      )}
+        <ul className="match-list" aria-label={t.title}>
+          {list.map((m) => {
+            const report = m.report as { home_score: number; away_score: number; incidents: string } | null;
+            const official = report ? fromOurSide(m.home, report.home_score, report.away_score) : null;
+            const canEdit = manageable.some((x) => x.id === m.team_id);
+            return (
+              <li key={m.id} data-cancelled={m.status === "cancelled" || undefined}>
+                <MatchRow
+                  locale={locale}
+                  m={rowOf(locale, m)}
+                  details={
+                    <>
+                      {m.status !== "played" && <MatchLine locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />}
                       <ScoreToConfirm locale={locale} m={m} canEdit={canEdit} busy={busy} send={send} />
                       {report && (
                         <details className="report-details">
                           <summary>
                             {t.report} {official?.our}-{official?.their}
                           </summary>
-                          {report.incidents && (
-                            <p className="message-text">{report.incidents}</p>
-                          )}
+                          {report.incidents && <p className="message-text">{report.incidents}</p>}
                         </details>
                       )}
-                    </td>
-                    <td>
-                      {(m.referees as { name: string; status: string }[])
-                        .map((r) => r.name)
-                        .join(", ")}
-                    </td>
-                    <td>
-                      {canEdit && (
-                        <div className="row-actions">
-                          <button
-                            type="button"
-                            className="text-button"
-                            onClick={() => void open("lineup", m)}
-                          >
-                            {t.lineup}
+                    </>
+                  }
+                  actions={
+                    canEdit && (
+                      <div className="row-actions">
+                        <button type="button" className="text-button" onClick={() => void open("lineup", m)}>
+                          {t.lineup}
+                          <span className="sr-only"> : {m.opponent}</span>
+                        </button>
+                        <button type="button" className="text-button" onClick={() => void open("result", m)}>
+                          {t.result}
+                          <span className="sr-only"> : {m.opponent}</span>
+                        </button>
+                        <button type="button" className="text-button" onClick={() => setEditing(m)}>
+                          {t.edit}
+                          <span className="sr-only"> : {m.opponent}</span>
+                        </button>
+                        {/* 14: the match day on a phone. */}
+                        {m.status !== "played" && m.status !== "cancelled" && (
+                          <Link className="text-button" href={`/${locale}/matches/${m.id}/terrain`}>
+                            {sidelineCopy[locale].open}
                             <span className="sr-only"> : {m.opponent}</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="text-button"
-                            onClick={() => void open("result", m)}
-                          >
-                            {t.result}
-                            <span className="sr-only"> : {m.opponent}</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="text-button"
-                            onClick={() => setEditing(m)}
-                          >
-                            {t.edit}
-                            <span className="sr-only"> : {m.opponent}</span>
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          </Link>
+                        )}
+                      </div>
+                    )
+                  }
+                />
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <EmptyState title={t.empty} />
       )}
 
       <TournamentMatches locale={locale} view={view} />
+      {choosing && (
+        <Modal title={t.kindTitle} close={() => setChoosing(false)}>
+          <ul className="choice-cards">
+            <li>
+              <button
+                type="button"
+                className="choice-card"
+                onClick={() => {
+                  setChoosing(false);
+                  setFriendly(true);
+                }}
+              >
+                <strong>{t.kindFriendly}</strong>
+                <span className="muted">{t.kindFriendlyHint}</span>
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="choice-card"
+                onClick={() => {
+                  setChoosing(false);
+                  setEditing("new");
+                }}
+              >
+                <strong>{t.kindCompetition}</strong>
+                <span className="muted">{t.kindCompetitionHint}</span>
+              </button>
+            </li>
+          </ul>
+        </Modal>
+      )}
       {friendly && <FriendlyDialog locale={locale} view={view} busy={busy} close={() => setFriendly(false)} send={send} />}
       {editing && (
         <Modal

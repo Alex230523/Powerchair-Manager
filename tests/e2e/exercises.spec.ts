@@ -37,10 +37,15 @@ test("exercise sheets: create with a diagram, open, print, programme of a traini
     await page.getByRole("button", { name: "Nouvelle fiche" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Titre").fill("Slalom fauteuil");
-    await dialog.getByLabel("Objectif").selectOption("driving");
+    await dialog.getByLabel(/^Type/).selectOption("driving");
     await dialog.getByLabel("Durée (minutes)").fill("20");
     await dialog.getByLabel("Déroulé (les étapes)").fill("1. Plots en ligne\n2. Aller-retour");
-    await dialog.getByLabel("Étiquettes (séparées par des virgules)").fill("conduite, échauffement");
+    // 4: tags are picked or created in a combobox.
+    const tags = dialog.getByRole("combobox", { name: "Tags" });
+    await tags.fill("conduite");
+    await tags.press("Enter");
+    await tags.fill("échauffement");
+    await tags.press("Enter");
     await dialog.getByLabel("Schéma (image ou PDF, 2 Mo maximum)").setInputFiles({ name: "schema.png", mimeType: "image/png", buffer: png });
     await axe(page, "sheet form");
     await dialog.getByRole("button", { name: "Enregistrer" }).click();

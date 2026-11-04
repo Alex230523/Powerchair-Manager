@@ -43,6 +43,18 @@ export const commandSchema = z.discriminatedUnion("action", [
     comment: z.string().trim().max(1000),
     absenceReason: z.enum(absenceReasons).optional(),
   }),
+  /** 27: one answer for several children invited to the same event (« Présents tous les deux »). */
+  z.object({
+    action: z.literal("respondMany"),
+    items: z
+      .array(z.object({ id, expectedVersion: version }))
+      .min(1)
+      .max(10)
+      .refine((v) => new Set(v.map((i) => i.id)).size === v.length),
+    response: z.enum(responses),
+    comment: z.string().trim().max(1000),
+    absenceReason: z.enum(absenceReasons).optional(),
+  }),
   z.object({
     action: z.literal("mark"),
     id,

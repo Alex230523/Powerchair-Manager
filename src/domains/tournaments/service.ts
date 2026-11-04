@@ -1,4 +1,7 @@
+import { designateFromTournament } from "../referees/mirror";
+import { recordCards, suspensionsFor, type Card } from "../discipline/service";
 import { emitWebhook } from "../integrations/webhooks";
+import { fedCan } from "../access/policy";
 import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { account, active, audit, AccessError, validImage, type Principal } from "../access/service";
@@ -54,7 +57,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
   }
 }
 
-const isPresident = (a: Ctx) => (a.kind === "club" && a.role === "club_president") || (a.kind === "federation" && a.role === "federation_president");
+const isPresident = (a: Ctx) => (a.kind === "club" && a.role === "club_president") || (a.kind === "federation" && fedCan(a.role, a.grants, "federation.competitions"));
 /** SQL condition: tournament t is visible to org $1 (federation $2, user $3). */
 const visible = `(t.organization_id=$1
   OR EXISTS(SELECT 1 FROM tournament_club tc WHERE tc.tournament_id=t.id AND tc.organization_id=$1)
@@ -615,11 +618,14 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
           if (input.refereeId && !(await refereeOptions(s)).some((r) => r.id === input.refereeId)) throw new AccessError("NOT_FOUND", 404);
           if (!(await s.c.query("SELECT 1 FROM tournament_day WHERE id=$1 AND tournament_id=$2", [input.dayId, t.id])).rowCount) throw new AccessError("NOT_FOUND", 404);
           if (input.matchId) {
+            const before = (await s.c.query("SELECT referee_user_id FROM tournament_match WHERE id=$1 AND tournament_id=$2", [input.matchId, t.id])).rows[0]?.referee_user_id ?? null;
             const r = await s.c.query(
               "UPDATE tournament_match SET day_id=$3,kickoff=$4,stage=$5,group_label=$6,home_organization_id=$7,away_organization_id=$8,referee_user_id=$9,version=version+1 WHERE id=$1 AND tournament_id=$2 AND status IN ('scheduled','cancelled')",
               [input.matchId, t.id, input.dayId, input.kickoff, input.stage, input.group, input.home, input.away, input.refereeId],
             );
             if (!r.rowCount) throw new AccessError("MATCH_HAS_RESULT", 409);
+            // 25: the referee chosen here is the accepted main designation.
+            if (before !== input.refereeId) await designateFromTournament(s.c, input.matchId, input.refereeId, s.p.userId);
           } else {
             const id = (
               await s.c.query(
@@ -627,6 +633,7 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
                 [t.id, input.dayId, input.kickoff, input.stage, input.group, input.home, input.away, input.refereeId],
               )
             ).rows[0].id as string;
+            if (input.refereeId) await designateFromTournament(s.c, id, input.refereeId, s.p.userId);
             await audit(s.c, org, s.p.userId, "tournament.match", id);
             return { id };
           }
@@ -661,6 +668,21 @@ async function invite(s: Scope, tournamentId: string, clubs: string[]) {
     await s.c.query("INSERT INTO tournament_club(tournament_id,organization_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [tournamentId, club]);
 }
 
+/** 34: the cards of a validated result go to the discipline (each counted once). */
+async function tournamentCards(c: PoolClient, matchId: string) {
+  const rows = (
+    await c.query(
+      "SELECT st.organization_id,st.profile_id,st.yellow_cards,st.red_card,((d.day+m.kickoff) AT TIME ZONE 'Europe/Brussels') AS at FROM tournament_stat st JOIN tournament_match m ON m.id=st.match_id JOIN tournament_day d ON d.id=m.day_id WHERE st.match_id=$1",
+      [matchId],
+    )
+  ).rows as { organization_id: string; profile_id: string; yellow_cards: number; red_card: boolean; at: Date }[];
+  const cards: Card[] = [];
+  for (const r of rows) {
+    for (let i = 1; i <= r.yellow_cards; i++) cards.push({ organizationId: r.organization_id, profileId: r.profile_id, kind: "yellow", competition: "tournament", tournamentMatchId: matchId, playedAt: r.at, seq: i });
+    if (r.red_card) cards.push({ organizationId: r.organization_id, profileId: r.profile_id, kind: "red", competition: "tournament", tournamentMatchId: matchId, playedAt: r.at });
+  }
+  await recordCards(c, cards);
+}
 type ResultInput = Extract<TournamentCommand, { action: "result" | "validate" }>;
 async function report(s: Scope, t: TournamentRow, input: ResultInput) {
   if (t.status !== "open") throw new AccessError("TOURNAMENT_FINISHED", 409);
@@ -683,6 +705,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
     if (m.status !== "reported") throw new AccessError("NOTHING_TO_VALIDATE", 409);
     await s.c.query("UPDATE tournament_match SET status='validated',validated_by=$2,validated_at=now(),version=version+1 WHERE id=$1", [m.id, s.p.userId]);
     await announce(s.c, m.id);
+    await tournamentCards(s.c, m.id);
     await audit(s.c, s.a.organization_id, s.p.userId, "tournament.validate", m.id);
     return { id: m.id };
   }
@@ -698,6 +721,12 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
     ).rows.map((r) => [r.id as string, r.organization_id as string]),
   );
   if (players.size !== ids.length) throw new AccessError("NOT_FOUND", 404);
+  // 34: a suspended player did not play (his figures cannot be entered).
+  const playing = input.stats.filter((x) => x.goals || x.assists || x.yellowCards || x.redCard).map((x) => x.profileId);
+  for (const club of new Set(players.values())) {
+    const suspended = await suspensionsFor(s.c, club, playing.filter((id) => players.get(id) === club));
+    if (suspended.size) throw new AccessError("PLAYER_SUSPENDED", 409);
+  }
   await s.c.query(
     `UPDATE tournament_match SET home_score=$2,away_score=$3,home_shootout=$4,away_shootout=$5,status=$6,
             reported_by=COALESCE(reported_by,$7),reported_at=COALESCE(reported_at,now()),
@@ -718,7 +747,10 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
         x.yellowCards,
         x.redCard,
       ]);
-  if (input.validate) await announce(s.c, m.id);
+  if (input.validate) {
+    await announce(s.c, m.id);
+    await tournamentCards(s.c, m.id);
+  }
   await audit(s.c, s.a.organization_id, s.p.userId, input.validate ? "tournament.validate" : "tournament.result", m.id);
   return { id: m.id };
 }

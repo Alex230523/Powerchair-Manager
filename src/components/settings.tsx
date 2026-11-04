@@ -1,5 +1,13 @@
 "use client";
+import { AttestationAuto, AttestationSignature } from "./attestation-settings";
+import { TripSettings } from "./trip-settings";
+import { AssociationRules } from "./association";
+import { OnboardingSettings } from "./onboarding";
+import { OffboardingSettings } from "./offboarding";
+import { StaffRoles } from "./staff-roles";
 import { TutorialSettings } from "./first-steps";
+import { NewsSetting } from "./news";
+import { newsCopy } from "./news-copy";
 import { PresidencyHandover } from "./presidency";
 import { tutorialAudience } from "@/domains/tutorial/schema";
 import { TaskTemplates } from "./tasks";
@@ -10,6 +18,8 @@ import { durationText } from "./duration-copy";
 import { TeamPlacesSettings } from "./team-places-settings";
 import { ClubObligations } from "./club-obligations";
 import { HallOfFameSettings } from "./hall-of-fame";
+import { ClubSecurity, MyDataRequests } from "./data-care";
+import { ExerciseTagsSettings } from "./exercise-tags-settings";
 import { EventTypesSettings } from "./event-types-settings";
 import { FiscalYearPanel } from "./fiscal-year";
 import Link from "next/link";
@@ -40,6 +50,12 @@ import { exportCopy } from "./export-copy";
 import { Icon } from "./icons";
 import { AccountPanels } from "./account-settings";
 import { ClubIdentity } from "./club-identity";
+import { Privacy } from "./privacy";
+import { People } from "./people";
+import { SeasonCheckPanel } from "./season-check";
+import { AuthorizationSettings } from "./authorization-settings";
+import { seasonPlanCopy } from "./season-plan-copy";
+import { seasonScheduleCopy } from "./season-schedule-copy";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
 import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
@@ -111,30 +127,28 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
     [locale, t.unavailable],
   );
   const load = useCallback(async () => {
-    const [w, p, gv] = await Promise.all([
-      fetch("/api/workspace", { cache: "no-store" }),
-      fetch("/api/people", { cache: "no-store" }),
-      fetch("/api/governance", { cache: "no-store" }),
-    ]);
+    const w = await fetch("/api/workspace", { cache: "no-store" });
     if (!w.ok) throw new Error("UNAVAILABLE");
     const wv = (await w.json()) as WorkspaceState;
+    // Audit 23: the club's people and governance are asked by a club only.
+    const club = wv.selected?.kind === "club";
+    const [p, gv] = club ? await Promise.all([fetch("/api/people", { cache: "no-store" }), fetch("/api/governance", { cache: "no-store" })]) : [null, null];
     setWs(wv);
     setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));
-    setPeople(p.ok ? await p.json() : null);
-    setGov(gv.ok ? await gv.json() : null);
+    setPeople(p?.ok ? await p.json() : null);
+    setGov(gv?.ok ? await gv.json() : null);
   }, []);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      fetch("/api/workspace", { cache: "no-store" }),
-      fetch("/api/people", { cache: "no-store" }),
-      fetch("/api/governance", { cache: "no-store" }),
-    ])
-      .then(async ([w, p, gv]) => {
+    fetch("/api/workspace", { cache: "no-store" })
+      .then(async (w) => {
         if (!w.ok) throw new Error("UNAVAILABLE");
         const wv = (await w.json()) as WorkspaceState;
-        const pv = p.ok ? ((await p.json()) as PeopleState) : null;
-        const gov = gv.ok ? ((await gv.json()) as Governance) : null;
+        // Audit 23: the club's people and governance are asked by a club only.
+        const club = wv.selected?.kind === "club";
+        const [p, gv] = club ? await Promise.all([fetch("/api/people", { cache: "no-store" }), fetch("/api/governance", { cache: "no-store" })]) : [null, null];
+        const pv = p?.ok ? ((await p.json()) as PeopleState) : null;
+        const gov = gv?.ok ? ((await gv.json()) as Governance) : null;
         if (cancelled) return;
         setWs(wv);
         setDraft(Object.fromEntries(wv.members.map((m) => [m.id, m.grants])));
@@ -371,6 +385,12 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "account" && <AccountPanels locale={locale} />}
           {/* Wave 17 (O1): the first-connection tour, started again on demand. */}
           {shown && category === "account" && tutorialAudience(ws?.selected?.role) && <TutorialSettings locale={locale} />}
+          {/* 20: the window after a new delivery, on or off. */}
+          {shown && category === "account" && (
+            <Card title={newsCopy[locale].title} labelledBy="settings-news" headingId="settings-news">
+              <NewsSetting locale={locale} />
+            </Card>
+          )}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
           {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}
@@ -380,12 +400,62 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
           {shown && category === "club" && <ClubObligations locale={locale} />}
+          {/* 21: « Sécurité et données »: the agreement, the export, the closure, retention, the requests. */}
+          {shown && category === "club" && <ClubSecurity locale={locale} />}
+          {/* 17: the statutes' rules for the assembly and the register. */}
+          {shown && category === "club" && <AssociationRules locale={locale} />}
           {shown && category === "club" && <TaxApproval locale={locale} />}
+          {/* 9: the signatory and the signature of the mutual attestations (administrators only). */}
+          {shown && category === "club" && gov && !gov.disabled.includes("dues") && <AttestationSignature locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}
           {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
-          {/* Wave 17 (G1): the president hands over the presidency. */}
-          {shown && category === "members" && ws?.selected?.role === "club_president" && <PresidencyHandover locale={locale} />}
+          {/* Wave 17 (G1): the president hands over the presidency (12: under Club). */}
+          {shown && category === "club" && ws?.selected?.role === "club_president" && (
+            <div id="settings-presidency">
+              <PresidencyHandover locale={locale} />
+            </div>
+          )}
+          {/* 12: « Mes données » for everyone, the club's personal data for whom may see them. */}
+          {shown && category === "data" && (
+            <Card title={h.myDataTitle} labelledBy="settings-my-data" headingId="settings-my-data">
+              <p className="muted">{h.myDataText}</p>
+              <p>
+                <a className="button secondary" href="/api/privacy/mine" download>
+                  {h.myDataExport}
+                </a>
+              </p>
+              <p className="muted">
+                {h.myDataFix} <Link href={`/${locale}/settings/account`}>{h.myDataAccount}</Link>
+              </p>
+            </Card>
+          )}
+          {/* 21: a request about one's data, sent to the club that holds it. */}
+          {shown && category === "data" && <MyDataRequests locale={locale} />}
+          {shown && category === "data" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />}
+          {/* 12: seasons, teams and the season's passage (the former « Gestion du club »). */}
+          {shown && category === "seasons" && <People locale={locale} management embedded />}
+          {/* 8: the start-of-season check, launched and followed here. */}
+          {shown && category === "seasons" && <SeasonCheckPanel locale={locale} />}
+          {/* 16: the yearly assistant, for the presidency. */}
+          {shown && category === "seasons" && ws?.selected?.role === "club_president" && (
+            <Card title={seasonPlanCopy[locale].settingsTitle} labelledBy="settings-season-plan" headingId="settings-season-plan">
+              <p className="muted">{seasonPlanCopy[locale].settingsText}</p>
+              <p>
+                <Link className="button" href={`/${locale}/club/season-plan`}>
+                  {seasonPlanCopy[locale].settingsTitle}
+                </Link>
+              </p>
+            </Card>
+          )}
+          {shown && category === "seasons" && (
+            <Card title={h.rolloverTitle} labelledBy="settings-rollover" headingId="settings-rollover">
+              <p className="muted">{h.rolloverText}</p>
+              <p>
+                <Link href={`/${locale}/club/rollover`}>{h.rolloverLink}</Link>
+              </p>
+            </Card>
+          )}
           {shown && category === "members" && !manage && !(gov && (gov.can.profiles || gov.profiles.length > 0)) && <EmptyState title={t.noMember} />}
 
           {shown && category === "account" && manage && ws.selected?.role === "club_president" && people && (
@@ -600,6 +670,11 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
               </Modal>
             );
           })()}
+          {/* Parcours d'accueil: the templates and the follow-up (a club's people, a federation's referees and staff). */}
+          {/* 7: the staff roles, models of rights over the grants. */}
+          {shown && category === "members" && ws?.selected?.kind === "club" && <StaffRoles locale={locale} />}
+          {shown && category === "members" && <OnboardingSettings locale={locale} />}
+          {shown && category === "members" && ws?.selected?.kind === "club" && <OffboardingSettings locale={locale} />}
           {shown && category === "members" && gov && (gov.can.profiles || gov.profiles.length > 0) && (
             <ProfilesPanel
               locale={locale}
@@ -614,22 +689,33 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           )}
           {shown && category === "activities" && gov?.can.presence && <TeamPlacesSettings locale={locale} />}
           {shown && category === "activities" && <EventTypesSettings locale={locale} />}
+          {/* 4: the exercise sheets' tags, shared by the coaches. */}
+          {shown && category === "activities" && <ExerciseTagsSettings locale={locale} />}
+          {/* H9: the holidays of reference, the closures and the season planner. */}
+          {shown && category === "activities" && (
+            <Card title={seasonScheduleCopy[locale].referenceTitle} labelledBy="settings-holidays" headingId="settings-holidays">
+              <p className="muted">{seasonScheduleCopy[locale].settingsText}</p>
+              <p>
+                <Link className="button" href={`/${locale}/calendar/season`}>
+                  {seasonScheduleCopy[locale].open}
+                </Link>
+              </p>
+            </Card>
+          )}
           {/* Wave 17 (O1): the task templates (transport, training…), for those who plan. */}
           {shown && category === "activities" && <TaskTemplates locale={locale} />}
+          {/* 3: the mileage allowance's rate for private vehicles on trips. */}
+          {shown && category === "activities" && <TripSettings locale={locale} />}
+          {/* 28: the parental authorizations' texts. */}
+          {shown && category === "documents" && <AuthorizationSettings locale={locale} />}
           {shown && category === "money" && gov?.can.presence && !gov.disabled.includes("dues") && (
             <DuesSettingsPanel locale={locale} organizationId={gov.organizationId} rules={gov.dues} busy={busy} post={post} />
           )}
           {shown && category === "money" && gov && !gov.disabled.includes("finance") && <FiscalYearPanel locale={locale} />}
+          {/* 9: the attestation sent by itself once the season is paid in full. */}
+          {shown && category === "money" && gov && !gov.disabled.includes("dues") && <AttestationAuto locale={locale} />}
           {shown && category === "journals" && gov?.can.rightsJournal && <Journal locale={locale} kind="rights" />}
           {shown && category === "journals" && gov?.can.healthJournal && <Journal locale={locale} kind="health" />}
-          {shown && category === "journals" && (own.has("audit.read") || own.has("mandates.manage")) && (
-            <Card title={h.privacyTitle} labelledBy="settings-privacy" headingId="settings-privacy">
-              <p className="muted">{h.privacyText}</p>
-              <p>
-                <Link href={`/${locale}/privacy`}>{h.privacyLink}</Link>
-              </p>
-            </Card>
-          )}
         </div>
       </div>
       {leaving && (

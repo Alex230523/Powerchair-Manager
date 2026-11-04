@@ -1,6 +1,7 @@
 /**
  * Audits 23 and 26: `node scripts/audit.mjs ui` (npm run audit:ui) or
- * `access` (npm run audit:access). A throwaway database, the migrations,
+ * `access` (npm run audit:access); `help` (npm run audit:help) takes the
+ * captures of the guide's how-to sheets and flags those whose screen changed. A throwaway database, the migrations,
  * the demo (public password, local only), then Playwright with
  * playwright.audit.config.ts. The report lands in audit-report/.
  * AUDIT_RECORD=1 notes what is found without failing (first run, review).
@@ -10,8 +11,8 @@ import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 
 const kind = process.argv[2];
-if (kind !== "ui" && kind !== "access") {
-  console.error("Usage: node scripts/audit.mjs ui|access");
+if (kind !== "ui" && kind !== "access" && kind !== "help") {
+  console.error("Usage: node scripts/audit.mjs ui|access|help");
   process.exit(2);
 }
 const base = new URL(process.env.DATABASE_URL);
@@ -42,12 +43,15 @@ try {
   await run("node", ["scripts/migrate.mjs"], env);
   await run("node", ["--import", "tsx", "scripts/demo-seed.ts"], env);
   try {
-    await run("node", ["node_modules/@playwright/test/cli.js", "test", "--config", "playwright.audit.config.ts", kind === "ui" ? "ui.spec" : "access.spec", ...process.argv.slice(3)], env);
+    const spec = { ui: "ui.spec", access: "access.spec", help: "help.spec" }[kind];
+    // The how-to captures: a missing one is written (public/help), a changed one only reported.
+    const extra = kind === "help" ? ["--update-snapshots=missing"] : [];
+    await run("node", ["node_modules/@playwright/test/cli.js", "test", "--config", "playwright.audit.config.ts", spec, ...extra, ...process.argv.slice(3)], env);
   } catch (e) {
     failed = true;
     console.error(e.message);
   }
-  await run("node", ["--import", "tsx", "scripts/audit-report.ts", kind], env);
+  if (kind !== "help") await run("node", ["--import", "tsx", "scripts/audit-report.ts", kind], env);
 } finally {
   await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
   await admin.end();

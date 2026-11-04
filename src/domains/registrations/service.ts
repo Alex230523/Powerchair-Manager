@@ -298,6 +298,10 @@ async function details<R extends Record<string, unknown>>(
   const { confidential_answers, ...rest } = row;
   return {
     ...rest,
+    // 23: a snapshot written before the fee was filled in (older data, demo) is filled at read time too.
+    ...(row.form_snapshot && typeof row.organization_id === "string" && typeof row.season_id === "string"
+      ? { form_snapshot: fillDues(row.form_snapshot, await seasonFee(c, row.organization_id, row.season_id)) }
+      : {}),
     answers: sensitive ? allAnswers(row) : (row.answers as Answers),
     // Staff without people.sensitive see that confidential answers exist, not their content.
     confidential_hidden: !sensitive && !!confidential_answers,

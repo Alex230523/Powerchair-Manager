@@ -1,7 +1,8 @@
 import type { Pool, PoolClient } from "pg";
+import { reservedAt } from "../finance/allocations";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
-import { permissions } from "../access/policy";
+import { moneyRights } from "../access/policy";
 import { categories } from "../finance/schema";
 import {
   assemblyDeadline,
@@ -33,11 +34,12 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
     await c.query(`SELECT id FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id]);
     const user = await account(c, p);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
-    if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
-    const rights = permissions(a.role, a.grants);
-    if (!rights.includes("dues.manage") && (write || !rights.includes("dues.read"))) throw new AccessError("FORBIDDEN");
+    if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("CLUB_ONLY");
+    // 35: the federation's annual accounts, with its finance competence.
+    const money = moneyRights(a);
+    if (!money.manage && (write || !money.read)) throw new AccessError("FORBIDDEN");
     if (!mfaSatisfied(!!user.twoFactorEnabled)) throw new AccessError("MFA_REQUIRED");
-    const out = await fn({ c, org: a.organization_id, userId: p.userId, manage: rights.includes("dues.manage") });
+    const out = await fn({ c, org: a.organization_id, userId: p.userId, manage: money.manage });
     await c.query("COMMIT");
     return out;
   } catch (e) {
@@ -195,6 +197,8 @@ export async function accountsView(db: Pool, p: Principal, yearStart?: string) {
         categories.map((category) => ({ direction, category, rubric: mapping.get(`${direction}:${category}`) ?? defaultRubric(direction, category as Category), custom: mapping.has(`${direction}:${category}`) })),
       ),
       suggestions: { loans, partners },
+      /** 9: the reserved funds still left at the closing. */
+      reserved: await reservedAt(s.c, s.org, year.to),
       deadlines: { assembly: assemblyDeadline(year.to), filing: record?.approved_on ? filingDeadline(record.approved_on) : null },
       club: { name: identity.name as string, company_number: identity.company_number as string, address: identity.address as string, logo_version: identity.logo_version as string | null },
     };
@@ -283,6 +287,30 @@ export async function accountsExecute(db: Pool, p: Principal, cmd: AccountsComma
     },
     expected,
   );
+}
+
+/**
+ * 17: the general assembly approved the accounts. Verified accounts become
+ * approved (frozen as the assembly saw them); the filing task follows from
+ * accountsDeadlines. Returns whether they were approved.
+ */
+export async function approveAtAssembly(c: PoolClient, org: string, yearStart: string, on: string, userId: string) {
+  const start = await fiscalStart(c, org);
+  const year = fiscalYear(start, yearStart);
+  const r = await live(c, org, year.from);
+  if (!r || r.status !== "verified" || on < year.to) return false;
+  const snapshot = { ...(await compute(c, org, year.from, year.to, r.manual)), manual: r.manual, commitments: r.commitments };
+  await c.query("UPDATE annual_accounts SET status='approved',approved_on=$2,snapshot=$3,updated_at=now(),row_version=row_version+1 WHERE id=$1", [r.id, on, JSON.stringify(snapshot)]);
+  await audit(c, org, userId, "accounts.approve", r.id, { by: "assembly" });
+  return true;
+}
+
+/** The last closed financial year and the date its assembly must be held by. */
+export async function lastClosedYear(c: PoolClient, org: string) {
+  const start = await fiscalStart(c, org);
+  const last = previousYear(start, fiscalYear(start, brusselsToday()).from);
+  const r = await live(c, org, last.from);
+  return { ...last, deadline: assemblyDeadline(last.to), status: r?.status ?? null };
 }
 
 /** The accounts' deadlines for the calendar layer and the home: the assembly, then the filing. */

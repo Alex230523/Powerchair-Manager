@@ -1,4 +1,6 @@
+import { autoEntry } from "../finance/auto";
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { offerUndo } from "../undo/service";
@@ -39,7 +41,7 @@ const feeColumns =
   "f.id,f.organization_id,f.name,f.description,f.contact_id,f.basis,f.frequency,f.amount_cents,f.opens_month,f.opens_day,f.due_days,f.due_month,f.due_day,f.all_clubs,f.archived,f.created_by";
 
 /** The fees a club owes: its own, and its federation's for all clubs or for it. */
-async function feesOf(c: PoolClient, club: string) {
+export async function feesOf(c: PoolClient, club: string) {
   return (
     await c.query(
       `SELECT ${feeColumns} FROM affiliation_fee f JOIN organization club ON club.id=$1
@@ -89,7 +91,52 @@ export async function ensureDues(c: PoolClient, club: string, today = brusselsTo
     );
     created.push(due);
   }
+  await affiliationTasks(c, club);
   return created;
+}
+
+/**
+ * 2 (8): each open due of the club is a task « Affiliation et fédération »
+ * with its amount (« 12 × 10,00 € »), its deadline and the president in
+ * charge (reminders at J-7 and J-1). Once per due; « en ordre » closes it,
+ * and the next period brings the next one.
+ */
+async function affiliationTasks(c: PoolClient, club: string) {
+  const dues = (
+    await c.query(
+      `SELECT d.id,d.period,d.due_on::text AS due_on,d.players,d.amount_cents,f.name,f.basis,f.amount_cents AS unit,f.created_by FROM affiliation_due d JOIN affiliation_fee f ON f.id=d.fee_id
+        WHERE d.organization_id=$1 AND d.paid_on IS NULL AND NOT EXISTS(SELECT 1 FROM task t WHERE t.affiliation_due_id=d.id)`,
+      [club],
+    )
+  ).rows as { id: string; period: string; due_on: string; players: number | null; amount_cents: number; name: string; basis: "player" | "club"; unit: number; created_by: string }[];
+  if (!dues.length) return;
+  const president = (
+    await c.query(
+      `SELECT cp.id,r.user_id FROM role_assignment r JOIN person pe ON pe.user_id=r.user_id JOIN club_person cp ON cp.person_id=pe.id AND cp.organization_id=r.organization_id
+        WHERE r.organization_id=$1 AND r.role='club_president' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND cp.status='active' ORDER BY r.valid_from LIMIT 1`,
+      [club],
+    )
+  ).rows[0] as { id: string; user_id: string } | undefined;
+  const euro = (cents: number) => new Intl.NumberFormat("fr-BE", { style: "currency", currency: "EUR" }).format(cents / 100);
+  for (const d of dues) {
+    const about = `${d.name} ${d.period}`.slice(0, 160);
+    await c.query(
+        `INSERT INTO task(organization_id,kind,category,title,detail,due_on,responsible_id,origin,created_by,source_key,source_kind,source_params,amount_cents,affiliation_due_id)
+         VALUES($1,'other','affiliation',$2,$3,$4,$5,'template',$6,$7,'affiliationDue',$8,$9,$10) ON CONFLICT DO NOTHING RETURNING id`,
+        [
+          club,
+          about,
+          d.basis === "player" && d.players !== null ? `${d.players} × ${euro(d.unit)}` : euro(d.amount_cents),
+          d.due_on,
+          president?.id ?? null,
+          president?.user_id ?? d.created_by,
+          `affiliation:${d.id}`,
+          JSON.stringify({ about }),
+          d.amount_cents,
+          d.id,
+        ],
+      );
+  }
 }
 
 const dueColumns = `d.id,d.fee_id,d.organization_id,d.period,d.opens_on::text AS opens_on,d.due_on::text AS due_on,d.players,d.amount_cents,d.paid_on::text AS paid_on,d.transaction_id,
@@ -225,6 +272,27 @@ export async function clubAffiliationsExecute(db: Pool, p: Principal, command: C
           )
         ).rows[0].id;
       await s.c.query("UPDATE affiliation_due SET paid_on=$2,marked_by=$3,transaction_id=$4 WHERE id=$1", [due.id, command.paidOn, s.userId, transaction]);
+      // 35: a federation's fee paid is the federation's income (the club's name, nothing else of it).
+      if (due.owner_kind === "federation") {
+        const club = (await s.c.query("SELECT name FROM organization WHERE id=$1", [s.org])).rows[0].name as string;
+        await autoEntry(s.c, {
+          org: due.owner_id,
+          source: "affiliation",
+          ref: due.id,
+          direction: "in",
+          category: "affiliation",
+          amountCents: due.amount_cents,
+          label: `${due.name} ${due.period} · ${club}`,
+          counterparty: club,
+          occurredOn: command.paidOn,
+          by: s.userId,
+        });
+      }
+      // 2: « en ordre » closes its task (and keeps the expense on it, never written twice).
+      await s.c.query(
+        "UPDATE task SET status='done',done_on=$2,auto_closed=true,transaction_id=COALESCE(transaction_id,$3),updated_at=now() WHERE affiliation_due_id=$1 AND organization_id=$4 AND status<>'done'",
+        [due.id, command.paidOn, transaction, s.org],
+      );
       await audit(s.c, s.org, s.userId, "affiliation.paid", due.id);
       return { ok: true as const, transaction, undo: await offerUndo(s.c, s.org, s.userId, "affiliationPaid", due.id, { transaction }) };
     },
@@ -241,9 +309,9 @@ async function federationScope<T>(db: Pool, p: Principal, write: boolean, fn: (s
     const a = await active(c, p);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "federation") throw new AccessError("FEDERATION_ONLY");
-    if (!["federation_president", "federation_worker"].includes(a.role)) throw new AccessError("FORBIDDEN");
+    if (!fedCan(a.role, a.grants, "federation.licences") && !fedCan(a.role, a.grants, "federation.finance")) throw new AccessError("FORBIDDEN");
     await account(c, p);
-    const manage = a.role === "federation_president";
+    const manage = fedCan(a.role, a.grants, "federation.licences");
     if (write && !manage) throw new AccessError("FORBIDDEN");
     await c.query("SELECT id FROM organization WHERE id=$1 FOR UPDATE", [a.organization_id]);
     const clubs = (await c.query("SELECT id FROM organization WHERE kind='club' AND federation_id=$1 ORDER BY id", [a.organization_id])).rows.map((r) => r.id as string);

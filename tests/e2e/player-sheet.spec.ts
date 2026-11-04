@@ -57,7 +57,7 @@ test("single sheet in a window, former players' situation, in memoriam", async (
     await page.goto("/fr/players");
     await expect(page.getByRole("row").filter({ hasText: "Zoé Présente" })).toBeVisible();
     await expect(page.getByLabel("Âge minimum")).toHaveCount(0);
-    await page.goto("/fr/club/manage");
+    await page.goto("/fr/settings/seasons");
     await expect(page.getByLabel("Âge minimum")).toHaveCount(0);
 
     // 2. A click on the name opens the single sheet in a window; « Agrandir » gives its page and address.

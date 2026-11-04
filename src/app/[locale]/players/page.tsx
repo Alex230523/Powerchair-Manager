@@ -7,10 +7,10 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ create?: string; import?: string }>;
+  searchParams: Promise<{ create?: string; import?: string; missing?: string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const query = await searchParams;
-  return <PlayerDirectory locale={locale} role="player" former={false} create={query.create === "1"} importing={query.import === "1"} />;
+  return <PlayerDirectory locale={locale} role="player" former={false} create={query.create === "1"} importing={query.import === "1"} missingGuardian={query.missing === "guardian"} />;
 }

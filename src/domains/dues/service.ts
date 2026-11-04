@@ -142,20 +142,43 @@ export async function duesView(db: Pool, p: Principal) {
                 0,
               )
           : 0;
+      // 29: two homes. The split chosen by the club (each representative's share), and who may be recorded as payer.
+      d.split = (
+        await s.c.query(
+          "SELECT b.guardian_profile_id AS id,cp.full_name,b.percent FROM billing_split b JOIN club_person cp ON cp.id=b.guardian_profile_id WHERE b.subject_profile_id=$1 ORDER BY cp.full_name",
+          [d.profile_id],
+        )
+      ).rows;
+      d.payers = s.manage
+        ? (
+            await s.c.query(
+              "SELECT DISTINCT gp.id,gp.full_name FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id WHERE g.organization_id=$1 AND g.subject_profile_id=$2 AND g.revoked_at IS NULL AND gp.status='active' ORDER BY gp.full_name",
+              [o, d.profile_id],
+            )
+          ).rows
+        : [];
       d.payments = (
         await s.c.query(
-          "SELECT id,occurred_on::text AS occurred_on,amount_cents,method,reference,cancelled_at FROM finance_transaction WHERE receivable_id=$1 AND direction='in' ORDER BY occurred_on,created_at",
+          "SELECT t.id,t.occurred_on::text AS occurred_on,t.amount_cents,t.method,t.reference,t.cancelled_at,t.payer_profile_id,pp.full_name AS payer_name FROM finance_transaction t LEFT JOIN club_person pp ON pp.id=t.payer_profile_id WHERE t.receivable_id=$1 AND t.direction='in' ORDER BY t.occurred_on,t.created_at",
           [d.id],
         )
       ).rows;
     }
+    // 29: a representative left out of a child's split no longer receives that child's dues; the others see their share.
+    const mine = s.readAll
+      ? []
+      : (await s.c.query("SELECT cp.id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE cp.organization_id=$1 AND pe.user_id=$2", [o, p.userId])).rows.map((r) => r.id as string);
+    const shown = s.readAll
+      ? debts
+      : debts.filter((d) => !d.split.length || mine.includes(d.profile_id) || d.split.some((x: { id: string }) => mine.includes(x.id)));
+    for (const d of shown) d.myPercent = s.readAll ? null : (d.split.find((x: { id: string; percent: number }) => mine.includes(x.id))?.percent ?? null);
     return {
       organizationId: o,
       // A3: the rate issued by itself when a registration is accepted.
       autoPlanId: s.manage ? (((await s.c.query("SELECT dues_auto_plan_id FROM organization WHERE id=$1", [o])).rows[0]?.dues_auto_plan_id ?? null) as string | null) : null,
       manage: s.manage,
       readOnly: s.readAll && !s.manage,
-      debts,
+      debts: shown,
       plans: s.readAll
         ? (
             await s.c.query(
@@ -245,19 +268,30 @@ export async function duesExecute(
           )
         ).rows[0].n as number;
         if (paid + cmd.amountCents > d.net_cents) throw new AccessError("OVERPAID", 409);
+        // 29: the payer is one of the child's representatives (or the person himself).
+        const payer = cmd.payerProfileId
+          ? ((
+              await s.c.query(
+                "SELECT cp.full_name FROM club_person cp WHERE cp.id=$1 AND cp.organization_id=$2 AND (cp.id=$3 OR EXISTS(SELECT 1 FROM guardian_relationship g WHERE g.guardian_profile_id=cp.id AND g.subject_profile_id=$3 AND g.revoked_at IS NULL))",
+                [cmd.payerProfileId, o, d.profile_id],
+              )
+            ).rows[0] as { full_name: string } | undefined)
+          : undefined;
+        if (cmd.payerProfileId && !payer) throw new AccessError("NOT_FOUND", 404);
         const row = (
           await s.c.query(
-            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id) VALUES($1,$2,$3,'in','dues',$4,$5,$6,$7,'',$8,$9) RETURNING id",
+            "INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,method,counterparty,reference,notes,created_by,receivable_id,payer_profile_id) VALUES($1,$2,$3,'in','dues',$4,$5,$6,$7,'',$8,$9,$10) RETURNING id",
             [
               o,
               cmd.occurredOn,
               `Cotisation ${d.full_name}`.slice(0, 160),
               cmd.amountCents,
               cmd.method,
-              d.full_name,
+              payer?.full_name ?? d.full_name,
               cmd.reference,
               p.userId,
               d.id,
+              cmd.payerProfileId ?? null,
             ],
           )
         ).rows[0];

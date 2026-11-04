@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/discipline",
+  "image": null,
+  "fr": {
+    "title": "Les sanctions suivent les cartons",
+    "text": "Les cartons des rapports validés proposent une suspension selon les règles de la fédération. Un joueur suspendu ne peut pas être aligné, et le club peut introduire un recours."
+  },
+  "nl": {
+    "title": "Sancties volgen de kaarten",
+    "text": "De kaarten van gevalideerde verslagen stellen een schorsing voor volgens de regels van de federatie. Een geschorste speler kan niet opgesteld worden, en de club kan in beroep gaan."
+  },
+  "en": {
+    "title": "Sanctions follow the cards",
+    "text": "The cards of validated reports propose a suspension under the federation's rules. A suspended player cannot be fielded, and the club can lodge an appeal."
+  }
+}

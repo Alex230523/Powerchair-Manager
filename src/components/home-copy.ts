@@ -13,6 +13,8 @@ type HomeCopy = {
   noClubLink: string;
   /** 24: an old link to the messaging. */
   messagingRemoved: string;
+  /** 12: the president's shortcut. */
+  clubSettings: string;
   chooseProfile: string;
   todo: string;
   allClear: string;
@@ -146,6 +148,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Réessayer",
     noClub: "Vous êtes connecté, mais votre compte n'est encore relié à aucun club.",
     noClubLink: "Choisir mon club ou mon profil",
+    clubSettings: "Réglages du club",
     messagingRemoved: "La messagerie a été retirée. Les nouvelles du club arrivent par la Communication du club et les notifications.",
     open: "Ouvrir",
     todos: {
@@ -217,6 +220,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Équipes au-delà de leurs places",
         text: "Plus de joueurs que de places : revoyez les places ou les affectations",
       },
+      minorsWithoutGuardian: {
+        title: "Joueurs mineurs sans responsable",
+        text: "Ajoutez un parent ou un responsable légal à leur fiche",
+      },
       documentsExpiring: {
         title: "Expirent sous 30 jours",
         text: "À anticiper",
@@ -234,6 +241,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       waitingList: { label: "Liste d’attente" },
       acceptedRecently: { label: "Acceptées", hint: "14 derniers jours" },
       treasury: { label: "Trésorerie", hint: "Solde du grand livre" },
+      available: { label: "Disponible", hint: "Trésorerie moins les fonds réservés" },
+      forecastLow: { label: "Trésorerie prévue sous le seuil", hint: "Dans les 3 prochains mois : voir les prévisions" },
       duesNext30: {
         label: "Échéances à 30 jours",
         hint: "Montant prévu, paiements suivis au lot bancaire",
@@ -244,7 +253,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       seasonCoaches: { label: "Coachs", hint: "Coachs et assistants" },
       chairs: { label: "Fauteuils", hint: "Fauteuils du club" },
       trainingsDone: { label: "Entraînements faits", hint: "Cette saison" },
-      matchesPlayed: { label: "Matchs joués", hint: "Cette saison, chaque match compte" },
+      matchesPlayed: { label: "Matchs joués" },
     },
   },
   nl: {
@@ -328,6 +337,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Opnieuw proberen",
     noClub: "U bent aangemeld, maar uw account is nog aan geen enkele club gekoppeld.",
     noClubLink: "Mijn club of profiel kiezen",
+    clubSettings: "Clubinstellingen",
     messagingRemoved: "De berichtendienst is verwijderd. Het clubnieuws komt via de clubcommunicatie en de meldingen.",
     open: "Openen",
     todos: {
@@ -399,6 +409,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Teams boven hun plaatsen",
         text: "Meer spelers dan plaatsen: herzie de plaatsen of de toewijzingen",
       },
+      minorsWithoutGuardian: {
+        title: "Minderjarige spelers zonder verantwoordelijke",
+        text: "Voeg een ouder of wettelijke vertegenwoordiger toe aan hun fiche",
+      },
       documentsExpiring: {
         title: "Verlopen binnen 30 dagen",
         text: "Tijdig opvolgen",
@@ -416,6 +430,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       waitingList: { label: "Wachtlijst" },
       acceptedRecently: { label: "Aanvaard", hint: "Laatste 14 dagen" },
       treasury: { label: "Kas", hint: "Saldo van het grootboek" },
+      available: { label: "Beschikbaar", hint: "Kas min de bestemde fondsen" },
+      forecastLow: { label: "Verwachte kas onder de drempel", hint: "In de komende 3 maanden: zie de prognose" },
       duesNext30: {
         label: "Vervaldagen binnen 30 dagen",
         hint: "Gepland bedrag, betalingen volgen in de bankfase",
@@ -426,7 +442,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       seasonCoaches: { label: "Coaches", hint: "Coaches en assistenten" },
       chairs: { label: "Rolstoelen", hint: "Rolstoelen van de club" },
       trainingsDone: { label: "Gegeven trainingen", hint: "Dit seizoen" },
-      matchesPlayed: { label: "Gespeelde wedstrijden", hint: "Dit seizoen, elke wedstrijd telt" },
+      matchesPlayed: { label: "Gespeelde wedstrijden" },
     },
   },
   en: {
@@ -510,6 +526,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     retry: "Try again",
     noClub: "You are signed in, but your account is not linked to any club yet.",
     noClubLink: "Choose my club or profile",
+    clubSettings: "Club settings",
     messagingRemoved: "The messaging has been removed. Club news arrives through the club communication and the notifications.",
     open: "Open",
     todos: {
@@ -581,6 +598,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Teams over their places",
         text: "More players than places: review the places or the assignments",
       },
+      minorsWithoutGuardian: {
+        title: "Minor players without a guardian",
+        text: "Add a parent or legal guardian to their record",
+      },
       documentsExpiring: {
         title: "Expiring within 30 days",
         text: "Plan ahead",
@@ -598,6 +619,8 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       waitingList: { label: "Waiting list" },
       acceptedRecently: { label: "Accepted", hint: "Last 14 days" },
       treasury: { label: "Treasury", hint: "Ledger balance" },
+      available: { label: "Available", hint: "Cash minus the reserved funds" },
+      forecastLow: { label: "Forecast cash under the threshold", hint: "In the next 3 months: see the forecast" },
       duesNext30: {
         label: "Due within 30 days",
         hint: "Scheduled amount, payments tracked with the bank module",
@@ -608,7 +631,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       seasonCoaches: { label: "Coaches", hint: "Coaches and assistants" },
       chairs: { label: "Wheelchairs", hint: "The club's wheelchairs" },
       trainingsDone: { label: "Trainings held", hint: "This season" },
-      matchesPlayed: { label: "Matches played", hint: "This season, every match counts" },
+      matchesPlayed: { label: "Matches played" },
     },
   },
 };

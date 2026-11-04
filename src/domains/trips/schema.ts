@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { stopKinds, tripModes, vehicleKinds } from "./transport";
 
 const id = z.uuid();
 const text = (n: number) => z.string().trim().max(n);
 const date = z.iso.date();
+const cents = z.number().int().min(0).max(10000000);
 const time = z.union([z.literal(""), z.string().regex(/^[0-2]\d:[0-5]\d$/)]);
 export const tripKinds = ["tournament", "away_match", "camp", "other"] as const;
 export const tripStatuses = ["planned", "confirmed", "done", "cancelled"] as const;
@@ -42,6 +44,12 @@ const tripFields = z.object({
   finalRank: z.number().int().min(1).max(500).nullable().optional(),
   teamsCount: z.number().int().min(1).max(500).nullable().optional(),
   resultNote: text(160).optional(),
+  /** 3: transport (one day) or stay; absent: from the dates on creation, unchanged on update. */
+  mode: z.enum(tripModes).optional(),
+  /** 3: what the trip serves (one event, one match or one tournament day); absent: unchanged. */
+  calendarEventId: id.nullable().optional(),
+  matchId: id.nullable().optional(),
+  tournamentDayId: id.nullable().optional(),
 });
 export const tripCommand = z.discriminatedUnion("action", [
   z.object({
@@ -86,7 +94,71 @@ export const tripCommand = z.discriminatedUnion("action", [
     wheelchairPlaces: z.number().int().min(0).max(20),
     notes: text(500),
     passengers: z.array(id).max(80),
+    /* 3: the kind of vehicle and what goes with it. */
+    kind: z.enum(vehicleKinds).default("club"),
+    rentalContactId: id.nullable().default(null),
+    pickupAddress: text(300).default(""),
+    returnAddress: text(300).default(""),
+    bookingRef: text(80).default(""),
+    plannedCostCents: cents.nullable().default(null),
+    depositCents: cents.nullable().default(null),
+    ownerProfileId: id.nullable().default(null),
+    ownerContactId: id.nullable().default(null),
+    ramp: z.boolean().default(false),
+    mileage: z.boolean().default(false),
+    distanceKm: z.number().int().min(0).max(10000).nullable().default(null),
+    fuelCents: cents.nullable().default(null),
+    equipment: text(1000).default(""),
+    /** Several drivers (out and back); absent: the single driver above. */
+    drivers: z.array(z.object({ profileId: id, legs: z.enum(["both", "out", "back"]) })).max(6).optional(),
+    chairs: z.array(id).max(20).default([]),
   }),
+  /** 4: the round of a vehicle, in order; the list replaces the former one. */
+  z.object({
+    action: z.literal("stops"),
+    vehicleId: id,
+    stops: z
+      .array(
+        z.object({
+          id: id.optional(),
+          kind: z.enum(stopKinds),
+          label: text(160).default(""),
+          placeId: id.nullable().default(null),
+          sharedVenueId: id.nullable().default(null),
+          address: text(300).default(""),
+          at: z.iso.datetime({ offset: true }).nullable().default(null),
+          minutes: z.number().int().min(0).max(2000).nullable().default(null),
+          notes: text(500).default(""),
+          people: z.array(id).max(10).default([]),
+        }),
+      )
+      .max(30),
+  }),
+  /** 4: the steps proposed for the vehicle's kind, when its round is empty. */
+  z.object({ action: z.literal("suggestStops"), vehicleId: id }),
+  /** 7: the tasks drawn from the steps, checked then sent to the to-do (once each). */
+  z.object({
+    action: z.literal("tasks"),
+    tripId: id,
+    items: z
+      .array(
+        z.object({
+          key: z.string().regex(/^(book|stop):[0-9a-f-]{36}$/),
+          title: text(200).min(2),
+          dueOn: date,
+          time,
+          people: z.array(id).max(10),
+          remove: z.boolean().default(false),
+        }),
+      )
+      .max(80),
+  }),
+  /** 8: the driving time from the previous step, by the estimator when one is on. */
+  z.object({ action: z.literal("estimate"), stopId: id }),
+  /** 5: the people invited to the linked event join the trip. */
+  z.object({ action: z.literal("importInvited"), tripId: id }),
+  /** 3: the mileage allowance's rate (Réglages › Activités). */
+  z.object({ action: z.literal("settings"), mileageRateCents: z.number().int().min(0).max(500).nullable() }),
   z.object({ action: z.literal("removeVehicle"), id }),
   z.object({
     action: z.literal("schedule"),

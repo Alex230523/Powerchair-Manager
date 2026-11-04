@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/venues",
+  "image": null,
+  "fr": {
+    "title": "Les lieux du club",
+    "text": "Chaque lieu a sa fiche complète ; une salle peut être partagée avec les autres clubs après validation."
+  },
+  "nl": {
+    "title": "De locaties van de club",
+    "text": "Elke locatie heeft een volledige fiche; een zaal kan na goedkeuring gedeeld worden met andere clubs."
+  },
+  "en": {
+    "title": "The club's places",
+    "text": "Each place has its full sheet; a hall can be shared with other clubs once validated."
+  }
+}

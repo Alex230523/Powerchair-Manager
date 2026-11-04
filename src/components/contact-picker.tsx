@@ -2,6 +2,8 @@
 import { useEffect, useId, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import { crmCopy } from "./crm-copy";
+import { fundingCopy } from "./funding-copy";
+import { contactTags } from "@/domains/funding/schema";
 import { errors } from "./access-copy";
 
 type Choice = { id: string; full_name: string; organization_name: string };
@@ -15,13 +17,17 @@ type List = { organization_id: string; can: { create: boolean }; contacts: Choic
  * host form reads it like any field; without access to the book, the field
  * is not shown and the host leaves the link as it is (absent = unchanged).
  */
-export function ContactPicker({ locale, name, value, label, none }: { locale: Locale; name: string; value: string | null; label: string; none: string }) {
+/** `tags`: those ticked when a contact is created here (3: « Loueur » for a rental company). */
+export function ContactPicker({ locale, name, value, label, none, tags: initialTags = [] }: { locale: Locale; name: string; value: string | null; label: string; none: string; tags?: string[] }) {
   const t = crmCopy[locale];
+  const tagCopy = (fundingCopy[locale] as (typeof fundingCopy)["fr"]).contacts as { tags: string; tag: Record<string, string> };
   const uid = useId();
   const [list, setList] = useState<List | null>(null),
     [chosen, setChosen] = useState(value ?? ""),
     [creating, setCreating] = useState(false),
     [draft, setDraft] = useState({ fullName: "", organizationName: "", email: "", phone: "" }),
+    // 1: the tags chosen right in the creation (« Ajouter un contact »).
+    [tags, setTags] = useState<string[]>(initialTags),
     [busy, setBusy] = useState(false),
     [status, setStatus] = useState(""),
     [failed, setFailed] = useState(""),
@@ -50,7 +56,7 @@ export function ContactPicker({ locale, name, value, label, none }: { locale: Lo
       const r = await fetch("/api/contacts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ organizationId: list.organization_id, action: "contact", ...draft, email: draft.email.trim(), role: "", tags: [], notes: "" }),
+        body: JSON.stringify({ organizationId: list.organization_id, action: "contact", ...draft, email: draft.email.trim(), role: "", tags, notes: "" }),
       });
       const v = await r.json();
       if (!r.ok) throw new Error(v.error);
@@ -58,6 +64,7 @@ export function ContactPicker({ locale, name, value, label, none }: { locale: Lo
       setChosen(v.id);
       setCreating(false);
       setDraft({ fullName: "", organizationName: "", email: "", phone: "" });
+      setTags(initialTags);
       setStatus(t.pickerCreated);
     } catch (e) {
       setFailed(errors[(e as Error).message]?.[locale] ?? errors.INVALID_INPUT?.[locale] ?? "");
@@ -115,6 +122,15 @@ export function ContactPicker({ locale, name, value, label, none }: { locale: Lo
               {field("email", t.pickerEmail, "email")}
               {field("phone", t.pickerPhone, "tel")}
             </div>
+            <fieldset className="tag-picker">
+              <legend>{tagCopy.tags}</legend>
+              {contactTags.map((x) => (
+                <label key={x} className="check">
+                  <input type="checkbox" checked={tags.includes(x)} onChange={(e) => setTags(e.target.checked ? [...tags, x] : tags.filter((y) => y !== x))} />
+                  {tagCopy.tag[x] ?? x}
+                </label>
+              ))}
+            </fieldset>
             {failed && <p role="alert">{failed}</p>}
             <div className="actions">
               <button type="button" className="button sm" disabled={busy || draft.fullName.trim().length < 2} onClick={() => void create()}>

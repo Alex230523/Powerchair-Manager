@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "all"
+  ],
+  "link": "/settings",
+  "image": null,
+  "fr": {
+    "title": "Les notifications sur téléphone",
+    "text": "Une salle annulée la veille ? L'application peut vous prévenir sur votre téléphone, en plus de l'email."
+  },
+  "nl": {
+    "title": "Meldingen op uw telefoon",
+    "text": "Een zaal de dag ervoor geannuleerd? De toepassing kan u verwittigen op uw telefoon, naast de e-mail."
+  },
+  "en": {
+    "title": "Notifications on your phone",
+    "text": "A hall cancelled the day before? The application can tell you on your phone, as well as by e-mail."
+  }
+}

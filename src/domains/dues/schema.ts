@@ -92,6 +92,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     method: z.enum(["transfer", "cash", "card", "other"]),
     occurredOn: z.iso.date(),
     reference: z.string().trim().max(160).default(""),
+    /** 29: which representative paid (two homes), when the club records it. */
+    payerProfileId: z.uuid().nullable().optional(),
   }),
 ]);
 /** What a receivable still owes, instalment by instalment, after the payments received. */

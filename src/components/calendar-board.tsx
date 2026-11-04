@@ -28,6 +28,8 @@ export type BoardEvent = {
   /** Wave 16 (E1): the club's type, its name and palette colour. */
   type_name?: string | null;
   type_color?: string | null;
+  /** 18: a session in a hall that must be booked, without a confirmed booking (staff only). */
+  bookingMissing?: boolean;
 };
 export type ColorBy = "team" | "kind";
 
@@ -315,6 +317,7 @@ export function EventList({
                     </span>
                     <span className="planner-row-status">
                       {e.status === "cancelled" ? <Badge tone="neutral">{t.cancelledBadge}</Badge> : <span className="muted small">{a.total ? fill(t.answers, a) : t.noAnswers}</span>}
+                      {e.bookingMissing && <Badge tone="warning">{t.bookingMissing}</Badge>}
                     </span>
                   </li>
                 );

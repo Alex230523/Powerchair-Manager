@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "coach"
+  ],
+  "link": "/attendance",
+  "image": null,
+  "fr": {
+    "title": "Les présences, une séance à la fois",
+    "text": "On fait l'appel d'une séance à la fois, et chaque joueur a ses statistiques de présence."
+  },
+  "nl": {
+    "title": "Aanwezigheden, één sessie tegelijk",
+    "text": "U neemt de aanwezigheden van één sessie tegelijk op, en elke speler heeft zijn aanwezigheidsstatistieken."
+  },
+  "en": {
+    "title": "Attendance, one session at a time",
+    "text": "You take attendance one session at a time, and each player has his attendance statistics."
+  }
+}

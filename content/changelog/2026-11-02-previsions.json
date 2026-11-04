@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "federation"
+  ],
+  "link": "/funding/forecast",
+  "image": null,
+  "fr": {
+    "title": "La trésorerie prévue sur 12 mois",
+    "text": "L'onglet Prévisions des Finances montre le solde attendu mois par mois, à partir des cotisations, subsides, sponsors, salles et déplacements déjà connus. Une alerte prévient si le solde passe sous votre seuil."
+  },
+  "nl": {
+    "title": "De verwachte kas over 12 maanden",
+    "text": "Het tabblad Prognose van de Financiën toont het verwachte saldo maand per maand, op basis van de gekende lidgelden, subsidies, sponsors, zalen en verplaatsingen. Een waarschuwing volgt als het saldo onder uw drempel zakt."
+  },
+  "en": {
+    "title": "Cash expected over 12 months",
+    "text": "The Forecast tab of the Finances shows the expected balance month by month, from the dues, grants, sponsors, halls and trips already known. An alert warns you if the balance falls under your threshold."
+  }
+}

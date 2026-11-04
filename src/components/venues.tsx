@@ -5,6 +5,7 @@ import type { venuesView } from "@/domains/venues/service";
 import { errors } from "./access-copy";
 import { useData, usePost, useShowMore, ShowMore } from "./use-api";
 import { Badge, Button, EmptyState, PageHeader, Card, Tabs } from "./ui";
+import { VenueBookings } from "./venue-bookings";
 import { Modal } from "./modal";
 import { PlaceDialog } from "./place-dialog";
 import { placesCopy } from "./places-copy";
@@ -626,6 +627,8 @@ export function Venues({ locale }: { locale: Locale }) {
           </form>
         </Modal>
       )}
+      {/* 18: the halls' bookings of the season, worked out from the calendar. */}
+      {club && data.can.edit && <VenueBookings locale={locale} />}
     </main>
   );
 }

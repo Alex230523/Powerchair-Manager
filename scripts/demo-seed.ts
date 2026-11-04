@@ -131,6 +131,9 @@ const yearTitles: Record<YearKey, string> = {
   tax: "Déclaration à l'impôt des personnes morales",
   insurance: "Renouvellement des assurances",
   affiliation: "Renouvellement de l'affiliation fédérale",
+  affiliationsOpen: "Ouverture des affiliations de la saison",
+  competitionCalendar: "Publication du calendrier des compétitions",
+  classificationDays: "Fixer les journées de classification",
 };
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const auth = createAuth(db);

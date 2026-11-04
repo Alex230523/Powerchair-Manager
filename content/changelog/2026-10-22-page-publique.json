@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president"
+  ],
+  "link": "/club/public",
+  "image": null,
+  "fr": {
+    "title": "La page publique du club",
+    "text": "Résultats, tournois et inscriptions peuvent sortir de derrière la connexion, quand le club le décide."
+  },
+  "nl": {
+    "title": "De publieke pagina van de club",
+    "text": "Uitslagen, toernooien en inschrijvingen kunnen zichtbaar worden zonder aanmelding, wanneer de club dat beslist."
+  },
+  "en": {
+    "title": "The club's public page",
+    "text": "Results, tournaments and registrations can be seen without signing in, when the club decides so."
+  }
+}

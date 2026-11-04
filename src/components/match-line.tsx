@@ -8,6 +8,7 @@ import { matchesCopy } from "./matches-copy";
 import { Badge, Button, Card, EmptyState } from "./ui";
 import { Modal } from "./modal";
 import { Tip } from "./tip";
+import { MatchRow } from "./match-row";
 
 type View = Awaited<ReturnType<typeof matchesView>>;
 type Match = View["matches"][number];
@@ -83,7 +84,7 @@ export function ScoreToConfirm({ locale, m, canEdit, busy, send }: { locale: Loc
   if (m.score_status !== "proposed") return null;
   return (
     <span className="score-confirm">
-      <Badge tone="warning">{t.toConfirm}</Badge>
+      {/* 5: « à confirmer » is said by the match line itself. */}
       {!m.score_ours && canEdit && (
         <Button size="sm" variant="secondary" disabled={busy} aria-label={fill(t.confirmOf, { match: m.opponent })} onClick={() => void send({ action: "confirmScore", id: m.id }, t.confirmed)}>
           {t.confirmScore}
@@ -282,21 +283,25 @@ export function TournamentMatches({ locale, view }: { locale: Locale; view: View
             <h3 id={`tday-${g.id}`}>
               {g.tournament} · {g.label || day(g.day)} · {day(g.day)}
             </h3>
-            <ul className="plain-list">
+            {/* 5: the same line as every match, the tournament one click away. */}
+            <ul className="match-list">
               {g.matches.map((m) => (
                 <li key={m.id}>
-                  <strong>{m.kickoff}</strong> ·{" "}
-                  {/* A5: one view of the team's matches, the tournament's own sheet one click away. */}
-                  <Link href={`/${locale}/tournaments/${m.tournament_id}`}>
-                    {m.home} {t.vs} {m.away}
-                  </Link>
-                  <span className="muted"> · {t.stage[m.stage] ?? m.stage}</span>
-                  {m.home_score !== null && (
-                    <strong>
-                      {" "}
-                      · {m.home_score}-{m.away_score}
-                    </strong>
-                  )}
+                  <MatchRow
+                    locale={locale}
+                    m={{
+                      id: m.id,
+                      local: `${g.day}T${m.kickoff}`,
+                      team: m.at_home ? m.home : m.away,
+                      teamColor: null,
+                      opponent: m.at_home ? m.away : m.home,
+                      home: m.at_home,
+                      ours: m.at_home ? m.home_score : m.away_score,
+                      theirs: m.at_home ? m.away_score : m.home_score,
+                      status: m.home_score !== null && m.away_score !== null ? "played" : "scheduled",
+                      context: { kind: "tournament", name: g.tournament, day: `${g.label || day(g.day)} · ${t.stage[m.stage] ?? m.stage}`, href: `/${locale}/tournaments/${m.tournament_id}` },
+                    }}
+                  />
                 </li>
               ))}
             </ul>

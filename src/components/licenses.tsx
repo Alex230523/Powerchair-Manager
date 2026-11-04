@@ -253,6 +253,142 @@ export function ClubLicenses({ locale }: { locale: Locale }) {
   );
 }
 
+/**
+ * 1: the club's « Classification » (the former « Licences » page): the
+ * players' classification and the classification days only. Licence fees
+ * belong to Finances, Affiliations (N2); a licence number stays on the
+ * player's sheet.
+ */
+export function ClubClassification({ locale }: { locale: Locale }) {
+  const t = licensesCopy[locale];
+  const failure = useCallback(
+    (code: string) => t.errors[code] ?? errors[code]?.[locale] ?? t.unavailable,
+    [t, locale],
+  );
+  const scope = useScope();
+  const { data, error, setError, denied, reload } = useData<
+    Awaited<ReturnType<typeof clubLicensesView>>
+  >("/api/licenses" + (scope.teamId ? `?team=${scope.teamId}` : ""), failure);
+  const { busy, message, post } = usePost(
+    "/api/licenses",
+    reload,
+    setError,
+    failure,
+  );
+  const send = (body: Record<string, unknown>, done: string) =>
+    post({ ...body, organizationId: data?.organization_id }, done);
+
+  return (
+    <main id="main" className="access licenses classification-page">
+      <PageHeader title={t.classificationTitle} subtitle={t.classificationIntro} />
+      {error && <p role="alert">{error}</p>}
+      {message && <p role="status">{message}</p>}
+      {denied && <p className="notice">{t.denied}</p>}
+      {!data && !denied && !error && <p role="status">{t.loading}</p>}
+      {data && !data.federation && <p className="notice">{t.noFederation}</p>}
+      {data && (
+        <>
+          <p>
+            <strong>
+              {data.federation?.name} · {t.season} {data.season}
+            </strong>
+          </p>
+          {data.players.length ? (
+            <div
+              className="table-scroll"
+              role="region"
+              aria-label={t.classificationTitle}
+              tabIndex={0}
+            >
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">{t.player}</th>
+                    <th scope="col">{t.born}</th>
+                    <th scope="col">{t.classification}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.players.map((x) => {
+                    return (
+                      <tr key={x.id}>
+                        <td>
+                          <Link href={`/${locale}/players/${x.id}`}>
+                            {x.full_name}
+                          </Link>
+                        </td>
+                        <td>{x.birth_year ?? ""}</td>
+                        <td>
+                          <ClassificationBadge locale={locale} value={x.classification} />
+                          {x.classification_valid_until && (
+                            <span className="muted">
+                              {" "}
+                              · {t.until} {x.classification_valid_until}
+                            </span>
+                          )}{" "}
+                          <Badge tone={
+                              x.classification_status === "validated"
+                                ? "success"
+                                : x.classification_status === "requested"
+                                  ? "warning"
+                                  : x.classification_status === "refused"
+                                    ? "danger"
+                                    : ""
+                            }>
+                            {t.classStatus[x.classification_status]}
+                          </Badge>
+                          {x.classification_note && (
+                            <span className="muted">
+                              {" "}
+                              · {x.classification_note}
+                            </span>
+                          )}
+                          {data.can.manage &&
+                            data.federation &&
+                            ["PF1", "PF2", "pending"].includes(
+                              x.classification,
+                            ) &&
+                            ["unverified", "refused"].includes(
+                              x.classification_status,
+                            ) && (
+                              <button
+                                type="button"
+                                className="text-button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void send(
+                                    {
+                                      action: "requestClassification",
+                                      profileId: x.id,
+                                    },
+                                    t.requested,
+                                  )
+                                }
+                              >
+                                {t.askCheck}
+                                <span className="sr-only">
+                                  {" "}
+                                  : {x.full_name}
+                                </span>
+                              </button>
+                            )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState title={t.noPlayer} />
+          )}
+          {data.federation && <ClassificationDays locale={locale} />}
+        </>
+      )}
+    </main>
+  );
+}
+
 export function FederationLicenses({ locale }: { locale: Locale }) {
   const t = licensesCopy[locale];
   const failure = useCallback(

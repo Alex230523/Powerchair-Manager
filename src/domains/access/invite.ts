@@ -1,4 +1,6 @@
+import { requireDpa } from "../legal/service";
 import type { Pool, PoolClient } from "pg";
+import { assignOnAccept } from "../onboarding/service";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { setVisibility } from "../transfers/consent";
@@ -67,6 +69,8 @@ export async function inviteProfile(
     message?: string;
   },
 ) {
+  // 21: the members of a club come in once its presidency accepted the processing agreement in force.
+  if (i.role !== "club_president") await requireDpa(c, org);
   const token = randomBytes(32).toString("hex");
   const id = (
     await c.query(
@@ -177,7 +181,12 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
         [invite.organization_id, invite.profile_id, invite.guardian_of, invite.created_by],
       );
   }
+  // 7: the staff roles chosen with the invitation.
+  const { rolesOnAccept } = await import("./staff-roles");
+  await rolesOnAccept(c, invite.organization_id, invite.id, mandate, invite.created_by);
   await audit(c, invite.organization_id, user.id, "invitation.accepted", mandate);
+  // Parcours d'accueil: the journeys written for this role start now.
+  await assignOnAccept(c, invite.organization_id, user.id, invite.role, invite.created_by);
   return mandate;
 }
 

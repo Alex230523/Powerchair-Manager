@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import { displayChecks, type Finding } from "./checks";
+import { displayChecks } from "./checks";
 import { signIn, type AuditRole } from "./support";
 import { matches, type Exception, type Issue, reportHtml } from "./report";
 
@@ -47,10 +47,56 @@ for (const role of roles)
       const issues: Issue[] = [];
       const errors: string[] = [];
       let mark = 0;
-      page.on("console", (m) => {
-        if (m.type() === "error") errors.push(m.text().slice(0, 200));
+      // The HTML the server sent for the last page, to name what React found different when hydrating.
+      let served = "";
+      page.on("response", (r) => {
+        if (r.request().isNavigationRequest() && r.request().frame() === page.mainFrame()) void r.text().then((t) => (served = t), () => undefined);
       });
+      page.on("console", (m) => {
+        // A failed request is reported below with its address, not as the browser's bare message.
+        if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) errors.push(m.text().slice(0, 200));
+        if (m.text().includes("#418")) diagnose();
+      });
+      // React reports the hydration failure as a page error too.
+      page.on("pageerror", (e) => {
+        if (e.message.includes("#418")) diagnose();
+      });
+      function diagnose() {
+        console.log(`AUDIT hydration\tseen on ${new URL(page.url()).pathname} (${role}, ${variant.id}), ${served.length} bytes served`);
+        void page
+            .evaluate((html) => {
+              const skip = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT", "LINK", "META"]);
+              // Drawn only once mounted, on purpose (theme, text size, contrast): left out of the comparison.
+              const later = ".theme-icons, .compact-select, .small-check";
+              const sig = (root: Element) =>
+                [...root.querySelectorAll("*")]
+                  .filter((e) => !skip.has(e.tagName) && !e.closest(later))
+                  .map((e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}${e.classList.length ? "." + [...e.classList].join(".") : ""}${e.children.length ? "" : "=" + (e.textContent ?? "").trim().slice(0, 30)}`);
+              const server = sig(new DOMParser().parseFromString(html, "text/html").body),
+                client = sig(document.body);
+              let i = 0;
+              while (i < server.length && server[i] === client[i]) i++;
+              // The head too (React hydrates <head>): each element with its main attributes.
+              const head = (root: Element | null) =>
+                [...(root?.children ?? [])].map((e) => `${e.tagName.toLowerCase()}[${["rel", "name", "property", "src", "href", "charset", "id"].map((a) => e.getAttribute(a)).filter(Boolean).join(" ").slice(0, 80)}]`);
+              const serverHead = head(new DOMParser().parseFromString(html, "text/html").head),
+                clientHead = head(document.head);
+              const missing = serverHead.filter((x) => !clientHead.includes(x)),
+                added = clientHead.filter((x) => !serverHead.includes(x));
+              const htmlAttrs = [...document.documentElement.attributes].map((a) => `${a.name}=${a.value}`).join(" ");
+              return `first difference at element ${i}: server [${server.slice(Math.max(0, i - 2), i + 3).join(" ")}] client [${client.slice(Math.max(0, i - 2), i + 3).join(" ")}] | head only on server: ${missing.join(" ").slice(0, 300)} | head only in browser: ${added.join(" ").slice(0, 300)} | html: ${htmlAttrs.slice(0, 200)}`;
+            }, served)
+            .then((d) => console.log(`AUDIT hydration\t${new URL(page.url()).pathname}\t${role}\t${variant.id}\t${d.slice(0, 1200)}`))
+            .catch((e: Error) => console.log(`AUDIT hydration\tnot compared: ${e.message.slice(0, 200)}`));
+      }
       page.on("pageerror", (e) => errors.push(e.message.slice(0, 200)));
+      page.on("response", (r) => {
+        const url = new URL(r.url());
+        if (r.status() >= 400 && url.pathname.startsWith("/api/")) errors.push(`${r.status()} ${r.request().method()} ${url.pathname}${url.search}`.slice(0, 200));
+      });
+      // A page that asks before leaving (unsaved form) must not hold the audit: leave.
+      page.on("dialog", (d) => void d.accept().catch(() => undefined));
+      page.setDefaultNavigationTimeout(30000);
       mkdirSync(`${out}/shots`, { recursive: true });
       try {
         await page.addInitScript(([theme, size]) => {
@@ -78,7 +124,12 @@ for (const role of roles)
         async function inspect(path: string, locale: string, what: string) {
           errors.length = 0;
           await settled(page);
-          const found: Finding[] = await page.evaluate(displayChecks, mark);
+          // A page whose script never gives the hand back is a finding, not a stalled run.
+          const found = await Promise.race([page.evaluate(displayChecks, mark), new Promise<null>((done) => setTimeout(() => done(null), 20000))]);
+          if (!found) {
+            issues.push({ rule: "page-hang", role, variant: variant.id, locale, path, what, target: "page", detail: "no answer to the checks within 20 s", shot: null });
+            return;
+          }
           mark += found.length + 1;
           const kept = variant.layout ? found : found.filter((f) => f.rule === "raw-text");
           if (variant.axe) {
@@ -109,7 +160,7 @@ for (const role of roles)
         for (const locale of variant.locales)
           for (const base of paths) {
             const path = base.replace(/^\/fr(?=\/|$)/, `/${locale}`);
-            const response = await page.goto(path).catch(() => null);
+            const response = await page.goto(path, { timeout: 30000 }).catch(() => null);
             if (!response || response.status() >= 400) {
               issues.push({ rule: "page-status", role, variant: variant.id, locale, path, what: "page", target: "page", detail: String(response?.status() ?? "no answer"), shot: null });
               continue;

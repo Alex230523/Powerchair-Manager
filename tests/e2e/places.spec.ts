@@ -97,9 +97,13 @@ test("places: private sheet, rate, proposal validated by the federation, window 
     await fromCalendar.getByRole("button", { name: "Enregistrer le lieu" }).click();
     await expect(fromCalendar).toHaveCount(0);
     await page.getByRole("button", { name: "Nouvel événement", exact: true }).click();
-    // A training: training and match places first.
-    await expect(page.locator("#event-place optgroup").first()).toHaveAttribute("label", "Entraînement et match");
-    await expect(page.locator("#event-place option").filter({ hasText: "Restaurant du club" })).toHaveCount(1);
+    // 1: one search for the place; « Nos lieux » first, the new place among them.
+    const field = page.locator("input[role=combobox]").and(page.getByRole("combobox", { name: "Lieu", exact: true }));
+    await field.fill("Restaurant");
+    await expect(page.getByRole("group", { name: "Nos lieux" }).getByRole("option", { name: /^Restaurant du club/ })).toHaveCount(1);
+    await expect(page.getByRole("option", { name: "Utiliser « Restaurant » comme lieu libre" })).toBeVisible();
+    await axe(page, "place search");
+    await field.press("Escape");
 
     // 6. At 390 px nothing sticks out.
     await page.setViewportSize({ width: 390, height: 844 });

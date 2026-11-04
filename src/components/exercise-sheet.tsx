@@ -7,24 +7,43 @@ import type { exerciseDetail, programPrint, Exercise } from "@/domains/exercises
 import { errors } from "./access-copy";
 import { exercisesCopy } from "./exercises-copy";
 import { Badge, Button, PageHeader } from "./ui";
-import { ExerciseForm } from "./exercises";
+import { ExerciseForm, failure, saveExtras, sheetFields } from "./exercises";
+import { FieldView } from "./field-editor";
+import { TagChip } from "./tag-picker";
+import type { Drawing } from "@/domains/exercises/drawing";
 
 type Detail = Awaited<ReturnType<typeof exerciseDetail>>;
 type Program = Awaited<ReturnType<typeof programPrint>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 
 /** The content of a sheet, on screen and on paper (A4, for the side of the pitch). */
-function SheetBody({ locale, x, planned, notes }: { locale: Locale; x: Exercise; planned?: number; notes?: string }) {
+function SheetBody({ locale, x, planned, notes, drawing, exports = false }: { locale: Locale; x: Exercise; planned?: number; notes?: string; drawing: Drawing | null; exports?: boolean }) {
   const t = exercisesCopy[locale];
   return (
     <>
       <p className="exercise-badges">
+        <Badge tone={x.genre === "tactic" ? "warning" : "success"}>{t.x4.genres[x.genre]}</Badge>
         <Badge tone="info">{t.minutes(planned ?? x.duration_minutes)}</Badge>
         <Badge>{t.players(x.players_min, x.players_max)}</Badge>
         <Badge tone="primary">{t.levels[x.level]}</Badge>
         <Badge>{t.suitedFor[x.suited]}</Badge>
         <Badge>{t.objectives[x.objective]}</Badge>
       </p>
+      {x.goal && (
+        <p>
+          <strong>{t.x4.goal}</strong> : {x.goal}
+        </p>
+      )}
+      {x.tags.length > 0 && (
+        <ul className="tag-list" aria-label={t.x4.tags}>
+          {x.tags.map((g) => (
+            <li key={g.id}>
+              <TagChip tag={g} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {drawing && <FieldView locale={locale} drawing={drawing} title={x.title} exportLabels={exports ? { png: t.x4.exportPng, pdf: t.x4.exportPdf } : undefined} />}
       {x.has_diagram &&
         (x.diagram_type === "application/pdf" ? (
           <p>
@@ -108,7 +127,7 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
       await fn();
     } catch (e) {
       const code = (e as Error).message;
-      setError(code === "INVALID_FILE" ? t.invalidFile : code === "STALE_VERSION" ? t.stale : (errors[code]?.[locale] ?? t.failed));
+      setError(failure(locale, code));
       if (code === "STALE_VERSION") await load();
     } finally {
       setBusy(false);
@@ -119,41 +138,8 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
     const f = new FormData(e.currentTarget);
     const x = data!.exercise;
     await run(async () => {
-      await post({
-        action: "update",
-        id: x.id,
-        version: x.version,
-        title: String(f.get("title") ?? "").trim(),
-        objective: f.get("objective"),
-        description: f.get("description"),
-        safety: f.get("safety"),
-        durationMinutes: Number(f.get("duration")),
-        playersMin: Number(f.get("playersMin")),
-        playersMax: Number(f.get("playersMax")),
-        level: f.get("level"),
-        suited: f.get("suited"),
-        equipment: f.get("equipment"),
-        variants: f.get("variants"),
-        videoUrl: String(f.get("video") ?? "").trim(),
-        tags: String(f.get("tags") ?? "")
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean)
-          .slice(0, 10),
-        shared: f.has("shared"),
-      });
-      const file = f.get("diagram");
-      if (file instanceof File && file.size) {
-        if (file.size > 2097152 || !["image/png", "image/jpeg", "image/webp", "application/pdf"].includes(file.type)) throw new Error("INVALID_FILE");
-        const b64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-          reader.onerror = () => reject(new Error("INVALID_FILE"));
-          reader.readAsDataURL(file);
-        });
-        await post({ action: "diagram", id: x.id, mediaType: file.type, data: b64 });
-      }
-      if (f.has("removeDiagram")) await post({ action: "removeDiagram", id: x.id });
+      await post({ action: "update", id: x.id, version: x.version, ...sheetFields(f), shared: f.has("shared") });
+      await saveExtras(post, x.id, f, true);
       setEditing(false);
       await load();
       setMessage(t.saved);
@@ -171,7 +157,7 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
         <>
           <PageHeader
             title={x.title}
-            subtitle={`${t.author} : ${x.author} · ${t.uses(x.uses)}`}
+            subtitle={`${t.x4.creator(x.creator, x.creator_club)} · ${t.x4.uses(x.uses, x.matches)}`}
             actions={
               <span className="no-print exercise-actions">
                 <Button variant="secondary" icon="document" onClick={() => window.print()}>
@@ -194,6 +180,36 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
                     >
                       {t.duplicate}
                     </Button>
+                    {data.can.propose && (x.federal_status === "private" || x.federal_status === "refused") && (
+                      <Button
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            await post({ action: "propose", id: x.id });
+                            await load();
+                            setMessage(t.x4.federal.pending);
+                          })
+                        }
+                      >
+                        {t.x4.federal.propose}
+                      </Button>
+                    )}
+                    {x.federal_status === "pending" && (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            await post({ action: "unpropose", id: x.id });
+                            await load();
+                            setMessage(t.saved);
+                          })
+                        }
+                      >
+                        {t.x4.federal.unpropose}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       disabled={busy}
@@ -213,8 +229,11 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
             }
           />
           {x.archived && <Badge>{t.archived}</Badge>}
+          {x.federal_status === "pending" && <p className="muted no-print">{t.x4.federal.pending}</p>}
+          {x.federal_status === "published" && <p className="muted no-print">{t.x4.federal.published}</p>}
+          {x.federal_status === "refused" && <p className="no-print">{t.x4.federal.refused(x.federal_reason)}</p>}
           <article className="exercise-print">
-            <SheetBody locale={locale} x={x} />
+            <SheetBody locale={locale} x={x} drawing={data.drawing} exports />
           </article>
           {data.used.length > 0 && (
             <section className="no-print" aria-labelledby="exercise-used">
@@ -231,9 +250,23 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
               </ul>
             </section>
           )}
+          {data.matches.length > 0 && (
+            <section className="no-print" aria-labelledby="exercise-matches">
+              <h2 id="exercise-matches">{t.x4.matchesUsed}</h2>
+              <ul className="plain-list">
+                {data.matches.map((m) => (
+                  <li key={m.id}>
+                    <Link href={`/${locale}/matches/${m.id}`}>
+                      {m.team} · {m.opponent} · {new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeZone: "Europe/Brussels" }).format(new Date(m.starts_at))}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
-      {editing && x && <ExerciseForm locale={locale} row={x} busy={busy} error={error} close={() => setEditing(false)} save={save} />}
+      {editing && x && data && <ExerciseForm locale={locale} row={x} tags={data.tags} drawing={data.drawing} busy={busy} error={error} close={() => setEditing(false)} save={save} />}
     </main>
   );
 }
@@ -275,7 +308,7 @@ export function ProgramPrint({ locale, eventId }: { locale: Locale; eventId: str
               {data.items.map((x) => (
                 <li key={x.id} className="exercise-print">
                   <h2>{x.title}</h2>
-                  <SheetBody locale={locale} x={x} planned={x.planned_minutes} notes={x.notes} />
+                  <SheetBody locale={locale} x={x} planned={x.planned_minutes} notes={x.notes} drawing={data.drawings[x.id] ?? null} />
                 </li>
               ))}
             </ol>

@@ -440,3 +440,61 @@ async function merge(s: PeopleScope, keepId: string, removeId: string) {
     [keepId, removeId, org],
   );
 }
+
+/**
+ * 12: « Mes données », for everyone: what the platform holds on me (my
+ * account, my preferences, my profiles in each club and the representations
+ * I hold), as a JSON file. Never another person's data, never the health
+ * data (a club exports those on request, with its own right).
+ */
+export async function myDataExport(db: Pool, p: Principal) {
+  const c = await db.connect();
+  try {
+    await c.query("BEGIN READ ONLY");
+    const user = (await c.query('SELECT id,name,email,"createdAt" AS created_at FROM "user" WHERE id=$1', [p.userId])).rows[0];
+    if (!user) throw new AccessError("UNAUTHENTICATED", 401);
+    const person = (await c.query("SELECT id,locale,notifications_enabled FROM person WHERE user_id=$1", [p.userId])).rows[0] ?? null;
+    const profiles = person
+      ? (
+          await c.query(
+            `SELECT o.name AS organization,cp.full_name,cp.birth_date::text AS birth_date,cp.email,cp.phone,cp.joined_on::text AS joined_on,cp.status,cp.directory_roles,cp.playing_position,cp.jersey_number,cp.public_name_consent,cp.public_name_consent_at
+               FROM club_person cp JOIN organization o ON o.id=cp.organization_id WHERE cp.person_id=$1 ORDER BY o.name`,
+            [person.id],
+          )
+        ).rows
+      : [];
+    const representations = person
+      ? (
+          await c.query(
+            `SELECT o.name AS organization,s.full_name AS represented,g.kind,g.can_view,g.can_edit,g.starts_on::text AS starts_on,g.ends_on::text AS ends_on
+               FROM guardian_relationship g JOIN club_person me ON me.id=g.guardian_profile_id JOIN club_person s ON s.id=g.subject_profile_id JOIN organization o ON o.id=g.organization_id
+              WHERE me.person_id=$1 AND g.revoked_at IS NULL ORDER BY o.name,s.full_name`,
+            [person.id],
+          )
+        ).rows
+      : [];
+    const mandates = (
+      await c.query(
+        "SELECT o.name AS organization,r.role,r.valid_from,r.valid_until,r.revoked_at FROM role_assignment r JOIN organization o ON o.id=r.organization_id WHERE r.user_id=$1 ORDER BY o.name,r.valid_from",
+        [p.userId],
+      )
+    ).rows;
+    const preferences = (
+      await c.query("SELECT o.name AS organization,n.category,n.email_enabled,n.in_app_enabled FROM notification_preference n JOIN organization o ON o.id=n.organization_id WHERE n.user_id=$1 ORDER BY o.name,n.category", [p.userId])
+    ).rows;
+    await c.query("COMMIT");
+    return {
+      exportedAt: new Date().toISOString(),
+      account: { name: user.name, email: user.email, createdAt: user.created_at },
+      preferences: { locale: person?.locale ?? null, notifications: person?.notifications_enabled ?? null, byCategory: preferences },
+      profiles,
+      representations,
+      mandates,
+    };
+  } catch (e) {
+    await c.query("ROLLBACK").catch(() => undefined);
+    throw e;
+  } finally {
+    c.release();
+  }
+}

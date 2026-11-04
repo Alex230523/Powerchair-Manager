@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/statistics",
+  "image": null,
+  "fr": {
+    "title": "Les statistiques du club et du jeu",
+    "text": "Deux onglets : le club (membres, présences, cotisations) et le jeu (résultats, buts, minutes, cartons)."
+  },
+  "nl": {
+    "title": "Statistieken van de club en het spel",
+    "text": "Twee tabbladen: de club (leden, aanwezigheden, lidgelden) en het spel (uitslagen, doelpunten, minuten, kaarten)."
+  },
+  "en": {
+    "title": "Club and game statistics",
+    "text": "Two tabs: the club (members, attendance, fees) and the game (results, goals, minutes, cards)."
+  }
+}

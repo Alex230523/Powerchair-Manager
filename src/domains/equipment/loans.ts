@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { AccessError, audit } from "../access/service";
 import { permissions } from "../access/policy";
 import { brusselsToday } from "../people/service";
@@ -51,7 +52,7 @@ export async function loansView(s: Scope) {
   const org = s.a.organization_id;
   const empty = { lent: [] as Loan[], borrowed: [] as Loan[], available: [] as Available[], partners: [] as { id: string; name: string }[], can: false };
   if (!s.manage || !s.fed) return empty;
-  const base = `SELECT ${loanFields},c.name AS chair,lo.name AS lender,bo.name AS borrower,cm.brand AS model_brand,cm.name AS model_name,sl.name AS storage_name,sl.address AS storage_address
+  const base = `SELECT ${loanFields},chair_label(c.id) AS chair,lo.name AS lender,bo.name AS borrower,cm.brand AS model_brand,cm.name AS model_name,sl.name AS storage_name,sl.address AS storage_address
     FROM equipment_loan l JOIN equipment_chair c ON c.id=l.chair_id JOIN organization lo ON lo.id=l.lender_id JOIN organization bo ON bo.id=l.borrower_id
     LEFT JOIN chair_model cm ON cm.id=c.model_id LEFT JOIN storage_location sl ON sl.id=c.storage_location_id`;
   const recent = "(l.status IN ('requested','accepted','ongoing') OR l.created_at>now()-interval '365 days')";
@@ -101,7 +102,7 @@ async function managers(c: PoolClient, org: string) {
   ).rows as (Recipient & { kind: string; role: string; grants: string[] })[];
   const out = new Map<string, Recipient>();
   for (const r of rows)
-    if (r.kind === "federation" ? ["federation_president", "federation_worker"].includes(r.role) : permissions(r.role as never, r.grants ?? []).includes("equipment.manage"))
+    if (r.kind === "federation" ? fedCan(r.role, r.grants ?? [], "federation.competitions") : permissions(r.role as never, r.grants ?? []).includes("equipment.manage"))
       out.set(r.id, { id: r.id, email: r.email, name: r.name, locale: (["fr", "nl", "en"].includes(r.locale) ? r.locale : "fr") as Lang, organization: r.organization });
   return [...out.values()];
 }

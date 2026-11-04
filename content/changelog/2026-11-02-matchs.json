@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president",
+    "coach",
+    "player",
+    "parent"
+  ],
+  "link": "/matches",
+  "image": null,
+  "fr": {
+    "title": "Des matchs plus lisibles",
+    "text": "Chaque match s'affiche sur la même ligne partout, avec V, N ou D à côté du score. Une carte par équipe mène à ses statistiques, et la fiche d'un match à venir montre les derniers résultats contre cet adversaire."
+  },
+  "nl": {
+    "title": "Duidelijkere wedstrijden",
+    "text": "Elke wedstrijd staat overal op dezelfde regel, met W, G of V naast de score. Een kaart per ploeg leidt naar haar statistieken, en de fiche van een komende wedstrijd toont de laatste uitslagen tegen die tegenstander."
+  },
+  "en": {
+    "title": "Clearer matches",
+    "text": "Every match shows on the same line everywhere, with W, D or L beside the score. One card per team leads to its statistics, and an upcoming match's sheet shows the latest results against that opponent."
+  }
+}

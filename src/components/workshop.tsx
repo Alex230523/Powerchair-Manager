@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { qrMatrix, qrPath } from "@/lib/qr";
 import type { Locale } from "@/lib/locale";
 import type { workshopView } from "@/domains/equipment/workshop";
-import { interventionKinds } from "@/domains/equipment/schema";
+import { breakdownCategories, breakdownSeverities, interventionKinds } from "@/domains/equipment/schema";
 import { workshopCopy } from "./workshop-copy";
 import { fill } from "./fleet-copy";
 import { errors } from "./access-copy";
@@ -643,7 +645,8 @@ function Funding({ locale, view, chair, busy, send }: { locale: Locale; view: WV
 /** « Signaler une panne »: a button and its window, for whoever sees the chair. */
 export function ReportBreakdown({ locale, chairId, chairName, organizationId, done }: { locale: Locale; chairId: string; chairName: string; organizationId: string; done: () => void }) {
   const t = workshopCopy[locale];
-  const [open, setOpen] = useState(false),
+  // 19: the chair's QR code leads here with ?report=1: the window opens at once.
+  const [open, setOpen] = useState(useSearchParams().get("report") === "1"),
     [message, setMessage] = useState("");
   return (
     <div className="report-breakdown">
@@ -666,9 +669,9 @@ export function ReportBreakdown({ locale, chairId, chairName, organizationId, do
           chairName={chairName}
           organizationId={organizationId}
           close={() => setOpen(false)}
-          sent={() => {
+          sent={(severity) => {
             setOpen(false);
-            setMessage(t.reported);
+            setMessage(severity === "unusable" ? t.reported : t.reportedKept);
             done();
           }}
         />
@@ -677,7 +680,7 @@ export function ReportBreakdown({ locale, chairId, chairName, organizationId, do
   );
 }
 
-function ReportDialog({ locale, chairId, chairName, organizationId, close, sent }: { locale: Locale; chairId: string; chairName: string; organizationId: string; close: () => void; sent: () => void }) {
+function ReportDialog({ locale, chairId, chairName, organizationId, close, sent }: { locale: Locale; chairId: string; chairName: string; organizationId: string; close: () => void; sent: (severity: string) => void }) {
   const t = workshopCopy[locale];
   const ref = useRef<HTMLDialogElement>(null);
   const [photo, setPhoto] = useState<{ type: string; data: string } | null>(null),
@@ -704,12 +707,17 @@ function ReportDialog({ locale, chairId, chairName, organizationId, close, sent 
     setBusy(true);
     setError("");
     try {
-      const description = String(new FormData(e.currentTarget).get("description") ?? "").trim();
-      const r = await fetch("/api/equipment/workshop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "report", chairId, description, photo, organizationId }) });
+      const f = new FormData(e.currentTarget);
+      const description = String(f.get("description") ?? "").trim();
+      const r = await fetch("/api/equipment/workshop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "report", chairId, description, category: f.get("category"), severity: f.get("severity"), photo, organizationId }),
+      });
       const v = await r.json();
       if (!r.ok) throw new Error(v.error);
       ref.current?.close();
-      sent();
+      sent(String(f.get("severity") ?? "unusable"));
     } catch (err) {
       setError(failureOf(locale, err instanceof Error ? err.message : ""));
     } finally {
@@ -723,6 +731,25 @@ function ReportDialog({ locale, chairId, chairName, organizationId, close, sent 
       </div>
       <form className="stack-form" onSubmit={(e) => void submit(e)}>
         {error && <p role="alert">{error}</p>}
+        <label htmlFor={`${title}-category`}>
+          {t.category}
+          <select id={`${title}-category`} name="category" defaultValue="other">
+            {breakdownCategories.map((k) => (
+              <option key={k} value={k}>
+                {t.categories[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="report-severity">
+          <legend>{t.severity}</legend>
+          {breakdownSeverities.map((k) => (
+            <label key={k} className="check">
+              <input type="radio" name="severity" value={k} defaultChecked={k === "unusable"} />
+              {t.severities[k]}
+            </label>
+          ))}
+        </fieldset>
         <label htmlFor={`${title}-what`}>
           {t.describe}
           <textarea id={`${title}-what`} name="description" rows={3} required minLength={3} maxLength={1000} />
@@ -751,5 +778,30 @@ function ReportDialog({ locale, chairId, chairName, organizationId, close, sent 
         </p>
       </form>
     </dialog>
+  );
+}
+
+/** 19: the chair's label: a QR code that opens « Signaler une panne » (after signing in), to print and stick on the chair. */
+export function ChairQr({ locale, chairId, chairName }: { locale: Locale; chairId: string; chairName: string }) {
+  const t = workshopCopy[locale];
+  const url = `${window.location.origin}/${locale}/equipment/${chairId}?report=1`;
+  const m = qrMatrix(url);
+  if (!m) return null;
+  const qr = qrPath(m);
+  // The label to print: the code and the chair's name, dark on white.
+  const label = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${qr.size} ${qr.size + 6}" width="${qr.size * 8}" shape-rendering="crispEdges"><rect width="${qr.size}" height="${qr.size + 6}" fill="#fff"/><path d="${qr.d}" fill="#000"/><text x="${qr.size / 2}" y="${qr.size + 3}" font-size="3" text-anchor="middle" font-family="sans-serif">${chairName.replace(/[<&>"]/g, "")}</text></svg>`;
+  return (
+    <figure className="subscribe-qr chair-qr">
+      <svg viewBox={`0 0 ${qr.size} ${qr.size}`} width={160} height={160} role="img" aria-label={fill(t.qrAlt, { chair: chairName })} shapeRendering="crispEdges">
+        <rect width={qr.size} height={qr.size} fill="var(--qr-paper)" />
+        <path d={qr.d} fill="var(--qr-ink)" />
+      </svg>
+      <figcaption>
+        {t.qrHint}{" "}
+        <a href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(label)}`} download={`etiquette-${chairName.replace(/[^\w-]+/g, "-")}.svg`}>
+          {t.qrDownload}
+        </a>
+      </figcaption>
+    </figure>
   );
 }

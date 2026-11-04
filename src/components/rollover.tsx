@@ -144,7 +144,7 @@ export function Rollover({ locale }: { locale: Locale }) {
   return (
     <main id="main" className="access rollover">
       <p className="back-link">
-        <Link href={`/${locale}/club/manage`}>{t.back}</Link>
+        <Link href={`/${locale}/settings/seasons`}>{t.back}</Link>
       </p>
       <h1>{t.title}</h1>
       <p className="muted">{t.intro}</p>

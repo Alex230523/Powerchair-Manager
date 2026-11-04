@@ -29,6 +29,8 @@ export const rightsModules: RightsModule[] = [
   },
   { key: "attendance", edit: ["attendance.manage"] },
   { key: "registrations", edit: ["registrations.manage"] },
+  // H1: new players, from the first contact to the registration.
+  { key: "recruitment", edit: ["recruitment.manage"] },
   {
     key: "documents",
     read: ["documents.read"],
@@ -141,7 +143,7 @@ export const moduleRoutes: Record<OptionalModule, string[]> = {
   dues: ["/dues", "/api/dues"],
   equipment: ["/equipment", "/api/equipment"],
   matches: ["/matches", "/api/matches"],
-  licenses: ["/licenses", "/federal-calendar", "/api/licenses", "/api/federal-calendar"],
+  licenses: ["/licenses", "/classification", "/federal-calendar", "/api/licenses", "/api/federal-calendar"],
   reminders: ["/reminders", "/api/reminders"],
   communication: ["/communication", "/api/communication"],
   statistics: ["/statistics", "/api/statistics/report"],

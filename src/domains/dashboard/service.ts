@@ -1,4 +1,8 @@
+import { coachFocus, federationFocus, memberFocus } from "./focus";
+import { reservedTotal } from "../finance/allocations";
+import { forecastAlertOf } from "../finance/forecast";
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { myTasksCount } from "../tasks/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
@@ -251,6 +255,10 @@ export async function computeFor(
       [org],
     );
 
+  // 8: active minor players with no representative at all (declared or verified).
+  if (club && has("people.manage"))
+    counts.minorsWithoutGuardian = await count(c, minorsWithoutGuardianSql, [org]);
+
   // Equipment: chairs in maintenance or due for service within 14 days.
   if (club && on("equipment") && has("equipment.manage")) {
     scopes.push("equipment");
@@ -269,7 +277,7 @@ export async function computeFor(
       [org],
     );
   // Federation: club requests waiting for a decision.
-  if (!club && ["federation_president", "federation_worker"].includes(a.role)) {
+  if (!club && fedCan(a.role, a.grants, "federation.courses")) {
     scopes.push("courses");
     counts.courseRequests = await count(
       c,
@@ -292,7 +300,7 @@ export async function computeFor(
     metrics.push(
       metric("activeMembers", m.members, { href: "/club" }),
       metric("activePlayers", m.players, { href: "/players" }),
-      metric("activeTeams", m.teams, { href: "/club/manage" }),
+      metric("activeTeams", m.teams, { href: "/teams" }),
     );
   }
 
@@ -313,7 +321,7 @@ export async function computeFor(
     );
     metrics.push(
       ...(on("finance")
-        ? [metric("treasury", treasury, { format: "cents", href: "/funding" })]
+        ? [metric("treasury", treasury, { format: "cents", href: "/funding" }), metric("available", treasury - (await reservedTotal(c, org)), { format: "cents", href: "/funding/reserved" }), ...(await forecastAlertOf(c, org).then((a) => (a ? [metric("forecastLow", a.balance, { format: "cents", href: "/funding/forecast" })] : [])))]
         : []),
       metric("duesNext30", next, { format: "cents", href: "/dues" }),
     );
@@ -536,6 +544,24 @@ export async function computeFor(
           ).rowCount,
         }
       : undefined;
+  // 15: the home by role.
+  const focus = !mfa
+    ? undefined
+    : club && (a.role === "player" || a.role === "guardian")
+      ? await memberFocus(c, org, own)
+      : club && a.role === "coach"
+        ? await coachFocus(c, org, own)
+        : !club && fedCan(a.role, a.grants)
+          ? await federationFocus(c, org, {
+              licences: fedCan(a.role, a.grants, "federation.licences"),
+              competitions: fedCan(a.role, a.grants, "federation.competitions"),
+              referees: fedCan(a.role, a.grants, "federation.referees"),
+              classification: fedCan(a.role, a.grants, "federation.classification"),
+              courses: fedCan(a.role, a.grants, "federation.courses"),
+              communication: fedCan(a.role, a.grants, "federation.communication"),
+              discipline: fedCan(a.role, a.grants, "federation.discipline"),
+            })
+          : undefined;
   // Getting started of a new club (wave 15, C3): for the president, until done or hidden.
   const setup = club && a.role === "club_president" && has("mandates.manage") ? await setupState(c, org) : null;
   return {
@@ -564,9 +590,14 @@ export async function computeFor(
     scopes,
     ...(finance ? { finance } : {}),
     ...(week ? { week } : {}),
+    ...(focus ? { focus } : {}),
   };
 }
 
+/** 8: the minor players of a club whom no representative answers for. */
+export const minorsWithoutGuardianSql = `SELECT count(*) FROM club_person cp WHERE cp.organization_id=$1 AND cp.status='active' AND 'player'=ANY(cp.directory_roles)
+  AND cp.birth_date>CURRENT_DATE-interval '18 years'
+  AND NOT EXISTS (SELECT 1 FROM guardian_relationship g WHERE g.organization_id=cp.organization_id AND g.subject_profile_id=cp.id AND g.revoked_at IS NULL AND g.kind IN ('declared','legal_verified') AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE))`;
 async function count(c: PoolClient, sql: string, values: unknown[]) {
   return Number((await c.query(sql, values)).rows[0]?.count ?? 0) || 0;
 }

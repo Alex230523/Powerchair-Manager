@@ -1,5 +1,6 @@
 "use client";
 import { AbsencesPanel, absenceCopy } from "./absences";
+import { familyCopy } from "./family-copy";
 import { AttendanceCall, AttendanceStats, queueOffline, useSeasonAttendance } from "./attendance-call";
 import { callCopy } from "./attendance-call-copy";
 import Link from "next/link";
@@ -459,6 +460,8 @@ function SeasonView({ locale }: { locale: Locale }) {
                   {t.responses[i.response as keyof typeof t.responses]} ·{" "}
                   {t.actual} : {t.actuals[i.actual as keyof typeof t.actuals]}
                 </p>
+                {/* 29: one parent's answer is seen by the other, with its author. */}
+                {i.response !== "none" && i.responded_by_name && <p className="muted small">{familyCopy[locale].answeredBy.replace("{name}", i.responded_by_name)}</p>}
                 {i.response === "absent" && i.absence_reason && (
                   <p className="muted small">
                     {absenceCopy[locale].reason} : {(absenceCopy[locale].reasons as Record<string, string>)[i.absence_reason]}

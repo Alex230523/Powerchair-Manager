@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { z } from "zod";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { inviteProfile, resendInvitation } from "../access/invite";
@@ -23,11 +24,11 @@ async function federation<T>(db: Pool, p: Principal, write: boolean, fn: (s: Sco
     const a = await active(c, p);
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "federation") throw new AccessError("FEDERATION_ONLY");
-    if (!["federation_president", "federation_worker"].includes(a.role)) throw new AccessError("FORBIDDEN");
+    if (!fedCan(a.role, a.grants, "federation.licences")) throw new AccessError("FORBIDDEN");
     await c.query(`SELECT id FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id]);
     await account(c, p);
     // Clubs and their presidents are the federation president's to handle.
-    const manage = a.role === "federation_president";
+    const manage = fedCan(a.role, a.grants, "federation.licences");
     if (write && !manage) throw new AccessError("FORBIDDEN");
     const out = await fn({ c, fed: a.organization_id, userId: p.userId, manage });
     await c.query("COMMIT");
@@ -202,8 +203,9 @@ export async function federationClubsExecute(db: Pool, p: Principal, command: Fe
       if (command.action === "createClub") {
         const club = (
           await s.c.query(
-            `INSERT INTO organization(name,kind,federation_id,city,affiliation_number,company_number,legal_form,contact_email)
-             VALUES($1,'club',$2,$3,$4,$5,$6,$7) RETURNING id`,
+            // 21: a club opened by its federation waits for its president's acceptance of the processing agreement.
+            `INSERT INTO organization(name,kind,federation_id,city,affiliation_number,company_number,legal_form,contact_email,dpa_required)
+             VALUES($1,'club',$2,$3,$4,$5,$6,$7,true) RETURNING id`,
             [command.name, s.fed, command.city, command.affiliationNumber, command.companyNumber, command.legalForm, command.contactEmail || null],
           ).catch((e: { code?: string }) => {
             if (e.code === "23505") throw new AccessError("AFFILIATION_TAKEN", 409);

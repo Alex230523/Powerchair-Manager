@@ -2,10 +2,12 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
+import { familyCopy } from "./family-copy";
 import type { attestationsView } from "@/domains/dues/attestation";
 import { errors } from "./access-copy";
 import { useData } from "./use-api";
 import { EmptyState, PageHeader } from "./ui";
+import { AttestationActions, MutualForms } from "./attestation-actions";
 
 const copy = {
   fr: {
@@ -111,7 +113,8 @@ export function Attestations({
     (code: string) => errors[code]?.[locale] ?? t.unavailable,
     [locale, t.unavailable],
   );
-  const { data, error } = useData<View>(
+  const [said, say] = useState("");
+  const { data, error, reload } = useData<View>(
     "/api/dues/attestations" + (chosen ? `?season=${encodeURIComponent(chosen)}` : ""),
     failure,
   );
@@ -174,12 +177,18 @@ export function Attestations({
                       <span className="sr-only"> : {x.full_name}</span>
                     </Link>
                   )}
+                  {/* 9: the PDF: preview, download, print, send. */}
+                  <AttestationActions locale={locale} data={data} person={x} reload={reload} say={say} />
                 </li>
               ))}
           </ul>
         ) : (
           <EmptyState title={t.none} />
         )}
+        <p role="status" className="muted">
+          {said}
+        </p>
+        <MutualForms locale={locale} data={data} reload={reload} say={say} />
       </div>
       {s &&
         eligible.map((x) => (
@@ -200,6 +209,14 @@ export function Attestations({
                 .replace("{amount}", money(x.paid_cents))
                 .replace("{paid}", x.last_paid_on ? t.paidText.replace("{d}", day(x.last_paid_on)) : "")}
             </p>
+            {/* 29: two homes, the share each representative paid. */}
+            {x.shares.length > 0 && (
+              <ul>
+                {x.shares.map((sh) => (
+                  <li key={sh.name}>{familyCopy[locale].shareLine.replace("{name}", sh.name).replace("{percent}", String(sh.percent)).replace("{amount}", money(sh.cents))}</li>
+                ))}
+              </ul>
+            )}
             <p>{t.done.replace("{d}", day(data.issuedOn))}</p>
             <div className="attestation-sign">
               <p>

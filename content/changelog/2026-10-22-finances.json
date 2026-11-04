@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president"
+  ],
+  "link": "/funding",
+  "image": null,
+  "fr": {
+    "title": "Des finances mieux rangées",
+    "text": "Vue d'ensemble, opérations, budget, relevés et comptes annuels, chacun dans son onglet."
+  },
+  "nl": {
+    "title": "Beter geordende financiën",
+    "text": "Overzicht, verrichtingen, budget, uittreksels en jaarrekening, elk in een eigen tabblad."
+  },
+  "en": {
+    "title": "Finances better arranged",
+    "text": "Overview, operations, budget, statements and annual accounts, each in its own tab."
+  }
+}

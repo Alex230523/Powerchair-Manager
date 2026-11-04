@@ -40,9 +40,12 @@ test("command window: actions, keyboard, rights, recent items", async ({ page })
     await page.goto("/fr");
 
     // 1. Empty field: the actions of the president, first section.
-    await page.keyboard.press("Control+k");
     const box = page.getByRole("combobox", { name: /Rechercher un joueur/ });
-    await expect(box).toBeFocused();
+    // The shortcut listens once the page is hydrated: pressed again until the window opens.
+    await expect(async () => {
+      if (!(await box.isVisible())) await page.keyboard.press("Control+k");
+      await expect(box).toBeFocused({ timeout: 1000 });
+    }).toPass({ timeout: 15000 });
     const palette = page.locator(".command-palette");
     const actions = palette.getByRole("group", { name: "Actions" });
     await expect(actions.getByRole("option", { name: /Créer un événement/ })).toBeVisible();

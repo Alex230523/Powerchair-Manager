@@ -1,5 +1,6 @@
 "use client";
-import { FinanceNav } from "./finance-nav";
+import { AnnualReminder } from "./annual-reminder";
+import { ImpactLinks } from "./impact-links";
 import { SupportTabs } from "./grants-sponsors";
 import { grantsSponsorsCopy } from "./grants-sponsors-copy";
 import { DataGrid } from "./data-grid";
@@ -114,7 +115,6 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
           </>
         }
       />
-      <FinanceNav locale={locale} current="income" income="support" />
       <SupportTabs locale={locale} current="grants" />
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -438,7 +438,7 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                 <input name="recheck" type="date" defaultValue={v?.recheck_on ?? ""} aria-describedby="grant-recheck-hint" />
                 <span className="muted small field-hint" id="grant-recheck-hint">{c.recheckHint}</span>
               </label>
-              <ContactPicker locale={locale} name="contact" value={v?.contact_id ?? null} label={t.contact} none={t.noContact} />
+              {data.can.contacts && <ContactPicker locale={locale} name="contact" value={v?.contact_id ?? null} label={t.contact} none={t.noContact} />}
             </div>
             <label>
               {c.conditions}
@@ -603,6 +603,10 @@ function GrantSheet({
               </div>
             </section>
             <GrantPayments locale={locale} data={data} grant={grant} busy={busy} post={post} />
+            {/* H13: the impact report for the grant's period, filed with its justification. */}
+            <ImpactLinks locale={locale} data={data} grant={grant} />
+            {/* 9: the yearly reminder, kept when the year's file closes. */}
+            <AnnualReminder locale={locale} data={data} grantId={grant.id} closed={grant.status === "closed" || grant.status === "paid"} busy={busy} post={post} />
             {funder && <FunderFacts locale={locale} data={data} funder={funder} others={others} edit={() => editFunder(funder.id)} openGrant={openGrant} />}
             <FinancedChairs locale={locale} data={data} grant={grant} busy={busy} post={post} />
           </>
@@ -766,7 +770,7 @@ function FunderForm({ locale, data, funder, busy, post, close }: { locale: Local
             {c.funderPhone}
             <input name="phone" type="tel" maxLength={40} defaultValue={funder.phone} />
           </label>
-          <ContactPicker locale={locale} name="contact" value={funder.contact_id} label={c.funderContact} none={t.noContact} />
+          {data.can.contacts && <ContactPicker locale={locale} name="contact" value={funder.contact_id} label={c.funderContact} none={t.noContact} />}
         </div>
         <label>
           {c.funderAddress}

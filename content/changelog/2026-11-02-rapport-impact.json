@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "roles": [
+    "president"
+  ],
+  "link": "/statistics/impact",
+  "image": null,
+  "fr": {
+    "title": "Le rapport d'impact pour les subsides",
+    "text": "Bénéficiaires, heures de sport, bénévolat, kilomètres : les chiffres que demandent les pouvoirs subsidiants sont calculés tout seuls pour la période d'un subside, sans aucun nom, puis exportés en PDF ou en Excel et joints au dossier."
+  },
+  "nl": {
+    "title": "Het impactverslag voor subsidies",
+    "text": "Begunstigden, sporturen, vrijwilligerswerk, kilometers: de cijfers die subsidiërende overheden vragen worden vanzelf berekend voor de periode van een subsidie, zonder namen, en dan als pdf of Excel uitgevoerd en bij het dossier gevoegd."
+  },
+  "en": {
+    "title": "The impact report for grants",
+    "text": "Beneficiaries, sport hours, volunteering, kilometres: the figures funders ask for are computed by themselves for a grant's period, with no name, then exported as PDF or Excel and filed with the application."
+  }
+}

@@ -12,6 +12,8 @@ import {
   type PeopleScope,
 } from "../people/service";
 import { ageOn } from "../people/schema";
+import { seasonOf } from "../finance/schema";
+import { blockingOf, type OverviewBlocks } from "./overview";
 import { docAccess, type Doc } from "../documents/access";
 import { chairsFor } from "../equipment/service";
 import { playerMatchStats } from "../competitions/service";
@@ -285,6 +287,8 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         editPosition: can.editPosition,
         managePeople: can.managePeople,
         viewMoney: can.viewMoney,
+        // 34: the disciplinary history, for the club's presidency and coaches.
+        discipline: ["club_president", "coach"].includes(s.context.role),
       },
       teams,
       // Open teams of the club, for "move to…" (wave 12): those who manage teams only.
@@ -434,5 +438,141 @@ export async function playerProfileExecute(
     // The audit records who changed which part, never the content.
     await audit(c, org, p.userId, "player." + input.action, input.id);
     return { id: input.id, version: saved.rows[0].version as number };
+  });
+}
+
+/**
+ * 40: « Vue d'ensemble » of a person's sheet: one block per subject, each
+ * present only when the reader has the matching right (a coach never sees
+ * money nor health; a parent sees his child's overview without the club's
+ * internal notes), and what blocks the person, in one line.
+ */
+export async function personOverview(db: Pool, p: Principal, id: string) {
+  return peopleScope(db, p, false, async (s) => {
+    const c = s.client,
+      org = s.context.organization_id;
+    const all = await peopleRecords(s),
+      v = peopleVisibility(s, all),
+      can = rightsFor(s, all, v, id),
+      profile = can.profile,
+      day = brusselsToday();
+    const mfa = mfaSatisfied(!!s.user.twoFactorEnabled);
+    const staff = mfa && (s.rights.includes("people.read") || s.rights.includes("people.manage"));
+    const family = can.own || can.guardian;
+    const sport = staff || family || can.coachOf;
+    const health = mfa && s.context.grants.includes("people.sensitive");
+    const season = seasonOf(day).label;
+    const blocks: OverviewBlocks = {};
+    if (staff || family) {
+      blocks.mandates = (
+        await c.query(
+          `SELECT r.role,r.valid_from::text AS valid_from,r.valid_until::text AS valid_until FROM role_assignment r JOIN person pe ON pe.user_id=r.user_id JOIN club_person cp ON cp.person_id=pe.id
+            WHERE cp.id=$1 AND r.organization_id=$2 AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) ORDER BY r.valid_from`,
+          [id, org],
+        )
+      ).rows as { role: string; valid_from: string | null; valid_until: string | null }[];
+      const t = (
+        await c.query(
+          `SELECT count(*) FILTER (WHERE t.status<>'done')::int AS open,count(*) FILTER (WHERE t.status<>'done' AND t.due_on<$3::date)::int AS late
+             FROM task t WHERE t.organization_id=$1 AND (t.responsible_id=$2 OR EXISTS (SELECT 1 FROM task_assignee a WHERE a.task_id=t.id AND a.profile_id=$2))`,
+          [org, id, day],
+        )
+      ).rows[0];
+      blocks.tasks = { open: t.open, late: t.late };
+    }
+    if (sport) {
+      blocks.teams = all.assignments
+        .filter((a) => a.profile_id === id && !a.cancelled && !a.closed_at && (!a.ends_on || a.ends_on >= day) && (v.full || family || v.visibleTeams.has(a.team_id)))
+        .map((a) => ({ id: a.team_id, name: all.teams.find((x) => x.id === a.team_id)?.name ?? "", role: a.role }));
+      const d = (
+        await c.query(
+          `SELECT count(*) FILTER (WHERE status IN ('missing','requested','refused'))::int AS missing,count(*) FILTER (WHERE status IN ('uploaded','review'))::int AS review,
+                  count(*) FILTER (WHERE status='expired' OR (status='valid' AND expires_on<$3::date))::int AS expired
+             FROM club_document WHERE organization_id=$1 AND profile_id=$2 AND NOT sensitive AND status<>'archived'`,
+          [org, id, day],
+        )
+      ).rows[0];
+      blocks.documents = { missing: d.missing, review: d.review, expired: d.expired };
+      const att = (
+        await c.query(
+          `SELECT count(*) FILTER (WHERE i.actual='present')::int AS present,count(*) FILTER (WHERE i.actual='absent')::int AS absent,count(*)::int AS invited
+             FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id JOIN calendar_event e ON e.id=r.event_id
+            WHERE i.organization_id=$1 AND i.profile_id=$2 AND i.withdrawn_at IS NULL AND e.starts_at BETWEEN now()-interval '30 days' AND now() AND e.status<>'cancelled'`,
+          [org, id],
+        )
+      ).rows[0];
+      blocks.attendance = { invited: att.invited, present: att.present, absent: att.absent };
+      blocks.next = (
+        await c.query(
+          `SELECT e.id,e.title,e.starts_at,i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id JOIN calendar_event e ON e.id=r.event_id
+            WHERE i.organization_id=$1 AND i.profile_id=$2 AND i.withdrawn_at IS NULL AND e.starts_at>now() AND e.status<>'cancelled' ORDER BY e.starts_at LIMIT 3`,
+          [org, id],
+        )
+      ).rows as { id: string; title: string; starts_at: string; response: string }[];
+      blocks.licence =
+        ((await c.query("SELECT status FROM license WHERE profile_id=$1 AND organization_id=$2 AND season=$3 ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'requested' THEN 1 ELSE 2 END LIMIT 1", [id, org, season])).rows[0]?.status as string | undefined) ?? null;
+    }
+    blocks.chairs = (await chairsFor(c, org, [id])).map((ch) => ({ id: ch.id, name: ch.label ?? ch.name, status: ch.status }));
+    if (can.viewMoney) {
+      const m = (
+        await c.query(
+          `SELECT COALESCE(sum(d.net_cents),0)::int AS due,
+                  COALESCE(sum((SELECT COALESCE(sum(t.amount_cents),0) FROM finance_transaction t WHERE t.receivable_id=d.id AND t.cancelled_at IS NULL AND t.direction='in')),0)::int AS paid,
+                  COALESCE(sum((SELECT COALESCE(sum(i.amount_cents),0) FROM dues_installment i WHERE i.receivable_id=d.id AND i.due_on<$3::date)),0)::int AS expected,
+                  min((SELECT min(i.due_on) FROM dues_installment i WHERE i.receivable_id=d.id AND i.due_on<$3::date))::text AS oldest
+             FROM dues_receivable d WHERE d.organization_id=$1 AND d.profile_id=$2 AND d.status='open'`,
+          [org, id, day],
+        )
+      ).rows[0];
+      blocks.dues = { due: m.due, paid: m.paid, late: Math.max(0, m.expected - m.paid), oldest: m.oldest };
+    }
+    if (staff || can.guardian)
+      blocks.authorizations = (
+        await c.query("SELECT kind,status FROM authorization_request WHERE organization_id=$1 AND profile_id=$2 AND status IN ('requested','signed','refused') ORDER BY requested_at DESC LIMIT 20", [org, id])
+      ).rows as { kind: string; status: string }[];
+    if ((staff || can.own) && profile.directory_roles?.includes("coach")) {
+      blocks.trainings = (
+        await c.query("SELECT q.status,k.title,q.completed_on::text AS completed_on FROM training_request q JOIN training_course k ON k.id=q.course_id WHERE q.profile_id=$1 ORDER BY q.requested_at DESC LIMIT 10", [id])
+      ).rows as { status: string; title: string; completed_on: string | null }[];
+      blocks.permit = ((await c.query("SELECT valid_until::text AS valid_until,categories FROM driver_licence WHERE profile_id=$1 AND organization_id=$2", [id, org])).rows[0] ?? null) as {
+        valid_until: string | null;
+        categories: string[];
+      } | null;
+    }
+    if (staff || family) {
+      // A minor's representatives, or a parent's children (each to its own sheet).
+      blocks.guardians = (
+        await c.query(
+          `SELECT gp.id,gp.full_name FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id
+            WHERE g.organization_id=$1 AND g.subject_profile_id=$2 AND g.revoked_at IS NULL AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) ORDER BY gp.full_name`,
+          [org, id],
+        )
+      ).rows as { id: string; full_name: string }[];
+      blocks.children = (
+        await c.query(
+          `SELECT sp.id,sp.full_name FROM guardian_relationship g JOIN club_person sp ON sp.id=g.subject_profile_id
+            WHERE g.organization_id=$1 AND g.guardian_profile_id=$2 AND g.revoked_at IS NULL AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) ORDER BY sp.full_name`,
+          [org, id],
+        )
+      ).rows as { id: string; full_name: string }[];
+    }
+    if (health) {
+      const h = (await c.query("SELECT support_needs,safety_notes FROM player_support_profile WHERE profile_id=$1 AND organization_id=$2", [id, org])).rows[0];
+      blocks.health = { support: !!h?.support_needs, safety: !!h?.safety_notes };
+    }
+    const directoryRoles = (profile.directory_roles ?? []) as string[];
+    return {
+      id,
+      organization_id: org,
+      name: profile.full_name as string,
+      email: staff ? ((profile.email as string | null) ?? null) : null,
+      kind: directoryRoles.includes("coach") && !directoryRoles.includes("player") ? ("coach" as const) : ("player" as const),
+      today: day,
+      blocks,
+      blocking: blockingOf(blocks, day),
+      // 4: open first for the presidency and those who manage the players.
+      overviewFirst: s.context.role === "club_president" || (mfa && s.rights.includes("people.manage")),
+      can: { task: mfa && s.rights.includes("people.manage"), email: staff && !!profile.email, remind: can.viewMoney && staff },
+    };
   });
 }

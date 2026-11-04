@@ -1,3 +1,5 @@
+import { rounds } from "../trips/rounds";
+import { transportReady } from "../trips/transport";
 import type { Pool, PoolClient } from "pg";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { audit, AccessError, type Principal } from "../access/service";
@@ -258,14 +260,25 @@ export async function upcomingDetails(c: PoolClient, org: string, matches: Row[]
     const coaches = presenceLine(answers.filter((a) => a.coach));
     const place = m.place_id ?? (m.calendar_event_id ? ((await c.query("SELECT place_id FROM calendar_event WHERE id=$1", [m.calendar_event_id])).rows[0]?.place_id as string | null) : null);
     const atHome = !!place && !!(await c.query("SELECT 1 FROM calendar_place WHERE id=$1 AND organization_id=$2 AND home", [place, org])).rowCount;
-    const tripReady =
-      !!m.calendar_event_id &&
-      !!(
-        await c.query(
-          "SELECT 1 FROM trip t JOIN trip_vehicle v ON v.trip_id=t.id WHERE t.calendar_event_id=$1 AND t.organization_id=$2 AND t.status<>'cancelled' AND v.driver_profile_id IS NOT NULL LIMIT 1",
-          [m.calendar_event_id, org],
+    // 3 (11): « En ordre » when the trip serving the match has its vehicles, each with a driver and a load that fits.
+    const trip = (
+      await c.query(
+        "SELECT id,starts_on::text AS starts_on,ends_on::text AS ends_on FROM trip WHERE organization_id=$1 AND status<>'cancelled' AND (match_id=$2 OR ($3::uuid IS NOT NULL AND calendar_event_id=$3)) ORDER BY match_id IS NULL,created_at LIMIT 1",
+        [org, m.id, m.calendar_event_id ?? null],
+      )
+    ).rows[0] as { id: string; starts_on: string; ends_on: string } | undefined;
+    const tripReady = trip
+      ? transportReady(
+          (
+            await rounds(
+              c,
+              org,
+              trip,
+              (await c.query("SELECT tp.id,tp.profile_id,tp.chair,tp.status,cp.full_name FROM trip_participant tp JOIN club_person cp ON cp.id=tp.profile_id WHERE tp.trip_id=$1", [trip.id])).rows,
+            )
+          ).map((v) => ({ drivers: v.drivers.length, problems: v.check.problems })),
         )
-      ).rowCount;
+      : false;
     const tasks = (await c.query("SELECT count(*)::int AS n FROM task WHERE match_id=$1 AND organization_id=$2 AND kind='transport'", [m.id, org])).rows[0].n as number;
     out.set(m.id, {
       players: { ...players, tone: toneFor(players.coming, rules.players) },

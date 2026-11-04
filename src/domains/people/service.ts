@@ -1,4 +1,5 @@
 import { mfaSatisfied } from "../../lib/security-policy";
+import { keyCounts, keysOnDeparture, seesAllKeys } from "../keys/service";
 import { csvRows } from "./csv";
 import { defaultColumns, exportGrid, type ExportColumn } from "./export";
 import { Pool, PoolClient } from "pg";
@@ -20,6 +21,8 @@ import {
   ageOn,
   orderedDates,
   peopleCommand,
+  representativeRelations,
+  type representativeSchema,
   type DepartureStatus,
   type PeopleCommand,
 } from "./schema";
@@ -169,6 +172,83 @@ async function inviteWith(
     teamId: i.teamId ?? null,
     guardianOf: minor ? i.profileId : null,
     greeting: (minor ? i.guardian!.name : i.fullName).trim().split(/\s+/)[0] ?? "",
+  });
+  return true;
+}
+/**
+ * 8: the representatives of a new player: a person already known to the
+ * club (a sibling's parent) or a new one, linked as legal representative
+ * (declared until they accept the invitation, as since wave 16) or as a
+ * delegated carer (sees the file until the end of the season). The relation
+ * (mother, father…) is kept in the link's note.
+ */
+const relationWords: Record<(typeof representativeRelations)[number], string> = {
+  mother: "mère",
+  father: "père",
+  guardian: "tuteur",
+  administrator: "administrateur",
+  carer: "aidant",
+  other: "autre",
+};
+async function addRepresentatives(
+  s: Scope,
+  player: string,
+  command: { joinedOn: string; fullName: string; phone: string },
+  reps: z.infer<typeof representativeSchema>[],
+) {
+  const org = s.context.organization_id,
+    c = s.client;
+  const out: { id: string; name: string; email: string; locale: string }[] = [];
+  const seen = new Set<string>();
+  for (const r of reps) {
+    let id: string, name: string, mail: string;
+    if (r.existingId) {
+      const known = (await c.query("SELECT id,full_name,COALESCE(email,'') AS email FROM club_person WHERE id=$1 AND organization_id=$2 AND status='active'", [r.existingId, org])).rows[0];
+      if (!known) throw new AccessError("NOT_FOUND", 404);
+      id = known.id;
+      name = known.full_name;
+      mail = r.email || known.email;
+    } else {
+      name = (r.fullName ?? "").trim();
+      if (name.length < 2) throw new AccessError("REPRESENTATIVE_NAME_REQUIRED", 400);
+      mail = r.email ?? "";
+      const person = (await c.query("INSERT INTO person(locale) VALUES($1) RETURNING id", [r.locale === "nl" ? "nl" : "fr"])).rows[0].id;
+      id = (
+        await c.query("INSERT INTO club_person(organization_id,person_id,full_name,email,phone,joined_on) VALUES($1,$2,$3,$4,$5,$6) RETURNING id", [org, person, name, mail || null, r.phone ?? "", command.joinedOn])
+      ).rows[0].id;
+    }
+    if (seen.has(id) || id === player) throw new AccessError("INVALID_INPUT", 400);
+    seen.add(id);
+    const note = `Lien : ${relationWords[r.relation]}, donné à l'ajout du joueur`;
+    if (r.rights === "legal")
+      await c.query(
+        "INSERT INTO guardian_relationship(organization_id,guardian_profile_id,subject_profile_id,kind,can_view,can_edit,starts_on,authorization_note,verified_by) VALUES($1,$2,$3,'declared',false,false,$4,$5,$6)",
+        [org, id, player, command.joinedOn, note, s.p.userId],
+      );
+    else
+      await c.query(
+        `INSERT INTO guardian_relationship(organization_id,guardian_profile_id,subject_profile_id,kind,can_view,can_edit,starts_on,ends_on,authorization_note,verified_by)
+         VALUES($1,$2,$3,'delegated_aid',true,false,$4,COALESCE((SELECT max(ends_on) FROM season WHERE organization_id=$1 AND NOT archived AND ends_on>=$4::date),$4::date+365),$5,$6)`,
+        [org, id, player, command.joinedOn, note, s.p.userId],
+      );
+    out.push({ id, name, email: mail, locale: r.locale ?? "fr" });
+  }
+  return out;
+}
+/** 8: one invitation per representative and address, to manage the player's file. */
+async function inviteRepresentative(s: Scope, player: string, r: { id: string; name: string; email: string }) {
+  const org = s.context.organization_id;
+  if (
+    (await s.client.query("SELECT 1 FROM invitation WHERE organization_id=$1 AND profile_id=$2 AND lower(email)=lower($3) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>now()", [org, r.id, r.email]))
+      .rowCount
+  )
+    return false;
+  await inviteProfile(s.client, org, s.p.userId, {
+    email: r.email,
+    role: "guardian",
+    profileId: r.id,
+    guardianOf: player,
+    greeting: r.name.trim().split(/\s+/)[0] ?? "",
   });
   return true;
 }
@@ -566,6 +646,10 @@ async function readPeople(s: Scope, filters: Filters) {
       role: s.context.role,
     },
     ownProfileId: v.own?.id ?? null,
+    // H10: the keys each person still holds, for those who may see them (president, equipment, members).
+    keyCounts: seesAllKeys(s.context.role, s.rights) ? await keyCounts(s.client, s.context.organization_id) : null,
+    // 7: the coaches' list for the president and who manages the members: roles, tasks, validated courses.
+    coachExtras: coachIds.length && (s.context.role === "club_president" || s.rights.includes("mandates.manage")) ? await coachExtras(s.client, s.context.organization_id, coachIds, courses) : null,
     capabilities: {
       peopleManage: managers,
       registrationsManage: s.rights.includes("registrations.manage"),
@@ -615,6 +699,37 @@ async function readPeople(s: Scope, filters: Filters) {
     total: profiles.length,
   };
 }
+/** 7: per coach, his staff roles, his open and late tasks, his validated courses (title and date). */
+async function coachExtras(c: PoolClient, org: string, ids: string[], courses: { profile_id: string; status: string; title: string; completed_on: string | null; decided_on: string | null }[]) {
+  const roles = (
+    await c.query(
+      `SELECT cp.id AS profile_id,r.id,r.name FROM club_person cp JOIN person pe ON pe.id=cp.person_id JOIN role_assignment a ON a.user_id=pe.user_id AND a.organization_id=cp.organization_id
+         JOIN mandate_staff_role m ON m.mandate_id=a.id JOIN staff_role r ON r.id=m.role_id AND NOT r.archived
+        WHERE cp.organization_id=$1 AND cp.id=ANY($2::uuid[]) AND a.revoked_at IS NULL AND (a.valid_until IS NULL OR a.valid_until>now()) ORDER BY r.created_at`,
+      [org, ids],
+    )
+  ).rows as { profile_id: string; id: string; name: { fr: string; nl?: string; en?: string } }[];
+  const tasks = (
+    await c.query(
+      `SELECT p.id AS profile_id,count(DISTINCT t.id)::int AS open,count(DISTINCT t.id) FILTER (WHERE t.due_on<CURRENT_DATE)::int AS late
+         FROM unnest($2::uuid[]) AS p(id) JOIN task t ON t.organization_id=$1 AND t.status<>'done'
+          AND (t.responsible_id=p.id OR EXISTS(SELECT 1 FROM task_assignee a WHERE a.task_id=t.id AND a.profile_id=p.id AND a.done_on IS NULL))
+        GROUP BY p.id`,
+      [org, ids],
+    )
+  ).rows as { profile_id: string; open: number; late: number }[];
+  return Object.fromEntries(
+    ids.map((id) => [
+      id,
+      {
+        roles: roles.filter((r) => r.profile_id === id).map((r) => ({ id: r.id, name: r.name })),
+        tasks: tasks.find((t) => t.profile_id === id) ?? { open: 0, late: 0 },
+        formations: courses.filter((x) => x.profile_id === id && x.status === "approved").map((x) => ({ title: x.title, on: x.completed_on ?? x.decided_on })),
+      },
+    ]),
+  );
+}
+
 export async function peopleView(
   db: Pool,
   p: Principal,
@@ -854,6 +969,8 @@ export async function peopleExecute(
             "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE profile_id=$1 AND organization_id=$2 AND role=$3 AND closed_at IS NULL AND NOT cancelled AND (ends_on IS NULL OR ends_on>=CURRENT_DATE)",
             [command.id, org, command.role],
           );
+        // H10: leaving with keys or badges, a task « Récupérer les clés ».
+        if (command.archived) await keysOnDeparture(c, org, command.id, s.p.userId);
         target = command.id;
       } else if (command.action === "departure") {
         const existing = await profile(s, command.id);
@@ -884,6 +1001,7 @@ export async function peopleExecute(
             [command.id, org, command.status, command.note],
           );
         }
+        await keysOnDeparture(c, org, command.id, s.p.userId);
         target = command.id;
       } else if (command.action === "updateSeason") {
         if (!orderedDates(command.startsOn, command.endsOn))
@@ -935,10 +1053,23 @@ export async function peopleExecute(
             ],
           )
         ).rows[0].id;
-        if (command.invite) {
-          const role = (command.directoryRoles ?? []).includes("player") || !(command.directoryRoles ?? []).length ? "player" : "coach";
+        // 8: the representatives given with the player, in the same transaction.
+        const isPlayer = (command.directoryRoles ?? []).includes("player") || !(command.directoryRoles ?? []).length;
+        const underage = !!command.birthDate && ageOn(command.birthDate, today()) < 18;
+        const reps = command.representatives ?? [];
+        if (isPlayer && command.representatives !== undefined) {
+          if (underage && !reps.length) throw new AccessError("GUARDIAN_REQUIRED", 400);
+          if (!underage && command.hasRepresentative && !reps.length) throw new AccessError("REPRESENTATIVE_REQUIRED", 400);
+          const created = await addRepresentatives(s, target, command, reps);
+          if (command.inviteRepresentatives !== false) for (const r of created) if (r.email) await inviteRepresentative(s, target, r);
+        }
+        // An adult player given with his representatives is invited himself too.
+        if (command.invite && command.representatives !== undefined && !underage)
+          await inviteWith(s, { profileId: target, role: "player", fullName: command.fullName, birthDate: command.birthDate, email: command.email });
+        if (command.invite && command.representatives === undefined) {
+          const role = isPlayer ? "player" : "coach";
           let guardian: { id: string; name: string; email: string } | undefined;
-          const minor = !!command.birthDate && ageOn(command.birthDate, today()) < 18;
+          const minor = underage;
           if (minor && role === "player") {
             const name = (command.guardianName ?? "").trim();
             if (name.length < 2 || !command.guardianEmail) throw new AccessError("GUARDIAN_REQUIRED", 400);
@@ -1536,3 +1667,37 @@ export {
   adult,
   today as brusselsToday,
 };
+
+/**
+ * 8: a player who turns 18 is invited to manage his own account (his
+ * parent's legal access ends at 18; the player may then delegate it). Once,
+ * by email, when the club has his address and he has no account yet.
+ */
+export async function majorityTick(db: Pool) {
+  const rows = (
+    await db.query(
+      `SELECT cp.id,cp.organization_id,cp.full_name,cp.email,(SELECT r.user_id FROM role_assignment r WHERE r.organization_id=cp.organization_id AND r.role='club_president' AND r.revoked_at IS NULL ORDER BY r.valid_from LIMIT 1) AS actor
+         FROM club_person cp JOIN person pe ON pe.id=cp.person_id
+        WHERE cp.status='active' AND 'player'=ANY(cp.directory_roles) AND pe.user_id IS NULL AND COALESCE(cp.email,'')<>''
+          AND cp.birth_date<=CURRENT_DATE-interval '18 years' AND cp.birth_date>CURRENT_DATE-interval '18 years'-interval '30 days'
+          AND NOT EXISTS (SELECT 1 FROM invitation i WHERE i.organization_id=cp.organization_id AND i.profile_id=cp.id AND i.role='player')`,
+    )
+  ).rows as { id: string; organization_id: string; full_name: string; email: string; actor: string | null }[];
+  let sent = 0;
+  for (const r of rows) {
+    if (!r.actor) continue;
+    const c = await db.connect();
+    try {
+      await c.query("BEGIN");
+      await inviteProfile(c, r.organization_id, r.actor, { email: r.email, role: "player", profileId: r.id, greeting: r.full_name.trim().split(/\s+/)[0] ?? "" });
+      await c.query("COMMIT");
+      sent++;
+    } catch (e) {
+      await c.query("ROLLBACK");
+      throw e;
+    } finally {
+      c.release();
+    }
+  }
+  return sent;
+}

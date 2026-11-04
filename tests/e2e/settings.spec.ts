@@ -46,14 +46,14 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(president)]);
 
-    // The home: seven category cards, three per row on a wide screen.
+    // The home: ten category cards (12: personal data, seasons and teams; 28: documents), three per row on a wide screen.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
     const cards = page.locator(".settings-grid > li");
-    await expect(cards).toHaveCount(7);
-    for (const name of ["Mon compte", "Notifications et résumé", "Club", "Membres et droits", "Activités", "Finances", "Journaux et confidentialité"])
-      await expect(page.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
+    await expect(cards).toHaveCount(10);
+    for (const name of ["Mon compte", "Notifications et résumé", "Données personnelles", "Club", "Membres et droits", "Saisons et équipes", "Activités", "Documents", "Finances", "Journaux et confidentialité"])
+      await expect(cards.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
     await axe(page, "settings home");
 
     // The search: accents do not matter, Enter opens the sub-page at the setting.
@@ -108,10 +108,12 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.goto("/fr/notifications");
     await expect(page).toHaveURL("/fr/settings/notifications");
     await expect(page.getByRole("button", { name: "Tester mes notifications", exact: true })).toBeVisible();
-    // Gestion du club keeps a link to the identity.
+    // 12: « Gestion du club » and « Données personnelles » are categories of Réglages.
     await page.goto("/fr/club/manage");
-    await page.getByRole("link", { name: "Ouvrir les réglages du club", exact: true }).click();
-    await expect(page).toHaveURL("/fr/settings/club#club-identity-title");
+    await expect(page).toHaveURL("/fr/settings/club");
+    await page.goto("/fr/privacy");
+    await expect(page).toHaveURL("/fr/settings/data");
+    await expect(page.getByRole("heading", { name: "Mes données", exact: true })).toBeVisible();
     // Ctrl+K finds a setting.
     await page.keyboard.press("Control+k");
     await page.getByRole("combobox", { name: /Rechercher un joueur/ }).fill("Barèmes");
@@ -121,7 +123,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     // Phone: the home is the list of categories, a sub-page has a back link and no side column.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/settings");
-    await expect(cards).toHaveCount(7);
+    await expect(cards).toHaveCount(10);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     await page.locator("main").getByRole("link", { name: /^Finances/ }).click();
     await expect(page).toHaveURL("/fr/settings/money");
@@ -133,13 +135,14 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await back.click();
     await expect(page).toHaveURL("/fr/settings");
 
-    // A coach without rights sees only their account and notifications; other categories say so.
+    // A coach without rights sees only their account, notifications and data; other categories say so.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(coach)]);
     await page.goto("/fr/settings");
-    await expect(cards).toHaveCount(2);
+    // Mon compte, notifications and « Mes données » (12: for everyone).
+    await expect(cards).toHaveCount(3);
     await page.getByLabel("Rechercher un réglage", { exact: true }).fill("barème");
     await expect(page.getByText("Aucun réglage ne correspond à cette recherche.")).toBeVisible();
     await page.goto("/fr/settings/money");

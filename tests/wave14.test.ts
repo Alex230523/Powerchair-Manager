@@ -17,23 +17,21 @@ const all = ["people.read", "teams.manage", "members.read", "mandates.manage", "
 
 describe("president menu (wave 14)", () => {
   const groups = menuGroups(base("club_president", all));
-  it("has the six groups in order, Plus folded, and no Mon espace entry", () => {
-    expect(groups.map((g) => g.id)).toEqual(["teams", "activities", "communication", "money", "clubGroup", "more"]);
-    expect(groups.find((g) => g.id === "more")?.folded).toBe(true);
+  it("has the five groups in order, no Plus (12), and no Mon espace entry", () => {
+    expect(groups.map((g) => g.id)).toEqual(["teams", "activities", "communication", "money", "clubGroup"]);
     expect(groups.flatMap((g) => g.items.map((i) => i.route))).not.toContain("/access");
     expect(groups.flatMap((g) => g.items.map((i) => i.route))).not.toContain("/notifications");
   });
   it("places each page where the design says", () => {
     const routes = Object.fromEntries(groups.map((g) => [g.id, g.items.map((i) => i.route)]));
     // Wave 16 (E2): the exercise sheets after the attendance.
-    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/licenses", "/transfers", "/statistics"]);
+    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/classification", "/transfers", "/statistics"]);
     expect(routes.activities).toEqual(["/calendar", "/events", "/matches", "/trips", "/venues", "/tournaments"]);
     expect(routes.communication).toEqual(["/communication", "/documents"]);
     // A2: « Subsides & sponsors » has its own entry.
-    expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors"]);
-    expect(routes.clubGroup).toEqual(["/club/manage", "/club/public", "/equipment", "/incidents", "/contacts", "/tasks"]);
-    // Wave 17 (G3): Relances moved to Settings, the offline book is gone.
-    expect(routes.more).toEqual(["/privacy", "/settings"]);
+    expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors", "/fundraising"]);
+    // 12: « Gestion du club » went to Réglages; Réglages is the menu's last entry, apart.
+    expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/equipment", "/incidents", "/discipline", "/contacts", "/tasks", "/circulars", "/sondages"]);
   });
   it("respects switched-off modules and missing rights", () => {
     const off = menuGroups(base("club_president", all, { disabled_modules: ["trips", "equipment", "fundraising"] }));
@@ -44,7 +42,7 @@ describe("president menu (wave 14)", () => {
     expect(routes).not.toContain("/offline-book");
     const few = menuGroups(base("club_president", ["people.read"]));
     // Wave 17 (O1): a president always plans the club's tasks.
-    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "clubGroup", "more"]);
+    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "clubGroup"]);
   });
   it("labels every group and item in the three languages", () => {
     for (const locale of ["fr", "nl", "en"] as const)
@@ -56,15 +54,14 @@ describe("president menu (wave 14)", () => {
 });
 
 describe("other roles keep the wave 10 menu", () => {
-  it("a coach sees the modules of their rights, with Administration last", () => {
+  it("a coach sees the modules of their rights (Réglages apart, 12)", () => {
     const groups = menuGroups(base("coach", ["calendar.read", "people.read", "attendance.manage"]));
-    expect(groups.map((g) => g.id)).toEqual(["players", "life", "management", "admin"]);
+    expect(groups.map((g) => g.id)).toEqual(["players", "life", "management"]);
     expect(groups.flatMap((g) => g.items.map((i) => i.route))).not.toContain("/access");
   });
-  it("a player only has Mon espace and Réglages", () => {
+  it("a player only has Mon espace (and Réglages, apart, 12)", () => {
     const groups = menuGroups(base("player", []));
-    expect(groups.map((g) => g.id)).toEqual(["mine", "admin"]);
-    expect(groups[1].items.map((i) => i.route)).toEqual(["/settings"]);
+    expect(groups.map((g) => g.id)).toEqual(["mine"]);
   });
 });
 

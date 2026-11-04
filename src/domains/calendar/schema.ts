@@ -94,6 +94,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     ]),
     occurrences: z.number().int().min(1).max(52),
     requestId: id,
+    /** H9: the exact days of a weekly series (holidays and closures left out), the time of localStart and localEnd kept. */
+    dates: z.array(z.iso.date()).min(1).max(52).optional(),
   }),
   z.object({
     action: z.literal("update"),
@@ -138,6 +140,8 @@ export const commandSchema = z.discriminatedUnion("action", [
     includeMoney: z.boolean().optional(),
     /** Wave 15 (C9): only the events that concern me (invited, participant or in charge). */
     mine: z.boolean().optional(),
+    /** 27: the family feed, the events of all one's children in every club. */
+    family: z.boolean().optional(),
   }),
   z.object({ action: z.literal("revokeFeed"), id }),
   /** Wave 15 (C9): a new link with the same choices; the old one stops working. */

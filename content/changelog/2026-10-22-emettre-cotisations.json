@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president"
+  ],
+  "link": "/dues",
+  "image": null,
+  "fr": {
+    "title": "Émettre les cotisations en une fois",
+    "text": "Un bouton visible émet les cotisations de toute une équipe ou de tout le club, et chaque famille reçoit sa demande."
+  },
+  "nl": {
+    "title": "Lidgelden in één keer uitschrijven",
+    "text": "Een zichtbare knop schrijft de lidgelden uit voor een hele ploeg of de hele club, en elke familie krijgt haar verzoek."
+  },
+  "en": {
+    "title": "Issue fees in one go",
+    "text": "A visible button issues the fees of a whole team or the whole club, and each family receives its request."
+  }
+}

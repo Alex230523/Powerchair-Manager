@@ -18,11 +18,14 @@ export function PlaceDialog({
   locale,
   place,
   category = "training",
+  initialName = "",
   close,
   saved,
 }: {
   locale: Locale;
   place?: PlaceRow;
+  /** 1: the name typed in the event's place field (« + Créer ce lieu »). */
+  initialName?: string;
   category?: PlaceCategory;
   close: () => void;
   saved: (id: string) => void;
@@ -71,6 +74,7 @@ export function PlaceDialog({
           storage: f.has("storage"),
           charging: f.has("charging"),
           home: f.has("home"),
+          bookingNeeded: f.has("bookingNeeded"),
           foodPolicy: s("food"),
           notes: s("notes"),
           archived: f.has("archived"),
@@ -98,7 +102,7 @@ export function PlaceDialog({
       >
         <label>
           {t.name}
-          <input name="name" required minLength={2} maxLength={120} defaultValue={place?.name} />
+          <input name="name" required minLength={2} maxLength={120} defaultValue={place?.name ?? initialName} />
         </label>
         <label>
           {t.address}
@@ -171,6 +175,11 @@ export function PlaceDialog({
         <label className="check">
           <input type="checkbox" name="home" defaultChecked={place?.home} />
           {t.home}
+        </label>
+        {/* 18: the hall's bookings are worked out from the calendar when it must be booked. */}
+        <label className="check">
+          <input type="checkbox" name="bookingNeeded" defaultChecked={place ? place.booking_needed : true} />
+          {t.bookingNeeded}
         </label>
         <label>
           {t.food}

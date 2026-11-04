@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/players",
+  "image": null,
+  "fr": {
+    "title": "La fiche d'un joueur dans une fenêtre",
+    "text": "La fiche s'ouvre sans quitter la liste. Les anciens joueurs restent consultables à part."
+  },
+  "nl": {
+    "title": "De fiche van een speler in een venster",
+    "text": "De fiche opent zonder de lijst te verlaten. Oud-spelers blijven apart raadpleegbaar."
+  },
+  "en": {
+    "title": "A player's file in a window",
+    "text": "The file opens without leaving the list. Former players remain available separately."
+  }
+}

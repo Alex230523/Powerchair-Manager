@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-21",
+  "roles": [
+    "coach"
+  ],
+  "link": "/exercises",
+  "image": null,
+  "fr": {
+    "title": "Une bibliothèque d'exercices",
+    "text": "Les coachs gardent leurs exercices avec leur schéma et les réutilisent d'un entraînement à l'autre."
+  },
+  "nl": {
+    "title": "Een bibliotheek met oefeningen",
+    "text": "Coaches bewaren hun oefeningen met hun schema en gebruiken ze opnieuw van training tot training."
+  },
+  "en": {
+    "title": "A library of drills",
+    "text": "Coaches keep their drills with their diagram and reuse them from one training to the next."
+  }
+}

@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { useScopedTeam, ApplyScope } from "./use-scope";
+import { useScopedTeam, ApplyScope, useScope } from "./use-scope";
+import { teamChoices } from "./team-choices";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
 import { peopleCopy, peopleErrors } from "./people-copy";
@@ -14,11 +15,16 @@ import { fillIn, sheetCopy } from "./player-sheet-copy";
 import { PlayerImport } from "./player-import";
 import { ExportDialog } from "./export-dialog";
 import { DataGrid, downloadCsv, postCommand } from "./data-grid";
+import { keysCopy } from "./keys-copy";
 import { eachRow } from "./table-state";
 import { bulkCopy } from "./bulk-copy";
 import { setupCopy } from "./setup-copy";
 import { InviteFields, isMinor } from "./invite-fields";
+import { RepresentativeFields, readRepresentatives } from "./representative-fields";
+import { representativeCopy } from "./representative-copy";
 import { coachSpaceCopy } from "./coach-space-copy";
+import { staffRolesCopy } from "./staff-roles-copy";
+import { Tip } from "./knowledge";
 import type { TrainingState } from "@/domains/licences/schema";
 
 /** Wave 17 (O1): « Formé » (course and date in the tooltip), « En attente de validation » or « Non formé ». */
@@ -153,6 +159,7 @@ export function PlayerDirectory({
   former = false,
   create = false,
   importing = false,
+  missingGuardian = false,
 }: {
   locale: Locale;
   role?: "player" | "coach";
@@ -161,6 +168,8 @@ export function PlayerDirectory({
   create?: boolean;
   /** Opens the Excel import at once (Ctrl+K action, wave 15). */
   importing?: boolean;
+  /** 8: only the minors whom no representative answers for (from the home's to-do). */
+  missingGuardian?: boolean;
 }) {
   const t = copy[locale],
     p = peopleCopy[locale],
@@ -172,6 +181,8 @@ export function PlayerDirectory({
     [creating, setCreating] = useState(create),
     [inviting, setInviting] = useState(true),
     [newBirth, setNewBirth] = useState(""),
+    [newName, setNewName] = useState(""),
+    [onlyUnguarded, setOnlyUnguarded] = useState(missingGuardian),
     [importKey, setImportKey] = useState(0),
     [confirming, setConfirming] = useState(""),
     [q, setQ] = useState(""),
@@ -179,6 +190,8 @@ export function PlayerDirectory({
     // Wave 17 (J1): the departure window (reason and note), for a departure or a later change.
     [leaving, setLeaving] = useState<{ id: string; mode: "leave" | "edit" } | null>(null);
   const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  // 1: the team menu lists the teams of the season chosen in the top bar, each once.
+  const scope = useScope();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Brussels",
     year: "numeric",
@@ -263,9 +276,24 @@ export function PlayerDirectory({
     );
   const teamName = (id: string) =>
     data?.teams.find((t) => t.id === id)?.name ?? "—";
+  // 8: the minor players whom no representative (declared or verified) answers for.
+  const unguarded = new Set(
+    role === "player" && !former && data
+      ? data.profiles
+          .filter(
+            (r) =>
+              sporting(r) &&
+              !isFormer(r) &&
+              isMinor(r.birth_date ?? "") &&
+              !data.relationships.some((g) => g.subject_profile_id === r.id && !g.revoked_at && (g.kind === "declared" || g.kind === "legal_verified")),
+          )
+          .map((r) => r.id)
+      : [],
+  );
   const roster =
     data?.profiles.filter(
       (r) =>
+        (!onlyUnguarded || unguarded.has(r.id)) &&
         sporting(r) &&
         isFormer(r) === former &&
         r.full_name.toLocaleLowerCase().includes(q.toLocaleLowerCase()) &&
@@ -370,21 +398,38 @@ export function PlayerDirectory({
   return (
     <main id="main" className="access player-directory">
       <PageHeader title={title} subtitle={data?.context.name ?? t.intro} actions={<><div className="directory-actions">
-          <Link
-            className="button secondary"
-            href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
-          >
-            {data?.capabilities.registrationsManage
-              ? t.registrations
-              : locale === "fr"
-                ? "Mes inscriptions"
-                : locale === "nl"
-                  ? "Mijn inschrijvingen"
-                  : "My applications"}
-          </Link>
-          <Link className="button secondary" href={`/${locale}/dues`}>
-            {t.dues}
-          </Link>
+          {/* 1: the coaches' page keeps neither registrations nor dues; its export sits here, top right. */}
+          {/* 7: « Créer un rôle » leads to the staff roles (Réglages › Membres et droits). */}
+          {role === "coach" && !former && data?.coachExtras && (
+            <Link className="button secondary" href={`/${locale}/settings/members#settings-roles`}>
+              {staffRolesCopy[locale].create}
+            </Link>
+          )}
+          {role === "player" && (
+            <>
+              <Link
+                className="button secondary"
+                href={`/${locale}/${data?.capabilities.registrationsManage ? "registrations" : "registrations/mine"}`}
+              >
+                {data?.capabilities.registrationsManage
+                  ? t.registrations
+                  : locale === "fr"
+                    ? "Mes inscriptions"
+                    : locale === "nl"
+                      ? "Mijn inschrijvingen"
+                      : "My applications"}
+              </Link>
+              <Link className="button secondary" href={`/${locale}/dues`}>
+                {t.dues}
+              </Link>
+            </>
+          )}
+          {role === "coach" && data?.capabilities.canExport && (
+            <ExportDialog
+              locale={locale}
+              query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
+            />
+          )}
           <Link
             className="button secondary"
             href={`/${locale}/${route}${former ? "" : "/former"}`}
@@ -449,6 +494,14 @@ export function PlayerDirectory({
               </Link>
             </p>
           )}
+          {(unguarded.size > 0 || onlyUnguarded) && (
+            <p className="notice" role="status">
+              {representativeCopy[locale].missing.replace("{n}", String(unguarded.size))}{" "}
+              <button type="button" className="text-button" aria-pressed={onlyUnguarded} onClick={() => setOnlyUnguarded(!onlyUnguarded)}>
+                {onlyUnguarded ? representativeCopy[locale].showAll : representativeCopy[locale].showThem}
+              </button>
+            </p>
+          )}
           <form
             className="directory-filters"
             onSubmit={(e) => e.preventDefault()}
@@ -466,7 +519,7 @@ export function PlayerDirectory({
               <label htmlFor="directory-team">{p.team}</label>
               <select id="directory-team" value={team} onChange={(e) => setTeam(e.target.value)}>
                 <option value="">{t.all}</option>
-                {data.teams.map((v) => (
+                {teamChoices(data.teams, scope.season?.id ?? null, team).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}
                   </option>
@@ -496,18 +549,27 @@ export function PlayerDirectory({
               </label>
             )}
           </form>
-          <div className="directory-meta">
-            <p>
-              {roster.length} {t.count}
-            </p>
-            {data.capabilities.canExport && (
-              <ExportDialog
-                locale={locale}
-                query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
-              />
-            )}
-          </div>
+          {role === "player" && (
+            <div className="directory-meta">
+              <p>
+                {roster.length} {t.count}
+              </p>
+              {data.capabilities.canExport && (
+                <ExportDialog
+                  locale={locale}
+                  query={`organizationId=${data.context.id}&status=all&directoryRole=${role}&former=${former}&q=${encodeURIComponent(q)}&team=${team}&playingPosition=${encodeURIComponent(position)}`}
+                />
+              )}
+            </div>
+          )}
           <DataGrid
+            tools={
+              role === "coach" ? (
+                <p>
+                  {roster.length} {t.count}
+                </p>
+              ) : undefined
+            }
             locale={locale}
             label={title}
             caption={title}
@@ -566,13 +628,70 @@ export function PlayerDirectory({
                     { key: "number", header: t.number, sort: (r: Profile) => r.jersey_number, cell: (r: Profile) => r.jersey_number ?? "—" },
                   ]
                 : []),
-              ...(role === "coach" && !former
+              // 7: the coach's roles, his tasks and his validated courses (president and who manages the members).
+              ...(role === "coach" && !former && data?.coachExtras
+                ? [
+                    {
+                      key: "roles",
+                      header: staffRolesCopy[locale].column,
+                      sort: (r: Profile) => (data.coachExtras?.[r.id]?.roles ?? []).map((x) => x.name.fr).join(", "),
+                      cell: (r: Profile) =>
+                        (data.coachExtras?.[r.id]?.roles ?? []).map((x) => (
+                          <Badge key={x.id} tone="info">
+                            {locale === "fr" ? x.name.fr : x.name[locale] || x.name.fr}
+                          </Badge>
+                        )),
+                    },
+                    {
+                      key: "tasks",
+                      header: staffRolesCopy[locale].tasks,
+                      sort: (r: Profile) => data.coachExtras?.[r.id]?.tasks.open ?? 0,
+                      cell: (r: Profile) => {
+                        const k = data.coachExtras?.[r.id]?.tasks ?? { open: 0, late: 0 };
+                        return (
+                          <Link href={`/${locale}/coaches/${r.id}#todo`}>
+                            {fillIn(staffRolesCopy[locale].tasksCount, { open: String(k.open), late: String(k.late) })}
+                          </Link>
+                        );
+                      },
+                    },
+                    {
+                      key: "formations",
+                      header: staffRolesCopy[locale].formations,
+                      sort: (r: Profile) => data.coachExtras?.[r.id]?.formations.length ?? 0,
+                      cell: (r: Profile) => {
+                        const list = data.coachExtras?.[r.id]?.formations ?? [];
+                        const day = (d: string | null) => (d ? new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")) : "");
+                        return (
+                          <>
+                          <TrainingBadge locale={locale} state={r.training} />{" "}
+                          <Tip href={`/${locale}/coaches/${r.id}#formations`} definition={list.length ? list.map((x) => fillIn(staffRolesCopy[locale].formationOn, { title: x.title, date: day(x.on) })).join(" · ") : staffRolesCopy[locale].noFormation}>
+                            {fillIn(staffRolesCopy[locale].formationsCount, { n: String(list.length) })}
+                          </Tip>
+                          </>
+                        );
+                      },
+                    },
+                  ]
+                : []),
+              ...(role === "coach" && !former && !data?.coachExtras
                 ? [
                     {
                       key: "training",
                       header: space.training,
                       sort: (r: Profile) => (r.training?.status === "trained" ? 0 : r.training?.status === "pending" ? 1 : 2),
                       cell: (r: Profile) => <TrainingBadge locale={locale} state={r.training} />,
+                    },
+                  ]
+                : []),
+              // H10: the keys and badges a coach still holds (a column one can hide).
+              ...(role === "coach" && data?.keyCounts
+                ? [
+                    {
+                      key: "keys",
+                      header: keysCopy[locale].column,
+                      sort: (r: Profile) => data.keyCounts?.[r.id] ?? 0,
+                      cell: (r: Profile) => (data.keyCounts?.[r.id] ? fillIn(keysCopy[locale].count, { n: String(data.keyCounts[r.id]) }) : ""),
                     },
                   ]
                 : []),
@@ -724,6 +843,7 @@ export function PlayerDirectory({
             onChange={(e) => {
               const field = e.target;
               if (field instanceof HTMLInputElement && field.name === "birthDate") setNewBirth(field.value);
+              if (field instanceof HTMLInputElement && field.name === "fullName") setNewName(field.value);
             }}
             onSubmit={(e) =>
               submit(e, (f) => {
@@ -733,7 +853,8 @@ export function PlayerDirectory({
                   ...personal(f),
                   directoryRoles: [role],
                   invite,
-                  ...(invite && f.get("guardianEmail") ? { guardianName: f.get("guardianName"), guardianEmail: f.get("guardianEmail") } : {}),
+                  // 8: a player's representatives come with him (required for a minor); a coach keeps the former invitation.
+                  ...(role === "player" ? readRepresentatives(f) : invite && f.get("guardianEmail") ? { guardianName: f.get("guardianName"), guardianEmail: f.get("guardianEmail") } : {}),
                 }).then((r) => {
                   if (r?.id) {
                     setCreating(false);
@@ -745,7 +866,15 @@ export function PlayerDirectory({
           >
             <h3>{t.personal}</h3>
             {personalFields()}
-            {data?.capabilities.invite && <InviteFields locale={locale} on={inviting} setOn={setInviting} minor={role === "player" && isMinor(newBirth)} />}
+            {role === "player" && (
+              <RepresentativeFields
+                locale={locale}
+                minor={isMinor(newBirth)}
+                playerName={newName}
+                known={(data?.profiles ?? []).filter((r) => r.status === "active" && !(r.directory_roles ?? []).includes("player")).map((r) => ({ id: r.id, full_name: r.full_name }))}
+              />
+            )}
+            {data?.capabilities.invite && <InviteFields locale={locale} on={inviting} setOn={setInviting} minor={false} />}
             <Button disabled={busy}>{p.create}</Button>
           </form>
         </Modal>

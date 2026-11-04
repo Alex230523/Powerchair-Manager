@@ -5,16 +5,19 @@ import type { IconName } from "./icons";
  * pages, the command palette and the tests share it. Visibility follows the
  * same rules as the panels it groups; the services still check every right.
  */
-export const settingsCategories = ["account", "notifications", "club", "members", "activities", "money", "journals"] as const;
+export const settingsCategories = ["account", "notifications", "data", "club", "members", "seasons", "activities", "documents", "money", "journals"] as const;
 export type SettingsCategory = (typeof settingsCategories)[number];
 export const isSettingsCategory = (x: string): x is SettingsCategory => (settingsCategories as readonly string[]).includes(x);
 
 export const categoryIcons: Record<SettingsCategory, IconName> = {
   account: "userRound",
   notifications: "bell",
+  data: "shield",
   club: "club",
   members: "players",
+  seasons: "calendar",
   activities: "calendar",
+  documents: "document",
   money: "funding",
   journals: "shield",
 };
@@ -35,9 +38,16 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
   const shown: Record<SettingsCategory, boolean> = {
     account: true,
     notifications: true,
+    // 12: « Mes données » for everyone; the club's personal data for audit.read or mandates.manage.
+    data: true,
     club: club && (admin || has("mandates.manage")),
-    members: club && has("mandates.manage"),
+    // The federation's presidency finds its welcome journeys (referees, staff) here too.
+    members: (club && has("mandates.manage")) || (a.kind === "federation" && admin),
+    // 12: seasons and teams, and the season's passage (former « Gestion du club »).
+    seasons: club && (has("teams.manage") || has("mandates.manage")),
     activities: club && has("mandates.manage"),
+    // 28: the parental authorizations' texts.
+    documents: club && has("documents.manage"),
     money: club && has("mandates.manage") && !off.has("dues"),
     journals: has("audit.read") || has("mandates.manage") || a.role === "club_president",
   };
@@ -60,21 +70,35 @@ export const settingsEntries = [
   { id: "setup", category: "club", anchor: "settings-setup" },
   { id: "identity", category: "club", anchor: "club-identity-title" },
   { id: "obligations", category: "club", anchor: "settings-obligations" },
+  // 21: the agreement, the export, the closure, retention, the people's requests.
+  { id: "security", category: "club", anchor: "security" },
+  { id: "assemblyRules", category: "club", anchor: "settings-assembly-rules" },
   { id: "tax", category: "club", anchor: "settings-tax" },
   { id: "appearance", category: "club", anchor: "settings-appearance" },
   { id: "hallOfFame", category: "club", anchor: "settings-hall-of-fame" },
   { id: "modules", category: "club", anchor: "settings-modules" },
   { id: "coachRights", category: "members", anchor: "settings-access-title" },
+  { id: "staffRoles", category: "members", anchor: "settings-roles" },
   { id: "rightProfiles", category: "members", anchor: "settings-profiles" },
+  { id: "onboarding", category: "members", anchor: "settings-onboarding" },
+  { id: "offboarding", category: "members", anchor: "settings-offboarding" },
   { id: "presence", category: "activities", anchor: "settings-presence" },
   { id: "teamPlaces", category: "activities", anchor: "settings-team-places" },
   { id: "eventTypes", category: "activities", anchor: "settings-event-types" },
+  { id: "holidays", category: "activities", anchor: "settings-holidays" },
   { id: "taskTemplates", category: "activities", anchor: "settings-task-templates" },
+  { id: "mileage", category: "activities", anchor: "settings-mileage" },
   { id: "duesRates", category: "money", anchor: "settings-dues-title" },
   { id: "fiscalYear", category: "money", anchor: "settings-fiscal-title" },
   { id: "rightsJournal", category: "journals", anchor: "journal-rights" },
   { id: "healthJournal", category: "journals", anchor: "journal-health" },
-  { id: "privacy", category: "journals", anchor: "settings-privacy" },
+  { id: "myData", category: "data", anchor: "settings-my-data" },
+  { id: "privacy", category: "data", anchor: "settings-club-data" },
+  { id: "presidency", category: "club", anchor: "settings-presidency" },
+  { id: "seasons", category: "seasons", anchor: "settings-seasons" },
+  { id: "seasonPlan", category: "seasons", anchor: "settings-season-plan" },
+  { id: "rollover", category: "seasons", anchor: "settings-rollover" },
+  { id: "authorizations", category: "documents", anchor: "settings-authorizations" },
 ] as const satisfies readonly { id: string; category: SettingsCategory; anchor: string }[];
 export type SettingsEntryId = (typeof settingsEntries)[number]["id"];
 export type SettingsEntryCopy = Record<SettingsEntryId, { title: string; keywords: string }>;

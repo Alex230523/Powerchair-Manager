@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "roles": [
+    "president",
+    "coach"
+  ],
+  "link": "/equipment",
+  "image": null,
+  "fr": {
+    "title": "Le matériel et les fauteuils",
+    "text": "Modèles, prêts entre clubs, lieu de stockage et petit matériel : tout le matériel du club se suit ici."
+  },
+  "nl": {
+    "title": "Materiaal en rolstoelen",
+    "text": "Modellen, leningen tussen clubs, opslagplaats en klein materiaal: al het materiaal van de club volgt u hier."
+  },
+  "en": {
+    "title": "Equipment and chairs",
+    "text": "Models, loans between clubs, storage and small equipment: all the club's equipment is followed here."
+  }
+}

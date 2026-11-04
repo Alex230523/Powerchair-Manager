@@ -384,7 +384,8 @@ export function Tabs({
           data-roving=""
           aria-selected={value === it.id}
           aria-controls={value === it.id ? (typeof panelId === "function" ? panelId(it.id) : panelId) : undefined}
-          tabIndex={value === it.id ? 0 : -1}
+          // 11: a group of tabs none of which is chosen stays reachable from its first tab.
+          tabIndex={value === it.id || (it === items[0] && !items.some((x) => x.id === value)) ? 0 : -1}
           disabled={it.disabled}
           onClick={() => onChange(it.id)}
         >

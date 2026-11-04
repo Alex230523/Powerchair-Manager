@@ -55,6 +55,7 @@ export const accessCopy = {
     unavailable:
       "Service indisponible. Vérifiez la base de données puis réessayez.",
     retry: "Réessayer",
+    unreachable: "Impossible de joindre le serveur. Vérifiez votre connexion.",
     memberRead: "Consulter les membres",
     inviteCreate: "Créer des invitations",
     auditRead: "Consulter le journal",
@@ -125,6 +126,7 @@ export const accessCopy = {
     unavailable:
       "Dienst niet beschikbaar. Controleer de database en probeer opnieuw.",
     retry: "Opnieuw proberen",
+    unreachable: "De server is niet bereikbaar. Controleer uw verbinding.",
     memberRead: "Leden bekijken",
     inviteCreate: "Uitnodigingen aanmaken",
     auditRead: "Logboek bekijken",

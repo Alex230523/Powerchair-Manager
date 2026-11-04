@@ -1,4 +1,6 @@
+import { boundTemplate, logSend, viaTemplate } from "../mail-templates/service";
 import type { Pool, PoolClient } from "pg";
+import { receivesMoneySql } from "../family/split";
 import { mfaSatisfied } from "../../lib/security-policy";
 import {
   account,
@@ -88,7 +90,8 @@ type Recipient = {
   name: string;
   locale: "fr" | "nl" | "en";
 };
-async function recipients(s: Scope, profileIds: string[]) {
+/** 29: for money (dues), only the representatives of the child's split, when the club chose one. */
+async function recipients(s: Scope, profileIds: string[], money = false) {
   const rows = (
     await s.c.query(
       `SELECT cp.id AS profile_id,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale
@@ -97,7 +100,7 @@ async function recipients(s: Scope, profileIds: string[]) {
        UNION
        SELECT g.subject_profile_id,u.id,u.email,u.name,COALESCE(pe.locale,'fr')
          FROM guardian_relationship g JOIN club_person gp ON gp.id=g.guardian_profile_id JOIN person pe ON pe.id=gp.person_id JOIN "user" u ON u.id=pe.user_id
-        WHERE g.organization_id=$2 AND g.subject_profile_id=ANY($1) AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND u.active`,
+        WHERE g.organization_id=$2 AND g.subject_profile_id=ANY($1) AND g.revoked_at IS NULL AND g.starts_on<=CURRENT_DATE AND (g.ends_on IS NULL OR g.ends_on>=CURRENT_DATE) AND u.active${money ? " AND " + receivesMoneySql("g") : ""}`,
       [profileIds, s.org],
     )
   ).rows as Recipient[];
@@ -175,7 +178,7 @@ export async function remindersView(db: Pool, p: Principal) {
     ) => {
       const to = await recipients(s, [
         ...new Set(rows.map((r) => r.profile_id)),
-      ]);
+      ], kind === "dues");
       const sent = await lastSent(s, kind);
       return rows.map((r) => ({
         ...r,
@@ -255,6 +258,8 @@ export async function remindersExecute(
       const base = process.env.BETTER_AUTH_URL ?? "";
       let people = 0,
         messages = 0;
+      const duesTemplate = input.kind === "dues" ? await boundTemplate(s.c, s.org, "dues_reminder") : null,
+        docTemplate = input.kind === "documents" ? await boundTemplate(s.c, s.org, "documents_reminder") : null;
       if (input.kind === "dues") {
         const rows = (await duesRows(s, today)).filter((r) =>
           wanted.has(r.profile_id),
@@ -262,6 +267,7 @@ export async function remindersExecute(
         const to = await recipients(
           s,
           rows.map((r) => r.profile_id),
+          true,
         );
         for (const profileId of new Set(rows.map((r) => r.profile_id))) {
           const mine = rows.filter((r) => r.profile_id === profileId);
@@ -296,6 +302,14 @@ export async function remindersExecute(
                   .map((r) => `${r.category} : ${euro(r.net_cents, t.locale)}`)
                   .join("\n"),
               },
+              // 10: the club's chosen template, when there is one.
+              ...(duesTemplate
+                ? viaTemplate(duesTemplate, t.locale, t.name, s.orgName, {
+                    montant: euro(owed, t.locale),
+                    échéance: next ? date(next, t.locale) : date(today, t.locale),
+                    lien: `${base}/${t.locale}/dues`,
+                  })
+                : {}),
             });
             messages++;
           }
@@ -338,6 +352,7 @@ export async function remindersExecute(
                   )
                   .join("\n"),
               },
+              ...(docTemplate ? viaTemplate(docTemplate, t.locale, t.name, s.orgName, { lien: `${base}/${t.locale}/documents` }) : {}),
             });
             messages++;
           }
@@ -348,6 +363,8 @@ export async function remindersExecute(
           people++;
         }
       }
+      const used = duesTemplate ?? docTemplate;
+      if (used && messages) await logSend(s.c, s.org, used.id, "reminder", messages, s.userId);
       await audit(s.c, s.org, s.userId, "reminder." + input.kind, s.org);
       return { ok: true as const, people, messages };
     },
@@ -398,7 +415,7 @@ export async function duesReminderPlan(c: PoolClient, club: { id: string; name: 
     const lastDay = last[r.profile_id] ? new Date(last[r.profile_id]).toISOString().slice(0, 10) : null;
     return reminderDue(rules, open, lastDay, today) !== null;
   });
-  const to = await recipients(s, due.map((r) => r.profile_id));
+  const to = await recipients(s, due.map((r) => r.profile_id), true);
   return [...new Set(due.map((r) => r.profile_id))].map((profileId) => ({
     profileId,
     fullName: due.find((r) => r.profile_id === profileId)!.full_name,
@@ -411,6 +428,7 @@ export type DuesReminderItem = Awaited<ReturnType<typeof duesReminderPlan>>[numb
 /** B7: the reminder itself, the same mail and log line as before the engine. */
 export async function duesReminderDeliver(c: PoolClient, club: { id: string; name: string }, item: DuesReminderItem, today: string) {
   const base = process.env.BETTER_AUTH_URL ?? "";
+  const template = await boundTemplate(c, club.id, "dues_reminder");
   for (const t of item.targets) {
     const owed = item.rows.reduce((n, r) => n + (r.overdueCents || r.upcomingCents), 0);
     const next = item.rows.map((r) => r.next?.due_on).filter(Boolean).sort()[0];
@@ -433,8 +451,10 @@ export async function duesReminderDeliver(c: PoolClient, club: { id: string; nam
         due: next ? date(next, t.locale) : date(today, t.locale),
         details: item.rows.map((r) => `${r.category} : ${euro(r.net_cents, t.locale)}`).join("\n"),
       },
+      ...(template ? viaTemplate(template, t.locale, t.name, club.name, { montant: euro(owed, t.locale), échéance: next ? date(next, t.locale) : date(today, t.locale), lien: `${base}/${t.locale}/dues` }) : {}),
     });
   }
+  if (template && item.targets.length) await logSend(c, club.id, template.id, "automation", item.targets.length, null);
   await c.query("INSERT INTO reminder_log(organization_id,profile_id,kind,recipients,sent_by,automatic) VALUES($1,$2,'dues',$3,NULL,true)", [club.id, item.profileId, item.targets.length]);
   return item.targets.length;
 }

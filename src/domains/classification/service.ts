@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
@@ -63,7 +64,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Ctx) => 
       orgName: a.organization_name,
       userId: p.userId,
       fed,
-      manage: mfa && federation && ["federation_president", "federation_worker"].includes(a.role),
+      manage: mfa && federation && fedCan(a.role, a.grants, "federation.classification"),
       referee: mfa && federation && a.role === "referee",
       club: mfa && a.kind === "club" && (rights.includes("people.manage") || rights.includes("teams.manage")),
     });
@@ -351,7 +352,7 @@ export async function classificationExecute(db: Pool, p: Principal, command: Cla
             person: s.orgName,
             status: said.invited,
             vars: { day: dayLabel(command.day), deadline: dayLabel(command.registrationDeadline) },
-            path: "/licenses",
+            path: "/classification",
             key: `${id}:invited:${club}`,
           });
         await audit(s.c, s.fed, s.userId, "classification.session.create", id, { day: command.day, clubs: clubIds.length, classifiers: classifierIds.length });
@@ -365,7 +366,7 @@ export async function classificationExecute(db: Pool, p: Principal, command: Cla
         await s.c.query("UPDATE classification_session SET status='cancelled' WHERE id=$1", [session.id]);
         const clubs = (await s.c.query("SELECT organization_id FROM classification_session_club WHERE session_id=$1", [session.id])).rows.map((r) => r.organization_id as string);
         for (const club of clubs)
-          await tell(s.c, club, await presidents(s.c, club), { person: s.orgName, status: said.cancelled, vars: { day: dayLabel(session.day) }, path: "/licenses", key: `${session.id}:cancelled:${club}` });
+          await tell(s.c, club, await presidents(s.c, club), { person: s.orgName, status: said.cancelled, vars: { day: dayLabel(session.day) }, path: "/classification", key: `${session.id}:cancelled:${club}` });
         await audit(s.c, s.fed, s.userId, "classification.session.cancel", session.id);
         return { ok: true as const };
       }

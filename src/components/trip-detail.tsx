@@ -12,7 +12,11 @@ import {
   timeLabel,
   type Detail,
 } from "./trips";
-import { Badge, Card } from "./ui";
+import { Badge, Button, Card } from "./ui";
+import { authorizationCopy } from "@/domains/authorizations/authorization-copy";
+import { TransportSection } from "./trip-transport";
+import { tripTransportCopy } from "./trip-transport-copy";
+import { authorizationSettingsCopy, familyCopy } from "./family-copy";
 
 type List = Awaited<ReturnType<typeof tripsView>>;
 type Post = (body: Record<string, unknown>, done: string) => Promise<boolean>;
@@ -48,9 +52,11 @@ export function TripDetailSections({
         <MyAnswer locale={locale} d={d} busy={busy} send={send} />
       )}
       {d.can.full && <Participants locale={locale} d={d} list={list} busy={busy} send={send} />}
-      <Transport locale={locale} d={d} list={list} busy={busy} send={send} name={name} />
-      <Schedule locale={locale} d={d} busy={busy} send={send} />
+      <TransportSection locale={locale} d={d} list={list} busy={busy} send={send} name={name} />
+      {/* 3: the programme belongs to a stay; a transport shows it only when it has one. */}
+      {(d.trip.mode === "stay" || d.schedule.length > 0) && <Schedule locale={locale} d={d} busy={busy} send={send} />}
       {d.can.full && <Checklist locale={locale} d={d} busy={busy} send={send} />}
+      {d.authorizations.kinds.length > 0 && d.authorizations.people.length > 0 && <TripAuthorizations locale={locale} d={d} />}
       {d.can.full && <Documents locale={locale} d={d} />}
       {d.can.full && d.care && <CareSection locale={locale} d={d} busy={busy} send={send} />}
       {d.budget && <Budget locale={locale} d={d} busy={busy} send={send} />}
@@ -89,6 +95,20 @@ function Summary({ locale, d, list, busy, send }: Props & { list: List | null })
         />
       ) : (
         <dl className="trip-facts">
+          <div>
+            <dt>{tripTransportCopy[locale].mode}</dt>
+            <dd>{tripTransportCopy[locale].modes[trip.mode as "transport" | "stay"]}</dd>
+          </div>
+          {d.serves && (
+            <div>
+              <dt>{tripTransportCopy[locale].serves}</dt>
+              <dd>
+                {tripTransportCopy[locale].servesKinds[d.serves.kind]} : {d.serves.title}
+                {d.serves.starts_at && ` · ${timeLabel(locale, d.serves.starts_at)}`}
+                {d.serves.place && ` · ${d.serves.place}`}
+              </dd>
+            </div>
+          )}
           {destination && (
             <div>
               <dt>{t.labels.destination}</dt>
@@ -378,214 +398,6 @@ function Participants({ locale, d, list, busy, send }: Props & { list: List | nu
   );
 }
 
-function Transport({ locale, d, list, busy, send, name }: Props & { list: List | null; name: (id: string) => string }) {
-  const t = tripsCopy[locale];
-  const [editing, setEditing] = useState<string | null>(null);
-  const travelling = d.participants.filter((p) => p.status !== "declined");
-  function form(v?: Detail["vehicles"][number]) {
-    return (
-      <VehicleForm
-        locale={locale}
-        d={d}
-        list={list}
-        v={v}
-        busy={busy}
-        travelling={travelling}
-        onCancel={() => setEditing(null)}
-        onSave={(body) => void send({ action: "vehicle", tripId: d.trip.id, ...body }).then((ok) => ok && setEditing(null))}
-      />
-    );
-  }
-  if (!d.vehicles.length && !d.can.manage) return null;
-  return (
-    <Card title={t.tabs.transport} labelledBy="trip-transport" headingId="trip-transport" actions={d.can.manage && editing === null && (
-          <button type="button" className="button secondary" onClick={() => setEditing("new")}>{t.addVehicle}</button>
-        )}>
-      {d.can.full && (d.unassigned.out.length > 0 || d.unassigned.back.length > 0) && (
-        <div className="notice">
-          {d.unassigned.out.length > 0 && (
-            <p>
-              <strong>{t.unassignedOut}</strong> : {d.unassigned.out.map(name).join(", ")}
-            </p>
-          )}
-          {d.unassigned.back.length > 0 && (
-            <p>
-              <strong>{t.unassignedBack}</strong> : {d.unassigned.back.map(name).join(", ")}
-            </p>
-          )}
-        </div>
-      )}
-      {editing === "new" && form()}
-      <ul className="vehicle-list">
-        {d.vehicles.map((v) =>
-          editing === v.id ? (
-            <li key={v.id}>{form(v as Detail["vehicles"][number])}</li>
-          ) : (
-            <Card as="li" key={v.id} className="vehicle-card">
-              <div className="trip-card-head">
-                <strong>{v.name}</strong>
-                <Badge>{t.legsLabels[v.legs]}</Badge>
-              </div>
-              {(v.driver_name || v.phone) && (
-                <p>
-                  {t.driver} : {v.driver_name ?? ""} {v.phone && <a href={`tel:${v.phone.replace(/\s+/g, "")}`}>{v.phone}</a>}
-                </p>
-              )}
-              {"load" in v && v.load && (
-                <p className="muted small">
-                  {t.load
-                    .replace("{seated}", String(v.load.seated))
-                    .replace("{seats}", String(v.seats))
-                    .replace("{chairs}", String(v.load.chairs))
-                    .replace("{wheel}", String(v.wheelchair_places))}
-                  {(v.load.seatsOver > 0 || v.load.chairsOver > 0) && (
-                    <Badge tone="danger"> {t.over}</Badge>
-                  )}
-                </p>
-              )}
-              {"warnings" in v &&
-                v.warnings.map((w: string) => (
-                  <p key={w}><Badge tone="warning">{t.warnings[w]}</Badge></p>
-                ))}
-              <p className="small">
-                {t.passengers} : {v.passengers.map(name).filter(Boolean).join(", ") || "—"}
-              </p>
-              {d.can.manage && (
-                <div className="row-actions">
-                  <button type="button" className="text-button" onClick={() => setEditing(v.id)}>
-                    {t.edit}
-                    <span className="sr-only"> : {v.name}</span>
-                  </button>
-                  <button type="button" className="text-button" disabled={busy} onClick={() => void send({ action: "removeVehicle", id: v.id })}>
-                    {t.remove}
-                    <span className="sr-only"> : {v.name}</span>
-                  </button>
-                </div>
-              )}
-            </Card>
-          ),
-        )}
-      </ul>
-    </Card>
-  );
-}
-
-function VehicleForm({
-  locale,
-  list,
-  v,
-  busy,
-  travelling,
-  onSave,
-  onCancel,
-}: {
-  locale: Locale;
-  d: Detail;
-  list: List | null;
-  v?: Detail["vehicles"][number];
-  busy: boolean;
-  travelling: Detail["participants"];
-  onSave: (body: Record<string, unknown>) => void;
-  onCancel: () => void;
-}) {
-  const t = tripsCopy[locale];
-  const full = v as (Detail["vehicles"][number] & { vehicle_id?: string | null; driver_profile_id?: string | null; driver_phone?: string; notes?: string }) | undefined;
-  const [fleetId, setFleetId] = useState(full?.vehicle_id ?? "");
-  const fleet = (list?.fleet ?? []).filter((x) => !x.archived);
-  const picked = fleet.find((x) => x.id === fleetId);
-  const [passengers, setPassengers] = useState<string[]>(v?.passengers ?? []);
-  const key = v?.id ?? "new";
-  return (
-    <form
-      className="vehicle-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        const s = (k: string) => String(f.get(k) ?? "");
-        onSave({
-          ...(v ? { id: v.id } : {}),
-          vehicleId: fleetId || null,
-          name: s("name"),
-          legs: s("legs"),
-          driverProfileId: s("driver") || null,
-          driverPhone: s("phone"),
-          seats: Number(s("seats") || 0),
-          wheelchairPlaces: Number(s("wheel") || 0),
-          notes: s("notes"),
-          passengers,
-        });
-      }}
-    >
-      <div className="form-grid">
-        <label>
-          {t.fromFleet}
-          <select value={fleetId} onChange={(e) => setFleetId(e.target.value)}>
-            <option value="">{t.noneOption}</option>
-            {fleet.map((x) => (
-              <option key={x.id} value={x.id}>{x.name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t.vehicleName}
-          <input key={`${key}-${fleetId}-n`} name="name" required minLength={2} maxLength={80} defaultValue={v?.name ?? picked?.name ?? ""} />
-        </label>
-        <label>
-          {t.legs}
-          <select name="legs" defaultValue={v?.legs ?? "both"}>
-            {Object.entries(t.legsLabels).map(([k, x]) => (
-              <option key={k} value={k}>{x}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t.driver}
-          <select name="driver" defaultValue={full?.driver_profile_id ?? ""}>
-            <option value="">{t.noneOption}</option>
-            {(list?.people ?? []).map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t.driverPhone}
-          <input name="phone" maxLength={60} defaultValue={full?.driver_phone ?? ""} />
-        </label>
-        <label>
-          {t.seats}
-          <input key={`${key}-${fleetId}-s`} name="seats" type="number" min={0} max={80} defaultValue={v?.seats ?? picked?.seats ?? 4} />
-        </label>
-        <label>
-          {t.wheelchairPlaces}
-          <input key={`${key}-${fleetId}-w`} name="wheel" type="number" min={0} max={20} defaultValue={v?.wheelchair_places ?? picked?.wheelchair_places ?? 0} />
-        </label>
-      </div>
-      <fieldset className="people-picker">
-        <legend>{t.passengers}</legend>
-        {travelling.map((p) => (
-          <label key={p.id} className="check">
-            <input
-              type="checkbox"
-              checked={passengers.includes(p.id)}
-              onChange={() => setPassengers(passengers.includes(p.id) ? passengers.filter((x) => x !== p.id) : [...passengers, p.id])}
-            />
-            {p.full_name}
-            {(p.chair === "powerchair" || p.chair === "both") && <span className="muted"> ({t.chairs.powerchair})</span>}
-          </label>
-        ))}
-      </fieldset>
-      <label>
-        {t.fields.notes}
-        <input name="notes" maxLength={500} defaultValue={full?.notes ?? ""} />
-      </label>
-      <div className="actions">
-        <button className="button" disabled={busy}>{t.save}</button>
-        <button type="button" className="button secondary" onClick={onCancel}>{t.cancel}</button>
-      </div>
-    </form>
-  );
-}
-
 function Schedule({ locale, d, busy, send }: Props) {
   const t = tripsCopy[locale];
   const days = tripDays(d.trip.starts_on, d.trip.ends_on);
@@ -704,6 +516,82 @@ function Checklist({ locale, d, busy, send }: Props) {
           <button className="button secondary" disabled={busy}>{t.addCheck}</button>
         </form>
       )}
+    </Card>
+  );
+}
+
+/**
+ * 28: the travelling minors' authorizations, signed online by the parents.
+ * Missing ones are a warning on the trip (its page is the route sheet), never a block;
+ * the staff can remind the parents (a reminder also leaves by itself).
+ */
+function TripAuthorizations({ locale, d }: { locale: Locale; d: Detail }) {
+  const t = authorizationSettingsCopy[locale];
+  const k = authorizationCopy[locale].kinds;
+  const f = familyCopy[locale];
+  const [busy, setBusy] = useState(false),
+    [status, setStatus] = useState("");
+  const a = d.authorizations;
+  const waiting = a.people.flatMap((p) => p.items.filter((i) => i.status === "requested" && i.requestId).map((i) => i.requestId as string));
+  async function remind() {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/authorizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "remind", ids: waiting.slice(0, 300) }) });
+      const v = await r.json().catch(() => ({}));
+      setStatus(r.ok ? t.reminded.replace("{n}", String(v.sent ?? 0)) : "");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card title={t.tripTitle} labelledBy="trip-authorizations" headingId="trip-authorizations">
+      <p className="muted">{t.tripIntro}</p>
+      {d.can.full && a.missing > 0 && (
+        <p className="notice" role="note">
+          {t.tripMissing.replace("{n}", String(a.missing))}
+        </p>
+      )}
+      <div className="table-scroll" role="region" aria-label={t.tripTitle} tabIndex={0}>
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th scope="col">{t.person}</th>
+              {a.kinds.map((x) => (
+                <th scope="col" key={x}>
+                  {k[x]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {a.people.map((p) => (
+              <tr key={p.id}>
+                <th scope="row">{p.name}</th>
+                {p.items.map((i) => (
+                  <td key={i.kind}>
+                    <Badge tone={i.status === "signed" ? "success" : i.status === "refused" ? "danger" : "warning"}>{i.status === "none" ? f.states.none : f.status[i.status]}</Badge>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {d.can.full && waiting.length > 0 && (
+        <p>
+          <Button variant="secondary" disabled={busy} onClick={() => void remind()}>
+            {t.remind}
+          </Button>
+        </p>
+      )}
+      {!d.can.full && (
+        <p>
+          <Link href={`/${locale}/family`}>{f.title}</Link>
+        </p>
+      )}
+      <p className="sr-only" role="status" aria-live="polite">
+        {status}
+      </p>
     </Card>
   );
 }
