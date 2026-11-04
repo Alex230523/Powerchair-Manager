@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-04",
+  "roles": [
+    "all"
+  ],
+  "link": "/",
+  "image": null,
+  "fr": {
+    "title": "Plus simple, et vos retours appliqués",
+    "text": "Incidents, recrutement et sondages disparaissent. Les tâches faites restent barrées. Événements, permis et véhicules s'ouvrent en fenêtre. Une fiche d'exercice peut être envoyée à un autre club. Les corners se notent au bord du terrain et la composition peut se dévoiler seule. Les transferts suivent le règlement BPCF."
+  },
+  "nl": {
+    "title": "Eenvoudiger, met uw opmerkingen verwerkt",
+    "text": "Incidenten, rekrutering en peilingen verdwijnen. Afgewerkte taken blijven doorgestreept. Activiteiten, rijbewijzen en voertuigen openen in een venster. Een oefenfiche kan naar een andere club gestuurd worden. Hoekschoppen worden langs het veld genoteerd en de opstelling kan vanzelf bekendgemaakt worden. Transfers volgen het BPCF-reglement."
+  },
+  "en": {
+    "title": "Simpler, with your feedback applied",
+    "text": "Incidents, recruitment and polls are gone. Done tasks stay, struck through. Events, licences and vehicles open in a window. An exercise sheet can be sent to another club. Corners are noted from the side of the pitch and the line-up can be revealed on its own. Transfers follow the BPCF rules."
+  }
+}
