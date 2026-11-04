@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { sheetView, threadsView, transfersView } from "@/domains/transfers/service";
-import { bpcfRules, provinces } from "@/domains/transfers/schema";
+import { bpcfRules, provinces, trainingFormats } from "@/domains/transfers/schema";
 import { ageBands } from "@/domains/statistics/club-math";
 import { transfersCopy, fill } from "./transfers-copy";
 import { statisticsCopy } from "./statistics-copy";
@@ -35,9 +35,9 @@ export function Transfers({ locale }: { locale: Locale }) {
   const { data, error, setError, reload } = useData<View>("/api/transfers", failure);
   const { busy, message, post } = usePost("/api/transfers", reload, setError, failure);
   const send: Send = (body, done) => post({ ...body, organizationId: data?.organization_id }, done);
-  const [tab, setTab] = useState<"players" | "offers" | "rules" | "provinces">("players");
+  const [tab, setTab] = useState<"players" | "offers" | "rules" | "provinces" | "international">("players");
   const [sheet, setSheet] = useState<{ key: string; name: string } | null>(null);
-  const tabs = !data ? [] : data.mode === "federation" ? (["players", "offers", "rules", "provinces"] as const) : data.mode === "club" ? (["players", "offers"] as const) : [];
+  const tabs = !data ? [] : data.mode === "federation" ? (["players", "offers", "rules", "provinces", "international"] as const) : data.mode === "club" ? (["players", "offers"] as const) : [];
   return (
     <main id="main" className="access transfers">
       <PageHeader title={t.title} subtitle={t.intro} />
@@ -56,6 +56,7 @@ export function Transfers({ locale }: { locale: Locale }) {
                 {tab === "offers" && <Offers locale={locale} view={data} busy={busy} send={send} />}
                 {tab === "rules" && <RulesForm locale={locale} view={data} busy={busy} send={send} />}
                 {tab === "provinces" && <Provinces locale={locale} view={data} busy={busy} send={send} />}
+                {tab === "international" && <International locale={locale} view={data} busy={busy} send={send} />}
               </div>
             </>
           )}
@@ -278,7 +279,8 @@ function SheetDialog({ locale, view, who, busy, send, close }: { locale: Locale;
   const ref = useRef<HTMLDialogElement>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null),
     [error, setError] = useState(""),
-    [asking, setAsking] = useState(false);
+    [asking, setAsking] = useState(false),
+    [force, setForce] = useState(false);
   useEffect(() => {
     ref.current?.showModal();
     let live = true;
@@ -346,7 +348,18 @@ function SheetDialog({ locale, view, who, busy, send, close }: { locale: Locale;
                 e.preventDefault();
                 const d = new FormData(e.currentTarget);
                 const amount = String(d.get("amount") ?? "").replace(",", ".").trim();
-                void send({ action: "request", personId: who.key, season: d.get("season"), amountCents: amount ? Math.round(Number(amount) * 100) : null, message: String(d.get("message") ?? "") }, t.sent).then(
+                void send(
+                  {
+                    action: "request",
+                    personId: who.key,
+                    season: d.get("season"),
+                    amountCents: amount ? Math.round(Number(amount) * 100) : null,
+                    message: String(d.get("message") ?? ""),
+                    forceMajeure: d.get("force") === "on",
+                    forceMajeureReason: String(d.get("forceReason") ?? ""),
+                  },
+                  t.sent,
+                ).then(
                   (ok) => ok && close(),
                 );
               }}
@@ -364,7 +377,19 @@ function SheetDialog({ locale, view, who, busy, send, close }: { locale: Locale;
                 {view.rules.amountsAllowed && (
                   <label>
                     {t.amount}
-                    <input name="amount" inputMode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" aria-describedby={view.rules.amountCapCents !== null ? "transfer-cap" : undefined} />
+                    <input
+                      name="amount"
+                      inputMode="decimal"
+                      pattern="[0-9]+([.,][0-9]{1,2})?"
+                      defaultValue={p.indemnity !== null ? (p.indemnity / 100).toFixed(2) : undefined}
+                      aria-describedby={[view.rules.amountCapCents !== null ? "transfer-cap" : "", p.indemnity !== null ? "transfer-indemnity" : ""].filter(Boolean).join(" ") || undefined}
+                    />
+                    {/* Point 6: the BPCF training compensation, from the club's format and the seasons played. */}
+                    {p.indemnity !== null && (
+                      <span className="field-help" id="transfer-indemnity">
+                        {fill(t.bpcf2.indemnity, { amount: money(locale, p.indemnity), n: Math.max(1, p.seasons), format: t.bpcf2.formats[(p.training_format ?? "") as keyof typeof t.bpcf2.formats] ?? "" })}
+                      </span>
+                    )}
                     {view.rules.amountCapCents !== null && (
                       <span className="field-help" id="transfer-cap">
                         {fill(t.amountCap, { amount: money(locale, view.rules.amountCapCents) })}
@@ -377,6 +402,17 @@ function SheetDialog({ locale, view, who, busy, send, close }: { locale: Locale;
                 {t.message}
                 <textarea name="message" rows={3} maxLength={2000} />
               </label>
+              {/* Point 7: force majeure, for the commission. */}
+              <label className="check">
+                <input type="checkbox" name="force" checked={force} onChange={(e) => setForce(e.target.checked)} />
+                {t.bpcf2.forceMajeure}
+              </label>
+              {force && (
+                <label>
+                  {t.bpcf2.forceReason}
+                  <textarea name="forceReason" rows={2} minLength={5} maxLength={1000} required />
+                </label>
+              )}
               <p>
                 <button className="button" disabled={busy}>
                   {t.send}
@@ -493,6 +529,10 @@ function OfferRow({ locale, view, o, busy, send, talking, talk }: { locale: Loca
         <td>{o.amount_cents !== null ? money(locale, o.amount_cents) : "…"}</td>
         <td>
           <Badge tone={statusTone[o.status]}>{t.status[o.status]}</Badge>
+          {/* Point 7: what kind of transfer (BPCF 1/12), and a force majeure's reason. */}
+          {o.kind && <Badge tone="info">{t.bpcf2.kinds[o.kind]}</Badge>}
+          {o.force_majeure && !o.kind && <Badge tone="warning">{t.bpcf2.forceBadge}</Badge>}
+          {o.force_majeure && o.force_majeure_reason && <span className="muted small"> · {o.force_majeure_reason}</span>}
           {o.decision_note && <span className="muted small"> · {o.decision_note}</span>}
           {o.federation_note && <span className="muted small"> · {o.federation_note}</span>}
         </td>
@@ -513,11 +553,54 @@ function OfferRow({ locale, view, o, busy, send, talking, talk }: { locale: Loca
                   <span className="sr-only"> : {who}</span>
                 </button>
               )}
-              <button type="button" className="button secondary sm" disabled={busy} onClick={(e) => void decide(e.currentTarget.form!, "refused")}>
-                {o.moves.includes("validate") ? t.refuseValidation : t.refuse}
-                <span className="sr-only"> : {who}</span>
-              </button>
+              {o.moves.includes("refuse") && (
+                <button type="button" className="button secondary sm" disabled={busy} onClick={(e) => void decide(e.currentTarget.form!, "refused")}>
+                  {o.moves.includes("validate") ? t.refuseValidation : t.refuse}
+                  <span className="sr-only"> : {who}</span>
+                </button>
+              )}
             </form>
+          )}
+          {/* Point 8: the training compensation's proof, then the federation's confirmation. */}
+          {o.completed_at && (o.amount_cents ?? 0) > 0 && (
+            <div className="transfer-payment">
+              {o.payment_confirmed_at ? (
+                <Badge tone="success">{t.bpcf2.paymentConfirmed}</Badge>
+              ) : (
+                <Badge tone="warning">{t.bpcf2.paymentWaiting}</Badge>
+              )}
+              {o.payment_proof_filename && (
+                <a href={`/api/transfers/proof?id=${o.id}`} target="_blank" rel="noreferrer">
+                  {fill(t.bpcf2.proofOf, { name: o.payment_proof_filename })}
+                </a>
+              )}
+              {o.side === "to" && !o.payment_confirmed_at && (
+                <label className="file-button button secondary sm">
+                  {t.bpcf2.proofAdd}
+                  <span className="sr-only"> : {who}</span>
+                  <input
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg,image/webp"
+                    disabled={busy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      void file.arrayBuffer().then((b) => {
+                        let bin = "";
+                        new Uint8Array(b).forEach((x) => (bin += String.fromCharCode(x)));
+                        return send({ action: "paymentProof", id: o.id, type: file.type, filename: file.name.slice(0, 160), base64: btoa(bin) }, t.saved);
+                      });
+                    }}
+                  />
+                </label>
+              )}
+              {o.side === "federation" && o.payment_proof_filename && (
+                <button type="button" className="button secondary sm" disabled={busy} onClick={() => void send({ action: "confirmPayment", id: o.id, confirmed: !o.payment_confirmed_at }, t.saved)}>
+                  {o.payment_confirmed_at ? t.bpcf2.unconfirmPayment : t.bpcf2.confirmPayment}
+                  <span className="sr-only"> : {who}</span>
+                </button>
+              )}
+            </div>
           )}
           {o.moves.includes("withdraw") && (
             <button type="button" className="text-button" disabled={busy} onClick={() => void send({ action: "withdraw", id: o.id }, t.saved)}>
@@ -791,6 +874,17 @@ function Provinces({ locale, view, busy, send }: { locale: Locale; view: View; b
     <ul className="plain-list transfer-provinces">
       {view.clubs.map((c) => (
         <li key={c.id}>
+          {/* Point 6: the club's training format sets the BPCF compensation. */}
+          <label>
+            {fill(t.bpcf2.formatOf, { name: c.name })}
+            <select value={c.training_format} disabled={busy} onChange={(e) => void send({ action: "format", clubId: c.id, format: e.target.value }, t.saved)}>
+              {(["", ...trainingFormats] as const).map((k) => (
+                <option key={k} value={k}>
+                  {t.bpcf2.formats[k]}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             {fill(t.provinceOf, { name: c.name })}
             <select value={c.province} disabled={busy} onChange={(e) => void send({ action: "province", clubId: c.id, province: e.target.value }, t.saved)}>
@@ -804,5 +898,97 @@ function Provinces({ locale, view, busy, send }: { locale: Locale; view: View; b
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Point 11: the international transfers the federation records, with their compensation. */
+function International({ locale, view, busy, send }: { locale: Locale; view: View; busy: boolean; send: Send }) {
+  const t = transfersCopy[locale],
+    b = t.bpcf2;
+  return (
+    <div className="stack">
+      <p className="muted">{b.intlIntro}</p>
+      <form
+        className="stack-form panel"
+        aria-label={b.intlRecord}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const d = new FormData(e.currentTarget);
+          const form = e.currentTarget;
+          void send(
+            {
+              action: "international",
+              profileId: d.get("profile"),
+              foreignClub: String(d.get("foreignClub") ?? ""),
+              country: String(d.get("country") ?? ""),
+              trainingYears: Number(d.get("years")),
+              note: String(d.get("note") ?? ""),
+            },
+            t.saved,
+          ).then((ok) => ok && form.reset());
+        }}
+      >
+        <div className="form-grid">
+          <label>
+            {b.intlPlayer}
+            <select name="profile" required defaultValue="">
+              <option value="" disabled>
+                {b.intlPlayer}
+              </option>
+              {view.leaving.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.full_name} · {x.club}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {b.intlForeignClub}
+            <input name="foreignClub" required minLength={2} maxLength={160} />
+          </label>
+          <label>
+            {b.intlCountry}
+            <input name="country" required minLength={2} maxLength={80} />
+          </label>
+          <label>
+            {b.intlYears}
+            <input name="years" type="number" min={1} max={30} required defaultValue={1} />
+          </label>
+        </div>
+        <label>
+          {b.intlNote}
+          <textarea name="note" rows={2} maxLength={1000} />
+        </label>
+        <p className="muted small">{b.intlRates}</p>
+        <p>
+          <button className="button" disabled={busy}>
+            {b.intlRecord}
+          </button>
+        </p>
+      </form>
+      {view.international.length ? (
+        <ul className="profile-list">
+          {view.international.map((x) => (
+            <li key={x.id}>
+              <div>
+                <strong>
+                  {x.full_name} · {x.club} → {x.foreign_club} ({x.country})
+                </strong>
+                <p className="muted small">
+                  {[`${x.training_years} × ${b.formats[x.training_format as keyof typeof b.formats] ?? x.training_format}`, money(locale, x.amount_cents), x.note].filter(Boolean).join(" · ")}
+                </p>
+                <Badge tone={x.paid_on ? "success" : "warning"}>{x.paid_on ? b.intlPaid : b.intlToPay}</Badge>
+              </div>
+              <button type="button" className="button secondary sm" disabled={busy} onClick={() => void send({ action: "internationalPaid", id: x.id, paid: !x.paid_on }, t.saved)}>
+                {x.paid_on ? b.intlMarkUnpaid : b.intlMarkPaid}
+                <span className="sr-only"> : {x.full_name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyState title={b.intlNone} />
+      )}
+    </div>
   );
 }

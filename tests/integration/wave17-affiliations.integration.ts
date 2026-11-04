@@ -152,7 +152,8 @@ it("tells the presidents once when a period opens, and reminds the clubs that ar
   const sent = await affiliationTick(db);
   expect(sent).toBeGreaterThanOrEqual(3);
   expect(await affiliationTick(db)).toBe(0);
-  const opened = (await db.query("SELECT count(*)::int AS n FROM mail_job WHERE kind='funding_task' AND recipient_user_id=$1", [presidentA.userId])).rows[0].n;
+  // One mail per due opened (late in the month, the week-before reminder of point 9 may follow for the same due).
+  const opened = (await db.query("SELECT count(DISTINCT resource_id)::int AS n FROM mail_job WHERE kind='funding_task' AND recipient_user_id=$1", [presidentA.userId])).rows[0].n;
   expect(opened).toBe(2);
   // Club B is late on BPCF.
   await db.query(
@@ -164,4 +165,16 @@ it("tells the presidents once when a period opens, and reminds the clubs that ar
   expect(r.clubs).toBe(1);
   expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1", [presidentB.userId])).rows[0].n).toBe(before + 1);
   expect((await federationAffiliationsView(db, fedPresident)).dues.find((d) => d.club === "Club B")!.state).toBe("late");
+});
+
+it("point 9: reminds a club a week before the deadline, once", async () => {
+  await affiliationTick(db);
+  const due = (await db.query("SELECT d.id FROM affiliation_due d WHERE d.organization_id=$1 AND d.paid_on IS NULL ORDER BY d.created_at LIMIT 1", [clubA])).rows[0].id;
+  await db.query("UPDATE affiliation_due SET due_on=CURRENT_DATE+3,reminded_soon_at=NULL WHERE id=$1", [due]);
+  const before = (await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1 AND resource_id=$2", [presidentA.userId, due])).rows[0].n;
+  expect(await affiliationTick(db)).toBeGreaterThanOrEqual(1);
+  expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1 AND resource_id=$2", [presidentA.userId, due])).rows[0].n).toBe(before + 1);
+  expect(await affiliationTick(db)).toBe(0);
+  // Club B is told nothing about club A's due.
+  expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1 AND resource_id=$2", [presidentB.userId, due])).rows[0].n).toBe(0);
 });

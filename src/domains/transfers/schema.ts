@@ -8,6 +8,28 @@ export type OfferStatus = (typeof offerStatuses)[number];
 
 const id = z.uuid();
 const text = (n: number) => z.string().trim().max(n);
+
+/** Point 6: the training format of a club (BPCF 1/12), set by the federation. */
+export const trainingFormats = ["academy", "elite", "elite_certified"] as const;
+export type TrainingFormat = (typeof trainingFormats)[number];
+/** Per year of training, in cents: national and international transfers. */
+export const trainingRates: Record<"national" | "international", Record<TrainingFormat, number>> = {
+  national: { academy: 5000, elite: 12500, elite_certified: 25000 },
+  international: { academy: 50000, elite: 75000, elite_certified: 100000 },
+};
+/** Point 11: the file fee of an international transfer, and the caps. */
+export const internationalFileFeeCents = 25000;
+export const indemnityCaps = { national: 50000, international: 300000 } as const;
+/**
+ * The BPCF training compensation: years (one at least) times the rate of the
+ * training club's format, capped; an international one adds the file fee.
+ * No format known: nothing to suggest.
+ */
+export function trainingIndemnity(format: string | null | undefined, years: number, scope: "national" | "international" = "national") {
+  if (!format || !(trainingFormats as readonly string[]).includes(format)) return null;
+  const base = Math.max(1, Math.floor(years)) * trainingRates[scope][format as TrainingFormat] + (scope === "international" ? internationalFileFeeCents : 0);
+  return Math.min(indemnityCaps[scope], base);
+}
 const window = z.object({ from: z.iso.date(), to: z.iso.date() }).refine((w) => w.from <= w.to, { message: "WINDOW" });
 export const rulesSchema = z.object({
   windows: z.array(window).max(12),
@@ -63,7 +85,12 @@ export const transferCommand = z.discriminatedUnion("action", [
     season: z.string().regex(/^[0-9]{4}-[0-9]{2}$/),
     amountCents: z.number().int().min(0).max(100000000).nullable(),
     message: text(2000),
+    /** Point 7: a transfer for force majeure (moving, school…), with its reason, for the commission. */
+    forceMajeure: z.boolean().default(false),
+    forceMajeureReason: text(1000).default(""),
   }),
+  /** Point 8: the entering club files the proof that the training compensation was paid. */
+  z.object({ action: z.literal("paymentProof"), id, type: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]), filename: text(160).min(1), base64: z.string().min(8).max(8500000) }),
   z.object({ action: z.literal("withdraw"), id }),
   z.object({ action: z.literal("answer"), id, decision: z.enum(["accepted", "refused"]), note: text(1000) }),
   z.object({ action: z.literal("message"), id, body: z.string().trim().min(1).max(5000) }),
@@ -71,6 +98,18 @@ export const transferCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("validate"), id, decision: z.enum(["validated", "refused"]), note: text(1000) }),
   z.object({ action: z.literal("rules"), rules: rulesSchema }),
   z.object({ action: z.literal("province"), clubId: id, province: z.union([z.enum(provinces), z.literal("")]) }),
+  z.object({ action: z.literal("format"), clubId: id, format: z.union([z.enum(trainingFormats), z.literal("")]) }),
+  z.object({ action: z.literal("confirmPayment"), id, confirmed: z.boolean() }),
+  /** Point 11: a player leaving for a club abroad, recorded by the federation. */
+  z.object({
+    action: z.literal("international"),
+    profileId: id,
+    foreignClub: text(160).min(2),
+    country: text(80).min(2),
+    trainingYears: z.number().int().min(1).max(30),
+    note: text(1000).default(""),
+  }),
+  z.object({ action: z.literal("internationalPaid"), id, paid: z.boolean() }),
 ]);
 export type TransferCommand = z.infer<typeof transferCommand>;
 
@@ -109,8 +148,11 @@ export function requestOpen(rules: Pick<Rules, "windows" | "consentedAnytime"> &
  * BPCF 1/12 « libre » / « litigieux »: the current club refused, the player
  * agreed; during a transfer period the federation may still validate.
  */
-export function freeLeave(o: { status: string; player_consent: string; from_organization_id: string | null; federation_at?: string | null }, rules: Pick<Rules, "windows" | "consentedAnytime" | "federationValidation"> & { yearlyWindows?: boolean }, today: string) {
-  return rules.consentedAnytime && rules.federationValidation && !!o.from_organization_id && o.status === "refused" && o.player_consent === "given" && !o.federation_at && rules.windows.length > 0 && marketOpen(rules, today);
+export function freeLeave(o: { status: string; player_consent: string; from_organization_id: string | null; federation_at?: string | null; force_majeure?: boolean }, rules: Pick<Rules, "windows" | "consentedAnytime" | "federationValidation"> & { yearlyWindows?: boolean }, today: string) {
+  const refused = rules.federationValidation && !!o.from_organization_id && o.status === "refused" && o.player_consent === "given" && !o.federation_at;
+  // Point 7: force majeure goes to the commission at any time.
+  if (refused && o.force_majeure) return true;
+  return refused && rules.consentedAnytime && rules.windows.length > 0 && marketOpen(rules, today);
 }
 /** An amount is allowed only when the rules say so, and up to the cap. */
 export function amountAllowed(rules: Pick<Rules, "amountsAllowed" | "amountCapCents">, cents: number | null) {

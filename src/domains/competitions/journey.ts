@@ -50,18 +50,20 @@ export const journeyCommand = z.discriminatedUnion("action", [
 ]);
 export type JourneyCommand = z.infer<typeof journeyCommand>;
 
-export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended";
+export type Problem = "licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended" | "transferPayment";
 const broken = (status: string) => status === "maintenance" || status === "out_of_service";
 /**
  * What stops a player from playing (blocking) or deserves a look (warning).
  * B3: a chair over the speed limit, never checked or checked too long ago
  * is a warning. Pure.
  */
-export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null; suspended?: boolean }) {
+export function eligibility(p: { licence: string | null; documentsDue: number; chair: { status: string; serviceDue: boolean; speed?: "ok" | "missing" | "old" | "over" } | null; suspended?: boolean; transferUnpaid?: boolean }) {
   const blocking: Problem[] = [],
     warnings: Problem[] = [];
   // 34: a suspension still running keeps the player off the sheet.
   if (p.suspended) blocking.push("suspended");
+  // Point 8 (BPCF 1/12): after a transfer with a training compensation, the player plays once the federation saw the payment.
+  if (p.transferUnpaid) blocking.push("transferPayment");
   if (p.licence !== "active") blocking.push("licence");
   if (p.chair && broken(p.chair.status)) blocking.push("chairBroken");
   if (p.documentsDue > 0) warnings.push("documents");
@@ -136,7 +138,8 @@ async function squad(c: PoolClient, org: string, m: Row) {
                  FROM equipment_chair_assignment ea JOIN equipment_chair ch ON ch.id=ea.chair_id
                 WHERE ea.profile_id=cp.id AND ea.ends_on IS NULL AND ch.organization_id=$1 ORDER BY ea.is_primary DESC,ea.starts_on DESC LIMIT 1) AS chair,
               (SELECT i.response FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS answer,
-              (SELECT i.actual FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS actual
+              (SELECT i.actual FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=$4 AND i.profile_id=cp.id AND i.withdrawn_at IS NULL LIMIT 1) AS actual,
+              EXISTS(SELECT 1 FROM transfer_offer t WHERE t.target_profile_id=cp.id AND t.to_organization_id=$1 AND t.completed_at IS NOT NULL AND COALESCE(t.amount_cents,0)>0 AND t.payment_confirmed_at IS NULL) AS transfer_unpaid
          FROM team_membership tm JOIN club_person cp ON cp.id=tm.profile_id LEFT JOIN player_sport_profile sp ON sp.profile_id=cp.id
         WHERE tm.organization_id=$1 AND tm.team_id=$2 AND tm.role='player' AND NOT tm.cancelled AND tm.closed_at IS NULL AND tm.starts_on<=CURRENT_DATE AND (tm.ends_on IS NULL OR tm.ends_on>=CURRENT_DATE) AND cp.status='active'
         ORDER BY cp.id`,
@@ -151,7 +154,7 @@ async function squad(c: PoolClient, org: string, m: Row) {
   return rows.map((r) => ({
     ...r,
     suspension: suspended.get(r.profile_id) ?? null,
-    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) }, suspended: suspended.has(r.profile_id) }),
+    ...eligibility({ licence: r.licence, documentsDue: r.documents_due, chair: r.chair && { ...r.chair, speed: speedState(r.chair.lastSpeed, rules, brusselsToday()) }, suspended: suspended.has(r.profile_id), transferUnpaid: r.transfer_unpaid }),
   })) as {
     profile_id: string;
     full_name: string;

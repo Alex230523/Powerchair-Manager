@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
-import { sheetView, threadsView, transferExecute, transfersView } from "../../src/domains/transfers/service";
+import { sheetView, threadsView, transferExecute, transfersView, paymentProofFile } from "../../src/domains/transfers/service";
 import { federationLicensesView } from "../../src/domains/federation/service";
 
 /**
@@ -128,7 +128,7 @@ it("keeps a player without club visible when they chose so", async () => {
 it("gives sporting information only, never personal data", async () => {
   const view = await transfersView(db, presidentB);
   const row = view.players.find((x) => x.full_name === "Ana Martin")!;
-  expect(Object.keys(row).sort()).toEqual(["age", "classification", "club", "club_id", "full_name", "key", "own", "province", "seasons", "team"]);
+  expect(Object.keys(row).sort()).toEqual(["age", "classification", "club", "club_id", "full_name", "indemnity", "key", "own", "province", "seasons", "team", "training_format"]);
   expect(row).toMatchObject({ province: "namur", classification: "not_classified", age: "26to40", seasons: 1, own: false });
   const sheet = await sheetView(db, presidentB, anaPerson);
   expect(sheet.stats).toEqual([{ season: "2025-26", club: "Club A", matches: 1, minutes: 40, goals: 2, assists: 1 }]);
@@ -241,4 +241,51 @@ it("follows the BPCF rules: consented all season, one transfer per pair, free le
   expect((await transfersView(db, fed)).offers.find((o) => o.id === id)!.moves).toEqual(["validate"]);
   await run(fed, federation, { action: "validate", id, decision: "validated", note: "Départ libre" });
   expect((await db.query("SELECT status FROM club_person WHERE person_id=$1 AND organization_id=$2", [chloePerson, clubB])).rows[0].status).toBe("active");
+});
+
+it("points 6 to 8 and 11: compensation from the club's format, force majeure, proof of payment, international transfer", async () => {
+  // 6: club B's format sets the compensation suggested for its players.
+  await expect(run(presidentA, clubA, { action: "format", clubId: clubB, format: "elite" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await run(fed, federation, { action: "format", clubId: clubB, format: "elite" });
+  const anaRow = (await transfersView(db, presidentA)).players.find((p) => p.key === anaPerson)!;
+  expect(anaRow.indemnity).toBe(Math.min(50000, Math.max(1, anaRow.seasons) * 12500));
+  // 7: outside any period and without the BPCF rule, only a force majeure can be asked, with its reason.
+  const closed = { windows: [{ from: "2020-07-01", to: "2020-08-31" }], amountsAllowed: true, amountCapCents: 50000, maxPerClubSeason: null, federationValidation: true, rulesText: "", consentedAnytime: false, maxPerPairSeason: null };
+  await run(fed, federation, { action: "rules", rules: closed });
+  const ask = { action: "request", personId: anaPerson, season: "2028-29", amountCents: 12500, message: "" };
+  await expect(run(presidentA, clubA, ask)).rejects.toMatchObject({ code: "MARKET_CLOSED" });
+  await expect(run(presidentA, clubA, { ...ask, forceMajeure: true, forceMajeureReason: "" })).rejects.toMatchObject({ code: "REASON_REQUIRED" });
+  const id = (await run(presidentA, clubA, { ...ask, forceMajeure: true, forceMajeureReason: "Déménagement à Namur" })).id!;
+  // Ana now plays at club B: her account works from there.
+  await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [clubB, ana.userId]);
+  const anaB = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,'player') RETURNING id", [clubB, ana.userId])).rows[0].id;
+  await execute(db, ana, { action: "context", mandateId: anaB });
+  await run(ana, clubB, { action: "consent", id, consent: "given" });
+  await run(presidentB, clubB, { action: "answer", id, decision: "refused", note: "" });
+  expect((await transfersView(db, fed)).offers.find((o) => o.id === id)!.moves).toEqual(["validate"]);
+  await run(fed, federation, { action: "validate", id, decision: "validated", note: "Commission d'urgence" });
+  const done = (await transfersView(db, presidentA)).offers.find((o) => o.id === id)!;
+  expect(done).toMatchObject({ kind: "force_majeure", force_majeure_reason: "Déménagement à Namur", payment_confirmed_at: null });
+  // 8: until the federation confirms the payment, the player is blocked; the proof comes from the receiving club.
+  await expect(run(fed, federation, { action: "confirmPayment", id, confirmed: true })).rejects.toMatchObject({ code: "PROOF_REQUIRED" });
+  const pdf = Buffer.from("%PDF-1.7\npreuve").toString("base64");
+  await expect(run(presidentB, clubB, { action: "paymentProof", id, type: "application/pdf", filename: "preuve.pdf", base64: pdf })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(run(presidentA, clubA, { action: "paymentProof", id, type: "image/png", filename: "x.png", base64: pdf })).rejects.toMatchObject({ code: "INVALID_FILE" });
+  await run(presidentA, clubA, { action: "paymentProof", id, type: "application/pdf", filename: "preuve.pdf", base64: pdf });
+  expect((await paymentProofFile(db, fed, id)).filename).toBe("preuve.pdf");
+  await expect(paymentProofFile(db, presidentC, id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await run(fed, federation, { action: "confirmPayment", id, confirmed: true });
+  expect((await db.query("SELECT payment_confirmed_at IS NOT NULL AS ok FROM transfer_offer WHERE id=$1", [id])).rows[0].ok).toBe(true);
+  // 11: an international transfer needs the training club's format, then computes the compensation.
+  const danProfile = (await db.query("SELECT id FROM club_person WHERE person_id=$1 AND organization_id=$2", [danPerson, clubA])).rows[0].id;
+  const intl = { action: "international", profileId: danProfile, foreignClub: "Lille Powerchair", country: "France", trainingYears: 3, note: "" };
+  await expect(run(presidentA, clubA, intl)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(run(fed, federation, intl)).rejects.toMatchObject({ code: "FORMAT_REQUIRED" });
+  await run(fed, federation, { action: "format", clubId: clubA, format: "academy" });
+  const rec = (await run(fed, federation, intl)).id!;
+  const list = (await transfersView(db, fed)).international;
+  expect(list[0]).toMatchObject({ id: rec, full_name: "Dan Leroy", foreign_club: "Lille Powerchair", amount_cents: 3 * 50000 + 25000, paid_on: null });
+  expect((await db.query("SELECT status FROM club_person WHERE id=$1", [danProfile])).rows[0].status).toBe("transferred");
+  await run(fed, federation, { action: "internationalPaid", id: rec, paid: true });
+  expect((await transfersView(db, fed)).international[0].paid_on).not.toBeNull();
 });

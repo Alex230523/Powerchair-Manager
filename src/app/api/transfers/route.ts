@@ -18,7 +18,8 @@ export async function POST(request: Request) {
   try {
     origin(request);
     const p = await principal(request);
-    const body = JSON.parse(new TextDecoder().decode(await bounded(request, 16000)));
+    // Point 8: a proof of payment (6 MB at most once decoded) travels in base64.
+    const body = JSON.parse(new TextDecoder().decode(await bounded(request, 9000000)));
     return Response.json(await transferExecute(getDb(), p, transferCommand.parse(body), z.uuid().parse(body.organizationId)), { headers: noStore });
   } catch (e) {
     return failure(e);

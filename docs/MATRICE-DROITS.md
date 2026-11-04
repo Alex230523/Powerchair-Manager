@@ -66,6 +66,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/exports` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/family` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/federal-calendar` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
+| `/api/fines` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
 | `/api/federation/affiliations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/clubs` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
@@ -166,6 +167,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/tournaments/trophies` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/tournaments/trophies/[id]/photo` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/transfers` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/transfers/proof` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/transfers/threads` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/trips` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/tutorial` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |

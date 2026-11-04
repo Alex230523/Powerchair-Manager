@@ -12,6 +12,7 @@ import {
   dueAmount,
   dueState,
   feeRuleValid,
+  reminderDaysBefore,
   type ClubAffiliationCommand,
   type FederationAffiliationCommand,
   type FeeRule,
@@ -471,6 +472,35 @@ export async function affiliationTick(db: Pool) {
         sent++;
       }
       await c.query("UPDATE affiliation_due SET notified_at=now() WHERE organization_id=$1 AND notified_at IS NULL", [club.id]);
+      // Point 9: a second word a week before the deadline (the BPCF participation by 30 September, say).
+      const soon = (
+        await c.query(
+          `SELECT d.id,d.period,d.due_on::text AS due_on,f.name,c.name AS club,u.id AS user_id,u.email,u.name AS person,COALESCE(pe.locale,'fr') AS locale
+             FROM affiliation_due d JOIN affiliation_fee f ON f.id=d.fee_id JOIN organization c ON c.id=d.organization_id
+             JOIN role_assignment r ON r.organization_id=d.organization_id AND r.role='club_president' AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())
+             JOIN "user" u ON u.id=r.user_id AND u.active LEFT JOIN person pe ON pe.user_id=u.id
+            WHERE d.organization_id=$1 AND d.paid_on IS NULL AND d.reminded_soon_at IS NULL AND d.notified_at IS NOT NULL AND d.due_on BETWEEN $2::date AND $2::date+$3::int`,
+          [club.id, today, reminderDaysBefore],
+        )
+      ).rows;
+      for (const x of soon) {
+        const due = new Intl.DateTimeFormat(x.locale === "en" ? "en-GB" : `${x.locale}-BE`, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(x.due_on + "T12:00:00Z"));
+        const title = { fr: "Échéance proche", nl: "Vervaldag nadert", en: "Deadline soon" }[x.locale as "fr" | "nl" | "en"] ?? "Échéance proche";
+        await publish(c, {
+          organizationId: club.id,
+          userId: x.user_id,
+          email: x.email,
+          kind: "funding_task",
+          category: "administrative",
+          resourceType: "funding",
+          resourceId: x.id,
+          eventKey: `affiliation_soon:${x.id}:${x.user_id}`,
+          locale: x.locale,
+          variables: { name: x.person, organization: x.club, url: `${base}/${x.locale}/funding/affiliations`, title: `${title}${x.locale === "fr" ? " :" : ":"} ${x.name} ${x.period}`, due },
+        });
+        sent++;
+      }
+      if (soon.length) await c.query("UPDATE affiliation_due SET reminded_soon_at=now() WHERE id=ANY($1::uuid[])", [soon.map((x) => x.id)]);
       await c.query("COMMIT");
     } catch (e) {
       await c.query("ROLLBACK");

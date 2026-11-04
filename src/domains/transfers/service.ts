@@ -10,7 +10,7 @@ import { seasonOf } from "../finance/schema";
 import { ageBand } from "../statistics/club-math";
 import { shownClass } from "../classification/schema";
 import { canDecide, setVisibility } from "./consent";
-import { adultOn, amountAllowed, freeLeave, marketOpen, offerMoves, requestOpen, rulesOf, transferCommand, type Rules, type TransferCommand } from "./schema";
+import { adultOn, amountAllowed, freeLeave, marketOpen, offerMoves, requestOpen, rulesOf, trainingIndemnity, transferCommand, type Rules, type TransferCommand } from "./schema";
 export { transferCommand };
 
 /**
@@ -95,7 +95,7 @@ const live = (m: string) => `NOT ${m}.cancelled AND ${m}.closed_at IS NULL AND $
  * (« Sans club »). Sporting fields only.
  */
 const marketSql = `
-  WITH clubs AS (SELECT id,name,province FROM organization WHERE federation_id=$1 AND kind='club'),
+  WITH clubs AS (SELECT id,name,province,training_format FROM organization WHERE federation_id=$1 AND kind='club'),
   profiles AS (
     SELECT cp.id,cp.person_id,cp.organization_id,cp.full_name,cp.birth_date,cp.status,
            (cp.status='active' AND 'player'=ANY(cp.directory_roles) AND NOT ('player'=ANY(cp.former_roles))) AS current,
@@ -106,15 +106,15 @@ const marketSql = `
     SELECT DISTINCT ON (p.person_id) p.* FROM profiles p JOIN transfer_visibility v ON v.person_id=p.person_id AND v.visible
      ORDER BY p.person_id,p.current DESC,p.updated_at DESC)
   SELECT ch.person_id AS key,ch.id AS profile_id,ch.full_name,ch.birth_date::text AS birth_date,
-         CASE WHEN ch.current THEN o.id END AS club_id,CASE WHEN ch.current THEN o.name END AS club,o.province,
+         CASE WHEN ch.current THEN o.id END AS club_id,CASE WHEN ch.current THEN o.name END AS club,o.province,CASE WHEN ch.current THEN o.training_format END AS training_format,
          CASE WHEN ch.current THEN (SELECT string_agg(DISTINCT t.name,', ') FROM team_membership m JOIN team t ON t.id=m.team_id WHERE m.profile_id=ch.id AND m.role='player' AND ${live("m")}) END AS team,
          COALESCE(sp.classification,'not_classified') AS classification,
          (SELECT count(DISTINCT se.name)::int FROM club_person x JOIN clubs xo ON xo.id=x.organization_id JOIN team_membership m ON m.profile_id=x.id AND m.role='player' AND NOT m.cancelled
              JOIN team t ON t.id=m.team_id JOIN season se ON se.id=t.season_id WHERE x.person_id=ch.person_id) AS seasons
     FROM chosen ch JOIN clubs o ON o.id=ch.organization_id LEFT JOIN player_sport_profile sp ON sp.profile_id=ch.id
    ORDER BY lower(ch.full_name)`;
-type MarketRow = { key: string; profile_id: string; full_name: string; birth_date: string | null; club_id: string | null; club: string | null; province: string; team: string | null; classification: string; seasons: number };
-export type Listed = Omit<MarketRow, "birth_date" | "profile_id" | "classification"> & { age: ReturnType<typeof ageBand>; classification: ReturnType<typeof shownClass>; own: boolean };
+type MarketRow = { key: string; profile_id: string; full_name: string; birth_date: string | null; club_id: string | null; club: string | null; province: string; team: string | null; classification: string; seasons: number; training_format: string | null };
+export type Listed = Omit<MarketRow, "birth_date" | "profile_id" | "classification"> & { age: ReturnType<typeof ageBand>; classification: ReturnType<typeof shownClass>; own: boolean; indemnity: number | null };
 
 async function market(s: Ctx) {
   if (!s.fed) return [];
@@ -132,6 +132,9 @@ async function market(s: Ctx) {
       classification: shownClass(r.classification),
       seasons: r.seasons,
       own: r.club_id === s.org,
+      // Point 6: the BPCF training compensation the current club may ask (seasons played times its format's rate).
+      training_format: r.training_format,
+      indemnity: r.club_id ? trainingIndemnity(r.training_format, r.seasons) : null,
     }),
   );
 }
@@ -156,7 +159,7 @@ async function mine(s: Ctx) {
 }
 
 const offerSql = `SELECT t.id,t.person_id,t.from_organization_id,t.to_organization_id,t.source_organization_id,t.source_profile_id,t.season,t.amount_cents,t.message,t.status,t.player_consent,
-    t.decision_note,t.federation_note,t.federation_at,t.completed_at,t.created_at,t.version,cp.full_name,fo.name AS from_club,tor.name AS to_club,
+    t.decision_note,t.federation_note,t.federation_at,t.completed_at,t.kind,t.force_majeure,t.force_majeure_reason,t.payment_proof_filename,t.payment_confirmed_at,t.created_at,t.version,cp.full_name,fo.name AS from_club,tor.name AS to_club,
     (SELECT count(*)::int FROM transfer_message m WHERE m.offer_id=t.id) AS messages
   FROM transfer_offer t JOIN club_person cp ON cp.id=t.source_profile_id LEFT JOIN organization fo ON fo.id=t.from_organization_id JOIN organization tor ON tor.id=t.to_organization_id`;
 export type Offer = {
@@ -175,6 +178,11 @@ export type Offer = {
   federation_note: string;
   federation_at: string | null;
   completed_at: string | null;
+  kind: "consented" | "free" | "force_majeure" | null;
+  force_majeure: boolean;
+  force_majeure_reason: string;
+  payment_proof_filename: string | null;
+  payment_confirmed_at: string | null;
   created_at: string;
   version: number;
   full_name: string;
@@ -203,7 +211,26 @@ export async function transfersView(db: Pool, p: Principal) {
         : s.federation
           ? ((await s.c.query(`${offerSql} WHERE t.federation_id=$1 AND (t.status='accepted' OR t.created_at>now()-interval '365 days') ORDER BY (t.status='accepted') DESC,t.created_at DESC LIMIT 300`, [s.fed])).rows as Offer[])
           : [];
-    const clubs = s.federation ? (await s.c.query("SELECT id,name,province FROM organization WHERE federation_id=$1 AND kind='club' ORDER BY lower(name)", [s.fed])).rows : [];
+    const clubs = s.federation ? (await s.c.query("SELECT id,name,province,training_format FROM organization WHERE federation_id=$1 AND kind='club' ORDER BY lower(name)", [s.fed])).rows : [];
+    // Point 11: the international transfers recorded by the federation, and the players it may record.
+    const international = s.federation
+      ? (
+          await s.c.query(
+            `SELECT i.id,i.full_name,o.name AS club,i.foreign_club,i.country,i.training_years,i.training_format,i.amount_cents,i.paid_on::text AS paid_on,i.note,i.created_at
+               FROM international_transfer i JOIN organization o ON o.id=i.club_id WHERE i.federation_id=$1 ORDER BY i.created_at DESC LIMIT 200`,
+            [s.fed],
+          )
+        ).rows
+      : [];
+    const leaving = s.federation
+      ? (
+          await s.c.query(
+            `SELECT cp.id,cp.full_name,o.name AS club FROM club_person cp JOIN organization o ON o.id=cp.organization_id AND o.federation_id=$1 AND o.kind='club'
+              WHERE cp.status='active' AND 'player'=ANY(cp.directory_roles) AND NOT ('player'=ANY(cp.former_roles)) ORDER BY lower(cp.full_name) LIMIT 1000`,
+            [s.fed],
+          )
+        ).rows
+      : [];
     const season = seasonOf(s.today).label,
       next = `${Number(season.slice(0, 4)) + 1}-${String(Number(season.slice(0, 4)) + 2).slice(2)}`;
     return {
@@ -223,7 +250,9 @@ export async function transfersView(db: Pool, p: Principal) {
         side: (s.federation ? "federation" : o.to_organization_id === s.org ? "to" : "from") as "to" | "from" | "federation",
         moves: offerMoves(o, s.federation ? "federation" : o.to_organization_id === s.org ? "to" : "from", rules.federationValidation, !!s.federation && freeLeave(o, rules, s.today)),
       })),
-      clubs: clubs as { id: string; name: string; province: string }[],
+      clubs: clubs as { id: string; name: string; province: string; training_format: string }[],
+      international: international as { id: string; full_name: string; club: string; foreign_club: string; country: string; training_years: number; training_format: string; amount_cents: number; paid_on: string | null; note: string; created_at: string }[],
+      leaving: leaving as { id: string; full_name: string; club: string }[],
       can: { request: s.players && !!s.fed, rules: s.federation },
     };
   });
@@ -369,7 +398,9 @@ async function complete(s: Ctx, o: Offer, status: "accepted" | "validated") {
     "INSERT INTO person_transfer(source_organization_id,source_profile_id,token_hash,created_by,authorization_note,accepted_at,target_organization_id) VALUES($1,$2,$3,$4,$5,now(),$6)",
     [o.source_organization_id, o.source_profile_id, createHash("sha256").update(randomBytes(32)).digest("hex"), s.userId, `Bourse aux transferts ${o.season}`, o.to_organization_id],
   );
-  await s.c.query("UPDATE transfer_offer SET status=$2,completed_at=now(),target_profile_id=$3,version=version+1 WHERE id=$1", [o.id, status, moved.target]);
+  // Point 7: what kind of transfer it was (BPCF 1/12).
+  const kind = o.force_majeure ? "force_majeure" : o.status === "refused" ? "free" : "consented";
+  await s.c.query("UPDATE transfer_offer SET status=$2,completed_at=now(),target_profile_id=$3,kind=$4,version=version+1 WHERE id=$1", [o.id, status, moved.target, kind]);
   await audit(s.c, o.to_organization_id, s.userId, "transfer.completed", o.id, { person: o.person_id, from: o.source_organization_id, season: o.season });
   await audit(s.c, o.source_organization_id, s.userId, "people.transfer.out", o.source_profile_id);
   const people = [...(await officers(s.c, o.to_organization_id)), ...(await officers(s.c, o.source_organization_id)), ...(await family(s.c, o.to_organization_id, moved.target))];
@@ -386,6 +417,45 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         if (!(await setVisibility(s.c, s.userId, command.personId, command.visible, s.today))) throw new AccessError("FORBIDDEN");
         await audit(s.c, s.org, s.userId, command.visible ? "transfer.visible" : "transfer.hidden", command.personId);
         return { ok: true as const };
+      }
+
+      if (command.action === "format" || command.action === "international" || command.action === "internationalPaid") {
+        if (!s.federation || !s.fed) throw new AccessError("FORBIDDEN");
+        if (command.action === "format") {
+          const r = await s.c.query("UPDATE organization SET training_format=$3 WHERE id=$1 AND federation_id=$2 AND kind='club' RETURNING id", [command.clubId, s.fed, command.format]);
+          if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+          await audit(s.c, s.org, s.userId, "transfer.format", command.clubId, { format: command.format });
+          return { ok: true as const };
+        }
+        if (command.action === "internationalPaid") {
+          const r = await s.c.query("UPDATE international_transfer SET paid_on=CASE WHEN $3 THEN CURRENT_DATE END WHERE id=$1 AND federation_id=$2 RETURNING id", [command.id, s.fed, command.paid]);
+          if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+          await audit(s.c, s.org, s.userId, command.paid ? "transfer.international.paid" : "transfer.international.unpaid", command.id);
+          return { ok: true as const };
+        }
+        // Point 11: the player leaves for a club abroad; the training club's format sets the compensation.
+        const who = (
+          await s.c.query(
+            `SELECT cp.id,cp.full_name,cp.organization_id,o.training_format FROM club_person cp JOIN organization o ON o.id=cp.organization_id AND o.federation_id=$2 AND o.kind='club'
+              WHERE cp.id=$1 AND cp.status='active' FOR UPDATE OF cp`,
+            [command.profileId, s.fed],
+          )
+        ).rows[0] as { id: string; full_name: string; organization_id: string; training_format: string } | undefined;
+        if (!who) throw new AccessError("NOT_FOUND", 404);
+        const amount = trainingIndemnity(who.training_format, command.trainingYears, "international");
+        if (amount === null) throw new AccessError("FORMAT_REQUIRED", 409);
+        const id = (
+          await s.c.query(
+            `INSERT INTO international_transfer(federation_id,club_id,profile_id,full_name,foreign_club,country,training_years,training_format,amount_cents,note,created_by)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+            [s.fed, who.organization_id, who.id, who.full_name, command.foreignClub, command.country, command.trainingYears, who.training_format, amount, command.note ?? "", s.userId],
+          )
+        ).rows[0].id as string;
+        await s.c.query("UPDATE club_person SET status='transferred',updated_at=now() WHERE id=$1", [who.id]);
+        await audit(s.c, s.org, s.userId, "transfer.international", id, { amount });
+        await audit(s.c, who.organization_id, s.userId, "people.transfer.out", who.id);
+        await tell(s.c, await officers(s.c, who.organization_id), "validated", { name: who.full_name, club: command.foreignClub, season: seasonOf(s.today).label }, id);
+        return { ok: true as const, id };
       }
 
       if (command.action === "rules" || command.action === "province") {
@@ -411,7 +481,10 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
 
       if (command.action === "request") {
         if (!s.players) throw new AccessError("FORBIDDEN");
-        if (!requestOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
+        // Point 7: force majeure goes to the commission at any time, with its reason.
+        const force = command.forceMajeure ?? false;
+        if (force && (command.forceMajeureReason ?? "").trim().length < 5) throw new AccessError("REASON_REQUIRED", 400);
+        if (!force && !requestOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
         if (!amountAllowed(rules, command.amountCents)) throw new AccessError("AMOUNT_NOT_ALLOWED", 400);
         const row = (await market(s)).find((r) => r.key === command.personId);
         if (!row) throw new AccessError("NOT_FOUND", 404);
@@ -422,9 +495,9 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         if (!(await belowPairMax(s, rules, source.club_id, s.org, command.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
         const id = (
           await s.c.query(
-            `INSERT INTO transfer_offer(federation_id,person_id,from_organization_id,source_organization_id,source_profile_id,to_organization_id,season,amount_cents,message,created_by)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-            [s.fed, command.personId, source.club_id, sourceOrg, source.profile_id, s.org, command.season, command.amountCents, command.message, s.userId],
+            `INSERT INTO transfer_offer(federation_id,person_id,from_organization_id,source_organization_id,source_profile_id,to_organization_id,season,amount_cents,message,created_by,force_majeure,force_majeure_reason)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+            [s.fed, command.personId, source.club_id, sourceOrg, source.profile_id, s.org, command.season, command.amountCents, command.message, s.userId, force, force ? (command.forceMajeureReason ?? "").trim() : ""],
           )
         ).rows[0].id as string;
         await audit(s.c, s.org, s.userId, "transfer.request", id, { person: command.personId, season: command.season });
@@ -437,6 +510,29 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
       const o = await lockedOffer(s, command.id);
       const vars = { name: o.full_name, club: s.orgName, season: o.season };
       const clubSide = o.to_organization_id === s.org ? "to" : o.from_organization_id === s.org ? "from" : null;
+
+      if (command.action === "paymentProof") {
+        // Point 8: the entering club files the proof once the transfer is done.
+        if (!s.players || clubSide !== "to") throw new AccessError("FORBIDDEN");
+        if (!o.completed_at || !o.amount_cents) throw new AccessError("INVALID_TRANSITION", 409);
+        const bytes = Buffer.from(command.base64, "base64");
+        const pdf = bytes.subarray(0, 4).toString("latin1") === "%PDF",
+          png = bytes[0] === 0x89 && bytes[1] === 0x50,
+          jpg = bytes[0] === 0xff && bytes[1] === 0xd8,
+          webp = bytes.subarray(8, 12).toString("latin1") === "WEBP";
+        const ok = { "application/pdf": pdf, "image/png": png, "image/jpeg": jpg, "image/webp": webp }[command.type];
+        if (!ok || bytes.length > 6 * 1024 * 1024) throw new AccessError("INVALID_FILE", 400);
+        await s.c.query("UPDATE transfer_offer SET payment_proof=$2,payment_proof_type=$3,payment_proof_filename=$4,payment_confirmed_at=NULL,payment_confirmed_by=NULL,version=version+1 WHERE id=$1", [o.id, bytes, command.type, command.filename]);
+        await audit(s.c, s.org, s.userId, "transfer.payment.proof", o.id);
+        return { ok: true as const };
+      }
+      if (command.action === "confirmPayment") {
+        if (!s.federation || (await s.c.query("SELECT federation_id FROM transfer_offer WHERE id=$1", [o.id])).rows[0].federation_id !== s.fed) throw new AccessError("FORBIDDEN");
+        if (command.confirmed && !o.payment_proof_filename) throw new AccessError("PROOF_REQUIRED", 409);
+        await s.c.query("UPDATE transfer_offer SET payment_confirmed_at=CASE WHEN $2 THEN now() END,payment_confirmed_by=CASE WHEN $2 THEN $3 END,version=version+1 WHERE id=$1", [o.id, command.confirmed, s.userId]);
+        await audit(s.c, s.org, s.userId, command.confirmed ? "transfer.payment.confirmed" : "transfer.payment.unconfirmed", o.id);
+        return { ok: true as const };
+      }
 
       if (command.action === "consent") {
         if (!(await canDecide(s.c, s.userId, o.person_id, s.today))) throw new AccessError("FORBIDDEN");
@@ -478,8 +574,8 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         if (command.decision === "accepted") {
           // The player (or a parent) agrees before any acceptance.
           if (o.player_consent !== "given") throw new AccessError("CONSENT_REQUIRED", 409);
-          // The current club agrees: a consented transfer, all season long under BPCF rules.
-          if (!requestOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
+          // The current club agrees: a consented transfer, all season long under BPCF rules (and force majeure at any time).
+          if (!o.force_majeure && !requestOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
           if (!(await belowMax(s, rules, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_LIMIT", 409);
           if (!(await belowPairMax(s, rules, o.from_organization_id, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
         }
@@ -535,5 +631,20 @@ export async function threadsView(db: Pool, p: Principal, offer?: string) {
       organization_id: s.org,
       threads: offers.map((o) => ({ ...shown(o), side: (o.to_organization_id === s.org ? "to" : "from") as "to" | "from", messages: messages.filter((m) => m.offer_id === o.id) })),
     };
+  });
+}
+
+/** Point 8: the proof of payment, for the two clubs of the transfer and the federation. */
+export async function paymentProofFile(db: Pool, p: Principal, id: string) {
+  return scope(db, p, false, async (s) => {
+    const f = (
+      await s.c.query(
+        `SELECT payment_proof AS content,payment_proof_type AS media_type,payment_proof_filename AS filename FROM transfer_offer
+          WHERE id=$1 AND payment_proof IS NOT NULL AND (($2::boolean AND federation_id=$3) OR (NOT $2::boolean AND $4::boolean AND (to_organization_id=$5 OR from_organization_id=$5)))`,
+        [id, s.federation, s.fed, s.players, s.org],
+      )
+    ).rows[0] as { content: Buffer; media_type: string; filename: string } | undefined;
+    if (!f) throw new AccessError("NOT_FOUND", 404);
+    return f;
   });
 }

@@ -13123,3 +13123,20 @@ input[type="search"] {
   gap: var(--space-2);
   margin-bottom: var(--space-4);
 }
+/* Point 10 (04/11/2026): the federation's fines. */
+.fine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.fines-list li[data-state="cancelled"] strong {
+  text-decoration: line-through;
+}
+/* Point 8 (04/11/2026): the training compensation's proof and its confirmation. */
+.transfer-payment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
