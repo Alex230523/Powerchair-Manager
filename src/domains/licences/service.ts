@@ -29,6 +29,7 @@ export type LicenceView = {
   licence: {
     categories: string[];
     valid_until: string | null;
+    obtained_on?: string | null;
     declared_by_self: boolean;
     verified_on: string | null;
     verified_by_name: string | null;
@@ -44,7 +45,7 @@ export async function licenceView(db: Pool, p: Principal, profileId: string): Pr
     const licence =
       ((
         await s.c.query(
-          `SELECT d.categories,d.valid_until::text AS valid_until,d.declared_by_self,d.verified_on::text AS verified_on,u.name AS verified_by_name,d.copy_filename
+          `SELECT d.categories,d.valid_until::text AS valid_until,d.obtained_on::text AS obtained_on,d.declared_by_self,d.verified_on::text AS verified_on,u.name AS verified_by_name,d.copy_filename
              FROM driver_licence d LEFT JOIN "user" u ON u.id=d.verified_by WHERE d.profile_id=$1 AND d.organization_id=$2`,
           [profileId, s.org],
         )
@@ -63,11 +64,11 @@ export async function licenceExecute(db: Pool, p: Principal, command: LicenceCom
       if (command.action === "save") {
         // Whoever changes it, the club checks it again; the reminder starts over.
         await s.c.query(
-          `INSERT INTO driver_licence(profile_id,organization_id,categories,valid_until,declared_by_self,updated_by) VALUES($1,$2,$3,$4,$5,$6)
-           ON CONFLICT(profile_id) DO UPDATE SET categories=EXCLUDED.categories,valid_until=EXCLUDED.valid_until,declared_by_self=EXCLUDED.declared_by_self,
+          `INSERT INTO driver_licence(profile_id,organization_id,categories,valid_until,declared_by_self,updated_by,obtained_on) VALUES($1,$2,$3,$4,$5,$6,$7)
+           ON CONFLICT(profile_id) DO UPDATE SET categories=EXCLUDED.categories,valid_until=EXCLUDED.valid_until,obtained_on=EXCLUDED.obtained_on,declared_by_self=EXCLUDED.declared_by_self,
              verified_by=NULL,verified_on=NULL,reminded_on=CASE WHEN driver_licence.valid_until IS DISTINCT FROM EXCLUDED.valid_until THEN NULL ELSE driver_licence.reminded_on END,
              updated_by=EXCLUDED.updated_by,updated_at=now()`,
-          [command.profileId, s.org, [...new Set(command.categories)], command.validUntil, self, s.userId],
+          [command.profileId, s.org, [...new Set(command.categories)], command.validUntil, self, s.userId, command.obtainedOn ?? null],
         );
         await audit(s.c, s.org, s.userId, "licence.saved", command.profileId, { categories: command.categories });
         return { ok: true as const };

@@ -8,6 +8,7 @@ import { errors } from "./access-copy";
 import { Badge, Button, EmptyState } from "./ui";
 import { Card } from "./player-profile";
 import { useData, usePost } from "./use-api";
+import { Modal } from "./modal";
 
 const dayOf = (locale: Locale, d: string) =>
   new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
@@ -45,7 +46,7 @@ export function DriverLicence({ locale, profileId }: { locale: Locale; profileId
       setError(t.pickOne);
       return;
     }
-    const ok = await send({ action: "save", categories, validUntil: f.get("validUntil") || null });
+    const ok = await send({ action: "save", categories, validUntil: f.get("validUntil") || null, obtainedOn: f.get("obtainedOn") || null });
     const file = f.get("file");
     if (ok && file instanceof File && file.size > 0) {
       setUploading(true);
@@ -69,7 +70,9 @@ export function DriverLicence({ locale, profileId }: { locale: Locale; profileId
       <p role="status" className="sr-only">
         {message}
       </p>
-      {editing ? (
+      {/* 04/11/2026: declaring or changing the licence opens in a window. */}
+      {editing && (
+        <Modal title={l ? t.edit : t.declare} close={() => setEditing(false)}>
         <form
           className="stack-form licence-form"
           onSubmit={(e) => {
@@ -86,10 +89,16 @@ export function DriverLicence({ locale, profileId }: { locale: Locale; profileId
               </label>
             ))}
           </fieldset>
-          <label>
-            {t.validUntil}
-            <input type="date" name="validUntil" defaultValue={l?.valid_until ?? ""} />
-          </label>
+          <div className="form-grid">
+            <label>
+              {t.since}
+              <input type="date" name="obtainedOn" defaultValue={l?.obtained_on ?? ""} />
+            </label>
+            <label>
+              {t.validUntil}
+              <input type="date" name="validUntil" defaultValue={l?.valid_until ?? ""} />
+            </label>
+          </div>
           <label>
             {t.copy}
             <input type="file" name="file" accept="application/pdf,image/png,image/jpeg" />
@@ -103,11 +112,19 @@ export function DriverLicence({ locale, profileId }: { locale: Locale; profileId
             </Button>
           </div>
         </form>
-      ) : l ? (
+        </Modal>
+      )}
+      {l ? (
         <>
           <dl className="facts">
             <dt>{t.categories}</dt>
             <dd>{l.categories.join(", ")}</dd>
+            {l.obtained_on && (
+              <>
+                <dt>{t.since}</dt>
+                <dd>{dayOf(locale, l.obtained_on)}</dd>
+              </>
+            )}
             <dt>{t.validUntil}</dt>
             <dd>
               {l.valid_until ? dayOf(locale, l.valid_until) : t.noDate}{" "}

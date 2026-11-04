@@ -199,6 +199,10 @@ const fr = {
   validUntil: "Valable jusqu'au",
   person: "Personne",
   saveLicence: "Enregistrer le permis",
+  addLicence: "Ajouter un permis",
+  editLicence: "Modifier le permis",
+  since: "Depuis le",
+  editFleet: "Modifier le véhicule",
   errors: {
     HAS_FINANCE:
       "Ce déplacement a des lignes en trésorerie : annulez-le plutôt que de le supprimer.",
@@ -405,6 +409,10 @@ const nl: Copy = {
   validUntil: "Geldig tot",
   person: "Persoon",
   saveLicence: "Rijbewijs opslaan",
+  addLicence: "Een rijbewijs toevoegen",
+  editLicence: "Rijbewijs wijzigen",
+  since: "Sinds",
+  editFleet: "Voertuig wijzigen",
   errors: {
     HAS_FINANCE:
       "Deze verplaatsing heeft lijnen in de boekhouding: annuleer ze in plaats van ze te verwijderen.",
@@ -610,6 +618,10 @@ const en: Copy = {
   validUntil: "Valid until",
   person: "Person",
   saveLicence: "Save licence",
+  addLicence: "Add a licence",
+  editLicence: "Edit the licence",
+  since: "Held since",
+  editFleet: "Edit the vehicle",
   errors: {
     HAS_FINANCE: "This trip has lines in the accounts: cancel it instead of deleting it.",
     STALE_VERSION: "Someone just changed this trip. Reload the page.",
