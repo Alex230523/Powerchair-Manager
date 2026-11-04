@@ -264,11 +264,14 @@ it("takes the former free tags over without loss, once", async () => {
 });
 
 it("sends a sheet to another club of the federation; its presidency accepts or refuses", async () => {
-  const sent = ((await exerciseExecute(db, president, fields({ title: "Relance rapide", tags: [] }) as never, clubA)) as { id: string }).id;
+  const sent = ((await exerciseExecute(db, president, fields({ title: "Relance rapide", tags: ["Relance"] }) as never, clubA)) as { id: string }).id;
   // Only clubs of the same federation are offered, and reachable.
   expect((await exerciseDetail(db, president, sent)).clubs.map((c) => c.name)).toEqual(["Club B"]);
   await expect(exerciseExecute(db, president, { action: "send", id: sent, clubId: clubC, message: "" }, clubA)).rejects.toMatchObject({ code: "NOT_FOUND" });
   await exerciseExecute(db, president, { action: "send", id: sent, clubId: clubB, message: "Pour vos U15" }, clubA);
+  // Point 13: club B's presidency is told.
+  const mails = async (p: Principal) => (await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1 AND kind='automation'", [p.userId])).rows[0].n as number;
+  expect(await mails(presidentB)).toBe(1);
   await expect(exerciseExecute(db, president, { action: "send", id: sent, clubId: clubB, message: "" }, clubA)).rejects.toMatchObject({ code: "ALREADY_SENT" });
   // Club B's presidency sees it; a coach of club B cannot decide.
   const offers = (await exercisesView(db, presidentB)).offers;
@@ -280,7 +283,12 @@ it("sends a sheet to another club of the federation; its presidency accepts or r
   await expect(exerciseExecute(db, president, { action: "offerDecide", offerId: offers[0].id, accept: true }, clubA)).rejects.toMatchObject({ code: "NOT_FOUND" });
   const copy = ((await exerciseExecute(db, presidentB, { action: "offerDecide", offerId: offers[0].id, accept: true }, clubB)) as { id: string }).id;
   expect((await exerciseDetail(db, presidentB, copy)).exercise).toMatchObject({ title: "Relance rapide", creator: "Présidente A", creator_club: "Club A" });
+  // Point 12: the sender is told, and the sheet says where it went.
+  expect(await mails(president)).toBe(1);
+  expect((await exerciseDetail(db, president, sent)).sent.map((o) => [o.club, o.status])).toEqual([["Club B", "accepted"]]);
   expect((await exercisesView(db, presidentB)).offers).toEqual([]);
+  // Point 12: its tag came along, created in club B.
+  expect((await exerciseDetail(db, presidentB, copy)).exercise.tags.map((g) => g.name)).toEqual(["Relance"]);
   // A second sending can be refused: nothing arrives.
   await exerciseExecute(db, president, { action: "send", id: sent, clubId: clubB, message: "" }, clubA);
   const again = (await exercisesView(db, presidentB)).offers[0].id;

@@ -4,6 +4,8 @@ import { inWindow, marketOpen, bpcfRules, trainingIndemnity, freeLeave } from ".
 import { eligibility } from "../src/domains/competitions/journey";
 import { fineDefaults, fineState } from "../src/domains/fines/schema";
 import { federationExamples, bpcfPlayerCapCents } from "../src/domains/affiliations/schema";
+import { youngDriver } from "../src/domains/trips/schema";
+import { jobs } from "../src/domains/jobs/registry";
 
 /** 04/11/2026: the twenty improvements listed after the feedback. */
 const read = (f: string) => readFileSync(f, "utf8");
@@ -69,5 +71,20 @@ describe("points 6 to 11: transfers and the federation (BPCF)", () => {
     expect(fineDefaults).toMatchObject({ late: 2500, forfeit: 5000, forfeit_day: 50000, other: null });
     expect(fineState({ paid_on: null, cancelled_at: "x" })).toBe("cancelled");
     expect(fineState({ paid_on: "2026-11-04", cancelled_at: null })).toBe("paid");
+  });
+});
+
+describe("points 12 to 15: clubs", () => {
+  it("13: the line-ups revealed are told by the five-minute job", () => {
+    expect(read("src/domains/jobs/registry.ts")).toContain("lineups: await lineupRevealTick(db)");
+    expect(jobs.attendance.every).toBe(5);
+  });
+  it("14: the corners are in the record per team", () => {
+    expect(read("src/components/statistics-game.tsx")).toContain('key: "cornersFor"');
+  });
+  it("15: a licence held for less than two years is a young driver's", () => {
+    expect(youngDriver("2025-06-01", "2026-11-04")).toBe(true);
+    expect(youngDriver("2024-11-04", "2026-11-04")).toBe(false);
+    expect(youngDriver(null, "2026-11-04")).toBe(false);
   });
 });

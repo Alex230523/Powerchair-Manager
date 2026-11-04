@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
 import type { tripsView, tripDetail } from "@/domains/trips/service";
-import { licenceCategories } from "@/domains/trips/schema";
+import { licenceCategories, youngDriver } from "@/domains/trips/schema";
 import { tripsCopy } from "./trips-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
@@ -644,6 +644,11 @@ function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; bus
                   {d.categories.join(", ")}
                   {d.obtained_on && ` · ${t.since} ${fullDay(locale, d.obtained_on)}`}
                   {d.valid_until && ` · ${t.validUntil} ${fullDay(locale, d.valid_until)}`}
+                </p>
+                {/* Point 15: checked by the club, and a young driver (less than two years). */}
+                <p className="driver-badges">
+                  {d.verified && <Badge tone="success">{t.verifiedByClub}</Badge>}
+                  {youngDriver(d.obtained_on, data.today) && <Badge tone="warning">{t.youngDriver}</Badge>}
                 </p>
               </div>
               <button type="button" className="text-button" onClick={() => show(d.profile_id)}>

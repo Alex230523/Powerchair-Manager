@@ -104,15 +104,19 @@ afterAll(async () => {
   await root.end();
 });
 
-type R = { name: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; difference: number; form: string[] };
+type R = { name: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; difference: number; form: string[]; corners?: { ours: number; theirs: number } };
 
 it("adds up the played matches only: tiles, record per team with the form", async () => {
   const s = (await gameStatistics(db, president, "summary", {})) as { tiles: Record<string, number | null> };
   expect(s.tiles).toEqual({ played: 4, won: 2, winRate: 50, goalsFor: 9, goalsAgainst: 4, difference: 5 });
+  // Point 14: two corners for the Lions in a played match, one against; a cancelled one does not count.
+  const lionsMatch = (await db.query("SELECT m.id FROM match m JOIN team t ON t.id=m.team_id WHERE t.name='Lions' AND m.status='played' ORDER BY m.starts_at LIMIT 1")).rows[0].id;
+  for (const [kind, cancelled] of [["corner", false], ["corner", false], ["corner_against", false], ["corner", true]] as const)
+    await db.query("INSERT INTO match_live_event(organization_id,match_id,client_id,kind,created_by,cancelled_at) VALUES($1,$2,gen_random_uuid(),$3,$4,CASE WHEN $5 THEN now() END)", [clubA, lionsMatch, kind, president.userId, cancelled]);
   const t = (await gameStatistics(db, president, "teams", {})) as { teams: R[]; colors: Record<string, string> };
   expect(t.teams).toEqual([
-    { name: "Aigles", played: 1, won: 1, drawn: 0, lost: 0, goalsFor: 4, goalsAgainst: 0, difference: 4, winRate: 100, form: ["W"] },
-    { name: "Lions", played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 5, goalsAgainst: 4, difference: 1, winRate: 33, form: ["W", "D", "L"] },
+    { name: "Aigles", played: 1, won: 1, drawn: 0, lost: 0, goalsFor: 4, goalsAgainst: 0, difference: 4, winRate: 100, form: ["W"], corners: { ours: 0, theirs: 0 } },
+    { name: "Lions", played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 5, goalsAgainst: 4, difference: 1, winRate: 33, form: ["W", "D", "L"], corners: { ours: 2, theirs: 1 } },
   ]);
   expect(t.colors).toEqual({ Lions: "blue", Aigles: "amber" });
   const g = (await gameStatistics(db, president, "goals", {})) as { matches: { our: number; their: number; opponent: string }[] };

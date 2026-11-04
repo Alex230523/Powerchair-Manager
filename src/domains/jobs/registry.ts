@@ -32,6 +32,7 @@ import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { closureTick, exportTick, retentionTick } from "../legal/service";
 import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
+import { lineupRevealTick } from "../competitions/lineup-reveal";
 import { watchdog } from "./watchdog";
 
 /**
@@ -85,7 +86,8 @@ export const jobs = {
       const auto = await runAutomations(db, undefined, ["callNoAnswer"]);
       // B9: open events (offers that expire, reminders seven days and one day before, the opinion survey).
       // B6: the webhooks waiting to leave (signed, retried).
-      return { attendance: auto.sent, attendanceErrors: auto.errors, eventMails: await eventMailTick(db), openEvents: await openEventTick(db), webhooks: await webhookTick(db) };
+      // Point 13: the line-ups revealed (by hand or at their time) are told to the players and parents.
+      return { attendance: auto.sent, attendanceErrors: auto.errors, eventMails: await eventMailTick(db), openEvents: await openEventTick(db), webhooks: await webhookTick(db), lineups: await lineupRevealTick(db) };
     },
   },
   /** The daily reminders: tasks (A1), the automations' catalogue (B7), affiliations, chair loans. */

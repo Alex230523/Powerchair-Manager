@@ -280,6 +280,20 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
               </form>
             </Modal>
           )}
+          {/* Point 12: where the sheet went, and the answers. */}
+          {data.sent.length > 0 && (
+            <section className="no-print exercise-sent" aria-labelledby="exercise-sent">
+              <h2 id="exercise-sent">{t.send.sentTitle}</h2>
+              <ul className="plain-list">
+                {data.sent.map((o) => (
+                  <li key={o.id}>
+                    <strong>{o.club}</strong>{" "}
+                    <Badge tone={o.status === "accepted" ? "success" : o.status === "refused" ? "danger" : "info"}>{t.send.sentStates[o.status]}</Badge>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {x.archived && <Badge>{t.archived}</Badge>}
           {x.federal_status === "pending" && <p className="muted no-print">{t.x4.federal.pending}</p>}
           {x.federal_status === "published" && <p className="muted no-print">{t.x4.federal.published}</p>}
