@@ -109,6 +109,6 @@ it("shows the roles, tasks and courses to the president, not to a coach", async 
   const filters = filterSchema.parse({ directoryRole: "coach" });
   const president = await peopleView(db, presidentA, filters);
   const profile = president.profiles.find((x) => x.full_name === "Coach Trésorier")!;
-  expect(president.coachExtras?.[profile.id]).toMatchObject({ roles: [{ name: { fr: "Trésorier" } }], tasks: { open: 1, late: 1 }, formations: [] });
+  expect(president.coachExtras?.[profile.id]).toMatchObject({ roles: [{ name: { fr: "Trésorier" } }], tasks: { open: 1, late: 1 }, next: [{ title: "En retard" }], formations: [] });
   expect((await peopleView(db, coachTwo, filters)).coachExtras).toBeNull();
 });

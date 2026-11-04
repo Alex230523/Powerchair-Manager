@@ -718,12 +718,23 @@ async function coachExtras(c: PoolClient, org: string, ids: string[], courses: {
       [org, ids],
     )
   ).rows as { profile_id: string; open: number; late: number }[];
+  // 04/11/2026: the next three open tasks of each coach, for the bubble on hover.
+  const next = (
+    await c.query(
+      `SELECT p.id AS profile_id,x.title,x.due_on FROM unnest($2::uuid[]) AS p(id)
+         CROSS JOIN LATERAL (SELECT t.title,t.due_on::text AS due_on FROM task t WHERE t.organization_id=$1 AND t.status<>'done'
+           AND (t.responsible_id=p.id OR EXISTS(SELECT 1 FROM task_assignee a WHERE a.task_id=t.id AND a.profile_id=p.id AND a.done_on IS NULL))
+           ORDER BY t.due_on NULLS LAST,t.created_at LIMIT 3) x`,
+      [org, ids],
+    )
+  ).rows as { profile_id: string; title: string; due_on: string | null }[];
   return Object.fromEntries(
     ids.map((id) => [
       id,
       {
         roles: roles.filter((r) => r.profile_id === id).map((r) => ({ id: r.id, name: r.name })),
         tasks: tasks.find((t) => t.profile_id === id) ?? { open: 0, late: 0 },
+        next: next.filter((t) => t.profile_id === id).map((t) => ({ title: t.title, due_on: t.due_on })),
         formations: courses.filter((x) => x.profile_id === id && x.status === "approved").map((x) => ({ title: x.title, on: x.completed_on ?? x.decided_on })),
       },
     ]),

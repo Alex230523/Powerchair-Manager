@@ -648,10 +648,30 @@ export function PlayerDirectory({
                       sort: (r: Profile) => data.coachExtras?.[r.id]?.tasks.open ?? 0,
                       cell: (r: Profile) => {
                         const k = data.coachExtras?.[r.id]?.tasks ?? { open: 0, late: 0 };
-                        return (
-                          <Link href={`/${locale}/coaches/${r.id}#todo`}>
+                        const next = data.coachExtras?.[r.id]?.next ?? [];
+                        const link = (
+                          <Link href={`/${locale}/coaches/${r.id}#todo`} aria-describedby={next.length ? `coach-tasks-${r.id}` : undefined}>
                             {fillIn(staffRolesCopy[locale].tasksCount, { open: String(k.open), late: String(k.late) })}
                           </Link>
+                        );
+                        // 04/11/2026: on hover or focus, a grey bubble with the next tasks; the link leads to them.
+                        return next.length ? (
+                          <span className="metric-split coach-tasks">
+                            {link}
+                            <span className="metric-split-bubble" role="tooltip" id={`coach-tasks-${r.id}`}>
+                              <span className="metric-split-title">{staffRolesCopy[locale].nextTasks}</span>
+                              <span className="coach-tasks-list">
+                                {next.map((x, i) => (
+                                  <span key={i}>
+                                    {x.title}
+                                    {x.due_on ? ` · ${new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(x.due_on + "T12:00:00Z"))}` : ""}
+                                  </span>
+                                ))}
+                              </span>
+                            </span>
+                          </span>
+                        ) : (
+                          link
                         );
                       },
                     },
