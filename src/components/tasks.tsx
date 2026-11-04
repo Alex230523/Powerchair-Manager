@@ -94,8 +94,6 @@ function href(locale: Locale, t: TaskRow) {
   if (t.source_kind === "allocationDeadline") return at(`/funding/reserved`);
   // H4: the cash forecast under the threshold.
   if (t.source_kind === "forecastLow") return at(`/funding/forecast`);
-  // H1: a prospect to call back or follow up, a partner to visit.
-  if (t.source_kind === "prospectCall" || t.source_kind === "prospectSilent" || t.source_kind === "presentClub") return at(`/recrutement`);
   return null;
 }
 /** The application's own tasks read in the reader's language. */

@@ -17,41 +17,38 @@ import e14 from "../../../content/changelog/2026-10-22-evenements-ouverts.json";
 import e15 from "../../../content/changelog/2026-10-22-export-excel.json";
 import e16 from "../../../content/changelog/2026-10-22-fiche-en-fenetre.json";
 import e17 from "../../../content/changelog/2026-10-22-finances.json";
-import e18 from "../../../content/changelog/2026-10-22-incidents.json";
-import e19 from "../../../content/changelog/2026-10-22-inscriptions.json";
-import e20 from "../../../content/changelog/2026-10-22-invite.json";
-import e21 from "../../../content/changelog/2026-10-22-lieux.json";
-import e22 from "../../../content/changelog/2026-10-22-matchs.json";
-import e23 from "../../../content/changelog/2026-10-22-materiel.json";
-import e24 from "../../../content/changelog/2026-10-22-notifications-telephone.json";
-import e25 from "../../../content/changelog/2026-10-22-page-publique.json";
-import e26 from "../../../content/changelog/2026-10-22-paiements-qr.json";
-import e27 from "../../../content/changelog/2026-10-22-parcours-match.json";
-import e28 from "../../../content/changelog/2026-10-22-presences.json";
-import e29 from "../../../content/changelog/2026-10-22-rappels-automatiques.json";
-import e30 from "../../../content/changelog/2026-10-22-subsides-sponsors.json";
-import e31 from "../../../content/changelog/2026-10-22-todo.json";
-import e32 from "../../../content/changelog/2026-11-02-arbitrage.json";
-import e33 from "../../../content/changelog/2026-11-02-attestations-mutuelle.json";
-import e34 from "../../../content/changelog/2026-11-02-bord-de-terrain.json";
-import e35 from "../../../content/changelog/2026-11-02-discipline.json";
-import e36 from "../../../content/changelog/2026-11-02-dossiers-modeles.json";
-import e37 from "../../../content/changelog/2026-11-02-federation-asbl.json";
-import e38 from "../../../content/changelog/2026-11-02-fiches-tactiques.json";
-import e39 from "../../../content/changelog/2026-11-02-fonds-reserves.json";
-import e40 from "../../../content/changelog/2026-11-02-matchs.json";
-import e41 from "../../../content/changelog/2026-11-02-materiel.json";
-import e42 from "../../../content/changelog/2026-11-02-mon-suivi.json";
-import e43 from "../../../content/changelog/2026-11-02-nouveautes.json";
-import e44 from "../../../content/changelog/2026-11-02-previsions.json";
-import e45 from "../../../content/changelog/2026-11-02-rapport-impact.json";
-import e46 from "../../../content/changelog/2026-11-02-recrutement.json";
-import e47 from "../../../content/changelog/2026-11-02-securite-donnees.json";
-import e48 from "../../../content/changelog/2026-11-02-selection-nationale.json";
-import e49 from "../../../content/changelog/2026-11-02-signalements.json";
-import e50 from "../../../content/changelog/2026-11-02-sondages.json";
-import e51 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
-import e52 from "../../../content/changelog/2026-11-04-ergonomie.json";
+import e18 from "../../../content/changelog/2026-10-22-inscriptions.json";
+import e19 from "../../../content/changelog/2026-10-22-invite.json";
+import e20 from "../../../content/changelog/2026-10-22-lieux.json";
+import e21 from "../../../content/changelog/2026-10-22-matchs.json";
+import e22 from "../../../content/changelog/2026-10-22-materiel.json";
+import e23 from "../../../content/changelog/2026-10-22-notifications-telephone.json";
+import e24 from "../../../content/changelog/2026-10-22-page-publique.json";
+import e25 from "../../../content/changelog/2026-10-22-paiements-qr.json";
+import e26 from "../../../content/changelog/2026-10-22-parcours-match.json";
+import e27 from "../../../content/changelog/2026-10-22-presences.json";
+import e28 from "../../../content/changelog/2026-10-22-rappels-automatiques.json";
+import e29 from "../../../content/changelog/2026-10-22-subsides-sponsors.json";
+import e30 from "../../../content/changelog/2026-10-22-todo.json";
+import e31 from "../../../content/changelog/2026-11-02-arbitrage.json";
+import e32 from "../../../content/changelog/2026-11-02-attestations-mutuelle.json";
+import e33 from "../../../content/changelog/2026-11-02-bord-de-terrain.json";
+import e34 from "../../../content/changelog/2026-11-02-discipline.json";
+import e35 from "../../../content/changelog/2026-11-02-dossiers-modeles.json";
+import e36 from "../../../content/changelog/2026-11-02-federation-asbl.json";
+import e37 from "../../../content/changelog/2026-11-02-fiches-tactiques.json";
+import e38 from "../../../content/changelog/2026-11-02-fonds-reserves.json";
+import e39 from "../../../content/changelog/2026-11-02-matchs.json";
+import e40 from "../../../content/changelog/2026-11-02-materiel.json";
+import e41 from "../../../content/changelog/2026-11-02-mon-suivi.json";
+import e42 from "../../../content/changelog/2026-11-02-nouveautes.json";
+import e43 from "../../../content/changelog/2026-11-02-previsions.json";
+import e44 from "../../../content/changelog/2026-11-02-rapport-impact.json";
+import e45 from "../../../content/changelog/2026-11-02-securite-donnees.json";
+import e46 from "../../../content/changelog/2026-11-02-selection-nationale.json";
+import e47 from "../../../content/changelog/2026-11-02-signalements.json";
+import e48 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
+import e49 from "../../../content/changelog/2026-11-04-ergonomie.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -72,39 +69,36 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-22-export-excel", data: e15 },
   { id: "2026-10-22-fiche-en-fenetre", data: e16 },
   { id: "2026-10-22-finances", data: e17 },
-  { id: "2026-10-22-incidents", data: e18 },
-  { id: "2026-10-22-inscriptions", data: e19 },
-  { id: "2026-10-22-invite", data: e20 },
-  { id: "2026-10-22-lieux", data: e21 },
-  { id: "2026-10-22-matchs", data: e22 },
-  { id: "2026-10-22-materiel", data: e23 },
-  { id: "2026-10-22-notifications-telephone", data: e24 },
-  { id: "2026-10-22-page-publique", data: e25 },
-  { id: "2026-10-22-paiements-qr", data: e26 },
-  { id: "2026-10-22-parcours-match", data: e27 },
-  { id: "2026-10-22-presences", data: e28 },
-  { id: "2026-10-22-rappels-automatiques", data: e29 },
-  { id: "2026-10-22-subsides-sponsors", data: e30 },
-  { id: "2026-10-22-todo", data: e31 },
-  { id: "2026-11-02-arbitrage", data: e32 },
-  { id: "2026-11-02-attestations-mutuelle", data: e33 },
-  { id: "2026-11-02-bord-de-terrain", data: e34 },
-  { id: "2026-11-02-discipline", data: e35 },
-  { id: "2026-11-02-dossiers-modeles", data: e36 },
-  { id: "2026-11-02-federation-asbl", data: e37 },
-  { id: "2026-11-02-fiches-tactiques", data: e38 },
-  { id: "2026-11-02-fonds-reserves", data: e39 },
-  { id: "2026-11-02-matchs", data: e40 },
-  { id: "2026-11-02-materiel", data: e41 },
-  { id: "2026-11-02-mon-suivi", data: e42 },
-  { id: "2026-11-02-nouveautes", data: e43 },
-  { id: "2026-11-02-previsions", data: e44 },
-  { id: "2026-11-02-rapport-impact", data: e45 },
-  { id: "2026-11-02-recrutement", data: e46 },
-  { id: "2026-11-02-securite-donnees", data: e47 },
-  { id: "2026-11-02-selection-nationale", data: e48 },
-  { id: "2026-11-02-signalements", data: e49 },
-  { id: "2026-11-02-sondages", data: e50 },
-  { id: "2026-11-02-vue-ensemble", data: e51 },
-  { id: "2026-11-04-ergonomie", data: e52 },
+  { id: "2026-10-22-inscriptions", data: e18 },
+  { id: "2026-10-22-invite", data: e19 },
+  { id: "2026-10-22-lieux", data: e20 },
+  { id: "2026-10-22-matchs", data: e21 },
+  { id: "2026-10-22-materiel", data: e22 },
+  { id: "2026-10-22-notifications-telephone", data: e23 },
+  { id: "2026-10-22-page-publique", data: e24 },
+  { id: "2026-10-22-paiements-qr", data: e25 },
+  { id: "2026-10-22-parcours-match", data: e26 },
+  { id: "2026-10-22-presences", data: e27 },
+  { id: "2026-10-22-rappels-automatiques", data: e28 },
+  { id: "2026-10-22-subsides-sponsors", data: e29 },
+  { id: "2026-10-22-todo", data: e30 },
+  { id: "2026-11-02-arbitrage", data: e31 },
+  { id: "2026-11-02-attestations-mutuelle", data: e32 },
+  { id: "2026-11-02-bord-de-terrain", data: e33 },
+  { id: "2026-11-02-discipline", data: e34 },
+  { id: "2026-11-02-dossiers-modeles", data: e35 },
+  { id: "2026-11-02-federation-asbl", data: e36 },
+  { id: "2026-11-02-fiches-tactiques", data: e37 },
+  { id: "2026-11-02-fonds-reserves", data: e38 },
+  { id: "2026-11-02-matchs", data: e39 },
+  { id: "2026-11-02-materiel", data: e40 },
+  { id: "2026-11-02-mon-suivi", data: e41 },
+  { id: "2026-11-02-nouveautes", data: e42 },
+  { id: "2026-11-02-previsions", data: e43 },
+  { id: "2026-11-02-rapport-impact", data: e44 },
+  { id: "2026-11-02-securite-donnees", data: e45 },
+  { id: "2026-11-02-selection-nationale", data: e46 },
+  { id: "2026-11-02-signalements", data: e47 },
+  { id: "2026-11-02-vue-ensemble", data: e48 },
+  { id: "2026-11-04-ergonomie", data: e49 },
 ];

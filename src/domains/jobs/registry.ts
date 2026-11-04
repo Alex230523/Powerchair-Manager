@@ -5,7 +5,7 @@ import { createPushSender, processPush, recoverPush } from "../notifications/pus
 import { digestTick } from "../digest/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
-import { incidentPurge, incidentTick } from "../incidents/service";
+import { retiredIncidentPurge } from "./retired";
 import { openEventTick } from "../open-events/service";
 import { webhookTick } from "../integrations/webhooks";
 import { eventMailTick } from "../communication/service";
@@ -25,10 +25,8 @@ import { offboardingTick } from "../offboarding/service";
 import { circularsTick } from "../circulars/service";
 import { refereeingTick } from "../referees/service";
 import { feedbackTick } from "../feedback/service";
-import { pollsTick } from "../polls/service";
 import { allocationsTick } from "../finance/allocations";
 import { forecastTick } from "../finance/forecast";
-import { recruitmentTick } from "../recruitment/service";
 import { attestationTick } from "../dues/attestation-send";
 import { seasonSlotInviteTick } from "../calendar/season-schedule";
 import { closureTick, exportTick, retentionTick } from "../legal/service";
@@ -73,11 +71,11 @@ export const jobs = {
       return { recovered, digests, processed: sent, deferred: budget.allowed === 0 ? budget.pending : 0, sentToday: budget.sentToday + sent, pushed };
     },
   },
-  /** Documents that expire, (B8) donors' data ten years after their last gift, (B5) incidents past their retention. */
+  /** Documents that expire, (B8) donors' data ten years after their last gift, (B5) incidents (module removed) past their retention. */
   documents: {
     every: 60,
     async run(db) {
-      return { expired: await sweepDocuments(db), taxPurged: await taxPurge(db), incidentsPurged: await incidentPurge(db) };
+      return { expired: await sweepDocuments(db), taxPurged: await taxPurge(db), incidentsPurged: await retiredIncidentPurge(db) };
     },
   },
   /** Attendance (the « convocation sans réponse » automation, B7) and the event mails prepared for a given time. */
@@ -104,8 +102,6 @@ export const jobs = {
         automationErrors: auto.errors,
         affiliations: await affiliationTick(db),
         loans: await equipmentLoanTick(db),
-        // B5: claims close to their deadline, first-aid items about to expire.
-        incidents: await incidentTick(db),
         // 8: a player who turns 18 is invited to manage his own account.
         majority: await majorityTick(db),
         // 8: a season that starts opens its check.
@@ -130,15 +126,11 @@ export const jobs = {
         refereeing: await refereeingTick(db),
         // 19: the remarks not yet sent leave; the issues' states are read.
         feedback: await feedbackTick(db).then((r) => r.sent + r.checked),
-        // H3: one relaunch the day before a poll closes; past polls close.
-        polls: await pollsTick(db),
         // 9: reserved funds whose use-by date comes (60 and 30 days); attestations sent once the season is paid.
         allocations: await allocationsTick(db),
         attestations: await attestationTick(db),
         // H4: the certain forecast under the threshold within three months.
         forecast: await forecastTick(db),
-        // H1: call back after a trial, follow up a silence, delete after the delay.
-        recruitment: await recruitmentTick(db),
         // 21: the full exports asked for, the closures whose 30 days are over, the retention purge.
         clubExports: await exportTick(db),
         clubClosures: await closureTick(db),

@@ -38,6 +38,8 @@ const fr = {
   sex: "Par sexe : non relevé par le club.",
   origin: "Provenance des nouveaux joueurs : pas encore relevée.",
   originBy: "Provenance des nouveaux joueurs : {list}.",
+  /** Where earlier newcomers came from (recorded until 04/11/2026). */
+  sources: { rehab: "centre de revalidation", school: "école spécialisée", association: "association", fair: "salon", social: "réseaux sociaux", word_of_mouth: "bouche-à-oreille", other: "autre", unknown: "non relevée" } as Record<string, string>,
   ages: { under12: "Moins de 12 ans", "12to17": "12 à 17 ans", "18to29": "18 à 29 ans", "30to49": "30 à 49 ans", "50plus": "50 ans et plus", unknown: "Âge non renseigné" } as Record<string, string>,
   volunteer: "Bénévolat",
   volunteerTasks: "Tâches terminées : {v} h",
@@ -112,6 +114,8 @@ const nl: Copy = {
   sex: "Per geslacht: niet bijgehouden door de club.",
   origin: "Herkomst van de nieuwe spelers: nog niet bijgehouden.",
   originBy: "Herkomst van de nieuwe spelers: {list}.",
+  /** Where earlier newcomers came from (recorded until 04/11/2026). */
+  sources: { rehab: "revalidatiecentrum", school: "buitengewoon onderwijs", association: "vereniging", fair: "beurs", social: "sociale media", word_of_mouth: "mond-tot-mond", other: "andere", unknown: "niet bijgehouden" } as Record<string, string>,
   ages: { under12: "Jonger dan 12", "12to17": "12 tot 17 jaar", "18to29": "18 tot 29 jaar", "30to49": "30 tot 49 jaar", "50plus": "50 jaar en ouder", unknown: "Leeftijd onbekend" },
   volunteer: "Vrijwilligerswerk",
   volunteerTasks: "Afgewerkte taken: {v} u",
@@ -185,6 +189,8 @@ const en: Copy = {
   sex: "By sex: not recorded by the club.",
   origin: "Where new players come from: not recorded yet.",
   originBy: "Where new players come from: {list}.",
+  /** Where earlier newcomers came from (recorded until 04/11/2026). */
+  sources: { rehab: "rehabilitation centre", school: "special school", association: "association", fair: "fair", social: "social media", word_of_mouth: "word of mouth", other: "other", unknown: "not recorded" } as Record<string, string>,
   ages: { under12: "Under 12", "12to17": "12 to 17", "18to29": "18 to 29", "30to49": "30 to 49", "50plus": "50 and over", unknown: "Age unknown" },
   volunteer: "Volunteering",
   volunteerTasks: "Tasks done: {v} h",

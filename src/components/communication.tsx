@@ -10,7 +10,6 @@ import {
   type Block,
 } from "@/domains/communication/schema";
 import { localAt, shiftLocal, toInstant } from "@/domains/calendar/time";
-import { pollsCopy } from "./polls-copy";
 import { communicationCopy } from "./communication-copy";
 import { errors } from "./access-copy";
 import { Modal } from "./modal";
@@ -86,11 +85,7 @@ export function Communication({
         title={t.title}
         subtitle={t.intro}
         actions={
-          // H3: a short question to a group; from an event being prepared, the poll is linked to it.
           <>
-            <Link className="button secondary" href={`/${locale}/sondages?new=1${eventId ? `&event=${eventId}` : ""}`}>
-              {pollsCopy[locale].create}
-            </Link>
             {/* 10: the club's email templates, used everywhere. */}
             <Link className="button secondary" href={`/${locale}/communication/templates`}>
               {mailTemplatesCopy[locale].open}
