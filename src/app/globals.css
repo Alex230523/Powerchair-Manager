@@ -3910,6 +3910,13 @@ input.narrow {
   background: var(--surface);
   display: grid;
   gap: 8px;
+  /* 04/11/2026: a short card next to a tall one kept stretching its choice into a big oval. */
+  align-content: start;
+}
+.module-right > .segmented {
+  align-self: start;
+  justify-self: start;
+  height: auto;
 }
 .module-right legend {
   padding: 0 4px;
@@ -12440,6 +12447,21 @@ ul.task-page li {
   font-size: var(--text-lg);
   font-variant-numeric: tabular-nums;
 }
+.match-score[data-outcome] {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.match-score[data-outcome="win"] {
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+.match-score[data-outcome="loss"] {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+.match-score[data-outcome="draw"] {
+  background: var(--surface-soft);
+}
 .match-context {
   font-size: var(--text-sm);
   color: var(--muted);
@@ -12981,4 +13003,19 @@ ul.task-page > li[data-status="done"] {
 }
 .fold-card > .card-body {
   padding: 0 var(--space-6) var(--space-5);
+}
+
+/* Rien / Lecture / Modification (04/11/2026): each choice a rounded pill inside the frame, the chosen one filled. */
+.module-right > .segmented {
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-soft);
+}
+.module-right .segment span {
+  border-left: 0;
+  border-radius: var(--radius-pill);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding-inline: 14px;
 }

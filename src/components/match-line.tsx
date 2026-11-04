@@ -281,7 +281,7 @@ export function TournamentMatches({ locale, view }: { locale: Locale; view: View
         view.tournament.map((g) => (
           <section key={g.id} className="tournament-day" aria-labelledby={`tday-${g.id}`}>
             <h3 id={`tday-${g.id}`}>
-              {g.tournament} · {g.label || day(g.day)} · {day(g.day)}
+              {g.tournament} · {g.label ? `${g.label} · ${day(g.day)}` : day(g.day)}
             </h3>
             {/* 5: the same line as every match, the tournament one click away. */}
             <ul className="match-list">
