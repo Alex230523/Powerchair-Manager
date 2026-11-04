@@ -126,7 +126,11 @@ it("keeps to the day's mail budget, the rest leaves the next day", async () => {
   expect(pending).toBeGreaterThan(1);
   // The provider's limit is already reached today: one mail left earlier.
   await db.query("UPDATE mail_job SET state='sent',completed_at=now() WHERE id=(SELECT id FROM mail_job WHERE state='pending' ORDER BY created_at LIMIT 1)");
-  expect(await runJob(db, "mail", { ...env, MAIL_DAILY_LIMIT: "1" })).toMatchObject({ summary: { processed: 0, deferred: pending - 1 } });
+  // Nothing leaves; every pending mail waits (counted after the run: the weekly digest may have queued one meanwhile).
+  const run = await runJob(db, "mail", { ...env, MAIL_DAILY_LIMIT: "1" });
+  const waiting = (await db.query("SELECT count(*)::int AS n FROM mail_job WHERE state='pending' AND available_at<=now()")).rows[0].n as number;
+  expect(waiting).toBeGreaterThanOrEqual(pending - 1);
+  expect(run).toMatchObject({ summary: { processed: 0, deferred: waiting } });
   // The next day: the budget is new.
   await db.query("UPDATE mail_job SET completed_at=now()-interval '1 day' WHERE state='sent'");
   expect(await runJob(db, "mail", { ...env, MAIL_DAILY_LIMIT: "1" })).toMatchObject({ summary: { processed: 1 } });
