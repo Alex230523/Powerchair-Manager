@@ -78,7 +78,8 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await page.getByRole("combobox", { name: "Catégorie", exact: true }).selectOption("events");
     await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
     await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).click();
-    await expect(page.getByText("Aucune tâche ne vous est attribuée.")).toBeVisible();
+    // 04/11/2026: a done task stays in the list, struck through, and can be reopened.
+    await expect(page.getByRole("checkbox", { name: "Rouvrir : Réserver la camionnette" })).toBeChecked();
     await axe(page, "tasks");
 
     // 3. The coach's profile: « À faire » tab and the driving licence.
