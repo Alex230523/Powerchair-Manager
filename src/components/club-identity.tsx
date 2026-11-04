@@ -384,10 +384,11 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
           <Card title={t.teams} labelledBy="club-teams-title" headingId="club-teams-title">
             <p className="muted">{t.teamsIntro}</p>
             <p>
-              <a href="#teams">{t.teams} ↓</a>
+              {/* On « Mes équipes » the teams are right above: no link down to them. */}
+              {only !== "teams" && <a href="#teams">{t.teams} ↓</a>}
               {view.canEdit && (
                 <>
-                  {" · "}
+                  {only !== "teams" && " · "}
                   <Link href={`/${locale}/club/rollover`}>{official[locale].rollover}</Link>
                 </>
               )}

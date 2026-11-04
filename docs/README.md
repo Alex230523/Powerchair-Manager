@@ -160,6 +160,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 02/11/2026 | [Préparer l'ouverture à d'autres clubs](evolutions/2026-11-02-zzs-ouverture-autres-clubs.md) |
 | 02/11/2026 | [Sélection nationale](evolutions/2026-11-02-zzt-selection-nationale.md) |
 | 03/11/2026 | [CI au vert](evolutions/2026-11-03-zzu-ci-verte.md) |
+| 04/11/2026 | [Ergonomie : champs, à faire, sections du formulaire, menu](evolutions/2026-11-04-zzw-ergonomie.md) |
 
 ## Convention
 

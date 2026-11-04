@@ -16,7 +16,6 @@ import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
 import { boardCopy } from "./home-board-copy";
 import { HomeFocus } from "./home-focus";
-import { cssVars } from "./css-vars";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
@@ -514,66 +513,59 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
 }
 const badgeTone = (tone: "ok" | "warn" | "low") => (tone === "ok" ? "success" : tone === "warn" ? "warning" : "danger");
 const boardIcons: Record<"documents" | "moneyTasks" | "clubStatus", IconName> = { documents: "document", moneyTasks: "handshake", clubStatus: "landmark" };
-/** « À faire » (wave 16, A): fixed squares, green when up to date, and the « Aussi : » line. */
+/**
+ * « À faire »: one list, the most urgent first (red, then orange, then the
+ * rest; the larger figure first). Each line: what, how many, a short word,
+ * and the page to act on. What is up to date is one discreet line below.
+ */
 function Board({ locale, board, href }: { locale: Locale; board: NonNullable<Dashboard["board"]>; href: (route: string) => string }) {
   const t = homeCopy[locale],
     b = boardCopy[locale];
-  const copyOf = (key: NonNullable<Dashboard["board"]>["squares"][number]["key"]) => (key in b.titles ? b.titles[key as keyof typeof b.titles] : t.todos[key as keyof typeof t.todos]);
+  type Sq = NonNullable<Dashboard["board"]>["squares"][number];
+  const copyOf = (key: Sq["key"]) => (key in b.titles ? b.titles[key as keyof typeof b.titles] : t.todos[key as keyof typeof t.todos]);
   const day = (iso: string) => new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso + "T12:00:00Z"));
+  const empty = (sq: Sq) => sq.key === "clubStatus" && sq.status?.total === 0;
+  const rank = (sq: Sq) => (sq.tone === "danger" ? 0 : sq.tone === "warning" ? 1 : 2);
+  const open = [...board.squares, ...board.also].filter((sq) => sq.count > 0 || empty(sq)).sort((x, y) => rank(x) - rank(y) || y.count - x.count);
+  const done = board.squares.filter((sq) => sq.count === 0 && !empty(sq));
+  const detail = (sq: Sq) => {
+    if (empty(sq)) return b.statusEmpty;
+    if (sq.key === "clubStatus" && sq.status) {
+      const next = sq.status.next[0];
+      return next ? `${next.title}${next.due ? ` ${b.statusDue(day(next.due))}` : ""}` : copyOf(sq.key).text;
+    }
+    if (sq.key === "documents" && sq.expiring) return `${copyOf(sq.key).text} · ${b.expiring(sq.expiring)}`;
+    return copyOf(sq.key).text;
+  };
   return (
     <>
-      <ul className="todo-list board">
-        {board.squares.map((sq) => {
-          const c = copyOf(sq.key);
-          const empty = sq.key === "clubStatus" && sq.status?.total === 0;
-          const done = sq.count === 0 && !empty;
-          const icon: IconName = done ? "check" : sq.key in boardIcons ? boardIcons[sq.key as keyof typeof boardIcons] : todoIcons[sq.key as keyof typeof todoIcons];
-          return (
-            <li key={sq.key}>
-              <Link className="card interactive todo-card" href={href(sq.href)} data-state={done ? "done" : "open"} aria-label={empty ? `${c.title} : ${b.statusEmpty}` : b.name(c.title, sq.count)}>
-                <span className="card-body">
-                  <span className="todo-row">
-                    <IconTile icon={icon} tone={done ? "success" : sq.tone === "info" ? "neutral" : sq.tone} />
-                    {!done && !empty && <span className="todo-count">{sq.key === "clubStatus" && sq.status ? b.statusProgress(sq.status.done, sq.status.total) : sq.count}</span>}
-                    <span className="todo-text">
-                      <strong>{c.title}</strong>
-                      <span>{done ? b.upToDate : empty ? b.statusEmpty : c.text}</span>
-                      {sq.key === "clubStatus" && sq.status && sq.status.total > 0 && (
-                        <>
-                          <span className="progress-bar" aria-hidden="true">
-                            <span style={cssVars({ progress: `${Math.round((sq.status.done / sq.status.total) * 100)}%` })} />
-                          </span>
-                          {sq.status.next.map((n) => (
-                            <span key={n.title} className="todo-next">
-                              {n.title}
-                              {n.due ? ` ${b.statusDue(day(n.due))}` : ""}
-                            </span>
-                          ))}
-                        </>
-                      )}
-                      {sq.key === "documents" && !!sq.expiring && <span className="todo-next">{b.expiring(sq.expiring)}</span>}
-                    </span>
-                    <span className="todo-arrow" aria-hidden="true">
-                      <Icon name="arrow" size={16} />
-                    </span>
+      {open.length ? (
+        <ul className="todo-lines">
+          {open.map((sq) => {
+            const c = copyOf(sq.key);
+            const icon: IconName = sq.key in boardIcons ? boardIcons[sq.key as keyof typeof boardIcons] : todoIcons[sq.key as keyof typeof todoIcons];
+            const count = sq.key === "clubStatus" && sq.status && sq.status.total > 0 ? b.statusProgress(sq.status.done, sq.status.total) : empty(sq) ? "" : String(sq.count);
+            return (
+              <li key={sq.key}>
+                <Link className="todo-card todo-line" href={href(sq.href)} data-tone={sq.tone} aria-label={empty(sq) ? `${c.title} : ${b.statusEmpty}` : b.name(c.title, sq.count)}>
+                  <IconTile icon={icon ?? "check"} tone={sq.tone === "info" ? "neutral" : sq.tone} />
+                  <span className="todo-text">
+                    <strong>{c.title}</strong>
+                    <span>{detail(sq)}</span>
                   </span>
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      {board.also.length > 0 && (
-        <p className="board-also">
-          {b.also}{" "}
-          {board.also.map((sq, i) => (
-            <span key={sq.key}>
-              {i > 0 && " · "}
-              <Link href={href(sq.href)}>
-                {sq.count} {copyOf(sq.key).title.toLowerCase()}
-              </Link>
-            </span>
-          ))}
+                  {count && <span className="todo-count">{count}</span>}
+                  <span className="todo-arrow" aria-hidden="true">
+                    <Icon name="arrow" size={16} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {done.length > 0 && (
+        <p className="board-also todo-done">
+          <Icon name="check" size={16} /> {b.upToDate} : {done.map((sq) => copyOf(sq.key).title).join(", ")}
         </p>
       )}
     </>

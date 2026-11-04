@@ -38,9 +38,15 @@ export function newsRoleOf(kind: string | null | undefined, role: string | null 
 export const concerns = (e: { roles: readonly string[] }, role: NewsRole) => e.roles.includes("all") || e.roles.includes(role);
 /** « Nouveau » for 14 days after its date, until read. */
 export const isFresh = (e: { date: string }, today: string) => Date.parse(today) - Date.parse(e.date) < 14 * 86400000 && e.date <= today;
-/** The menu routes that carry « Nouveau » for this person. */
+/** At most this many « Nouveau » in the menu: beyond, the badge says nothing any more. */
+export const maxBadges = 3;
+/** The menu routes that carry « Nouveau » for this person: the newest few, until the page is opened. */
 export function badgeRoutes(entries: NewsEntry[], role: NewsRole, read: Set<string>, today: string) {
-  return [...new Set(entries.filter((e) => concerns(e, role) && isFresh(e, today) && !read.has(e.id) && e.link !== "/").map((e) => e.link))];
+  return [...new Set(entries.filter((e) => concerns(e, role) && isFresh(e, today) && !read.has(e.id) && e.link !== "/").map((e) => e.link))].slice(0, maxBadges);
+}
+/** The entries a menu route stands for: opening the page marks them read, so its badge goes. */
+export function entriesOfRoute(entries: NewsEntry[], role: NewsRole, route: string) {
+  return entries.filter((e) => concerns(e, role) && e.link === route).map((e) => e.id);
 }
 /** The one window after signing in: the newest fresh unread entry for this role, unless switched off. */
 export function popupEntry(entries: NewsEntry[], role: NewsRole, read: Set<string>, today: string, off: boolean) {

@@ -284,28 +284,30 @@ function SeasonView({ locale }: { locale: Locale }) {
           ) : (
             <>
               <p className="muted small">{gridCopy[locale].intro}</p>
-              {/* Wave 17 (G2): the grid as shown, a column per session. */}
-              <ExportButton
-                locale={locale}
-                organizationId={data.context.organization_id}
-                dataset="attendanceSeason"
-                subject={callCopy[locale].season}
-                period={`${from} ${to}`}
-                rows={[...new Map(data.events.flatMap((v) => v.invitations.filter((i) => !i.withdrawn_at).map((i) => [i.profile_id, i.full_name] as const))).entries()].sort((x, y) => x[1].localeCompare(y[1]))}
-                columns={[
-                  { id: "name", label: callCopy[locale].cols.name, value: ([, name]: readonly [string, string]) => name },
-                  ...data.events
-                    .filter((v) => v.status !== "cancelled" && v.register)
-                    .map((v) => ({
-                      id: v.id,
-                      label: `${String(v.starts_at).slice(0, 10)} ${v.title}`.slice(0, 80),
-                      value: ([pid]: readonly [string, string]) => {
-                        const i = v.invitations.find((x) => x.profile_id === pid && !x.withdrawn_at);
-                        return i ? (t.actuals[i.actual as keyof typeof t.actuals] ?? i.actual) : null;
-                      },
-                    })),
-                ].slice(0, 40)}
-              />
+              {/* Wave 17 (G2): the grid as shown, a column per session. Its own row, above the grid's sticky header. */}
+              <div className="grid-toolbar">
+                <ExportButton
+                  locale={locale}
+                  organizationId={data.context.organization_id}
+                  dataset="attendanceSeason"
+                  subject={callCopy[locale].season}
+                  period={`${from} ${to}`}
+                  rows={[...new Map(data.events.flatMap((v) => v.invitations.filter((i) => !i.withdrawn_at).map((i) => [i.profile_id, i.full_name] as const))).entries()].sort((x, y) => x[1].localeCompare(y[1]))}
+                  columns={[
+                    { id: "name", label: callCopy[locale].cols.name, value: ([, name]: readonly [string, string]) => name },
+                    ...data.events
+                      .filter((v) => v.status !== "cancelled" && v.register)
+                      .map((v) => ({
+                        id: v.id,
+                        label: `${String(v.starts_at).slice(0, 10)} ${v.title}`.slice(0, 80),
+                        value: ([pid]: readonly [string, string]) => {
+                          const i = v.invitations.find((x) => x.profile_id === pid && !x.withdrawn_at);
+                          return i ? (t.actuals[i.actual as keyof typeof t.actuals] ?? i.actual) : null;
+                        },
+                      })),
+                  ].slice(0, 40)}
+                />
+              </div>
               <AttendanceGrid
                 locale={locale}
                 events={data.events}
