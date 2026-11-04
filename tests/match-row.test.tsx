@@ -13,10 +13,11 @@ describe("match line", () => {
   it("is the same component in the five places", () => {
     for (const f of ["matches", "match-line", "teams", "player-profile", "match-cards"]) expect(readFileSync(`src/components/${f}.tsx`, "utf8"), f).toMatch(/<MatchRow|<TeamMatches/);
   });
-  it("says the result with a letter and words, never the colour alone", () => {
+  it("says the result with a shape and words, never the colour alone", () => {
     const out = html({});
     expect(out).toContain('data-outcome="win"');
-    expect(out).toContain('<span aria-hidden="true">V</span>');
+    // 04/11/2026: the score itself, coloured, with ▲ ▼ = drawn by the stylesheet (no V/N/D pill any more).
+    expect(out).toContain('<span class="match-score" data-outcome="win"><span aria-hidden="true">3-1</span>');
     expect(out).toContain('<span class="sr-only">Victoire 3 à 1</span>');
     expect(html({ ours: 1, theirs: 1 })).toContain("Match nul 1 à 1");
     expect(html({ ours: 0, theirs: 2 })).toContain("Défaite 0 à 2");
