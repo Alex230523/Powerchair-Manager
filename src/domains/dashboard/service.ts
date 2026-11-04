@@ -276,6 +276,9 @@ export async function computeFor(
       "SELECT count(*) FROM training_request WHERE organization_id=$1 AND status='approved' AND valid_until BETWEEN CURRENT_DATE AND CURRENT_DATE+60",
       [org],
     );
+  // 04/11/2026: exercise sheets sent by another club, for its presidency.
+  if (club && a.role === "club_president")
+    counts.exerciseOffers = await count(c, "SELECT count(*) FROM exercise_offer WHERE to_organization_id=$1 AND status='pending'", [org]);
   // Federation: club requests waiting for a decision.
   if (!club && fedCan(a.role, a.grants, "federation.courses")) {
     scopes.push("courses");

@@ -200,6 +200,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Admissions à finaliser",
         text: "Documents ou cotisation à créer",
       },
+      exerciseOffers: {
+        title: "Fiches d'exercice reçues",
+        text: "Un autre club vous propose des fiches : acceptez ou refusez",
+      },
       courseRequests: {
         title: "Demandes de formation",
         text: "Des clubs attendent votre décision pour un coach",
@@ -389,6 +393,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
         title: "Toelatingen af te ronden",
         text: "Documenten of bijdrage aan te maken",
       },
+      exerciseOffers: {
+        title: "Ontvangen oefenfiches",
+        text: "Een andere club stelt fiches voor: aanvaarden of weigeren",
+      },
       courseRequests: {
         title: "Opleidingsaanvragen",
         text: "Clubs wachten op uw beslissing voor een coach",
@@ -577,6 +585,10 @@ export const homeCopy: Record<Locale, HomeCopy> = {
       registrationFollowups: {
         title: "Admissions to finalise",
         text: "Documents or dues to create",
+      },
+      exerciseOffers: {
+        title: "Exercise sheets received",
+        text: "Another club offers you sheets: accept or decline",
       },
       courseRequests: {
         title: "Course requests",

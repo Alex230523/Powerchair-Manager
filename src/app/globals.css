@@ -13063,3 +13063,12 @@ input[type="search"] {
 .form-grid > label > select {
   height: var(--control-height);
 }
+/* Lot H (04/11/2026): sheets received from another club. */
+.exercise-offers {
+  margin-block: var(--space-4);
+}
+.offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

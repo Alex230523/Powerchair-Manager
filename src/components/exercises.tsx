@@ -160,6 +160,19 @@ export function Exercises({ locale, genre }: { locale: Locale; genre?: string })
       setBusy(false);
     }
   }
+  async function decide(offerId: string, accept: boolean) {
+    setBusy(true);
+    setError("");
+    try {
+      await post({ action: "offerDecide", offerId, accept });
+      await load();
+      setMessage(accept ? t.send.accepted : t.send.refused);
+    } catch (err) {
+      setError(failure(locale, (err as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
   const row = editing && editing !== "new" ? editing : null;
   if (federation) return <FederalLibrary locale={locale} federation />;
   return (
@@ -179,6 +192,35 @@ export function Exercises({ locale, genre }: { locale: Locale; genre?: string })
       {error && !editing && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {!view && !error && <p role="status">{t.loading}</p>}
+      {view && view.offers.length > 0 && (
+        // 04/11/2026: sheets another club sent; the presidency accepts or refuses.
+        <section className="card exercise-offers" id="exercise-offers" aria-labelledby="exercise-offers-title">
+          <h2 id="exercise-offers-title">{t.send.received}</h2>
+          <ul className="profile-list">
+            {view.offers.map((o) => (
+              <li key={o.id}>
+                <div>
+                  <strong>{o.title}</strong>
+                  <p className="muted small">{t.send.from(o.club, o.sender)}</p>
+                  {o.message && <p className="small prewrap">{o.message}</p>}
+                </div>
+                <span className="offer-actions">
+                  <Button
+                    disabled={busy}
+                    onClick={() => void decide(o.id, true)}
+                    aria-label={`${t.send.accept} : ${o.title}`}
+                  >
+                    {t.send.accept}
+                  </Button>
+                  <Button variant="secondary" disabled={busy} onClick={() => void decide(o.id, false)} aria-label={`${t.send.refuse} : ${o.title}`}>
+                    {t.send.refuse}
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {view && (
         <Tabs
           label={t.title}

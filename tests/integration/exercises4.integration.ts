@@ -262,3 +262,29 @@ it("takes the former free tags over without loss, once", async () => {
   expect(tags).toEqual(["Relance", "Slalom"]);
   expect((await exercisesView(db, president)).tags.filter((g) => g.name.toLowerCase() === "relance")).toHaveLength(1);
 });
+
+it("sends a sheet to another club of the federation; its presidency accepts or refuses", async () => {
+  const sent = ((await exerciseExecute(db, president, fields({ title: "Relance rapide", tags: [] }) as never, clubA)) as { id: string }).id;
+  // Only clubs of the same federation are offered, and reachable.
+  expect((await exerciseDetail(db, president, sent)).clubs.map((c) => c.name)).toEqual(["Club B"]);
+  await expect(exerciseExecute(db, president, { action: "send", id: sent, clubId: clubC, message: "" }, clubA)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await exerciseExecute(db, president, { action: "send", id: sent, clubId: clubB, message: "Pour vos U15" }, clubA);
+  await expect(exerciseExecute(db, president, { action: "send", id: sent, clubId: clubB, message: "" }, clubA)).rejects.toMatchObject({ code: "ALREADY_SENT" });
+  // Club B's presidency sees it; a coach of club B cannot decide.
+  const offers = (await exercisesView(db, presidentB)).offers;
+  expect(offers).toMatchObject([{ title: "Relance rapide", club: "Club A", sender: "Présidente A", message: "Pour vos U15" }]);
+  const coachB = (await actor(clubB, "coach", "Coach B", [])).p;
+  expect((await exercisesView(db, coachB)).offers).toEqual([]);
+  await expect(exerciseExecute(db, coachB, { action: "offerDecide", offerId: offers[0].id, accept: true }, clubB)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  // Club A cannot answer for club B.
+  await expect(exerciseExecute(db, president, { action: "offerDecide", offerId: offers[0].id, accept: true }, clubA)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  const copy = ((await exerciseExecute(db, presidentB, { action: "offerDecide", offerId: offers[0].id, accept: true }, clubB)) as { id: string }).id;
+  expect((await exerciseDetail(db, presidentB, copy)).exercise).toMatchObject({ title: "Relance rapide", creator: "Présidente A", creator_club: "Club A" });
+  expect((await exercisesView(db, presidentB)).offers).toEqual([]);
+  // A second sending can be refused: nothing arrives.
+  await exerciseExecute(db, president, { action: "send", id: sent, clubId: clubB, message: "" }, clubA);
+  const again = (await exercisesView(db, presidentB)).offers[0].id;
+  const before = (await exercisesView(db, presidentB)).exercises.length;
+  await exerciseExecute(db, presidentB, { action: "offerDecide", offerId: again, accept: false }, clubB);
+  expect((await exercisesView(db, presidentB)).exercises.length).toBe(before);
+});

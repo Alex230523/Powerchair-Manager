@@ -175,6 +175,11 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "Het tegoed van deze persoon dekt dit bedrag niet.",
     en: "This person's credit does not cover this amount.",
   },
+  ALREADY_SENT: {
+    fr: "Cette fiche attend déjà la réponse de ce club.",
+    nl: "Deze fiche wacht al op het antwoord van deze club.",
+    en: "This sheet is already waiting for this club's answer.",
+  },
   ALREADY_PAID: {
     fr: "Cette affiliation est déjà en ordre.",
     nl: "Deze aansluiting is al in orde.",

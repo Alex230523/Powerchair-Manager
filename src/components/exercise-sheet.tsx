@@ -10,6 +10,7 @@ import { Badge, Button, PageHeader } from "./ui";
 import { ExerciseForm, failure, saveExtras, sheetFields } from "./exercises";
 import { FieldView } from "./field-editor";
 import { TagChip } from "./tag-picker";
+import { Modal } from "./modal";
 import type { Drawing } from "@/domains/exercises/drawing";
 
 type Detail = Awaited<ReturnType<typeof exerciseDetail>>;
@@ -98,7 +99,8 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [editing, setEditing] = useState(false);
+    [editing, setEditing] = useState(false),
+    [sending, setSending] = useState(false);
   const load = useCallback(
     () =>
       fetch(`/api/exercises/${id}`, { cache: "no-store" })
@@ -180,6 +182,11 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
                     >
                       {t.duplicate}
                     </Button>
+                    {data.clubs.length > 0 && (
+                      <Button variant="secondary" disabled={busy} onClick={() => setSending(true)}>
+                        {t.send.action}
+                      </Button>
+                    )}
                     {data.can.propose && (x.federal_status === "private" || x.federal_status === "refused") && (
                       <Button
                         variant="secondary"
@@ -228,6 +235,51 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
               </span>
             }
           />
+          {sending && (
+            // 04/11/2026: the sheet goes to another club of the federation, whose presidency answers.
+            <Modal title={t.send.title} close={() => setSending(false)}>
+              <form
+                className="stack-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
+                  void run(async () => {
+                    await post({ action: "send", id: x.id, clubId: String(f.get("club")), message: String(f.get("message") ?? "") });
+                    setSending(false);
+                    setMessage(t.send.sent);
+                  });
+                }}
+              >
+                <p className="muted">{t.send.intro}</p>
+                {error && <p role="alert">{error}</p>}
+                <label>
+                  {t.send.club}
+                  <select name="club" required defaultValue="">
+                    <option value="" disabled>
+                      {t.send.club}
+                    </option>
+                    {data.clubs.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {t.send.message}
+                  <textarea name="message" rows={3} maxLength={500} />
+                </label>
+                <div className="form-actions">
+                  <Button type="submit" loading={busy}>
+                    {t.send.submit}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setSending(false)}>
+                    {t.send.cancel}
+                  </Button>
+                </div>
+              </form>
+            </Modal>
+          )}
           {x.archived && <Badge>{t.archived}</Badge>}
           {x.federal_status === "pending" && <p className="muted no-print">{t.x4.federal.pending}</p>}
           {x.federal_status === "published" && <p className="muted no-print">{t.x4.federal.published}</p>}
