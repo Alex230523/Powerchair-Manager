@@ -146,6 +146,8 @@ export type Metric = {
   date?: string;
   /** A second figure said in the hint (chairs in service, say). */
   extra?: number;
+  /** The season's players by classification (04/11/2026: a small chart on hover). */
+  split?: { pf1: number; pf2: number; other: number };
 };
 export function metric(
   key: MetricKey,

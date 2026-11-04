@@ -117,11 +117,14 @@ test("president's home: header, Créer, to-dos, list and week, figures and money
     // Figures and the money card.
     await page.goto("/fr");
     const figures = page.getByRole("region", { name: "Chiffres clés" });
-    // Wave 16 (A): the president's key figures, the treasury first; 9 adds « Disponible » (treasury minus the reserved funds).
-    await expect(figures.locator(".stat-card")).toHaveCount(8);
-    await expect(figures.locator(".stat-card").first()).toContainText("Trésorerie");
+    // 04/11/2026: the season's figures first, the players leading; the money stays in its own card below.
+    await expect(figures.locator(".stat-card").first()).toContainText("Joueurs");
+    await expect(figures.getByText("Trésorerie")).toHaveCount(0);
+    const first = await figures.locator(".stat-card").count();
+    expect(first).toBeGreaterThanOrEqual(5);
     await figures.getByRole("button", { name: "Tous les chiffres", exact: true }).click();
-    expect(await figures.locator(".stat-card").count()).toBeGreaterThan(8);
+    expect(await figures.locator(".stat-card").count()).toBeGreaterThan(first);
+    await expect(figures.getByText("Trésorerie")).toHaveCount(0);
     const money = page.getByRole("region", { name: "Situation financière" });
     await expect(money).toContainText("Trésorerie");
     await expect(money).toContainText("Aucune cotisation émise cette saison.");

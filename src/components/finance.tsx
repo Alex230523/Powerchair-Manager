@@ -299,10 +299,13 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
         <>
           {section === "overview" && view.treasury && <Treasury locale={locale} {...view.treasury} />}
           {section === "overview" && (
-          <ul className="stat-row-grid" data-cols="4">
-            <li>
-              <KpiCard label={t.balance} value={money(s.balance)} description={t.balanceHint} icon="funding" tone={s.balance < 0 ? "danger" : "primary"} />
-            </li>
+          <ul className="stat-row-grid" data-cols={view.treasury ? "3" : "4"}>
+            {/* 04/11/2026: the treasury is said once; with the reserved funds above, not again here. */}
+            {!view.treasury && (
+              <li>
+                <KpiCard label={t.balance} value={money(s.balance)} description={t.balanceHint} icon="funding" tone={s.balance < 0 ? "danger" : "primary"} />
+              </li>
+            )}
             <li>
               <KpiCard label={`${t.income} · ${t.season} ${view.season.label}`} value={money(s.income)} icon="arrow" tone="success" />
             </li>

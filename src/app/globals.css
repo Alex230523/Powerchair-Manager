@@ -4840,6 +4840,9 @@ input.narrow {
 .stat-row-grid[data-cols="2"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.stat-row-grid[data-cols="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .stat-row-grid[data-cols="5"] {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -5613,6 +5616,7 @@ input.narrow {
   .todo-list,
   .dash-figures,
   .stat-row-grid[data-cols="4"],
+  .stat-row-grid[data-cols="3"],
   .stat-row-grid[data-cols="2"] {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -12859,4 +12863,76 @@ ul.task-page > li[data-status="done"] {
   border-top: 1px solid var(--border);
   padding-top: var(--space-3);
   margin-top: var(--space-3);
+}
+
+/* Key figures of the home (04/11/2026): every tile the same size; « Joueurs » shows PF1 and PF2 on hover. */
+.dash-figures {
+  grid-auto-rows: 1fr;
+}
+.dash-figures > li {
+  display: grid;
+}
+.dash-figures > li > *,
+.dash-figures .metric-split > .stat-card {
+  height: 100%;
+}
+.metric-split {
+  position: relative;
+  display: grid;
+}
+.metric-split-bubble {
+  position: absolute;
+  z-index: 20;
+  inset-inline-start: 0;
+  top: calc(100% + var(--space-1));
+  width: max-content;
+  min-width: 14rem;
+  max-width: min(18rem, 80vw);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--heading);
+  color: var(--surface);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-card);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--transition);
+  pointer-events: none;
+}
+.metric-split:hover .metric-split-bubble,
+.metric-split:focus-within .metric-split-bubble {
+  visibility: visible;
+  opacity: 1;
+}
+.metric-split-title {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+.metric-split-bubble ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.metric-split-bubble li {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(4rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.metric-split-bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface) 25%, transparent);
+  overflow: hidden;
+}
+.metric-split-bar > span {
+  display: block;
+  height: 100%;
+  width: var(--share);
+  background: var(--surface);
+}
+.metric-split-bar > span[data-part="pf2"] {
+  background: var(--chart-3);
 }

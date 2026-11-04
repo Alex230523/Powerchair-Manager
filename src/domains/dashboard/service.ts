@@ -496,7 +496,7 @@ export async function computeFor(
     const k = await seasonKeyFigures(c, org, seasonRow, teamId ? [teamId] : null);
     const season = `?season=${seasonRow.id}`;
     metrics.push(
-      metric("seasonPlayers", k.players, { href: `/players${season}` }),
+      metric("seasonPlayers", k.players, { href: `/players${season}`, split: { pf1: k.pf1, pf2: k.pf2, other: Math.max(0, k.players - k.pf1 - k.pf2) } }),
       metric("seasonTeams", k.teams, { href: `/teams${season}` }),
       metric("seasonCoaches", k.coaches, { href: `/coaches${season}` }),
       ...(on("equipment") ? [metric("chairs", k.chairs, { href: "/equipment", extra: k.chairs_service })] : []),
