@@ -99,7 +99,8 @@
   --space-12: 3rem;
   /* 1: one height for the fields, menus and buttons that share a row. */
   --control-height: 2.75rem;
-  --check-size: 24px;
+  /* 04/11/2026: 20 px, the label around it stays the 44 px target. */
+  --check-size: 20px;
 
   /* Text scale: nothing below 12 px. */
   --text-xs: 0.75rem;
@@ -731,7 +732,11 @@ input[type="radio"] {
 }
 .check > input[type="checkbox"],
 .check > input[type="radio"] {
-  margin-top: calc((1lh - var(--check-size)) / 2);
+  /* Never above its line: a negative margin pushed the box into the text above. */
+  margin-top: max(0px, calc((1lh - var(--check-size)) / 2));
+}
+.check {
+  min-height: 24px;
 }
 /* A form's or a table's own sizes never stretch a box (audit 23). */
 :is(.check, .dg-select, .kind-option, .invite-toggle) > input:is([type="checkbox"], [type="radio"]) {
@@ -947,7 +952,7 @@ caption {
   width: var(--check-size);
   height: var(--check-size);
   min-height: 0;
-  margin: calc((1lh - var(--check-size)) / 2) 0 0;
+  margin: max(0px, calc((1lh - var(--check-size)) / 2)) 0 0;
   flex-shrink: 0;
 }
 .access fieldset {
@@ -3295,12 +3300,13 @@ caption {
 }
 .choice-group {
   display: grid;
-  gap: 2px;
+  gap: var(--space-2);
   margin: 12px 0;
   padding: 10px 14px;
 }
 .choice-group legend {
   font-weight: 600;
+  margin-bottom: var(--space-1);
 }
 .field-extras {
   display: grid;
@@ -13018,4 +13024,42 @@ ul.task-page > li[data-status="done"] {
   display: flex;
   align-items: center;
   padding-inline: 14px;
+}
+
+/* A federation fee's tools (04/11/2026): its amount, then « Archiver ». */
+.affiliation-fee-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.affiliation-fee-tools input {
+  width: 7.5rem;
+  margin: 0;
+}
+
+/* Lot I (04/11/2026): in every filter bar, a search field and a menu are the same box, side by side, aligned on their bottom edge. */
+input[type="search"] {
+  appearance: none;
+}
+:is(.toolbar-filters, .directory-filters) {
+  align-items: flex-end;
+}
+:is(.toolbar-filters, .directory-filters) :is(input, select) {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--control-height);
+  margin-top: 6px;
+  padding-block: 0;
+}
+:is(.toolbar-filters, .directory-filters) label {
+  min-height: 0;
+}
+/* A form row keeps its fields on one line even when a label wraps (« Lieu du club » in the storage places). */
+.form-grid > label:has(> :is(input:not([type="checkbox"], [type="radio"]), select)) {
+  align-self: end;
+}
+.form-grid > label > select {
+  height: var(--control-height);
 }

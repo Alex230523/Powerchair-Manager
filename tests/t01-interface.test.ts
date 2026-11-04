@@ -17,9 +17,9 @@ const css = readFileSync("src/app/globals.css", "utf8");
 describe("one rule for alignments", () => {
   it("gives fields, menus and buttons one height and check boxes one size", () => {
     expect(css).toContain("--control-height: 2.75rem;");
-    expect(css).toContain("--check-size: 24px;");
+    expect(css).toContain("--check-size: 20px;");
     expect(css).toMatch(/input\[type="checkbox"\],\ninput\[type="radio"\] \{[^}]*width: var\(--check-size\);[^}]*min-height: 0;/);
-    expect(css).toContain("margin-top: calc((1lh - var(--check-size)) / 2);");
+    expect(css).toContain("margin-top: max(0px, calc((1lh - var(--check-size)) / 2));");
     expect(css).toContain(":where(label) > select:where(:not(.compact-select))");
   });
   it("keeps the key figures of one grid the same size, a hint on one line, none on « Matchs joués »", () => {

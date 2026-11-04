@@ -503,9 +503,28 @@ export function FederationAffiliations({ locale }: { locale: Locale }) {
                       </span>
                     </div>
                     {data.canManage && (
-                      <Button variant="secondary" size="sm" aria-label={put(t.archiveOf, { name: f.name })} disabled={busy} onClick={() => void post({ action: "archiveFee", id: f.id, organizationId: data.organization_id }, t.archived)}>
-                        {t.archive}
-                      </Button>
+                      <div className="affiliation-fee-tools">
+                        {/* 04/11/2026: the amount changes for the next dues (the cost of a player per year, say). */}
+                        <form
+                          className="inline-form"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const euros = Number(String(new FormData(e.currentTarget).get("amount") ?? "").replace(",", "."));
+                            if (Number.isFinite(euros) && euros >= 0) void post({ action: "setFeeAmount", id: f.id, amountCents: Math.round(euros * 100), organizationId: data.organization_id }, t.amountSaved);
+                          }}
+                        >
+                          <label>
+                            <span className="sr-only">{put(t.amountOf, { name: f.name })}</span>
+                            <input name="amount" inputMode="decimal" defaultValue={(f.amount_cents / 100).toFixed(2)} aria-label={put(t.amountOf, { name: f.name })} />
+                          </label>
+                          <Button variant="secondary" size="sm" disabled={busy}>
+                            {t.amountSave}
+                          </Button>
+                        </form>
+                        <Button variant="secondary" size="sm" aria-label={put(t.archiveOf, { name: f.name })} disabled={busy} onClick={() => void post({ action: "archiveFee", id: f.id, organizationId: data.organization_id }, t.archived)}>
+                          {t.archive}
+                        </Button>
+                      </div>
                     )}
                   </li>
                 ))}

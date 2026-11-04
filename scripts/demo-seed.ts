@@ -600,7 +600,7 @@ try {
   const request = (
     profileId: string,
     name: string,
-    category: "identity" | "licence" | "consent" | "insurance",
+    category: "fitness" | "licence" | "consent" | "insurance",
   ) =>
     documentExecute(
       db,
@@ -615,7 +615,8 @@ try {
       },
       org,
     );
-  await request(people.camille, "Carte d’identité", "identity");
+  // 04/11/2026: no identity card any more; the medical certificate is what clubs ask.
+  await request(people.camille, "Certificat de non-contre-indication", "fitness");
   await request(people.camille, `Licence ${year}-${year + 1}`, "licence");
   await request(people.lucas, "Autorisation parentale", "consent");
   await request(people.yanis, "Attestation d’assurance", "insurance");
@@ -649,7 +650,7 @@ try {
     },
     org,
   );
-  for (const name of ["Carte d’identité", "Attestation d’assurance"]) {
+  for (const name of ["Certificat de non-contre-indication", "Attestation d’assurance"]) {
     const doc = (
       await db.query(
         "SELECT id,version FROM club_document WHERE organization_id=$1 AND name=$2",

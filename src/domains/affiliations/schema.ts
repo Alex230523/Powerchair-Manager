@@ -96,6 +96,8 @@ export type ClubAffiliationCommand = z.infer<typeof clubAffiliationCommand>;
 export const federationAffiliationCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("addFee"), ...feeFields, allClubs: z.boolean(), clubIds: z.array(id).max(500).default([]) }),
   z.object({ action: z.literal("archiveFee"), id }),
+  /** 04/11/2026: a fee's amount changes (the cost of a player per year, say); the next dues take it. */
+  z.object({ action: z.literal("setFeeAmount"), id, amountCents: z.number().int().min(0).max(10000000) }),
   /** One reminder to every club late on the federation's fees (or on one of them). */
   z.object({ action: z.literal("remind"), feeId: id.nullable().default(null) }),
 ]);

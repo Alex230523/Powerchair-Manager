@@ -15,7 +15,6 @@ import { TeamBoard } from "./team-board";
 import { teamBoardCopy } from "./team-board-copy";
 import { kindLabels } from "./calendar-copy";
 import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
-import { ClubIdentity } from "./club-identity";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
 import { cssVars } from "./css-vars";
@@ -267,8 +266,6 @@ export function Teams({ locale }: { locale: Locale }) {
           />
         </Modal>
       )}
-      {/* 12: the teams' colours, here since « Gestion du club » is gone. */}
-      {data.can.manage && <ClubIdentity locale={locale} only="teams" />}
     </main>
   );
 }
