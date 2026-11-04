@@ -48,8 +48,9 @@ import e45 from "../../../content/changelog/2026-11-02-securite-donnees.json";
 import e46 from "../../../content/changelog/2026-11-02-selection-nationale.json";
 import e47 from "../../../content/changelog/2026-11-02-signalements.json";
 import e48 from "../../../content/changelog/2026-11-02-vue-ensemble.json";
-import e49 from "../../../content/changelog/2026-11-04-ergonomie.json";
-import e50 from "../../../content/changelog/2026-11-04-retours.json";
+import e49 from "../../../content/changelog/2026-11-04-ameliorations.json";
+import e50 from "../../../content/changelog/2026-11-04-ergonomie.json";
+import e51 from "../../../content/changelog/2026-11-04-retours.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -101,6 +102,7 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-02-selection-nationale", data: e46 },
   { id: "2026-11-02-signalements", data: e47 },
   { id: "2026-11-02-vue-ensemble", data: e48 },
-  { id: "2026-11-04-ergonomie", data: e49 },
-  { id: "2026-11-04-retours", data: e50 },
+  { id: "2026-11-04-ameliorations", data: e49 },
+  { id: "2026-11-04-ergonomie", data: e50 },
+  { id: "2026-11-04-retours", data: e51 },
 ];

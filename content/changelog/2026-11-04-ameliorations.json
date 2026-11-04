@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-04",
+  "roles": [
+    "all"
+  ],
+  "link": "/",
+  "image": null,
+  "fr": {
+    "title": "Le règlement BPCF dans l'application",
+    "text": "Indemnités de formation proposées, force majeure, preuve de paiement, amendes et transferts internationaux pour la fédération. Les fiches envoyées et les compositions dévoilées sont annoncées. Sur téléphone, les listes deviennent des cartes et les fenêtres se ressemblent toutes."
+  },
+  "nl": {
+    "title": "Het BPCF-reglement in de toepassing",
+    "text": "Voorgestelde opleidingsvergoedingen, overmacht, betalingsbewijs, boetes en internationale transfers voor de federatie. Verstuurde fiches en bekendgemaakte opstellingen worden gemeld. Op de telefoon worden lijsten kaarten en zien alle vensters er hetzelfde uit."
+  },
+  "en": {
+    "title": "The BPCF rules in the app",
+    "text": "Suggested training compensation, force majeure, proof of payment, fines and international transfers for the federation. Sent sheets and revealed line-ups are announced. On a phone, lists become cards and every window looks the same."
+  }
+}

@@ -88,3 +88,18 @@ describe("points 12 to 15: clubs", () => {
     expect(youngDriver(null, "2026-11-04")).toBe(false);
   });
 });
+
+describe("points 16 to 20: display", () => {
+  const css = read("src/app/globals.css");
+  it("16: a form window is 640 px at most, its buttons at the bottom right", () => {
+    expect(css).toContain("width: min(640px, calc(100% - 24px));");
+    expect(css).toMatch(/:is\(\.actions, \.form-actions\):last-child \{[^}]*position: sticky;[^}]*justify-content: flex-end;/);
+  });
+  it("17: lists read as cards under 600 px, each value with its column's name", () => {
+    expect(css).toContain("@media (max-width: 600px) {\n  .data-table.dg-cards");
+    expect(read("src/components/data-grid.tsx")).toContain("data-label={c.header}");
+  });
+  it("19: the main empty pages offer the way to start", () => {
+    for (const f of ["exercises", "trips", "matches", "contacts", "tasks"]) expect(read(`src/components/${f}.tsx`), f).toMatch(/<EmptyState[\s\S]{0,200}action=/);
+  });
+});
