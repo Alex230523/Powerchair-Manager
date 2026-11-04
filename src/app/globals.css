@@ -12936,3 +12936,49 @@ ul.task-page > li[data-status="done"] {
 .metric-split-bar > span[data-part="pf2"] {
   background: var(--chart-3);
 }
+
+/* The event form in its window (04/11/2026): wide enough for two columns of fields. */
+.event-editor-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
+/* A card that folds (04/11/2026, announced absences): the title is the button. */
+.fold-card {
+  padding: 0;
+}
+.fold-card > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-4) var(--space-6);
+  cursor: pointer;
+  list-style: none;
+}
+.fold-card > summary::-webkit-details-marker {
+  display: none;
+}
+.fold-card > summary::after {
+  content: "";
+  margin-inline-start: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform var(--transition);
+}
+.fold-card[open] > summary::after {
+  transform: rotate(-135deg);
+}
+.fold-card > summary h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.fold-card > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.fold-card > .card-body {
+  padding: 0 var(--space-6) var(--space-5);
+}

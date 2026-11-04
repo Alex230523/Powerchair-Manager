@@ -4,7 +4,7 @@ import type { Locale } from "@/lib/locale";
 import type { absencesView } from "@/domains/absences/service";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
-import { Card, EmptyState } from "./ui";
+import { EmptyState } from "./ui";
 
 export const absenceCopy = {
   fr: {
@@ -122,7 +122,15 @@ export function AbsencesPanel({ locale }: { locale: Locale }) {
     ).then((ok) => ok && form.reset());
   }
   return (
-    <Card title={t.title} labelledBy="absences-title" headingId="absences-title">
+    // 04/11/2026: folded by default, the count in the title; opened in one click.
+    <details className="card fold-card absences-fold">
+      <summary>
+        <h2 id="absences-title">
+          {t.title}
+          {data.absences.length > 0 && <span className="tab-count"> {data.absences.length}</span>}
+        </h2>
+      </summary>
+      <div className="card-body">
       <p className="muted">{t.intro}</p>
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -188,6 +196,7 @@ export function AbsencesPanel({ locale }: { locale: Locale }) {
           <button className="button secondary" disabled={busy}>{t.declare}</button>
         </form>
       )}
-    </Card>
+      </div>
+    </details>
   );
 }
