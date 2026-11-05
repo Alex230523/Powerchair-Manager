@@ -13082,7 +13082,7 @@ input[type="search"] {
 :is(.toolbar-filters, .directory-filters) {
   align-items: flex-end;
 }
-:is(.toolbar-filters, .directory-filters) :is(input, select) {
+:is(.toolbar-filters, .directory-filters) :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select) {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -13090,7 +13090,7 @@ input[type="search"] {
   margin-top: 6px;
   padding-block: 0;
 }
-:is(.toolbar-filters, .directory-filters) label {
+:is(.toolbar-filters, .directory-filters) label:not(.check) {
   min-height: 0;
 }
 /* A form row keeps its fields on one line even when a label wraps (« Lieu du club » in the storage places). */

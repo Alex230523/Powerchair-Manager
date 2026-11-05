@@ -602,6 +602,7 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
       const free = freeLeave(o, rules, s.today);
       if ((o.status !== "accepted" && !free) || o.completed_at) throw new AccessError("INVALID_TRANSITION", 409);
       if (free && command.decision === "refused") throw new AccessError("INVALID_TRANSITION", 409);
+      if (free && !(await belowMax(s, rules, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_LIMIT", 409);
       if (free && !(await belowPairMax(s, rules, o.from_organization_id, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
       await s.c.query("UPDATE transfer_offer SET federation_by=$2,federation_at=now(),federation_note=$3,version=version+1 WHERE id=$1", [o.id, s.userId, command.note]);
       if (command.decision === "refused") {
