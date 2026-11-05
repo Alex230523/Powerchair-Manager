@@ -578,6 +578,7 @@ export const english = {
     file: "Attachment",
     consent: "Consent",
     signature: "Typed-name attestation",
+    section: "Section title (groups the questions that follow)",
   },
   notificationCopy: {
     title: "Notifications",

@@ -196,6 +196,7 @@ export const typeLabels = {
     file: "Pièce jointe",
     consent: "Consentement",
     signature: "Attestation par nom saisi",
+    section: "Titre de section (regroupe les questions suivantes)",
   },
   nl: {
     text: "Tekst",
@@ -207,6 +208,7 @@ export const typeLabels = {
     file: "Bestand",
     consent: "Toestemming",
     signature: "Verklaring met getypte naam",
+    section: "Sectietitel (groepeert de volgende vragen)",
   },
   en: english.typeLabels,
 };

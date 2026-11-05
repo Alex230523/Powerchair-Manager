@@ -46,14 +46,14 @@ test("president's home: squares turn green, club status, two columns at 900 px",
     await page.goto("/fr");
     const status = page.getByRole("link", { name: /^Statut du club/ });
     await expect(status).toContainText("4 sur 7");
-    // Documents: nothing missing, the square stays, green, named « à jour ».
-    await expect(page.getByRole("link", { name: "Documents : à jour" })).toBeVisible();
+    // Documents: nothing missing, named on the discreet « À jour » line (04/11/2026: « À faire » is one list).
+    await expect(page.locator(".todo-done")).toContainText("Documents");
     await axe(page, "home");
 
-    // 3. Everything done: the club status square turns green too.
+    // 3. Everything done: the club status joins the « À jour » line.
     await db.query("UPDATE club_obligation SET done_on=CURRENT_DATE WHERE organization_id=$1 AND year=$2", [club, year]);
     await page.reload();
-    await expect(page.getByRole("link", { name: "Statut du club : à jour" })).toBeVisible();
+    await expect(page.locator(".todo-done")).toContainText("Statut du club");
 
     // 4. Two columns down to 860 px: events and figures side by side at 900 px.
     await page.setViewportSize({ width: 900, height: 900 });

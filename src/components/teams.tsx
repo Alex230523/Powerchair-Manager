@@ -14,11 +14,9 @@ import { useScope, scopedHref } from "./use-scope";
 import { teamsCopy } from "./teams-copy";
 import { TeamBoard } from "./team-board";
 import { teamBoardCopy } from "./team-board-copy";
-import { shellCopy } from "./shell-copy";
 import { kindLabels } from "./calendar-copy";
 import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { ClubIdentity } from "./club-identity";
-import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
 import { cssVars } from "./css-vars";
@@ -153,7 +151,6 @@ function TeamForm({
 /** One card per team of the season (wave 12). */
 export function Teams({ locale }: { locale: Locale }) {
   const t = teamsCopy[locale] as (typeof teamsCopy)["fr"];
-  const s = shellCopy[locale];
   const scope = useScope();
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? t.unavailable, [locale, t.unavailable]);
   const { data, error, setError, reload } = useData<View>("/api/teams" + (scope.seasonId ? `?season=${scope.seasonId}` : ""), failure);
@@ -273,9 +270,6 @@ export function Teams({ locale }: { locale: Locale }) {
       )}
       {/* 12: the teams' colours, here since « Gestion du club » is gone. */}
       {data.can.manage && <ClubIdentity locale={locale} only="teams" />}
-      <p className="muted small">
-        <Icon name="team" /> {s.teams}
-      </p>
     </main>
   );
 }

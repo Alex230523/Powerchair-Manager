@@ -57,6 +57,8 @@ export const fieldSchema = z.object({
     "file",
     "consent",
     "signature",
+    /** A section title: groups the questions that follow, never answered (04/11/2026). */
+    "section",
   ]),
   required: z.boolean().default(false),
   options: z.array(z.string().trim().min(1).max(100)).max(20).default([]),
@@ -141,6 +143,7 @@ export function validateAnswers(
   const output: Answers = {};
   for (const field of fields) {
     if (!fieldVisible(field, answers)) continue;
+    if (field.type === "section") continue;
     const value = answers[field.key];
     if (field.type === "file") {
       if (field.required && !fileKeys.includes(field.key))

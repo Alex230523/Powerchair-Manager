@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { allEntries, badgeRoutes, concerns, isFresh, newsEntry, newsRoleOf, popupEntry } from "../src/domains/news/schema";
+import { allEntries, badgeRoutes, concerns, entriesOfRoute, isFresh, newsEntry, newsRoleOf, popupEntry } from "../src/domains/news/schema";
 import { changelogFiles, indexSource } from "../scripts/changelog-index";
 import { newsCopy } from "../src/components/news-copy";
 
@@ -40,6 +40,10 @@ describe("news", () => {
     expect(isFresh({ date: "2026-10-22" }, "2026-11-05")).toBe(false);
     expect(badgeRoutes([e], "coach", new Set(), "2026-11-02")).toEqual(["/exercises"]);
     expect(badgeRoutes([e], "coach", new Set(["2026-10-22-x"]), "2026-11-02")).toEqual([]);
+    // At most three, the newest first; a page opened takes its entries with it.
+    const many = ["/a", "/b", "/c", "/d"].map((link, i) => ({ ...(e as object), id: `2026-10-2${i}-x${i}`, link })) as never[];
+    expect(badgeRoutes(many, "coach", new Set(), "2026-11-02")).toEqual(["/a", "/b", "/c"]);
+    expect(entriesOfRoute(many, "coach", "/b")).toEqual(["2026-10-21-x1"]);
     expect(badgeRoutes([e], "player", new Set(), "2026-11-02")).toEqual([]);
     expect(popupEntry([e], "coach", new Set(), "2026-11-02", false)).toBe(e);
     expect(popupEntry([e], "coach", new Set(["2026-10-22-x"]), "2026-11-02", false)).toBeNull();

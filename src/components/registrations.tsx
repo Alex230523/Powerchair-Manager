@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
 import { Panel, Button, PageHeader, Card, Badge, Toolbar, type Tone, EmptyState, ExportButton } from "./ui";
 import { exportCopy } from "./export-copy";
@@ -206,11 +206,14 @@ function Questions({
   disabled?: boolean;
 }) {
   const t = registrationCopy[locale];
-  return (
-    <>
-      {fields
-        .filter((f) => fieldVisible(f, answers))
-        .map((f) => {
+  // A « section » title opens a group of the questions that follow, which folds and unfolds.
+  const groups: { section: Field | null; fields: Field[] }[] = [{ section: null, fields: [] }];
+  for (const f of fields.filter((x) => fieldVisible(x, answers))) {
+    if (f.type === "section") groups.push({ section: f, fields: [] });
+    else groups[groups.length - 1].fields.push(f);
+  }
+  const render = (list: Field[]) =>
+    list.map((f) => {
           const fid = "answer-" + f.key;
           const x = fieldExtras[locale];
           const label =
@@ -327,7 +330,28 @@ function Questions({
               {f.type === "signature" && <p className="muted">{t.signature}</p>}
             </FieldLabel>
           );
-        })}
+        });
+  return (
+    <>
+      {groups.map((g, i) =>
+        g.section ? (
+          <details
+            key={g.section.key}
+            className="form-section"
+            open
+            // A required answer in a folded section: the section opens so it can be filled.
+            onInvalidCapture={(e) => {
+              e.currentTarget.open = true;
+            }}
+          >
+            <summary>{g.section.label[locale] || g.section.label.fr}</summary>
+            {g.section.help && <p className="field-help">{g.section.help[locale] || g.section.help.fr}</p>}
+            <div className="form-section-body">{render(g.fields)}</div>
+          </details>
+        ) : (
+          <Fragment key={"top-" + i}>{render(g.fields)}</Fragment>
+        ),
+      )}
     </>
   );
 }
@@ -667,7 +691,7 @@ function FormEditor({
                 />
               </FieldLabel>
               <FieldLabel id={"type-" + i} label={t.type}>
-                <select id={"type-" + i} value={f.type} onChange={(e) => change(i, { ...f, type: e.target.value as Field["type"] })}>
+                <select id={"type-" + i} value={f.type} onChange={(e) => change(i, { ...f, type: e.target.value as Field["type"], ...(e.target.value === "section" ? { required: false } : {}) })}>
                   {Object.entries(typeLabels[locale]).map(([key, text]) => (
                     <option key={key} value={key}>
                       {text}
@@ -675,11 +699,16 @@ function FormEditor({
                   ))}
                 </select>
               </FieldLabel>
-              <label className="check">
-                <input type="checkbox" checked={f.required} onChange={(e) => change(i, { ...f, required: e.target.checked })} />
-                {t.required}
-              </label>
-              <FieldEditorExtras locale={locale} field={f} index={i} update={(next) => change(i, next)} />
+              {/* A section title is never answered: no « required », no help on an answer, no profile field. */}
+              {f.type !== "section" && (
+                <>
+                  <label className="check">
+                    <input type="checkbox" checked={f.required} onChange={(e) => change(i, { ...f, required: e.target.checked })} />
+                    {t.required}
+                  </label>
+                  <FieldEditorExtras locale={locale} field={f} index={i} update={(next) => change(i, next)} />
+                </>
+              )}
               {(f.type === "choice" || f.type === "multi") && (
                 <FieldLabel id={"options-" + i} label={t.options}>
                   <textarea id={"options-" + i} value={f.options.join("\n")} onChange={(e) => change(i, { ...f, options: e.target.value.split("\n") })} />
@@ -1297,7 +1326,7 @@ export function Registrations({
                     { id: "status", label: b.state, value: (a) => sl[a.status] },
                     { id: "applicant", label: exportCopy[locale].applicant, value: (a) => a.applicant_name },
                     { id: "email", label: exportCopy[locale].email, value: (a) => a.applicant_email },
-                    ...[...new Map(applications.flatMap((a) => a.form_snapshot.fields.filter((f) => !["file", "signature"].includes(f.type)).map((f) => [f.key, f] as const))).values()].slice(0, 30).map((f) => ({
+                    ...[...new Map(applications.flatMap((a) => a.form_snapshot.fields.filter((f) => !["file", "signature", "section"].includes(f.type)).map((f) => [f.key, f] as const))).values()].slice(0, 30).map((f) => ({
                       id: "answer:" + f.key,
                       label: (f.label[locale] ?? f.label.fr).slice(0, 80),
                       type: (f.type === "date" ? "date" : "text") as "date" | "text",
@@ -1502,7 +1531,7 @@ export function Registrations({
             ) : (
               <dl className="answer-list">
                 {application.form_snapshot.fields
-                  .filter((f) => fieldVisible(f, application.answers))
+                  .filter((f) => f.type !== "section" && fieldVisible(f, application.answers))
                   .map((f) => {
                     const value = application.answers[f.key];
                     const files = application.attachments.filter(

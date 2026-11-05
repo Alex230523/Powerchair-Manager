@@ -51,6 +51,8 @@ export function platformTemplate(id: PlatformTemplate, lang: Lang) {
     confidential: false,
     ...extra,
   });
+  // 04/11/2026: a section title groups the questions that follow; the person filling folds and unfolds it.
+  const section = (key: string, label: Label) => field(key, "section", label);
   const email = field("email", "email", { fr: "Email", nl: "E-mail", en: "Email" }, { required: true, maps: "email" });
   const phone = field("phone", "phone", { fr: "Téléphone", nl: "Telefoon", en: "Phone" }, { required: true, maps: "phone" });
   const emergency = field(
@@ -154,6 +156,7 @@ export function platformTemplate(id: PlatformTemplate, lang: Lang) {
   );
   if (id === "player") {
     const fields: Field[] = [
+      section("section_player", { fr: "Le joueur", nl: "De speler", en: "The player" }),
       field(
         "gender",
         "multi",
@@ -180,6 +183,7 @@ export function platformTemplate(id: PlatformTemplate, lang: Lang) {
           },
         },
       ),
+      section("section_contact", { fr: "Coordonnées", nl: "Contactgegevens", en: "Contact details" }),
       field("address", "text", { fr: "Adresse", nl: "Adres", en: "Address" }, { required: true }),
       field("postal_code", "text", { fr: "Code postal", nl: "Postcode", en: "Postcode" }, { required: true }),
       email,
@@ -201,6 +205,7 @@ export function platformTemplate(id: PlatformTemplate, lang: Lang) {
           ),
         },
       ),
+      section("section_health", { fr: "Santé et équipement", nl: "Gezondheid en uitrusting", en: "Health and equipment" }),
       condition,
       jerseySize,
       field(
@@ -217,6 +222,7 @@ export function platformTemplate(id: PlatformTemplate, lang: Lang) {
         },
       ),
       joystick,
+      section("section_agreements", { fr: "Accords et paiement", nl: "Akkoorden en betaling", en: "Agreements and payment" }),
       photo,
       installments,
       privacy,

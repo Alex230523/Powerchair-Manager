@@ -5627,6 +5627,15 @@ input.narrow {
 }
 
 /* Attendance grid: people x sessions */
+/* The export button of the attendance grid: a row of its own, never under the grid's header. */
+.grid-toolbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block: var(--space-3);
+}
 .attendance-grid table {
   font-size: var(--text-xs);
 }
@@ -12763,4 +12772,154 @@ a.match-context {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+}
+
+/*
+ * One look for every field (04/11/2026): text, number, date, search, lists and
+ * long texts have the same height, border, corners, padding and text size
+ * everywhere, and a list draws its own arrow instead of each browser's (Safari
+ * drew grey, glossy lists). Left out on purpose: the boxes and buttons that only
+ * look like fields (checkboxes, radio, file, the top bar's capsules, the
+ * command window, segmented choices, coloured chips).
+ */
+:is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="color"], [type="hidden"], [type="submit"], [type="button"]), select, textarea):not(.capsule select, .command-input input, .segment input, .palette-option input, .kind-option input, .chip-check input, .dg-select input, .chart-legend-item input) {
+  min-height: var(--control-height);
+  padding: 8px 12px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: var(--text-base);
+  line-height: 1.4;
+}
+select:not(.capsule select) {
+  appearance: none;
+  padding-right: 40px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 15px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  text-overflow: ellipsis;
+}
+select[multiple] {
+  padding-right: 12px;
+  background-image: none;
+}
+textarea:not(.command-input textarea) {
+  min-height: calc(var(--control-height) * 2);
+  resize: vertical;
+}
+:is(input, select, textarea):disabled {
+  background-color: var(--surface-soft);
+}
+
+/* « À faire » as one list (04/11/2026): one line per thing to do, the most urgent first. */
+.todo-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+.todo-lines > li + li {
+  border-top: 1px solid var(--border);
+}
+.todo-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-4);
+  color: var(--text);
+  text-decoration: none;
+}
+.todo-line:hover {
+  background: var(--surface-soft);
+}
+.todo-line:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.todo-line .todo-text {
+  flex: 1 1 auto;
+}
+.todo-line .todo-count {
+  margin-left: auto;
+  min-width: 2rem;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.todo-line[data-tone="danger"] .todo-count {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+.todo-line[data-tone="warning"] .todo-count {
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+}
+.todo-line .todo-arrow {
+  margin-left: 0;
+}
+.todo-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+}
+
+/* A section of a registration form (04/11/2026): its title folds and unfolds the questions under it. */
+.form-section {
+  margin-block: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.form-section > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+  font-size: var(--text-md);
+  cursor: pointer;
+  list-style: none;
+}
+.form-section > summary::-webkit-details-marker {
+  display: none;
+}
+.form-section > summary::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform var(--transition);
+}
+.form-section[open] > summary::before {
+  transform: rotate(45deg);
+}
+.form-section > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.form-section > .field-help {
+  margin: 0;
+  padding: 0 var(--space-4);
+}
+.form-section-body {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-4);
 }

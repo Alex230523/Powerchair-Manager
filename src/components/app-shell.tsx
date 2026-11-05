@@ -339,7 +339,13 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
       fetch("/api/news", { cache: "no-store" })
         .then(async (r) => (r.ok ? ((await r.json()) as { badges: string[] }) : null))
         .then((n) => {
-          if (!cancelled) setNews(n && { badges: n.badges });
+          if (cancelled || !n) return setNews(null);
+          // The page of a badge is open: its « Nouveau » is seen, and goes.
+          const here = path.replace(new RegExp(`^/${locale}`), "") || "/";
+          if (n.badges.includes(here)) {
+            void fetch("/api/news", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "seen", route: here }) }).catch(() => undefined);
+            setNews({ badges: n.badges.filter((b) => b !== here) });
+          } else setNews({ badges: n.badges });
         })
         .catch(() => {
           if (!cancelled) setNews(null);
@@ -360,7 +366,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
       cancelled = true;
       window.removeEventListener("pfm-workspace", load);
     };
-  }, [selectedId, club, member, path]);
+  }, [selectedId, club, member, path, locale]);
   // The drawer: Escape closes it, focus stays inside while it is open, and goes back to the menu button after.
   useEffect(() => {
     if (!drawer) return;
