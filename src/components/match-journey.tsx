@@ -344,7 +344,7 @@ function BeforeStep({ ctx }: { ctx: Ctx }) {
             </>
           ) : (
             <div className="actions">
-              <Button variant="secondary" icon="link" disabled={busy} onClick={() => void send({ action: "livePublic", enabled: true }, publicLiveCopy[locale].enabled)}>
+              <Button variant="secondary" icon="share" disabled={busy} onClick={() => void send({ action: "livePublic", enabled: true }, publicLiveCopy[locale].enabled)}>
                 {publicLiveCopy[locale].enable}
               </Button>
             </div>
