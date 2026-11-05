@@ -48,8 +48,8 @@ describe("the rulebook of a federation", () => {
 
 describe("the operator's console", () => {
   it("reads the owners from the configuration, trimmed and lower-cased", () => {
-    expect(envOperators({} as NodeJS.ProcessEnv)).toEqual([]);
-    expect(envOperators({ PFM_OPERATOR_EMAILS: " Alex@Example.test ,, sam@example.test " } as NodeJS.ProcessEnv)).toEqual(["alex@example.test", "sam@example.test"]);
+    expect(envOperators({})).toEqual([]);
+    expect(envOperators({ PFM_OPERATOR_EMAILS: " Alex@Example.test ,, sam@example.test " })).toEqual(["alex@example.test", "sam@example.test"]);
   });
   it("accepts only the commands it knows, with a real role", () => {
     expect(operatorRoles).toEqual(["owner", "support", "finance", "readonly"]);

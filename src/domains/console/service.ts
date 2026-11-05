@@ -14,7 +14,7 @@ import { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole }
 export { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole };
 
 type Operator = { userId: string; name: string; role: OperatorRole };
-export function envOperators(env: NodeJS.ProcessEnv = process.env) {
+export function envOperators(env: Record<string, string | undefined> = process.env) {
   return (env.PFM_OPERATOR_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

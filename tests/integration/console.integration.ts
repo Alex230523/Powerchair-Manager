@@ -56,7 +56,7 @@ afterAll(async () => {
 });
 
 it("lets only an operator in: the owner from the configuration, the others added by the owner", async () => {
-  expect(envOperators({ PFM_OPERATOR_EMAILS: " A@x.test, b@x.test " } as NodeJS.ProcessEnv)).toEqual(["a@x.test", "b@x.test"]);
+  expect(envOperators({ PFM_OPERATOR_EMAILS: " A@x.test, b@x.test " })).toEqual(["a@x.test", "b@x.test"]);
   await expect(consoleHome(db, president)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(consoleHome(db, support)).rejects.toMatchObject({ code: "FORBIDDEN" });
   expect(await isOperator(db, president)).toBe(false);
