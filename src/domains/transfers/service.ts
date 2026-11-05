@@ -10,7 +10,7 @@ import { seasonOf } from "../finance/schema";
 import { ageBand } from "../statistics/club-math";
 import { shownClass } from "../classification/schema";
 import { canDecide, setVisibility } from "./consent";
-import { adultOn, amountAllowed, marketOpen, offerMoves, rulesOf, transferCommand, type Rules, type TransferCommand } from "./schema";
+import { adultOn, amountAllowed, freeLeave, marketOpen, offerMoves, requestOpen, rulesOf, transferCommand, type Rules, type TransferCommand } from "./schema";
 export { transferCommand };
 
 /**
@@ -156,7 +156,7 @@ async function mine(s: Ctx) {
 }
 
 const offerSql = `SELECT t.id,t.person_id,t.from_organization_id,t.to_organization_id,t.source_organization_id,t.source_profile_id,t.season,t.amount_cents,t.message,t.status,t.player_consent,
-    t.decision_note,t.federation_note,t.completed_at,t.created_at,t.version,cp.full_name,fo.name AS from_club,tor.name AS to_club,
+    t.decision_note,t.federation_note,t.federation_at,t.completed_at,t.created_at,t.version,cp.full_name,fo.name AS from_club,tor.name AS to_club,
     (SELECT count(*)::int FROM transfer_message m WHERE m.offer_id=t.id) AS messages
   FROM transfer_offer t JOIN club_person cp ON cp.id=t.source_profile_id LEFT JOIN organization fo ON fo.id=t.from_organization_id JOIN organization tor ON tor.id=t.to_organization_id`;
 export type Offer = {
@@ -173,6 +173,7 @@ export type Offer = {
   player_consent: "pending" | "given" | "refused";
   decision_note: string;
   federation_note: string;
+  federation_at: string | null;
   completed_at: string | null;
   created_at: string;
   version: number;
@@ -212,13 +213,15 @@ export async function transfersView(db: Pool, p: Principal) {
       seasons: [season, next],
       rules,
       open: marketOpen(rules, s.today),
+      // BPCF: outside a period, a transfer every party agrees to is still possible.
+      consentedOnly: !marketOpen(rules, s.today) && rules.consentedAnytime,
       players,
       mine: await mine(s),
       consents: consents.map(shown),
       offers: offers.map((o) => ({
         ...shown(o),
         side: (s.federation ? "federation" : o.to_organization_id === s.org ? "to" : "from") as "to" | "from" | "federation",
-        moves: offerMoves(o, s.federation ? "federation" : o.to_organization_id === s.org ? "to" : "from", rules.federationValidation),
+        moves: offerMoves(o, s.federation ? "federation" : o.to_organization_id === s.org ? "to" : "from", rules.federationValidation, !!s.federation && freeLeave(o, rules, s.today)),
       })),
       clubs: clubs as { id: string; name: string; province: string }[],
       can: { request: s.players && !!s.fed, rules: s.federation },
@@ -345,6 +348,12 @@ async function belowMax(s: Ctx, rules: Rules, org: string, season: string) {
   const n = (await s.c.query("SELECT count(*)::int AS n FROM transfer_offer WHERE to_organization_id=$1 AND season=$2 AND completed_at IS NOT NULL", [org, season])).rows[0].n as number;
   return n < rules.maxPerClubSeason;
 }
+/** BPCF 1/12: transfers completed this season from one club to another, against the maximum. */
+async function belowPairMax(s: Ctx, rules: Rules, from: string | null, to: string, season: string) {
+  if (rules.maxPerPairSeason === null || !from) return true;
+  const n = (await s.c.query("SELECT count(*)::int AS n FROM transfer_offer WHERE from_organization_id=$1 AND to_organization_id=$2 AND season=$3 AND completed_at IS NOT NULL", [from, to, season])).rows[0].n as number;
+  return n < rules.maxPerPairSeason;
+}
 /** The move itself, once everyone agreed (and the federation validated when its rules ask it). */
 async function complete(s: Ctx, o: Offer, status: "accepted" | "validated") {
   const moved = await moveProfile(s.c, { organization: o.source_organization_id, profile: o.source_profile_id }, o.to_organization_id, s.userId, o.from_organization_id ? ["active"] : ["active", "inactive", "archived", "transferred"]);
@@ -388,10 +397,10 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         }
         const r = command.rules;
         await s.c.query(
-          `INSERT INTO transfer_rules(federation_id,windows,amounts_allowed,amount_cap_cents,max_per_club_season,federation_validation,rules_text,updated_by,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now())
-           ON CONFLICT (federation_id) DO UPDATE SET windows=EXCLUDED.windows,amounts_allowed=EXCLUDED.amounts_allowed,amount_cap_cents=EXCLUDED.amount_cap_cents,max_per_club_season=EXCLUDED.max_per_club_season,
+          `INSERT INTO transfer_rules(federation_id,windows,amounts_allowed,amount_cap_cents,max_per_club_season,federation_validation,rules_text,updated_by,updated_at,consented_anytime,max_per_pair_season) VALUES($1,$2,$3,$4,$5,$6,$7,$8,now(),$9,$10)
+           ON CONFLICT (federation_id) DO UPDATE SET windows=EXCLUDED.windows,amounts_allowed=EXCLUDED.amounts_allowed,amount_cap_cents=EXCLUDED.amount_cap_cents,max_per_club_season=EXCLUDED.max_per_club_season,consented_anytime=EXCLUDED.consented_anytime,max_per_pair_season=EXCLUDED.max_per_pair_season,
              federation_validation=EXCLUDED.federation_validation,rules_text=EXCLUDED.rules_text,updated_by=EXCLUDED.updated_by,updated_at=now()`,
-          [s.fed, JSON.stringify(r.windows), r.amountsAllowed, r.amountCapCents, r.maxPerClubSeason, r.federationValidation, r.rulesText, s.userId],
+          [s.fed, JSON.stringify(r.windows), r.amountsAllowed, r.amountCapCents, r.maxPerClubSeason, r.federationValidation, r.rulesText, s.userId, r.consentedAnytime ?? false, r.maxPerPairSeason ?? null],
         );
         await audit(s.c, s.org, s.userId, "transfer.rules", s.org);
         return { ok: true as const };
@@ -402,7 +411,7 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
 
       if (command.action === "request") {
         if (!s.players) throw new AccessError("FORBIDDEN");
-        if (!marketOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
+        if (!requestOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
         if (!amountAllowed(rules, command.amountCents)) throw new AccessError("AMOUNT_NOT_ALLOWED", 400);
         const row = (await market(s)).find((r) => r.key === command.personId);
         if (!row) throw new AccessError("NOT_FOUND", 404);
@@ -410,6 +419,7 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         if (!(await belowMax(s, rules, s.org, command.season))) throw new AccessError("TRANSFER_LIMIT", 409);
         const source = (await s.c.query(marketSql, [s.fed])).rows.find((r: { key: string }) => r.key === command.personId) as { profile_id: string; club_id: string | null };
         const sourceOrg = (await s.c.query("SELECT organization_id FROM club_person WHERE id=$1", [source.profile_id])).rows[0].organization_id as string;
+        if (!(await belowPairMax(s, rules, source.club_id, s.org, command.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
         const id = (
           await s.c.query(
             `INSERT INTO transfer_offer(federation_id,person_id,from_organization_id,source_organization_id,source_profile_id,to_organization_id,season,amount_cents,message,created_by)
@@ -468,8 +478,10 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         if (command.decision === "accepted") {
           // The player (or a parent) agrees before any acceptance.
           if (o.player_consent !== "given") throw new AccessError("CONSENT_REQUIRED", 409);
-          if (!marketOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
+          // The current club agrees: a consented transfer, all season long under BPCF rules.
+          if (!requestOpen(rules, s.today)) throw new AccessError("MARKET_CLOSED", 409);
           if (!(await belowMax(s, rules, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_LIMIT", 409);
+          if (!(await belowPairMax(s, rules, o.from_organization_id, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
         }
         await s.c.query("UPDATE transfer_offer SET status=$2,decision_note=$3,decided_by=$4,decided_at=now(),version=version+1 WHERE id=$1", [o.id, command.decision, command.note, s.userId]);
         await audit(s.c, s.org, s.userId, "transfer." + command.decision, o.id);
@@ -481,7 +493,11 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
       // The federation validates (or refuses) an accepted offer.
       if (!s.federation) throw new AccessError("FORBIDDEN");
       if ((await s.c.query("SELECT federation_id FROM transfer_offer WHERE id=$1", [o.id])).rows[0].federation_id !== s.fed) throw new AccessError("NOT_FOUND", 404);
-      if (o.status !== "accepted" || o.completed_at) throw new AccessError("INVALID_TRANSITION", 409);
+      // BPCF: a transfer the current club refused may still be validated as a free leave, during a period.
+      const free = freeLeave(o, rules, s.today);
+      if ((o.status !== "accepted" && !free) || o.completed_at) throw new AccessError("INVALID_TRANSITION", 409);
+      if (free && command.decision === "refused") throw new AccessError("INVALID_TRANSITION", 409);
+      if (free && !(await belowPairMax(s, rules, o.from_organization_id, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
       await s.c.query("UPDATE transfer_offer SET federation_by=$2,federation_at=now(),federation_note=$3,version=version+1 WHERE id=$1", [o.id, s.userId, command.note]);
       if (command.decision === "refused") {
         await s.c.query("UPDATE transfer_offer SET status='refused' WHERE id=$1", [o.id]);

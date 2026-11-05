@@ -210,6 +210,8 @@ export const tripCommand = z.discriminatedUnion("action", [
     profileId: id,
     categories: z.array(z.enum(licenceCategories)).max(5),
     validUntil: date.nullable(),
+    /** 04/11/2026: since when the licence is held (optional). */
+    obtainedOn: date.nullable().optional(),
   }),
 ]);
 export type TripCommand = z.infer<typeof tripCommand>;

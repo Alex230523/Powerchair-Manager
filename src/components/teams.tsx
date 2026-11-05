@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { pollsCopy } from "./polls-copy";
 import { TeamMatches } from "./match-cards";
 import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -16,7 +15,6 @@ import { TeamBoard } from "./team-board";
 import { teamBoardCopy } from "./team-board-copy";
 import { kindLabels } from "./calendar-copy";
 import { Badge, Card, EmptyState, PageHeader, Tabs } from "./ui";
-import { ClubIdentity } from "./club-identity";
 import { Modal } from "./modal";
 import { initials } from "./app-shell";
 import { cssVars } from "./css-vars";
@@ -268,8 +266,6 @@ export function Teams({ locale }: { locale: Locale }) {
           />
         </Modal>
       )}
-      {/* 12: the teams' colours, here since « Gestion du club » is gone. */}
-      {data.can.manage && <ClubIdentity locale={locale} only="teams" />}
     </main>
   );
 }
@@ -312,13 +308,6 @@ export function TeamSheet({ locale, id }: { locale: Locale; id: string }) {
             {team.staff_contact_name && <span> · {sh.contact} : {team.staff_contact_name}</span>}
             <TeamPlaces locale={locale} players={team.players} capacity={team.capacity} />
           </span>
-        }
-        actions={
-          data.can.manage || data.can.convene || data.can.write ? (
-            <Link className="button secondary" href={`/${locale}/sondages?new=1&team=${team.id}`}>
-              {pollsCopy[locale].create}
-            </Link>
-          ) : null
         }
       />
       {error && <p role="alert">{error}</p>}

@@ -94,8 +94,6 @@ function href(locale: Locale, t: TaskRow) {
   if (t.source_kind === "allocationDeadline") return at(`/funding/reserved`);
   // H4: the cash forecast under the threshold.
   if (t.source_kind === "forecastLow") return at(`/funding/forecast`);
-  // H1: a prospect to call back or follow up, a partner to visit.
-  if (t.source_kind === "prospectCall" || t.source_kind === "prospectSilent" || t.source_kind === "presentClub") return at(`/recrutement`);
   return null;
 }
 /** The application's own tasks read in the reader's language. */
@@ -132,7 +130,8 @@ export function Tasks({
   const [filter, setFilter] = useState<Filter | null>(null),
     [category, setCategory] = useState<Category | "all">(initialCategory),
     [who, setWho] = useState(""),
-    [showDone, setShowDone] = useState(false),
+    // 04/11/2026: a ticked task stays, struck through; hiding the done ones is a choice.
+    [showDone, setShowDone] = useState(true),
     [opened, setOpened] = useState<Record<string, boolean>>({}),
     [editing, setEditing] = useState<null | { category: Category } | TaskRow>(null),
     [detail, setDetail] = useState<string | null>(openTask ?? null),
@@ -174,6 +173,8 @@ export function Tasks({
       (!who || x.responsible_id === who || x.responsible_user_id === who || (x.assignees ?? []).some((a) => a.profile_id === who || a.user_id === who)) &&
       (view === "mine" ? mineTask(x) : view === "late" ? isLate(x, data.today) : view === "week" ? thisWeek(x, data.today) : view === "recurring" ? x.recurrence !== "none" : true),
   );
+  // What is done goes down the list, still visible.
+  rows.sort((p, q) => Number(p.status === "done") - Number(q.status === "done"));
   const groups = groupTasks(rows, data.federation).filter((g) => (category === "all" || g.category === category) && (!(embedded || linked) || g.tasks.length > 0));
   const send = (body: Record<string, unknown>) => post({ ...body, organizationId: data.organization_id }, t.saved);
   /** 2: once ticked, a task with an amount proposes its expense, an affiliation its « en ordre ». */
@@ -301,8 +302,6 @@ export function Tasks({
                       today={data.today}
                       busy={busy}
                       work={canWork(x)}
-                      remove={data.can.manage && !embedded && x.kind !== "sponsor" && x.kind !== "grant" && !x.source_kind}
-                      send={send}
                       tick={tick}
                       details={() => setDetail(x.id)}
                     />
@@ -311,7 +310,7 @@ export function Tasks({
               ) : (
                 <p className="muted">{view === "mine" ? t.emptyMine : t.empty}</p>
               )}
-              {canAdd(g.category) && <QuickAdd locale={locale} category={g.category} busy={busy} send={send} />}
+              {canAdd(g.category) && <QuickAdd locale={locale} category={g.category} people={data.federation ? null : data.people} busy={busy} send={send} />}
             </details>
           );
         })
@@ -338,6 +337,7 @@ export function Tasks({
           busy={busy}
           work={canWork(current)}
           edit={canWork(current) && (canAdd(current.category) || mineTask(current)) ? () => setEditing(current) : undefined}
+          remove={data.can.manage && !embedded && current.kind !== "sponsor" && current.kind !== "grant" && !current.source_kind}
           saveAsTemplate={!data.federation && data.can.manage}
           send={send}
           close={() => setDetail(null)}
@@ -357,8 +357,6 @@ function TaskItem({
   today,
   busy,
   work,
-  remove,
-  send,
   tick,
   details,
 }: {
@@ -367,8 +365,6 @@ function TaskItem({
   today: string;
   busy: boolean;
   work: boolean;
-  remove: boolean;
-  send: (b: Record<string, unknown>) => Promise<boolean>;
   tick: (x: TaskRow, done: boolean) => Promise<boolean>;
   details: () => void;
 }) {
@@ -391,66 +387,41 @@ function TaskItem({
         />
         <span className="task-title">{title}</span>
       </label>
+      {/* A light line: when, who, and late; the rest is in the task's window. */}
       <p className="task-meta muted small">
         {x.priority === "high" && <Badge tone="warning">{t.priorities.high}</Badge>}
         {x.status === "doing" && <Badge tone="info">{t.statuses.doing}</Badge>}
         {x.about && link && (
-          <>
-            <Link href={link} aria-label={fill(t.openOf, { about: x.about })}>
-              {x.about}
-            </Link>
-            {" · "}
-          </>
+          <Link href={link} aria-label={fill(t.openOf, { about: x.about })}>
+            {x.about}
+          </Link>
         )}
-        {x.due_on ? `${t.due} ${dayLabel(locale, x.due_on)}` : t.noDate}
-        {isLate(x, today) && (
+        <span>{x.due_on ? `${t.due} ${dayLabel(locale, x.due_on)}` : t.noDate}</span>
+        {isLate(x, today) && x.status !== "done" && (
           <Badge tone="danger">
             <Icon name="alert" size={14} /> {t.views.late}
           </Badge>
         )}
-        {" · "}
-        {t.responsible} : {namesOf(x) ?? t.nobody}
-        {progress && ` · ${fill(more.progress, { done: progress.done, total: progress.total })}`}
+        {namesOf(x) && <span>{namesOf(x)}</span>}
+        {progress && <span>{fill(more.progress, { done: progress.done, total: progress.total })}</span>}
         {rule && (
-          <>
-            {" · "}
-            <span className="task-rule">
-              <Icon name="clock" size={14} /> {rule}
-            </span>
-          </>
+          <span className="task-rule" title={rule}>
+            <Icon name="clock" size={14} />
+            <span className="sr-only">{rule}</span>
+          </span>
         )}
-        {x.meeting_starts_at && ` · ${more.meeting} ${new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(x.meeting_starts_at))}`}
-        {(x.place_name || x.free_location) && ` · ${x.place_name ?? x.free_location}`}
-        {x.amount_cents !== null && ` · ${new Intl.NumberFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { style: "currency", currency: "EUR" }).format(x.amount_cents / 100)}`}
-        {x.checklist.length > 0 && ` · ${t.checklist} ${ticked}/${x.checklist.length}`}
-        {x.comments.length > 0 && ` · ${t.comments} ${x.comments.length}`}
-        {x.auto_closed ? ` · ${t.autoClosed}` : x.source_kind && !x.source_kind.startsWith("year_") ? ` · ${t.auto}` : ""}
+        {x.checklist.length > 0 && <span>{`${ticked}/${x.checklist.length}`}</span>}
       </p>
-      <div className="task-actions">
-        {work && (
-          <select aria-label={fill(t.statusOf, { title })} value={x.status} disabled={busy} onChange={(e) => void send({ action: "status", id: x.id, status: e.target.value as Status })}>
-            {(["todo", "doing", "done"] as const).map((s) => (
-              <option key={s} value={s}>
-                {t.statuses[s]}
-              </option>
-            ))}
-          </select>
-        )}
-        <Button variant="secondary" size="sm" aria-label={fill(t.detailsOf, { title })} onClick={details}>
-          {t.open}
-        </Button>
-        {remove && (
-          <button type="button" className="icon-button sm" aria-label={fill(t.removeOf, { title })} title={fill(t.removeOf, { title })} disabled={busy} onClick={() => void send({ action: "delete", id: x.id })}>
-            <Icon name="trash" size={16} />
-          </button>
-        )}
-      </div>
+      <button type="button" className="text-button task-open" aria-label={fill(t.detailsOf, { title })} onClick={details}>
+        {t.open}
+      </button>
     </li>
   );
 }
 
-function QuickAdd({ locale, category, busy, send }: { locale: Locale; category: Category; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean> }) {
+function QuickAdd({ locale, category, people, busy, send }: { locale: Locale; category: Category; people: Person[] | null; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean> }) {
   const t = todoCopy[locale];
+  const more = todoMoreCopy[locale];
   const id = `quick-${category}`;
   const name = t.categories[category];
   return (
@@ -459,18 +430,55 @@ function QuickAdd({ locale, category, busy, send }: { locale: Locale; category: 
       onSubmit={(e) => {
         e.preventDefault();
         const form = e.currentTarget;
-        const title = String(new FormData(form).get("title") ?? "").trim();
+        const f = new FormData(form);
+        const title = String(f.get("title") ?? "").trim();
         if (title.length < 2) return;
-        void send({ action: "create", category, title }).then((ok) => ok && form.reset());
+        // 04/11/2026: the person(s) in charge, a place and a date, right when adding.
+        const crew = f.getAll("assignee").map(String).filter(Boolean);
+        void send({
+          action: "create",
+          category,
+          title,
+          dueOn: f.get("due") || null,
+          freeLocation: String(f.get("where") ?? "").trim(),
+          ...(crew.length ? { assignees: crew } : {}),
+        }).then((ok) => ok && form.reset());
       }}
     >
-      <label htmlFor={id} className="sr-only">
-        {fill(t.quickLabel, { category: name })}
-      </label>
-      <input id={id} name="title" required minLength={2} maxLength={200} placeholder={fill(t.quickLabel, { category: name })} />
-      <Button size="sm" icon="plus" disabled={busy} aria-label={fill(t.quickAdd, { category: name })}>
-        {t.add}
-      </Button>
+      <div className="task-quick-main">
+        <label htmlFor={id} className="sr-only">
+          {fill(t.quickLabel, { category: name })}
+        </label>
+        <input id={id} name="title" required minLength={2} maxLength={200} placeholder={fill(t.quickLabel, { category: name })} />
+        <Button size="sm" icon="plus" disabled={busy} aria-label={fill(t.quickAdd, { category: name })}>
+          {t.add}
+        </Button>
+      </div>
+      <details className="task-quick-more">
+        <summary>{more.quickMore}</summary>
+        <div className="task-quick-fields">
+          {people && people.length > 0 && (
+            <label>
+              {t.responsible}
+              <select name="assignee" multiple size={Math.min(4, people.length)}>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            {more.quickWhere}
+            <input name="where" maxLength={200} />
+          </label>
+          <label>
+            {more.quickWhen}
+            <input name="due" type="date" />
+          </label>
+        </div>
+      </details>
     </form>
   );
 }
@@ -652,6 +660,7 @@ function TaskDetail({
   busy,
   work,
   edit,
+  remove = false,
   send,
   close,
   saveAsTemplate = false,
@@ -662,6 +671,7 @@ function TaskDetail({
   busy: boolean;
   work: boolean;
   edit?: () => void;
+  remove?: boolean;
   saveAsTemplate?: boolean;
   send: (b: Record<string, unknown>) => Promise<boolean>;
   close: () => void;
@@ -795,6 +805,34 @@ function TaskDetail({
               </Button>
             )}
           </div>
+          {/* The status and the removal live here, not on every line of the list. */}
+          {(work || remove) && (
+            <div className="actions task-detail-tools">
+              {work && (
+                <label className="compact-field">
+                  {fill(t.statusOf, { title })}
+                  <select value={x.status} disabled={busy} onChange={(e) => void send({ action: "status", id: x.id, status: e.target.value as Status })}>
+                    {(["todo", "doing", "done"] as const).map((st) => (
+                      <option key={st} value={st}>
+                        {t.statuses[st]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {remove && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  icon="trash"
+                  disabled={busy}
+                  onClick={() => void send({ action: "delete", id: x.id }).then((ok) => ok && close())}
+                >
+                  {fill(t.removeOf, { title })}
+                </Button>
+              )}
+            </div>
+          )}
         </form>
       </div>
     </Modal>

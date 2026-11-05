@@ -13,7 +13,7 @@ import { exerciseCommand, type ExerciseCommand, type objectives, type levels, ty
 import { drawing as drawingSchema, type Drawing } from "./drawing";
 export { exerciseCommand, type ExerciseCommand };
 
-type Scope = { c: PoolClient; org: string; userId: string; write: boolean };
+type Scope = { c: PoolClient; org: string; userId: string; write: boolean; president: boolean };
 /** Who may read and write the sheets, from the active mandate. */
 export function exerciseRights(a: { role: string; grants: string[] }) {
   const rights = permissions(a.role as never, a.grants as never) as string[];
@@ -30,7 +30,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
     await account(c, p);
     const r = exerciseRights(a);
     if (!r.read || (write && !r.write)) throw new AccessError("FORBIDDEN");
-    const out = await fn({ c, org: a.organization_id, userId: p.userId, write: r.write });
+    const out = await fn({ c, org: a.organization_id, userId: p.userId, write: r.write, president: a.role === "club_president" });
     await c.query("COMMIT");
     return out;
   } catch (e) {
@@ -84,6 +84,8 @@ export type Exercise = {
   uses: number;
   matches: number;
 };
+/** A sheet another club sent, waiting for the presidency. */
+export type Offer = { id: string; title: string; genre: string; club: string; sender: string; message: string; created_at: string };
 export type Tag = { id: string; name: string; color: (typeof tagColors)[number] };
 /** 4: the club's tags and how many sheets carry each. */
 async function clubTags(c: PoolClient, org: string) {
@@ -128,7 +130,21 @@ export async function exercisesView(db: Pool, p: Principal) {
       await s.c.query(`SELECT ${columns} FROM exercise x JOIN "user" u ON u.id=x.author_id WHERE x.organization_id=$1 AND ${visibleTo("x", "$2")} ORDER BY x.archived,lower(x.title)`, [s.org, s.userId])
     ).rows as Exercise[];
     const federation = ((await s.c.query("SELECT federation_id FROM organization WHERE id=$1", [s.org])).rows[0]?.federation_id ?? null) as string | null;
-    return { organization_id: s.org, user_id: s.userId, can: { write: s.write, propose: s.write && !!federation }, exercises: rows, tags: await clubTags(s.c, s.org) };
+    // 04/11/2026: the clubs of the same federation a sheet can be sent to, and the sheets received.
+    const clubs = federation && s.write
+      ? ((await s.c.query("SELECT id,name FROM organization WHERE kind='club' AND federation_id=$1 AND id<>$2 ORDER BY lower(name)", [federation, s.org])).rows as { id: string; name: string }[])
+      : [];
+    const offers = s.president
+      ? ((
+          await s.c.query(
+            `SELECT f.id,x.title,x.genre,o.name AS club,u.name AS sender,f.message,f.created_at::text AS created_at FROM exercise_offer f
+               JOIN exercise x ON x.id=f.exercise_id JOIN organization o ON o.id=f.from_organization_id JOIN "user" u ON u.id=f.sent_by
+              WHERE f.to_organization_id=$1 AND f.status='pending' ORDER BY f.created_at`,
+            [s.org],
+          )
+        ).rows as Offer[])
+      : [];
+    return { organization_id: s.org, user_id: s.userId, can: { write: s.write, propose: s.write && !!federation, decide: s.president }, exercises: rows, tags: await clubTags(s.c, s.org), clubs, offers };
   });
 }
 /** One sheet and the trainings it was used in. */
@@ -158,6 +174,10 @@ export async function exerciseDetail(db: Pool, p: Principal, id: string) {
     return {
       organization_id: s.org,
       can: { write: s.write, propose: s.write && !!federation },
+      // 04/11/2026: the clubs of the federation the sheet can be sent to.
+      clubs: federation && s.write
+        ? ((await s.c.query("SELECT id,name FROM organization WHERE kind='club' AND federation_id=$1 AND id<>$2 ORDER BY lower(name)", [federation, s.org])).rows as { id: string; name: string }[])
+        : [],
       exercise: x,
       drawing: await drawingOf(s.c, id),
       used,
@@ -332,6 +352,56 @@ export async function exerciseExecute(db: Pool, p: Principal, command: ExerciseC
         await s.c.query("UPDATE exercise SET archived=$3,version=version+1,updated_at=now() WHERE id=$1 AND organization_id=$2", [command.id, s.org, command.archived]);
         await audit(s.c, s.org, s.userId, command.archived ? "exercise.archived" : "exercise.restored", command.id);
         return { ok: true as const, id: command.id };
+      }
+      if (command.action === "send") {
+        const x = await own(command.id);
+        const ok = (
+          await s.c.query(
+            "SELECT 1 FROM organization t JOIN organization me ON me.id=$2 WHERE t.id=$1 AND t.kind='club' AND t.id<>me.id AND me.federation_id IS NOT NULL AND t.federation_id=me.federation_id",
+            [command.clubId, s.org],
+          )
+        ).rowCount;
+        if (!ok) throw new AccessError("NOT_FOUND", 404);
+        const sent = await s.c.query(
+          `INSERT INTO exercise_offer(exercise_id,from_organization_id,to_organization_id,sent_by,message) VALUES($1,$2,$3,$4,$5)
+           ON CONFLICT (exercise_id,to_organization_id) WHERE status='pending' DO NOTHING RETURNING id`,
+          [x.id, s.org, command.clubId, s.userId, command.message],
+        );
+        if (!sent.rowCount) throw new AccessError("ALREADY_SENT", 409);
+        await audit(s.c, s.org, s.userId, "exercise.sent", x.id, { to: command.clubId });
+        return { ok: true as const, id: sent.rows[0].id as string };
+      }
+      if (command.action === "offerDecide") {
+        // The presidency of the receiving club only.
+        if (!s.president) throw new AccessError("FORBIDDEN");
+        const f = (await s.c.query("SELECT * FROM exercise_offer WHERE id=$1 AND to_organization_id=$2 AND status='pending' FOR UPDATE", [command.offerId, s.org])).rows[0];
+        if (!f) throw new AccessError("NOT_FOUND", 404);
+        let copy: string | null = null;
+        if (command.accept) {
+          const x = (await s.c.query("SELECT * FROM exercise WHERE id=$1", [f.exercise_id])).rows[0];
+          // Its creator stays its creator, with the club it came from.
+          const origin = (
+            await s.c.query(
+              `SELECT COALESCE(NULLIF(x.origin_author,''),u.name) AS author,COALESCE(NULLIF(x.origin_club,''),o.name) AS club FROM exercise x JOIN "user" u ON u.id=x.author_id JOIN organization o ON o.id=x.organization_id WHERE x.id=$1`,
+              [x.id],
+            )
+          ).rows[0] as { author: string; club: string };
+          copy = (
+            await s.c.query(
+              `INSERT INTO exercise(organization_id,author_id,title,objective,description,safety,duration_minutes,players_min,players_max,level,suited,equipment,variants,video_url,shared,goal,genre,origin_exercise_id,origin_author,origin_club)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true,$15,$16,$17,$18,$19) RETURNING id`,
+              [s.org, s.userId, x.title, x.objective, x.description, x.safety, x.duration_minutes, x.players_min, x.players_max, x.level, x.suited, x.equipment, x.variants, x.video_url, x.goal, x.genre, x.origin_exercise_id ?? x.id, origin.author, origin.club],
+            )
+          ).rows[0].id as string;
+          const size = Number((await s.c.query("SELECT COALESCE(octet_length(content),0) AS n FROM exercise_diagram WHERE exercise_id=$1", [x.id])).rows[0]?.n ?? 0);
+          if (size) await ensureStorage(s.c, s.org, size, 0);
+          await s.c.query("INSERT INTO exercise_diagram(exercise_id,organization_id,media_type,content,updated_by) SELECT $1,$3,media_type,content,$4 FROM exercise_diagram WHERE exercise_id=$2", [copy, x.id, s.org, s.userId]);
+          await s.c.query("INSERT INTO exercise_drawing(exercise_id,organization_id,content,updated_by) SELECT $1,$3,content,$4 FROM exercise_drawing WHERE exercise_id=$2", [copy, x.id, s.org, s.userId]);
+          await audit(s.c, s.org, s.userId, "exercise.created", copy);
+        }
+        await s.c.query("UPDATE exercise_offer SET status=$2,decided_by=$3,decided_at=now(),copy_id=$4 WHERE id=$1", [f.id, command.accept ? "accepted" : "refused", s.userId, copy]);
+        await audit(s.c, s.org, s.userId, command.accept ? "exercise.offer.accepted" : "exercise.offer.refused", f.id);
+        return { ok: true as const, id: copy ?? f.id };
       }
       if (command.action === "diagram") {
         await own(command.id);

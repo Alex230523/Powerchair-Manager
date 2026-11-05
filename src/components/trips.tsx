@@ -23,6 +23,9 @@ export const dayLabel = (l: Locale, d: string) =>
     month: "short",
     timeZone: "UTC",
   }).format(new Date(d + "T12:00:00Z"));
+/** A licence's dates keep their year (« 15 juin 2010 »). */
+const fullDay = (l: Locale, d: string) =>
+  new Intl.DateTimeFormat(tag(l), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z"));
 export const timeLabel = (l: Locale, d: string) =>
   new Intl.DateTimeFormat(tag(l), {
     weekday: "short",
@@ -565,17 +568,20 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
     </form>
   );
   return (
-    <Card title={t.fleet} labelledBy="trips-fleet" headingId="trips-fleet" actions={editing === null && (
+    <Card title={t.fleet} labelledBy="trips-fleet" headingId="trips-fleet" actions={data.can.manage && (
           <button type="button" className="button secondary" onClick={() => setEditing("new")}>{t.addFleet}</button>
         )}>
       <p className="muted">{t.fleetIntro}</p>
-      {editing === "new" && form()}
+      {/* 04/11/2026: adding or changing a vehicle opens in a window. */}
+      {editing !== null && (
+        <Modal title={editing === "new" ? t.addFleet : t.editFleet} close={() => setEditing(null)} className="player-dialog event-editor-dialog">
+          {form(data.fleet.find((v) => v.id === editing))}
+        </Modal>
+      )}
       <ul className="profile-list">
         {data.fleet.map((v) => (
           <li key={v.id} data-archived={v.archived || undefined}>
-            {editing === v.id ? (
-              form(v)
-            ) : (
+            {(
               <>
                 <div>
                   <strong>{v.name}</strong>
@@ -608,9 +614,25 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
 
 function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; busy: boolean; post: Post }) {
   const t = tripsCopy[locale];
+  // 04/11/2026: « Ajouter un permis » and « Modifier » open a window (who, categories, since, valid until).
+  const [open, setOpen] = useState<string | null>(null);
   const [cats, setCats] = useState<string[]>([]);
+  const current = data.drivers.find((d) => d.profile_id === open);
+  const show = (id: string) => {
+    setCats(data.drivers.find((d) => d.profile_id === id)?.categories ?? []);
+    setOpen(id);
+  };
   return (
-    <Card title={t.drivers} labelledBy="trips-drivers" headingId="trips-drivers">
+    <Card
+      title={t.drivers}
+      labelledBy="trips-drivers"
+      headingId="trips-drivers"
+      actions={
+        <button type="button" className="button secondary" onClick={() => show("new")}>
+          {t.addLicence}
+        </button>
+      }
+    >
       <p className="muted">{t.driversIntro}</p>
       {data.drivers.length > 0 && (
         <ul className="profile-list">
@@ -620,58 +642,83 @@ function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; bus
                 <strong>{d.full_name}</strong>
                 <p className="muted small">
                   {d.categories.join(", ")}
-                  {d.valid_until && ` · ${t.validUntil} ${dayLabel(locale, d.valid_until)}`}
+                  {d.obtained_on && ` · ${t.since} ${fullDay(locale, d.obtained_on)}`}
+                  {d.valid_until && ` · ${t.validUntil} ${fullDay(locale, d.valid_until)}`}
                 </p>
               </div>
+              <button type="button" className="text-button" onClick={() => show(d.profile_id)}>
+                {t.edit}
+                <span className="sr-only"> : {d.full_name}</span>
+              </button>
             </li>
           ))}
         </ul>
       )}
-      <form
-        className="inline-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          void post(
-            {
-              action: "licence",
-              profileId: String(f.get("profileId")),
-              categories: cats,
-              validUntil: String(f.get("validUntil") ?? "") || null,
-              organizationId: data.organization_id,
-            },
-            t.saved,
-          );
-        }}
-      >
-        <label htmlFor="driver-person">
-          {t.person}
-          <select id="driver-person" name="profileId" required defaultValue="">
-            <option value="" disabled>{t.person}</option>
-            {data.people.map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name}</option>
-            ))}
-          </select>
-        </label>
-        <fieldset className="inline-checks">
-          <legend>{t.categories}</legend>
-          {licenceCategories.map((c) => (
-            <label key={c} className="check">
-              <input
-                type="checkbox"
-                checked={cats.includes(c)}
-                onChange={() => setCats(cats.includes(c) ? cats.filter((x) => x !== c) : [...cats, c])}
-              />
-              {c}
-            </label>
-          ))}
-        </fieldset>
-        <label htmlFor="driver-until">
-          {t.validUntil}
-          <input id="driver-until" name="validUntil" type="date" />
-        </label>
-        <button className="button secondary" disabled={busy}>{t.saveLicence}</button>
-      </form>
+      {open !== null && (
+        <Modal title={current ? t.editLicence : t.addLicence} close={() => setOpen(null)}>
+          <form
+            className="stack-form licence-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              void post(
+                {
+                  action: "licence",
+                  profileId: current?.profile_id ?? String(f.get("profileId")),
+                  categories: cats,
+                  validUntil: String(f.get("validUntil") ?? "") || null,
+                  obtainedOn: String(f.get("obtainedOn") ?? "") || null,
+                  organizationId: data.organization_id,
+                },
+                t.saved,
+              ).then((ok) => ok && setOpen(null));
+            }}
+          >
+            {current ? (
+              <p>
+                <strong>{current.full_name}</strong>
+              </p>
+            ) : (
+              <label htmlFor="driver-person">
+                {t.person}
+                <select id="driver-person" name="profileId" required defaultValue="">
+                  <option value="" disabled>{t.person}</option>
+                  {data.people.map((p) => (
+                    <option key={p.id} value={p.id}>{p.full_name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <fieldset className="inline-checks">
+              <legend>{t.categories}</legend>
+              {licenceCategories.map((c) => (
+                <label key={c} className="check">
+                  <input
+                    type="checkbox"
+                    checked={cats.includes(c)}
+                    onChange={() => setCats(cats.includes(c) ? cats.filter((x) => x !== c) : [...cats, c])}
+                  />
+                  {c}
+                </label>
+              ))}
+            </fieldset>
+            <div className="form-grid">
+              <label htmlFor="driver-since">
+                {t.since}
+                <input id="driver-since" name="obtainedOn" type="date" defaultValue={current?.obtained_on ?? ""} />
+              </label>
+              <label htmlFor="driver-until">
+                {t.validUntil}
+                <input id="driver-until" name="validUntil" type="date" defaultValue={current?.valid_until ?? ""} />
+              </label>
+            </div>
+            <div className="actions">
+              <button className="button" disabled={busy}>{t.saveLicence}</button>
+              <button type="button" className="button secondary" onClick={() => setOpen(null)}>{t.cancel}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </Card>
   );
 }

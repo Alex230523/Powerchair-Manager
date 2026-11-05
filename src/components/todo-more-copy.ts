@@ -11,6 +11,9 @@ type Copy = {
   completionAny: string;
   completionEach: string;
   progress: string;
+  quickMore: string;
+  quickWhere: string;
+  quickWhen: string;
   meeting: string;
   meetingStart: string;
   meetingEnd: string;
@@ -66,6 +69,9 @@ export const todoMoreCopy: Record<Locale, Copy> = {
     completionAny: "dès qu'une personne la coche",
     completionEach: "quand chacun a coché sa part",
     progress: "{done}/{total} faits",
+    quickMore: "Responsables, lieu, date",
+    quickWhere: "Lieu (facultatif)",
+    quickWhen: "Échéance ou date (facultatif)",
     meeting: "A lieu le",
     meetingStart: "Début du rendez-vous",
     meetingEnd: "Fin du rendez-vous",
@@ -120,6 +126,9 @@ export const todoMoreCopy: Record<Locale, Copy> = {
     completionAny: "zodra één persoon ze afvinkt",
     completionEach: "als iedereen zijn deel afvinkte",
     progress: "{done}/{total} klaar",
+    quickMore: "Verantwoordelijken, plaats, datum",
+    quickWhere: "Plaats (optioneel)",
+    quickWhen: "Deadline of datum (optioneel)",
     meeting: "Vindt plaats op",
     meetingStart: "Begin van de afspraak",
     meetingEnd: "Einde van de afspraak",
@@ -174,6 +183,9 @@ export const todoMoreCopy: Record<Locale, Copy> = {
     completionAny: "as soon as one person ticks it",
     completionEach: "when each one ticked his part",
     progress: "{done}/{total} done",
+    quickMore: "People, place, date",
+    quickWhere: "Place (optional)",
+    quickWhen: "Deadline or date (optional)",
     meeting: "Takes place on",
     meetingStart: "Meeting start",
     meetingEnd: "Meeting end",

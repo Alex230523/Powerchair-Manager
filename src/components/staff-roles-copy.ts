@@ -38,6 +38,7 @@ type Copy = {
   column: string;
   tasks: string;
   tasksCount: string;
+  nextTasks: string;
   formations: string;
   formationsCount: string;
   formationOn: string;
@@ -101,6 +102,7 @@ const fr: Copy = {
   column: "Rôle",
   tasks: "Tâches",
   tasksCount: "{open} ouvertes · {late} en retard",
+  nextTasks: "Prochaines tâches",
   formations: "Formations",
   formationsCount: "{n} validée(s)",
   formationOn: "{title} ({date})",
@@ -164,6 +166,7 @@ const nl: Copy = {
   column: "Rol",
   tasks: "Taken",
   tasksCount: "{open} open · {late} te laat",
+  nextTasks: "Volgende taken",
   formations: "Opleidingen",
   formationsCount: "{n} goedgekeurd",
   formationOn: "{title} ({date})",
@@ -227,6 +230,7 @@ const en: Copy = {
   column: "Role",
   tasks: "Tasks",
   tasksCount: "{open} open · {late} late",
+  nextTasks: "Next tasks",
   formations: "Courses",
   formationsCount: "{n} validated",
   formationOn: "{title} ({date})",

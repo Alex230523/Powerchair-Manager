@@ -162,6 +162,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 03/11/2026 | [CI au vert](evolutions/2026-11-03-zzu-ci-verte.md) |
 | 04/11/2026 | [Aperçu : migrations 0086 et 0087](evolutions/2026-11-04-zzv-migrations-apercu.md) |
 | 04/11/2026 | [Ergonomie : champs, à faire, sections du formulaire, menu](evolutions/2026-11-04-zzw-ergonomie.md) |
+| 04/11/2026 | [Retours : retraits, to-do, fenêtres, fiches entre clubs, matchs, transferts BPCF](evolutions/2026-11-04-zzx-retours.md) |
 
 ## Convention
 

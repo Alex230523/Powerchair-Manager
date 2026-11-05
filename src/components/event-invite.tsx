@@ -46,8 +46,12 @@ export function InvitePicker({
   const people = state.groups.filter((g) => g.kind === "person").map((g) => g.ref!);
   const serialized = JSON.stringify(payload);
 
+  // A coach plans for one of their teams: no preview (the server would refuse it) until a team is chosen.
+  const ready = manage || !!teamId;
+  const shown = ready ? preview : null;
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
+    if (!ready) return;
     timer.current = setTimeout(() => {
       fetch("/api/calendar", {
         method: "POST",
@@ -60,7 +64,7 @@ export function InvitePicker({
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [serialized, teamId, organizationId]);
+  }, [serialized, teamId, organizationId, ready]);
 
   return (
     <fieldset className="event-section" id="event-invitations">
@@ -166,12 +170,12 @@ export function InvitePicker({
       </div>
       <details className="event-invited" aria-live="polite">
         <summary>
-          {t.invited(preview?.count ?? 0)}
-          {preview && preview.count > 0 && <span className="muted"> · {t.showList}</span>}
+          {t.invited(shown?.count ?? 0)}
+          {shown && shown.count > 0 && <span className="muted"> · {t.showList}</span>}
         </summary>
-        {preview && preview.count > 0 && (
+        {shown && shown.count > 0 && (
           <ul className="plain-list">
-            {preview.people.map((name, i) => (
+            {shown.people.map((name, i) => (
               <li key={name + i}>{name}</li>
             ))}
           </ul>

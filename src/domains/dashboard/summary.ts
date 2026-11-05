@@ -23,6 +23,7 @@ export const todoKeys = [
   "documentsExpiring",
   "teamsOverCapacity",
   "minorsWithoutGuardian",
+  "exerciseOffers",
 ] as const;
 export type TodoKey = (typeof todoKeys)[number];
 export type Todo = { key: TodoKey; count: number; href: string; tone: Tone };
@@ -47,6 +48,8 @@ const todoMeta: Record<TodoKey, { href: string; tone: Tone }> = {
   teamsOverCapacity: { href: "/teams", tone: "warning" },
   // 8: minors nobody answers for.
   minorsWithoutGuardian: { href: "/players?missing=guardian", tone: "danger" },
+  // 04/11/2026: exercise sheets another club sent, waiting for the presidency.
+  exerciseOffers: { href: "/exercises#exercise-offers", tone: "info" },
 };
 /**
  * Keeps only actionable items (count > 0) that the caller computed under the
@@ -146,6 +149,8 @@ export type Metric = {
   date?: string;
   /** A second figure said in the hint (chairs in service, say). */
   extra?: number;
+  /** The season's players by classification (04/11/2026: a small chart on hover). */
+  split?: { pf1: number; pf2: number; other: number };
 };
 export function metric(
   key: MetricKey,

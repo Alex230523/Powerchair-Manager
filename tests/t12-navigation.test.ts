@@ -54,7 +54,8 @@ describe("every moved block in Réglages, found by the search", () => {
     expect(s).toContain('<Privacy locale={locale} embedded />');
     expect(s).toContain('<People locale={locale} management embedded />');
     expect(s).toContain('<div id="settings-presidency">');
-    expect(readFileSync("src/components/teams.tsx", "utf8")).toContain('<ClubIdentity locale={locale} only="teams" />');
+    // 04/11/2026: « Équipes du club » repeated the cards above it on « Mes équipes »: removed.
+    expect(readFileSync("src/components/teams.tsx", "utf8")).not.toContain("<ClubIdentity");
     expect(readFileSync("src/components/home.tsx", "utf8")).toContain('href("/settings/club")');
   });
 });

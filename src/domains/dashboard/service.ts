@@ -276,6 +276,9 @@ export async function computeFor(
       "SELECT count(*) FROM training_request WHERE organization_id=$1 AND status='approved' AND valid_until BETWEEN CURRENT_DATE AND CURRENT_DATE+60",
       [org],
     );
+  // 04/11/2026: exercise sheets sent by another club, for its presidency.
+  if (club && a.role === "club_president")
+    counts.exerciseOffers = await count(c, "SELECT count(*) FROM exercise_offer WHERE to_organization_id=$1 AND status='pending'", [org]);
   // Federation: club requests waiting for a decision.
   if (!club && fedCan(a.role, a.grants, "federation.courses")) {
     scopes.push("courses");
@@ -496,7 +499,7 @@ export async function computeFor(
     const k = await seasonKeyFigures(c, org, seasonRow, teamId ? [teamId] : null);
     const season = `?season=${seasonRow.id}`;
     metrics.push(
-      metric("seasonPlayers", k.players, { href: `/players${season}` }),
+      metric("seasonPlayers", k.players, { href: `/players${season}`, split: { pf1: k.pf1, pf2: k.pf2, other: Math.max(0, k.players - k.pf1 - k.pf2) } }),
       metric("seasonTeams", k.teams, { href: `/teams${season}` }),
       metric("seasonCoaches", k.coaches, { href: `/coaches${season}` }),
       ...(on("equipment") ? [metric("chairs", k.chairs, { href: "/equipment", extra: k.chairs_service })] : []),

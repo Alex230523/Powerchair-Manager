@@ -281,7 +281,7 @@ export function TournamentMatches({ locale, view }: { locale: Locale; view: View
         view.tournament.map((g) => (
           <section key={g.id} className="tournament-day" aria-labelledby={`tday-${g.id}`}>
             <h3 id={`tday-${g.id}`}>
-              {g.tournament} · {g.label || day(g.day)} · {day(g.day)}
+              {g.tournament} · {g.label ? `${g.label} · ${day(g.day)}` : day(g.day)}
             </h3>
             {/* 5: the same line as every match, the tournament one click away. */}
             <ul className="match-list">
@@ -299,7 +299,8 @@ export function TournamentMatches({ locale, view }: { locale: Locale; view: View
                       ours: m.at_home ? m.home_score : m.away_score,
                       theirs: m.at_home ? m.away_score : m.home_score,
                       status: m.home_score !== null && m.away_score !== null ? "played" : "scheduled",
-                      context: { kind: "tournament", name: g.tournament, day: `${g.label || day(g.day)} · ${t.stage[m.stage] ?? m.stage}`, href: `/${locale}/tournaments/${m.tournament_id}` },
+                      // 04/11/2026: the heading already says the tournament and the day; each line keeps only its stage.
+                      context: { kind: "tournament", name: t.stage[m.stage] ?? m.stage, href: `/${locale}/tournaments/${m.tournament_id}` },
                     }}
                   />
                 </li>

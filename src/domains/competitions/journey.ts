@@ -23,9 +23,9 @@ import { exerciseRights, tacticOptions, tacticsOf } from "../exercises/service";
  */
 const id = z.uuid();
 export const checklistKeys = ["chairs", "batteries", "balls", "shirts", "firstAid", "transport"] as const;
-export const liveKinds = ["goal", "goal_against", "assist", "yellow", "red", "sub_in", "sub_out", "timeout"] as const;
+export const liveKinds = ["goal", "goal_against", "assist", "yellow", "red", "sub_in", "sub_out", "timeout", "corner", "corner_against"] as const;
 /** 14: the events that name nobody. */
-export const teamKinds = ["goal_against", "timeout"] as const;
+export const teamKinds = ["goal_against", "timeout", "corner", "corner_against"] as const;
 export const journeyCommand = z.discriminatedUnion("action", [
   /** A match created before A5, or whose event was removed: the call-up now. */
   z.object({ action: z.literal("convene"), id }),
@@ -37,6 +37,8 @@ export const journeyCommand = z.discriminatedUnion("action", [
       .max(30),
   }),
   z.object({ action: z.literal("publish"), id, published: z.boolean() }),
+  /** 04/11/2026: the line-up revealed on its own, this many minutes before kick-off (null: by hand). */
+  z.object({ action: z.literal("reveal"), id, minutes: z.number().int().min(0).max(10080).nullable() }),
   z.object({ action: z.literal("checklist"), id, items: z.array(z.object({ key: z.enum(checklistKeys), responsibleId: id.nullable() })).min(1).max(checklistKeys.length) }),
   z.object({ action: z.literal("live"), id, clientId: id, kind: z.enum(liveKinds), profileId: id.nullable(), minute: z.number().int().min(0).max(200).nullable() }),
   z.object({ action: z.literal("undoLive"), id, eventId: id }),
@@ -100,6 +102,9 @@ type Row = {
   their_score: number | null;
   calendar_event_id: string | null;
   lineup_published_at: string | null;
+  lineup_reveal_minutes: number | null;
+  /** Published by hand, or the automatic reveal time has come. */
+  lineup_revealed: boolean;
   validated_at: string | null;
   version: number;
   place_id: string | null;
@@ -108,7 +113,8 @@ async function matchOf(c: PoolClient, org: string, matchId: string, lock = false
   const m = (
     await c.query(
       `SELECT m.id,m.team_id,t.name AS team,m.opponent,m.home,m.kind,m.competition,m.starts_at,to_char(m.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS local_start,
-              m.venue,m.status,m.our_score,m.their_score,m.calendar_event_id,m.lineup_published_at,m.validated_at,m.version,m.place_id
+              m.venue,m.status,m.our_score,m.their_score,m.calendar_event_id,m.lineup_published_at,m.validated_at,m.version,m.place_id,m.lineup_reveal_minutes,
+              (m.lineup_published_at IS NOT NULL OR (m.lineup_reveal_minutes IS NOT NULL AND now() >= m.starts_at - make_interval(mins => m.lineup_reveal_minutes))) AS lineup_revealed
          FROM match m JOIN team t ON t.id=m.team_id WHERE m.id=$1 AND m.organization_id=$2${lock ? " FOR UPDATE OF m" : ""}`,
       [matchId, org],
     )
@@ -209,7 +215,7 @@ export async function journeyView(db: Pool, p: Principal, matchId: string) {
     const m = await matchOf(c, org, matchId);
     if (!v.visibleTeams.has(m.team_id)) throw new AccessError("NOT_FOUND", 404);
     const manage = manageable(s, v.visibleTeams).has(m.team_id);
-    const published = !!m.lineup_published_at;
+    const published = m.lineup_revealed;
     const done = m.status === "played";
     if (!manage) {
       // A player or a parent: their call-up, the published line-up, the result.
@@ -331,6 +337,10 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
       }
       case "publish": {
         await c.query("UPDATE match SET lineup_published_at=CASE WHEN $3 THEN now() END WHERE id=$1 AND organization_id=$2", [m.id, org, cmd.published]);
+        break;
+      }
+      case "reveal": {
+        await c.query("UPDATE match SET lineup_reveal_minutes=$3 WHERE id=$1 AND organization_id=$2", [m.id, org, cmd.minutes]);
         break;
       }
       case "checklist": {

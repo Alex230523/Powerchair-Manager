@@ -7,6 +7,7 @@ type Copy = {
   licenceHint: string;
   categories: string;
   validUntil: string;
+  since: string;
   noDate: string;
   copy: string;
   copyOf: string;
@@ -44,12 +45,13 @@ export const coachSpaceCopy: Record<"fr" | "nl" | "en", Copy> = {
     licenceHint: "Visible seulement par la personne, le président et ceux qui organisent les déplacements. Un rappel part 30 jours avant l'expiration.",
     categories: "Catégories",
     validUntil: "Valable jusqu'au",
+    since: "Depuis le",
     noDate: "Sans date de validité",
     copy: "Copie du permis (photo ou PDF, facultatif)",
     copyOf: "Voir la copie : {name}",
     removeCopy: "Retirer la copie",
     none: "Aucun permis déclaré.",
-    declare: "Déclarer un permis",
+    declare: "Ajouter un permis",
     edit: "Modifier le permis",
     save: "Enregistrer",
     cancel: "Annuler",
@@ -79,12 +81,13 @@ export const coachSpaceCopy: Record<"fr" | "nl" | "en", Copy> = {
     licenceHint: "Enkel zichtbaar voor de persoon, de voorzitter en wie de verplaatsingen organiseert. 30 dagen voor de vervaldatum volgt een herinnering.",
     categories: "Categorieën",
     validUntil: "Geldig tot",
+    since: "Sinds",
     noDate: "Zonder geldigheidsdatum",
     copy: "Kopie van het rijbewijs (foto of pdf, optioneel)",
     copyOf: "De kopie bekijken: {name}",
     removeCopy: "De kopie verwijderen",
     none: "Geen rijbewijs aangegeven.",
-    declare: "Een rijbewijs aangeven",
+    declare: "Een rijbewijs toevoegen",
     edit: "Het rijbewijs wijzigen",
     save: "Opslaan",
     cancel: "Annuleren",
@@ -114,12 +117,13 @@ export const coachSpaceCopy: Record<"fr" | "nl" | "en", Copy> = {
     licenceHint: "Seen only by the person, the president and those who organise the trips. A reminder goes out 30 days before it expires.",
     categories: "Categories",
     validUntil: "Valid until",
+    since: "Held since",
     noDate: "No expiry date",
     copy: "Copy of the licence (photo or PDF, optional)",
     copyOf: "See the copy: {name}",
     removeCopy: "Remove the copy",
     none: "No licence declared.",
-    declare: "Declare a licence",
+    declare: "Add a licence",
     edit: "Edit the licence",
     save: "Save",
     cancel: "Cancel",

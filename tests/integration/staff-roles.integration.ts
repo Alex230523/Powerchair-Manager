@@ -55,9 +55,9 @@ const roleId = async (key: string, org = clubA) => (await db.query("SELECT id FR
 
 it("creates the eight roles for each club, with no sensitive right", async () => {
   const a = await staffRolesView(db, presidentA);
-  expect(a.roles.map((r) => r.key)).toEqual(["head-coach", "assistant-coach", "team-manager", "equipment-manager", "transport-manager", "treasurer", "secretary", "recruitment"]);
+  expect(a.roles.map((r) => r.key)).toEqual(["head-coach", "assistant-coach", "team-manager", "equipment-manager", "transport-manager", "treasurer", "secretary"]);
   expect(a.roles.flatMap((r) => r.grants).some((g) => ["people.sensitive", "documents.sensitive", "people.export"].includes(g))).toBe(false);
-  expect((await staffRolesView(db, presidentB)).roles).toHaveLength(8);
+  expect((await staffRolesView(db, presidentB)).roles).toHaveLength(7);
   expect((await staffRolesView(db, coach)).can.manage).toBe(false);
 });
 
@@ -109,6 +109,6 @@ it("shows the roles, tasks and courses to the president, not to a coach", async 
   const filters = filterSchema.parse({ directoryRole: "coach" });
   const president = await peopleView(db, presidentA, filters);
   const profile = president.profiles.find((x) => x.full_name === "Coach Trésorier")!;
-  expect(president.coachExtras?.[profile.id]).toMatchObject({ roles: [{ name: { fr: "Trésorier" } }], tasks: { open: 1, late: 1 }, formations: [] });
+  expect(president.coachExtras?.[profile.id]).toMatchObject({ roles: [{ name: { fr: "Trésorier" } }], tasks: { open: 1, late: 1 }, next: [{ title: "En retard" }], formations: [] });
   expect((await peopleView(db, coachTwo, filters)).coachExtras).toBeNull();
 });

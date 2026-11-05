@@ -52,6 +52,9 @@ export const exerciseCommand = z.discriminatedUnion("action", [
   // 4: « Proposer à la bibliothèque fédérale », and taking the proposal back.
   z.object({ action: z.literal("propose"), id: z.uuid() }),
   z.object({ action: z.literal("unpropose"), id: z.uuid() }),
+  // 04/11/2026: send a sheet to another club of the federation; its presidency accepts or refuses.
+  z.object({ action: z.literal("send"), id: z.uuid(), clubId: z.uuid(), message: text(500).default("") }),
+  z.object({ action: z.literal("offerDecide"), offerId: z.uuid(), accept: z.boolean() }),
 ]);
 export type ExerciseCommand = z.infer<typeof exerciseCommand>;
 

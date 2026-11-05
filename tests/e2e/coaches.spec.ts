@@ -78,7 +78,8 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await page.getByRole("combobox", { name: "Catégorie", exact: true }).selectOption("events");
     await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
     await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).click();
-    await expect(page.getByText("Aucune tâche ne vous est attribuée.")).toBeVisible();
+    // 04/11/2026: a done task stays in the list, struck through, and can be reopened.
+    await expect(page.getByRole("checkbox", { name: "Rouvrir : Réserver la camionnette" })).toBeChecked();
     await axe(page, "tasks");
 
     // 3. The coach's profile: « À faire » tab and the driving licence.
@@ -88,12 +89,16 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await expect(page.getByRole("tabpanel")).toContainText("Choisir les fiches");
     await page.getByRole("tab", { name: "Profil" }).click();
     const licence = page.locator("article.profile-card").filter({ has: page.getByRole("heading", { name: "Permis de conduire" }) });
-    await licence.getByRole("button", { name: "Déclarer un permis" }).click();
-    await licence.getByRole("checkbox", { name: "B", exact: true }).check();
-    await licence.getByLabel("Valable jusqu'au").fill("2030-05-01");
-    await licence.getByLabel("Copie du permis (photo ou PDF, facultatif)").setInputFiles({ name: "permis.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\npermis") });
+    // 04/11/2026: « Ajouter un permis » opens a window with « Depuis le ».
+    await licence.getByRole("button", { name: "Ajouter un permis" }).click();
+    const licenceDialog = page.getByRole("dialog", { name: "Ajouter un permis" });
+    await licenceDialog.getByRole("checkbox", { name: "B", exact: true }).check();
+    await licenceDialog.getByLabel("Depuis le").fill("2012-03-01");
+    await licenceDialog.getByLabel("Valable jusqu'au").fill("2030-05-01");
+    await licenceDialog.getByLabel("Copie du permis (photo ou PDF, facultatif)").setInputFiles({ name: "permis.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7\npermis") });
     await axe(page, "licence form");
-    await licence.getByRole("button", { name: "Enregistrer" }).click();
+    await licenceDialog.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(licence.getByText("1 mars 2012")).toBeVisible();
     await expect(licence.getByText("Déclaré", { exact: true })).toBeVisible();
     await expect(licence.getByRole("link", { name: "Voir la copie : permis.pdf" })).toBeVisible();
 

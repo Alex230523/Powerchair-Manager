@@ -21,6 +21,8 @@ export const contactTags = [
   "medical",
   "volunteer",
   "rental",
+  /** 04/11/2026: partners who send new players (in place of the recruitment module). */
+  "recruitment",
   "other",
 ] as const;
 export type ContactTag = (typeof contactTags)[number];

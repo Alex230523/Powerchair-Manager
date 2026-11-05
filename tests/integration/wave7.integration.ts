@@ -196,10 +196,12 @@ it("prepares a trip with participants, an adapted vehicle and care, each role se
   await tripExecute(
     db,
     president,
-    { action: "licence", profileId: coachProfile, categories: ["B", "D1"], validUntil: inDays(1000) },
+    { action: "licence", profileId: coachProfile, categories: ["B", "D1"], validUntil: inDays(1000), obtainedOn: "2010-06-15" },
     club,
   );
   expect(((await tripDetail(db, president, id)).vehicles as Round[])[0].warnings).toEqual([]);
+  // 04/11/2026: since when the licence is held.
+  expect((await db.query("SELECT obtained_on::text AS d FROM driver_licence WHERE profile_id=$1", [coachProfile])).rows[0].d).toBe("2010-06-15");
 
   // Care instruction on Léa's profile, then ticked by the travelling coach.
   const saved = await playerProfileExecute(

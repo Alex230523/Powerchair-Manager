@@ -193,7 +193,7 @@ export async function tripsView(db: Pool, p: Principal) {
       drivers: x.manage
         ? (
             await x.c.query(
-              "SELECT d.profile_id,cp.full_name,d.categories,d.valid_until::text AS valid_until,d.verified_on IS NOT NULL AS verified FROM driver_licence d JOIN club_person cp ON cp.id=d.profile_id WHERE d.organization_id=$1 ORDER BY cp.full_name",
+              "SELECT d.profile_id,cp.full_name,d.categories,d.valid_until::text AS valid_until,d.obtained_on::text AS obtained_on,d.verified_on IS NOT NULL AS verified FROM driver_licence d JOIN club_person cp ON cp.id=d.profile_id WHERE d.organization_id=$1 ORDER BY cp.full_name",
               [x.org],
             )
           ).rows
@@ -988,8 +988,8 @@ export async function tripExecute(
             ]);
           else
             await x.c.query(
-              "INSERT INTO driver_licence(profile_id,organization_id,categories,valid_until,updated_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT(profile_id) DO UPDATE SET categories=EXCLUDED.categories,valid_until=EXCLUDED.valid_until,updated_by=EXCLUDED.updated_by,updated_at=now()",
-              [input.profileId, x.org, [...new Set(input.categories)], input.validUntil, x.userId],
+              "INSERT INTO driver_licence(profile_id,organization_id,categories,valid_until,updated_by,obtained_on) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(profile_id) DO UPDATE SET categories=EXCLUDED.categories,valid_until=EXCLUDED.valid_until,obtained_on=EXCLUDED.obtained_on,updated_by=EXCLUDED.updated_by,updated_at=now()",
+              [input.profileId, x.org, [...new Set(input.categories)], input.validUntil, x.userId, input.obtainedOn ?? null],
             );
           return { id: input.profileId };
         }

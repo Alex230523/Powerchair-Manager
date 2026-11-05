@@ -16,6 +16,7 @@ import type { Locale } from "@/lib/locale";
 import { homeCopy } from "./home-copy";
 import { boardCopy } from "./home-board-copy";
 import { HomeFocus } from "./home-focus";
+import { cssVars } from "./css-vars";
 import { Icon, type IconName } from "./icons";
 import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
@@ -149,11 +150,14 @@ const todoIcons: Record<Dashboard["todos"][number]["key"], IconName> = {
   documentsExpiring: "document",
   teamsOverCapacity: "team",
   minorsWithoutGuardian: "players",
+  exerciseOffers: "clipboardList",
 };
 /** The four figures read first; the rest unfolds behind "Tous les chiffres". */
 const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendingResponses", "waitingList"];
-/** The president's key figures (wave 16, A), in this order, the treasury first and full width. */
-const presidentMetrics: Metric["key"][] = ["treasury", "available", "forecastLow", "seasonPlayers", "seasonTeams", "seasonCoaches", "chairs", "trainingsDone", "matchesPlayed"];
+/** The president's key figures (wave 16, A), in this order. */
+const presidentMetrics: Metric["key"][] = ["seasonPlayers", "seasonTeams", "seasonCoaches", "trainingsDone", "matchesPlayed", "chairs", "pendingResponses", "duesNext30"];
+/** 04/11/2026: the money figures stay in the money card just below and in Finances, not twice on the home. */
+const moneyMetrics: Metric["key"][] = ["treasury", "available"];
 const mondayOf = (iso: string) => {
   const d = new Date(iso.slice(0, 10) + "T12:00:00Z");
   const day = (d.getUTCDay() + 6) % 7;
@@ -189,7 +193,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
     : data.todos.reduce((n, item) => n + item.count, 0);
   const keyFigures = data.metrics.some((m) => m.key === "seasonPlayers");
   const leading = keyFigures ? presidentMetrics : firstMetrics;
-  const ordered = [...data.metrics].sort((a, b) => {
+  const ordered = [...data.metrics].filter((m) => !moneyMetrics.includes(m.key)).sort((a, b) => {
     const ia = leading.indexOf(a.key),
       ib = leading.indexOf(b.key);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
@@ -332,7 +336,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
               <Card title={t.figures} labelledBy="dash-figures" headingId="dash-figures">
                 <ul className="dash-figures stat-row-grid" data-cols="2">
                   {shownMetrics.map((m) => (
-                    <li key={m.key} data-wide={(keyFigures && m.key === "treasury") || undefined}>
+                    <li key={m.key}>
                       <MetricCard locale={locale} metric={m} />
                     </li>
                   ))}
@@ -509,7 +513,34 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
     : metric.key === "chairs" && metric.extra
       ? boardCopy[locale].chairsService(metric.extra)
       : t.hint;
-  return <KpiCard label={t.label} value={value} description={hint || undefined} icon={metricIcons[metric.key]} href={metric.href ? `/${locale}${metric.href}` : undefined} />;
+  const card = <KpiCard label={t.label} value={value} description={hint || undefined} icon={metricIcons[metric.key]} href={metric.href ? `/${locale}${metric.href}` : undefined} />;
+  if (!metric.split || !metric.value) return card;
+  // 04/11/2026: on hover or focus, the players by classification in a small grey bubble.
+  const b = boardCopy[locale];
+  const parts = [
+    { key: "pf1", label: "PF1", n: metric.split.pf1 },
+    { key: "pf2", label: "PF2", n: metric.split.pf2 },
+    { key: "other", label: b.splitOther, n: metric.split.other },
+  ].filter((x) => x.n > 0);
+  return (
+    <div className="metric-split">
+      {card}
+      <div className="metric-split-bubble" role="tooltip">
+        <p className="metric-split-title">{b.splitTitle}</p>
+        <ul>
+          {parts.map((x) => (
+            <li key={x.key}>
+              <span>{x.label}</span>
+              <span className="metric-split-bar" aria-hidden="true">
+                <span data-part={x.key} style={cssVars({ share: `${Math.round((x.n / metric.value) * 100)}%` })} />
+              </span>
+              <strong>{x.n}</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
 }
 const badgeTone = (tone: "ok" | "warn" | "low") => (tone === "ok" ? "success" : tone === "warn" ? "warning" : "danger");
 const boardIcons: Record<"documents" | "moneyTasks" | "clubStatus", IconName> = { documents: "document", moneyTasks: "handshake", clubStatus: "landmark" };

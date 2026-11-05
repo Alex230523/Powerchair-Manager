@@ -99,6 +99,7 @@
   --space-12: 3rem;
   /* 1: one height for the fields, menus and buttons that share a row. */
   --control-height: 2.75rem;
+  /* 04/11/2026: 20 px, the label around it stays the 44 px target. */
   --check-size: 24px;
 
   /* Text scale: nothing below 12 px. */
@@ -731,7 +732,11 @@ input[type="radio"] {
 }
 .check > input[type="checkbox"],
 .check > input[type="radio"] {
-  margin-top: calc((1lh - var(--check-size)) / 2);
+  /* Never above its line: a negative margin pushed the box into the text above. */
+  margin-top: max(0px, calc((1lh - var(--check-size)) / 2));
+}
+.check {
+  min-height: 24px;
 }
 /* A form's or a table's own sizes never stretch a box (audit 23). */
 :is(.check, .dg-select, .kind-option, .invite-toggle) > input:is([type="checkbox"], [type="radio"]) {
@@ -947,7 +952,7 @@ caption {
   width: var(--check-size);
   height: var(--check-size);
   min-height: 0;
-  margin: calc((1lh - var(--check-size)) / 2) 0 0;
+  margin: max(0px, calc((1lh - var(--check-size)) / 2)) 0 0;
   flex-shrink: 0;
 }
 .access fieldset {
@@ -3295,12 +3300,13 @@ caption {
 }
 .choice-group {
   display: grid;
-  gap: 2px;
+  gap: var(--space-2);
   margin: 12px 0;
   padding: 10px 14px;
 }
 .choice-group legend {
   font-weight: 600;
+  margin-bottom: var(--space-1);
 }
 .field-extras {
   display: grid;
@@ -3910,6 +3916,13 @@ input.narrow {
   background: var(--surface);
   display: grid;
   gap: 8px;
+  /* 04/11/2026: a short card next to a tall one kept stretching its choice into a big oval. */
+  align-content: start;
+}
+.module-right > .segmented {
+  align-self: start;
+  justify-self: start;
+  height: auto;
 }
 .module-right legend {
   padding: 0 4px;
@@ -4840,6 +4853,9 @@ input.narrow {
 .stat-row-grid[data-cols="2"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.stat-row-grid[data-cols="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .stat-row-grid[data-cols="5"] {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -5613,6 +5629,7 @@ input.narrow {
   .todo-list,
   .dash-figures,
   .stat-row-grid[data-cols="4"],
+  .stat-row-grid[data-cols="3"],
   .stat-row-grid[data-cols="2"] {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -8149,8 +8166,11 @@ details.event-section > summary {
   background: var(--surface-soft);
 }
 .chip-check input {
+  flex: none;
   width: 18px;
   height: 18px;
+  min-height: 0;
+  margin: 0;
 }
 .event-invited > summary {
   cursor: pointer;
@@ -10969,31 +10989,6 @@ ul.task-page li {
 .incident-card {
   padding: 16px;
 }
-.incident-title {
-  font-size: var(--text-lg);
-  margin: 0 0 6px;
-}
-.incident-health {
-  margin-top: 12px;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
-}
-.incident-health h3 {
-  font-size: var(--text-base);
-}
-.incident-people {
-  display: grid;
-  gap: 2px;
-  max-height: 260px;
-  overflow-y: auto;
-}
-.incident-people .check {
-  min-height: 44px;
-}
-.incident-insurance {
-  display: grid;
-  gap: 12px;
-}
 
 /* B9: open events. */
 .open-event-detail {
@@ -12252,67 +12247,6 @@ ul.task-page li {
   outline-offset: 2px;
 }
 
-/* H3: mini polls. */
-.poll-list {
-  display: grid;
-  gap: var(--space-3);
-  list-style: none;
-  padding: 0;
-}
-.poll-answer fieldset,
-.poll-form fieldset {
-  margin-block: var(--space-2);
-}
-.poll-choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-}
-.poll-choices .check,
-.poll-answer .check,
-.poll-form .check {
-  min-height: 44px;
-  align-items: center;
-}
-.poll-bars {
-  display: grid;
-  gap: var(--space-2);
-  list-style: none;
-  padding: 0;
-}
-.poll-bars li {
-  display: grid;
-  gap: var(--space-1);
-}
-.poll-bar {
-  display: block;
-  height: 0.5rem;
-  width: calc(var(--value, 0) * 1%);
-  min-width: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--primary);
-}
-.poll-options {
-  display: grid;
-  gap: var(--space-3);
-  padding-left: var(--space-4);
-}
-.poll-form {
-  display: grid;
-  gap: var(--space-2);
-  max-width: 44rem;
-  margin-block: var(--space-4);
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-.poll-form input:not([type="checkbox"], [type="radio"]),
-.poll-form select,
-.poll-form textarea {
-  width: 100%;
-}
-
 /* 9: reserved funds and the cash in three figures. */
 .treasury {
   display: grid;
@@ -12476,44 +12410,6 @@ ul.task-page li {
   color: var(--muted);
   font-size: var(--text-sm);
 }
-
-/* H1: recruitment, a board by stage (scrolls sideways inside itself, never the page). */
-.prospect-board {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(15rem, 1fr);
-  gap: var(--space-3);
-  overflow-x: auto;
-  min-width: 0;
-  max-width: 100%;
-  padding-block-end: var(--space-2);
-  margin-block: var(--space-3);
-}
-/* On a phone the steps follow each other: no board wider than the screen. */
-@media (max-width: 640px) {
-  .prospect-board {
-    grid-auto-flow: row;
-    grid-auto-columns: auto;
-  }
-}
-.prospect-column {
-  display: grid;
-  align-content: start;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
-}
-.prospect-column h2 {
-  font-size: var(--text-md);
-  margin: 0;
-}
-.prospect-column select,
-.prospect-list select {
-  min-height: 44px;
-  max-width: 100%;
-}
 .partner-line {
   padding-block: var(--space-2);
   border-bottom: 1px solid var(--border);
@@ -12559,6 +12455,21 @@ ul.task-page li {
   font-weight: 700;
   font-size: var(--text-lg);
   font-variant-numeric: tabular-nums;
+}
+.match-score[data-outcome] {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.match-score[data-outcome="win"] {
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+.match-score[data-outcome="loss"] {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+.match-score[data-outcome="draw"] {
+  background: var(--surface-soft);
 }
 .match-context {
   font-size: var(--text-sm);
@@ -12922,4 +12833,257 @@ textarea:not(.command-input textarea) {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+/* The to-do, lighter (04/11/2026): one line per task, the details in its window. */
+ul.task-page > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+ul.task-page > li .task-check {
+  grid-column: 1;
+  min-height: 0;
+  font-weight: 500;
+}
+ul.task-page > li .task-meta {
+  grid-column: 1;
+  padding-inline-start: calc(var(--check-size) + var(--space-2));
+}
+ul.task-page > li .task-open {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 44px;
+}
+ul.task-page > li[data-status="done"] .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+/* A done task stays readable (contrast AA): struck through, never faded. */
+.task-quick {
+  display: grid;
+  gap: var(--space-2);
+}
+.task-quick-main {
+  display: flex;
+  gap: var(--space-2);
+}
+.task-quick-main input {
+  flex: 1;
+  min-width: 0;
+}
+.task-quick-more > summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.task-quick-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--space-3);
+}
+.task-detail-tools {
+  align-items: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* Key figures of the home (04/11/2026): every tile the same size; « Joueurs » shows PF1 and PF2 on hover. */
+.dash-figures {
+  grid-auto-rows: 1fr;
+}
+.dash-figures > li {
+  display: grid;
+}
+.dash-figures > li > *,
+.dash-figures .metric-split > .stat-card {
+  height: 100%;
+}
+.metric-split {
+  position: relative;
+  display: grid;
+}
+.metric-split-bubble {
+  position: absolute;
+  z-index: 20;
+  inset-inline-start: 0;
+  top: calc(100% + var(--space-1));
+  width: max-content;
+  min-width: 14rem;
+  max-width: min(18rem, 80vw);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--heading);
+  color: var(--surface);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-card);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--transition);
+  pointer-events: none;
+}
+.metric-split:hover .metric-split-bubble,
+.metric-split:focus-within .metric-split-bubble {
+  visibility: visible;
+  opacity: 1;
+}
+.metric-split-title {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+.metric-split-bubble ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.metric-split-bubble li {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(4rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.metric-split-bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface) 25%, transparent);
+  overflow: hidden;
+}
+.metric-split-bar > span {
+  display: block;
+  height: 100%;
+  width: var(--share);
+  background: var(--surface);
+}
+.metric-split-bar > span[data-part="pf2"] {
+  background: var(--chart-3);
+}
+
+/* The event form in its window (04/11/2026): wide enough for two columns of fields. */
+.event-editor-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
+/* A card that folds (04/11/2026, announced absences): the title is the button. */
+.fold-card {
+  padding: 0;
+}
+.fold-card > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-4) var(--space-6);
+  cursor: pointer;
+  list-style: none;
+}
+.fold-card > summary::-webkit-details-marker {
+  display: none;
+}
+.fold-card > summary::after {
+  content: "";
+  margin-inline-start: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform var(--transition);
+}
+.fold-card[open] > summary::after {
+  transform: rotate(-135deg);
+}
+.fold-card > summary h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.fold-card > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.fold-card > .card-body {
+  padding: 0 var(--space-6) var(--space-5);
+}
+
+/* Rien / Lecture / Modification (04/11/2026): each choice a rounded pill inside the frame, the chosen one filled. */
+.module-right > .segmented {
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-soft);
+}
+.module-right .segment span {
+  border-left: 0;
+  border-radius: var(--radius-pill);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding-inline: 14px;
+}
+
+/* A federation fee's tools (04/11/2026): its amount, then « Archiver ». */
+.affiliation-fee-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.affiliation-fee-tools input {
+  width: 7.5rem;
+  margin: 0;
+}
+
+/* Lot I (04/11/2026): in every filter bar, a search field and a menu are the same box, side by side, aligned on their bottom edge. */
+input[type="search"] {
+  appearance: none;
+}
+:is(.toolbar-filters, .directory-filters) {
+  align-items: flex-end;
+}
+:is(.toolbar-filters, .directory-filters) :is(input, select) {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--control-height);
+  margin-top: 6px;
+  padding-block: 0;
+}
+:is(.toolbar-filters, .directory-filters) label {
+  min-height: 0;
+}
+/* A form row keeps its fields on one line even when a label wraps (« Lieu du club » in the storage places). */
+.form-grid > label:has(> :is(input:not([type="checkbox"], [type="radio"]), select)) {
+  align-self: end;
+}
+.form-grid > label > select {
+  height: var(--control-height);
+}
+/* Lot H (04/11/2026): sheets received from another club. */
+.exercise-offers {
+  margin-block: var(--space-4);
+}
+.offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* Lot D (04/11/2026): a coach's next tasks in the grey bubble. */
+.coach-tasks {
+  display: inline-grid;
+}
+.coach-tasks-list {
+  display: grid;
+  gap: var(--space-1);
+}
+/* BPCF rules (04/11/2026): the preset above the federation's rules form. */
+.transfer-bpcf {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }

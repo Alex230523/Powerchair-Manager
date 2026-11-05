@@ -386,6 +386,13 @@ export async function federationAffiliationsExecute(db: Pool, p: Principal, comm
         await audit(s.c, s.fed, s.userId, "affiliation.fee.archived", command.id);
         return { ok: true as const };
       }
+      if (command.action === "setFeeAmount") {
+        // The dues already issued keep their amount; the next ones take the new one.
+        const r = await s.c.query("UPDATE affiliation_fee SET amount_cents=$3,version=version+1 WHERE id=$1 AND organization_id=$2 AND NOT archived RETURNING id", [command.id, s.fed, command.amountCents]);
+        if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+        await audit(s.c, s.fed, s.userId, "affiliation.fee.amount", command.id);
+        return { ok: true as const };
+      }
       // A reminder to the presidents of the clubs late on the federation's fees (once a day per due).
       const today = brusselsToday();
       const late = (

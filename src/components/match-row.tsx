@@ -10,8 +10,8 @@ import { Badge } from "./ui";
  * 5: one line of match, the same everywhere (the club's matches, tournament
  * matches, friendlies, a team's sheet, a player's): the date and time, our
  * colour and team, the score or « - », the opponent; a context badge; before
- * the match its place and its answers, after it the result's pill with its
- * letter (V, N, D) and its words for screen readers, « à confirmer » while
+ * the match its place and its answers, after it the score in green (won) or red
+ * (lost), with its words for screen readers, « à confirmer » while
  * the other club has not confirmed.
  */
 export type RowMatch = {
@@ -78,14 +78,15 @@ export function MatchRow({ locale, m, details, actions }: { locale: Locale; m: R
           <span className="team-dot" aria-hidden="true" />
           <strong>{m.team}</strong>
         </span>
-        <span className="match-score" aria-hidden={outcome ? "true" : undefined}>
-          {played ? `${m.ours}-${m.theirs}` : t.noScore}
+        {/* 04/11/2026: the score itself says the result: green won, red lost (and the words for screen readers). */}
+        <span className="match-score" data-outcome={outcome ?? undefined}>
+          <span aria-hidden={outcome ? "true" : undefined}>{played ? `${m.ours}-${m.theirs}` : t.noScore}</span>
+          {outcome && <span className="sr-only">{fill(t.said[outcome], { o: m.ours!, t: m.theirs! })}</span>}
         </span>
         <span className="match-opponent">{opponent}</span>
         {m.home !== null && <span className="muted small"> · {m.home ? t.home : t.away}</span>}
       </p>
       <p className="match-meta">
-        {outcome && <ResultPill locale={locale} outcome={outcome} ours={m.ours!} theirs={m.theirs!} />}
         {m.unconfirmed && <Badge tone="warning">{t.toConfirm}</Badge>}
         {!played && m.status !== "scheduled" && <Badge tone={m.status === "cancelled" ? "danger" : "warning"}>{t.statuses[m.status] ?? m.status}</Badge>}
         {context}

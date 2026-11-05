@@ -42,7 +42,8 @@ test("the matches page and the team statistics", async ({ page }) => {
       await page.goto("/fr/matches");
       await page.getByLabel("Afficher").selectOption("all");
       const played = page.locator(".match-list > li").filter({ hasText: "Gand" });
-      await expect(played.locator(".result-pill")).toHaveText("VVictoire 3 à 1");
+      // 04/11/2026: the score itself, green when won, says the result.
+      await expect(played.locator('.match-score[data-outcome="win"]')).toHaveText("3-1Victoire 3 à 1");
       await expect(page.locator(".match-list > li").filter({ hasText: "Namur" })).toContainText("Match amical");
       await axe(page, `matches ${width}`);
       await noSideScroll(page);

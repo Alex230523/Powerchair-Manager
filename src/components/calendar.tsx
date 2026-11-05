@@ -32,7 +32,7 @@ import {
   calendarErrors,
 } from "./calendar-copy";
 import { registrationErrors } from "./registrations-copy";
-import { Badge, Button, Card, Panel, PageHeader, Segmented, Toolbar } from "./ui";
+import { Badge, Button, Card, PageHeader, Segmented, Toolbar } from "./ui";
 import { EventInvitation } from "./mail-templates";
 import { NationalGatherings } from "./national";
 import { mailTemplatesCopy } from "./mail-templates-copy";
@@ -1120,8 +1120,9 @@ export function Calendar({
             )}
 
             {data.canPlan && editorOpen && (!selected || event?.canEdit) && (
-              <div id="event-editor">
-                <Panel title={event ? t.edit : t.create}>
+              // 04/11/2026: creating or changing an event opens a centred window, not a form at the foot of the page.
+              <Modal title={event ? t.edit : t.create} close={() => setEditorOpen(false)} className="player-dialog event-editor-dialog">
+                <div id="event-editor">
                   <p>{t.official}</p>
                   {!event && copyOf && (
                     <p className="notice">
@@ -1284,7 +1285,8 @@ export function Calendar({
                       )}
                       <Field id="event-team" label={t.team}>
                         <select id="event-team" name="team" required={!data.manage} value={teamValue} onChange={(e) => setFormTeam(e.target.value || "-")}>
-                          <option value="">{t.none}</option>
+                          {/* 04/11/2026: no team means the whole club, every team. */}
+                          <option value="">{data.manage ? ev.allTeams : t.none}</option>
                           {data.teams.map((v) => (
                             <option key={v.id} value={v.id}>
                               {v.name}
@@ -1442,8 +1444,8 @@ export function Calendar({
                     </details>
                     <Button disabled={busy || event?.status === "cancelled"}>{t.saveEvent}</Button>
                   </form>
-                </Panel>
-              </div>
+                </div>
+              </Modal>
             )}
             {placeDialog && (
               <PlaceDialog

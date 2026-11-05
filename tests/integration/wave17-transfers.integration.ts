@@ -221,3 +221,24 @@ it("asks a parent, not the club nor the child, for a minor", async () => {
   expect((await db.query("SELECT status FROM club_person WHERE person_id=$1 AND organization_id=$2", [bilalPerson, clubB])).rows[0].status).toBe("active");
   expect((await db.query("SELECT status,completed_at IS NOT NULL AS done FROM transfer_offer WHERE id=$1", [id])).rows[0]).toEqual({ status: "accepted", done: true });
 });
+
+it("follows the BPCF rules: consented all season, one transfer per pair, free leave during a period", async () => {
+  const rules = { windows: [{ from: "2020-07-01", to: "2020-08-31" }], amountsAllowed: true, amountCapCents: 50000, maxPerClubSeason: null, federationValidation: true, rulesText: "BPCF", consentedAnytime: true, maxPerPairSeason: 1 };
+  await run(fed, federation, { action: "rules", rules });
+  expect((await transfersView(db, presidentB)) as { open: boolean; consentedOnly: boolean }).toMatchObject({ open: false, consentedOnly: true });
+  await run(chloe, clubA, { action: "visibility", personId: chloePerson, visible: true });
+  // Club A to club B already happened this season (Ana).
+  await expect(run(presidentB, clubB, { action: "request", personId: chloePerson, season: "2026-27", amountCents: null, message: "" })).rejects.toMatchObject({ code: "TRANSFER_PAIR_LIMIT" });
+  // Outside a period, the request is possible: it may become a consented transfer.
+  const id = (await run(presidentB, clubB, { action: "request", personId: chloePerson, season: "2027-28", amountCents: 25000, message: "" })).id!;
+  await run(chloe, clubA, { action: "consent", id, consent: "given" });
+  await run(presidentA, clubA, { action: "answer", id, decision: "refused", note: "Nous la gardons" });
+  // Refused by her club: no free leave outside a period.
+  expect((await transfersView(db, fed)).offers.find((o) => o.id === id)!.moves).toEqual([]);
+  await expect(run(fed, federation, { action: "validate", id, decision: "validated", note: "" })).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
+  // During a period, the federation validates the free leave.
+  await run(fed, federation, { action: "rules", rules: { ...rules, windows: [{ from: today, to: today }] } });
+  expect((await transfersView(db, fed)).offers.find((o) => o.id === id)!.moves).toEqual(["validate"]);
+  await run(fed, federation, { action: "validate", id, decision: "validated", note: "Départ libre" });
+  expect((await db.query("SELECT status FROM club_person WHERE person_id=$1 AND organization_id=$2", [chloePerson, clubB])).rows[0].status).toBe("active");
+});

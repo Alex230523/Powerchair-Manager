@@ -56,6 +56,9 @@ type Copy = {
   save: string;
   archive: string;
   archiveOf: string;
+  amountOf: string;
+  amountSave: string;
+  amountSaved: string;
   archived: string;
   saved: string;
   examples: string;
@@ -132,6 +135,9 @@ export const affiliationsCopy: Record<"fr" | "nl" | "en", Copy> = {
     save: "Enregistrer",
     archive: "Archiver",
     archiveOf: "Archiver {name}",
+    amountOf: "Montant de {name} en euros",
+    amountSave: "Changer le montant",
+    amountSaved: "Montant changé : les prochaines échéances le prennent.",
     archived: "Affiliation archivée",
     saved: "Affiliation enregistrée",
     examples: "Exemples à compléter",
@@ -200,6 +206,9 @@ export const affiliationsCopy: Record<"fr" | "nl" | "en", Copy> = {
     save: "Opslaan",
     archive: "Archiveren",
     archiveOf: "{name} archiveren",
+    amountOf: "Bedrag van {name} in euro",
+    amountSave: "Bedrag wijzigen",
+    amountSaved: "Bedrag gewijzigd: de volgende vervaldagen nemen het over.",
     archived: "Aansluiting gearchiveerd",
     saved: "Aansluiting opgeslagen",
     examples: "Voorbeelden om aan te vullen",
@@ -268,6 +277,9 @@ export const affiliationsCopy: Record<"fr" | "nl" | "en", Copy> = {
     save: "Save",
     archive: "Archive",
     archiveOf: "Archive {name}",
+    amountOf: "Amount of {name} in euros",
+    amountSave: "Change the amount",
+    amountSaved: "Amount changed: the next dues take it.",
     archived: "Affiliation archived",
     saved: "Affiliation saved",
     examples: "Examples to complete",

@@ -92,6 +92,11 @@ it("a federal fee for chosen clubs, per licensed player; one for all clubs, per 
   const names = a.dues.map((d) => `${d.name}:${d.amount_cents}:${d.players ?? "-"}:${d.state}`).sort();
   expect(names).toEqual(["Affiliation BPCF:2500:-:open", "Sportéa:7500:3:open"]);
   expect((await clubAffiliationsView(db, presidentB)).dues.map((d) => d.name)).toEqual(["Affiliation BPCF"]);
+  // 04/11/2026: the federation changes a fee's amount; another federation's president cannot.
+  const bpcf = (await db.query("SELECT id FROM affiliation_fee WHERE organization_id=$1 AND name='Affiliation BPCF'", [fed])).rows[0].id as string;
+  await federationAffiliationsExecute(db, fedPresident, { action: "setFeeAmount", id: bpcf, amountCents: 3000 }, fed);
+  expect((await db.query("SELECT amount_cents FROM affiliation_fee WHERE id=$1", [bpcf])).rows[0].amount_cents).toBe(3000);
+  await expect(federationAffiliationsExecute(db, presidentA, { action: "setFeeAmount", id: bpcf, amountCents: 1 }, clubA)).rejects.toMatchObject({ code: "FEDERATION_ONLY" });
   // Each due has its line in « Statut du club ».
   const lines = await (async () => {
     const c = await db.connect();

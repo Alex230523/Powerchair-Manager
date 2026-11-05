@@ -78,15 +78,7 @@ export const proposedRoles: ProposedRole[] = [
     name: { fr: "Secrétaire", nl: "Secretaris", en: "Secretary" },
     description: { fr: "L'administratif du club.", nl: "De administratie van de club.", en: "The club's paperwork." },
     icon: "document",
-    grants: ["people.read", "people.manage", "registrations.manage", "documents.read", "documents.manage", "notifications.manage", "recruitment.manage"],
-    scope: "all",
-  },
-  {
-    key: "recruitment",
-    name: { fr: "Recrutement", nl: "Rekrutering", en: "Recruitment" },
-    description: { fr: "Les nouveaux joueurs : premiers contacts, séances d'essai, relances.", nl: "De nieuwe spelers: eerste contacten, proeftrainingen, opvolging.", en: "New players: first contacts, trial sessions, follow-ups." },
-    icon: "userPlus",
-    grants: ["recruitment.manage"],
+    grants: ["people.read", "people.manage", "registrations.manage", "documents.read", "documents.manage", "notifications.manage"],
     scope: "all",
   },
 ];

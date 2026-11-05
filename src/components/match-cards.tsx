@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import type { Locale } from "@/lib/locale";
 import type { matchesView } from "@/domains/competitions/service";
 import { matchRowCopy, fill } from "./match-row-copy";
-import { MatchRow, ResultPill, type RowMatch } from "./match-row";
+import { MatchRow, type RowMatch } from "./match-row";
 import { useData } from "./use-api";
 
 /**
@@ -64,20 +64,6 @@ export function TeamCard({ locale, team }: { locale: Locale; team: Team }) {
       </p>
       <p className="small">
         <Link href={`${base}#stats-goals`}>{fill(t.goals, { f: r.goalsFor, a: r.goalsAgainst })}</Link>
-      </p>
-      <p className="small">
-        <span className="muted">{t.form} : </span>
-        {team.form.length ? (
-          <span className="form-pills" role="img" aria-label={fill(t.formSaid, { n: team.form.length, list: team.form.map((o) => t.said[o].split(" {o}")[0]).join(", ") })}>
-            {team.form.map((o, i) => (
-              <span key={i} aria-hidden="true">
-                <ResultPill locale={locale} outcome={o} />
-              </span>
-            ))}
-          </span>
-        ) : (
-          <span className="muted">{t.noForm}</span>
-        )}
       </p>
       <p className="muted small">
         {team.next ? (

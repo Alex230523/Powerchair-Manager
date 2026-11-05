@@ -252,7 +252,7 @@ The club sees the class and the date of the next examination, not the medical de
 
 ## Qui prévenir, comment déclarer
 - Le responsable de la séance, puis le club.
-- Déclarez l'incident dans l'application (Incidents) : la déclaration d'assurance part de là.
+- Prévenez la présidence du club : elle fait la déclaration d'assurance.
 
 ${tbc.fr}`,
       },
@@ -281,7 +281,7 @@ ${tbc.fr}`,
 
 ## Wie verwittigen, hoe aangeven
 - De verantwoordelijke van de sessie, daarna de club.
-- Geef het incident aan in de toepassing (Incidenten): de verzekeringsaangifte vertrekt van daar.
+- Verwittig het clubbestuur: het doet de verzekeringsaangifte.
 
 ${tbc.nl}`,
       },
@@ -310,7 +310,7 @@ ${tbc.nl}`,
 
 ## Whom to tell, how to report
 - The person in charge of the session, then the club.
-- Report the incident in the application (Incidents): the insurance claim starts there.
+- Tell the club's presidency: it makes the insurance claim.
 
 ${tbc.en}`,
       },

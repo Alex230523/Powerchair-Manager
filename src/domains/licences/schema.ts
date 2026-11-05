@@ -16,6 +16,8 @@ export const licenceCommand = z.discriminatedUnion("action", [
     profileId: id,
     categories: z.array(z.enum(licenceCategories)).min(1).max(5),
     validUntil: z.iso.date().nullable(),
+    /** 04/11/2026: since when the licence is held (optional). */
+    obtainedOn: z.iso.date().nullable().optional(),
   }),
   z.object({ action: z.literal("verify"), profileId: id, verified: z.boolean() }),
   z.object({ action: z.literal("removeCopy"), profileId: id }),

@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 
 type Db = Pool | PoolClient;
-export type KeyFigures = { players: number; teams: number; coaches: number; chairs: number; chairs_service: number; trainings: number; matches: number };
+export type KeyFigures = { players: number; pf1: number; pf2: number; teams: number; coaches: number; chairs: number; chairs_service: number; trainings: number; matches: number };
 
 /**
  * The key figures of a season (wave 16, A and S1), one function for the
@@ -15,6 +15,8 @@ export async function seasonKeyFigures(db: Db, org: string, season: { id: string
   return (
     await db.query(
       `SELECT (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role='player' AND ${live} AND ($5::uuid[] IS NULL OR t.id=ANY($5))) AS players,
+              (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id JOIN player_sport_profile ps ON ps.profile_id=m.profile_id AND ps.organization_id=t.organization_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role='player' AND ps.classification='PF1' AND ${live} AND ($5::uuid[] IS NULL OR t.id=ANY($5))) AS pf1,
+              (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id JOIN player_sport_profile ps ON ps.profile_id=m.profile_id AND ps.organization_id=t.organization_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role='player' AND ps.classification='PF2' AND ${live} AND ($5::uuid[] IS NULL OR t.id=ANY($5))) AS pf2,
               (SELECT count(*)::int FROM team t WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND ($5::uuid[] IS NULL OR t.id=ANY($5))) AS teams,
               (SELECT count(DISTINCT m.profile_id)::int FROM team_membership m JOIN team t ON t.id=m.team_id WHERE t.organization_id=$1 AND t.season_id=$4 AND NOT t.archived AND m.role IN ('coach','assistant') AND ${live} AND ($5::uuid[] IS NULL OR t.id=ANY($5))) AS coaches,
               (SELECT count(*)::int FROM equipment_chair WHERE organization_id=$1 AND status<>'retired' AND ownership<>'player') AS chairs,
