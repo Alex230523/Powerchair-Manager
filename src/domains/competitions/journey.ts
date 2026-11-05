@@ -2,6 +2,7 @@ import { suspensionsFor } from "../discipline/service";
 import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
+import { randomBytes } from "node:crypto";
 import { ensureStorage } from "../storage/service";
 import { audit, AccessError, type Principal } from "../access/service";
 import { peopleScope, peopleRecords, peopleVisibility, type PeopleScope } from "../people/service";
@@ -40,6 +41,8 @@ export const journeyCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("publish"), id, published: z.boolean() }),
   /** 04/11/2026: the line-up revealed on its own, this many minutes before kick-off (null: by hand). */
   z.object({ action: z.literal("reveal"), id, minutes: z.number().int().min(0).max(10080).nullable() }),
+  /** Lot 3 (05/11/2026): the public page of the match, by a link the club shares (and revokes). */
+  z.object({ action: z.literal("livePublic"), id, enabled: z.boolean() }),
   z.object({ action: z.literal("checklist"), id, items: z.array(z.object({ key: z.enum(checklistKeys), responsibleId: id.nullable() })).min(1).max(checklistKeys.length) }),
   z.object({ action: z.literal("live"), id, clientId: id, kind: z.enum(liveKinds), profileId: id.nullable(), minute: z.number().int().min(0).max(200).nullable() }),
   z.object({ action: z.literal("undoLive"), id, eventId: id }),
@@ -106,6 +109,8 @@ type Row = {
   calendar_event_id: string | null;
   lineup_published_at: string | null;
   lineup_reveal_minutes: number | null;
+  live_token: string | null;
+  live_public_at: string | null;
   /** Published by hand, or the automatic reveal time has come. */
   lineup_revealed: boolean;
   validated_at: string | null;
@@ -116,7 +121,7 @@ async function matchOf(c: PoolClient, org: string, matchId: string, lock = false
   const m = (
     await c.query(
       `SELECT m.id,m.team_id,t.name AS team,m.opponent,m.home,m.kind,m.competition,m.starts_at,to_char(m.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS local_start,
-              m.venue,m.status,m.our_score,m.their_score,m.calendar_event_id,m.lineup_published_at,m.validated_at,m.version,m.place_id,m.lineup_reveal_minutes,
+              m.venue,m.status,m.our_score,m.their_score,m.calendar_event_id,m.lineup_published_at,m.validated_at,m.version,m.place_id,m.lineup_reveal_minutes,m.live_token,m.live_public_at,
               (m.lineup_published_at IS NOT NULL OR (m.lineup_reveal_minutes IS NOT NULL AND now() >= m.starts_at - make_interval(mins => m.lineup_reveal_minutes))) AS lineup_revealed
          FROM match m JOIN team t ON t.id=m.team_id WHERE m.id=$1 AND m.organization_id=$2${lock ? " FOR UPDATE OF m" : ""}`,
       [matchId, org],
@@ -345,6 +350,12 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
       }
       case "reveal": {
         await c.query("UPDATE match SET lineup_reveal_minutes=$3 WHERE id=$1 AND organization_id=$2", [m.id, org, cmd.minutes]);
+        break;
+      }
+      case "livePublic": {
+        // A new link each time it is switched on: an old one shared by mistake stops working.
+        if (cmd.enabled) await c.query("UPDATE match SET live_token=$3,live_public_at=now() WHERE id=$1 AND organization_id=$2", [m.id, org, randomBytes(16).toString("hex")]);
+        else await c.query("UPDATE match SET live_token=NULL,live_public_at=NULL WHERE id=$1 AND organization_id=$2", [m.id, org]);
         break;
       }
       case "checklist": {

@@ -13264,3 +13264,68 @@ input[type="search"] {
     justify-content: flex-start;
   }
 }
+
+/* Lot 3 (05/11/2026): the public page of a match. */
+.public-live .public-hero {
+  align-items: flex-start;
+}
+.live-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.live-side {
+  min-width: 0;
+  text-align: center;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.live-figures {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--heading);
+}
+.live-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.live-events li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  min-height: 44px;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.live-events li[data-kind="goal"] {
+  background: var(--success-soft);
+}
+.live-events li[data-kind="goal_against"] {
+  background: var(--danger-soft);
+}
+.live-minute {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.journey-live {
+  display: grid;
+  gap: var(--space-2);
+}
+.journey-live .actions {
+  margin-top: 0;
+}
+.journey-live code {
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+}

@@ -131,6 +131,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/privacy/mine` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/privacy/requests` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/progress` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/public/live/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/public/club/[slug]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/public/ics/[token]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/push` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -302,6 +303,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/fundraising` |  |  |  |  |  |  |  |  |  |   |
 | `/hall-of-fame-widget/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/inscription/[id]` |  |  |  |  |  |  |  |  |  |   |
+| `/live/[token]` |  |  |  |  |  |  |  |  |  |   |
 | `/join` |  |  |  |  |  |  |  |  |  |   |
 | `/legal/[doc]` |  |  |  |  |  |  |  |  |  |   |
 | `/licenses` |  |  |  |  |  |  |  |  |  |   |

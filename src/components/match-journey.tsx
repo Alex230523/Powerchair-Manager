@@ -10,6 +10,7 @@ import { fill } from "./fleet-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { HeadToHead } from "./match-cards";
 import { sidelineCopy } from "./sideline-copy";
+import { publicLiveCopy } from "./public-live-copy";
 import { ReportReview } from "./refereeing";
 import { useData } from "./use-api";
 import { MatchTactics } from "./match-tactics";
@@ -178,6 +179,7 @@ function BeforeStep({ ctx }: { ctx: Ctx }) {
     Object.fromEntries(data.lineup.map((x) => [x.profile_id, { starter: x.starter, jersey: x.jersey_number === null ? "" : String(x.jersey_number) }])),
   );
   const [owners, setOwners] = useState<Record<string, string>>({});
+  const [copied, setCopied] = useState(false);
   const counts = data.players.reduce<Record<string, number>>((n, p) => ((n[p.answer ?? "none"] = (n[p.answer ?? "none"] ?? 0) + 1), n), {});
   const canPlay = (p: Managed["players"][number]) => !p.blocking.length && (!m.calendar_event_id || p.answer === "present");
   const people = [...data.staff.map((x) => ({ id: x.id, name: x.full_name })), ...data.players.map((x) => ({ id: x.profile_id, name: x.full_name }))];
@@ -312,6 +314,43 @@ function BeforeStep({ ctx }: { ctx: Ctx }) {
         </form>
       </Card>
 
+      {/* Lot 3 (05/11/2026): the public page of the match, by a link the club shares. */}
+      <Card title={publicLiveCopy[locale].share} id="journey-live">
+        <div className="journey-live">
+          <p className="muted">{publicLiveCopy[locale].shareIntro}</p>
+          {m.live_token ? (
+            <>
+              <p>
+                <Badge tone="success">{publicLiveCopy[locale].enabled}</Badge>
+              </p>
+              <p>
+                <code>{`${typeof window === "undefined" ? "" : window.location.origin}/${locale}/live/${m.live_token}`}</code>
+              </p>
+              <div className="actions">
+                <Button
+                  variant="secondary"
+                  icon="copy"
+                  onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}/${locale}/live/${m.live_token}`).then(() => setCopied(true))}
+                >
+                  {copied ? publicLiveCopy[locale].copied : publicLiveCopy[locale].copy}
+                </Button>
+                <Link className="button secondary" href={`/${locale}/live/${m.live_token}`} target="_blank" rel="noreferrer">
+                  {publicLiveCopy[locale].open}
+                </Link>
+                <Button variant="ghost" disabled={busy} onClick={() => void send({ action: "livePublic", enabled: false }, publicLiveCopy[locale].disable)}>
+                  {publicLiveCopy[locale].disable}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="actions">
+              <Button variant="secondary" icon="link" disabled={busy} onClick={() => void send({ action: "livePublic", enabled: true }, publicLiveCopy[locale].enabled)}>
+                {publicLiveCopy[locale].enable}
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
       <Card title={t.trip} id="journey-trip">
         {data.trip ? (
           <Link href={`/${locale}/trips?trip=${data.trip.id}`}>{data.trip.title}</Link>
