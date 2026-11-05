@@ -106,7 +106,7 @@ it("counts from the modules, compares with last season and names no player", asy
   await db.query("INSERT INTO award(organization_id,season_id,awarded_on,title,kind,profile_id,created_by) SELECT $1,$2,CURRENT_DATE-9,'Meilleure joueuse','individual',id,$3 FROM club_person WHERE full_name='Zoé Secrète'", [clubA, seasonA, president.userId]);
   await db.query("INSERT INTO club_obligation(organization_id,year,template_key,title,done_on,position,created_by) VALUES($1,$2,'assembly','Assemblée générale tenue',CURRENT_DATE,1,$3)", [clubA, Number((await db.query("SELECT extract(year FROM ends_on)::int AS y FROM season WHERE id=$1", [seasonA])).rows[0].y), president.userId]);
   const again = await activityReport(db, president);
-  if (!("awards" in again)) throw new Error("no awards");
+  if (!("awards" in again) || !again.awards) throw new Error("no awards");
   expect(again.awards.map((a) => [a.title, a.team, a.person])).toEqual([["Coupe de Belgique", "Lions", null], ["Meilleure joueuse", null, null]]);
   expect(again.obligations).toEqual([{ title: "Assemblée générale tenue", due_on: null, done_on: expect.any(String) }]);
   const pdf = Buffer.from(reportPdf(buildSlides(again, { sections: [...reportSections], word: "", thanks: "", locale: "fr" }, reportCopy.fr, {}), "Club A", "Rapport", "aujourd'hui")).toString("latin1");

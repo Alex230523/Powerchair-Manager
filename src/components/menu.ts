@@ -248,6 +248,10 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
                           // 34: sanctions, appeals and fines.
                           ...item("/federation/discipline", "discipline", "shield", fed("federation.discipline")),
+                          // Lot 6 (05/11/2026): the commission's decisions, signed by its members.
+                          ...item("/federation/commission", "commission", "document", fed("federation.licences", "federation.discipline")),
+                          // Lot 6 (05/11/2026): the commission's decisions, signed by its members.
+                          ...item("/federation/commission", "commission", "document", fed("federation.licences", "federation.discipline")),
                           ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
                           ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
                           ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),

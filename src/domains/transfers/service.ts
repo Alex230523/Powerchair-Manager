@@ -1,5 +1,6 @@
 import { ensureStorage } from "../storage/service";
 import { autoEntry, cancelAuto } from "../finance/auto";
+import { recordDecision } from "../commission/service";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { createHash, randomBytes } from "node:crypto";
@@ -469,6 +470,7 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
           )
         ).rows[0].id as string;
         await s.c.query("UPDATE club_person SET status='transferred',version=version+1,updated_at=now() WHERE id=$1", [who.id]);
+        await recordDecision(s.c, s.fed, s.userId, { kind: "international", subject: `${who.full_name} → ${command.foreignClub} (${command.country})`, decision: `Transfert international enregistré · indemnité ${(amount / 100).toFixed(2)} €`, reference: id });
         // Like a domestic transfer: the player leaves their teams today.
         await s.c.query(
           "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE organization_id=$1 AND profile_id=$2 AND (ends_on IS NULL OR ends_on>CURRENT_DATE)",
@@ -632,6 +634,13 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
       if (free && !(await belowMax(s, rules, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_LIMIT", 409);
       if (free && !(await belowPairMax(s, rules, o.from_organization_id, o.to_organization_id, o.season))) throw new AccessError("TRANSFER_PAIR_LIMIT", 409);
       await s.c.query("UPDATE transfer_offer SET federation_by=$2,federation_at=now(),federation_note=$3,version=version+1 WHERE id=$1", [o.id, s.userId, command.note]);
+      // Lot 6: every decision of the federation on a transfer goes to the commission's journal.
+      await recordDecision(s.c, s.fed!, s.userId, {
+        kind: o.force_majeure ? "force_majeure" : "transfer",
+        subject: `${o.full_name} : ${o.from_club ?? "sans club"} → ${o.to_club} (${o.season})`,
+        decision: `${command.decision === "refused" ? "Refusé" : free ? "Validé (départ libre)" : "Validé"}${command.note ? ` · ${command.note}` : ""}${o.force_majeure ? ` · Force majeure : ${o.force_majeure_reason}` : ""}`,
+        reference: o.id,
+      });
       if (command.decision === "refused") {
         await s.c.query("UPDATE transfer_offer SET status='refused' WHERE id=$1", [o.id]);
         await audit(s.c, s.org, s.userId, "transfer.federation.refused", o.id);

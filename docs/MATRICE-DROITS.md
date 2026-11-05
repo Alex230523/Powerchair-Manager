@@ -67,6 +67,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/family` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/federal-calendar` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/fines` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
+| `/api/federation/commission` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/affiliations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/clubs` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
@@ -271,6 +272,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/affiliations` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/clubs` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/courses` |  |  |  |  |  |  |  |  |  |   |
+| `/federation/commission` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/national` |  |  |  |  |  |  |  |  |  |   |

@@ -349,6 +349,37 @@ export async function federationLicensesExecute(
     p,
     true,
     async (c, fed) => {
+      if (command.action === "importLicenses") {
+        // Lot 6: each row names a person, a club and a season; the number lands on the matching licence, which becomes active.
+        const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+        const all = (
+          await c.query(
+            "SELECT l.id,l.season,l.status,l.number,o.name AS club,cp.full_name FROM license l JOIN organization o ON o.id=l.organization_id JOIN club_person cp ON cp.id=l.profile_id WHERE l.federation_id=$1 AND l.status IN ('requested','active','suspended')",
+            [fed],
+          )
+        ).rows as { id: string; season: string; status: string; number: string | null; club: string; full_name: string }[];
+        const byKey = new Map(all.map((l) => [`${fold(l.full_name)}|${fold(l.club)}|${l.season}`, l]));
+        let updated = 0;
+        const unmatched: string[] = [],
+          conflicts: string[] = [];
+        for (const r of command.rows) {
+          const l = byKey.get(`${fold(r.fullName)}|${fold(r.club)}|${r.season}`);
+          if (!l) {
+            unmatched.push(`${r.fullName} · ${r.club} · ${r.season}`);
+            continue;
+          }
+          if (l.number === r.number) continue;
+          const taken = (await c.query("SELECT 1 FROM license WHERE federation_id=$1 AND number=$2 AND id<>$3", [fed, r.number, l.id])).rowCount;
+          if (taken) {
+            conflicts.push(`${r.number} (${r.fullName})`);
+            continue;
+          }
+          await c.query("UPDATE license SET number=$2,status=CASE WHEN status='requested' THEN 'active' ELSE status END,decided_by=COALESCE(decided_by,$3),decided_at=COALESCE(decided_at,now()) WHERE id=$1", [l.id, r.number, p.userId]);
+          updated++;
+        }
+        await audit(c, fed, p.userId, "licenses.imported", fed, { rows: command.rows.length, updated, unmatched: unmatched.length, conflicts: conflicts.length });
+        return { ok: true as const, updated, unmatched: unmatched.slice(0, 50), conflicts: conflicts.slice(0, 50) };
+      }
       if (command.action === "decideLicenses") {
         const rows = (
           await c.query(

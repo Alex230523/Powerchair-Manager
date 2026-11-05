@@ -4,6 +4,7 @@ import { account, active, audit, AccessError, type Principal } from "../access/s
 import { fineCommand, fineState, type FineCommand } from "./schema";
 import { autoEntry, cancelAuto } from "../finance/auto";
 import { brusselsToday } from "../people/service";
+import { recordDecision } from "../commission/service";
 export { fineCommand };
 
 /** Point 10: the federation's fines; the federation writes, each club reads its own. */
@@ -83,6 +84,8 @@ export async function finesExecute(db: Pool, p: Principal, command: FineCommand,
           ])
         ).rows[0].id as string;
         await audit(s.c, s.org, s.userId, "fine.created", id, { club: command.clubId, amount: command.amountCents });
+        const clubName = (await s.c.query("SELECT name FROM organization WHERE id=$1", [command.clubId])).rows[0].name as string;
+        await recordDecision(s.c, s.org, s.userId, { kind: "fine", subject: `${clubName} : ${{ late: "retard", forfeit: "forfait", forfeit_day: "journée annulée", other: "amende" }[command.kind]}`, decision: `Amende de ${(command.amountCents / 100).toFixed(2)} €${command.reason ? ` · ${command.reason}` : ""}`, reference: id });
         // Lot 2 (05/11/2026): the club's presidency gets the task, 30 days to pay.
         const president = (await s.c.query("SELECT user_id FROM role_assignment WHERE organization_id=$1 AND role='club_president' AND revoked_at IS NULL ORDER BY created_at LIMIT 1", [command.clubId])).rows[0]?.user_id as string | undefined;
         const about = { late: "Retard", forfeit: "Forfait", forfeit_day: "Journée annulée", other: "Amende" }[command.kind];

@@ -25,6 +25,11 @@ export const federationCommand = z.discriminatedUnion("action", [
     id,
     note: z.string().trim().min(5).max(500),
   }),
+  /** Lot 6 (05/11/2026): the licence numbers from the federation's own file (CSV), matched by name, club and season. */
+  z.object({
+    action: z.literal("importLicenses"),
+    rows: z.array(z.object({ number: z.string().trim().min(1).max(40), fullName: z.string().trim().min(2).max(160), club: z.string().trim().min(1).max(160), season })).min(1).max(2000),
+  }),
   z.object({
     action: z.literal("decideClassification"),
     profileId: id,
