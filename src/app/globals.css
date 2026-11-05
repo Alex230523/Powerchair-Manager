@@ -2702,6 +2702,129 @@ caption {
   background: var(--surface-soft);
   color: var(--text);
 }
+/* 05/11/2026: the operator's console: its own bar, tinted, and tiles of counts. */
+.console-bar {
+  border-bottom: 3px solid var(--warning);
+}
+.console-bar .brand .badge {
+  margin-left: var(--space-2);
+}
+.console-shell > main {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--content-padding) var(--space-8);
+}
+.console-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+.console-tile {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.console-lines {
+  margin: var(--space-2) 0 0;
+  display: grid;
+  gap: 4px;
+}
+.console-lines div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.console-lines dt {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--heading);
+  min-width: 3ch;
+}
+.console-lines dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.console-todos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.console-todos p {
+  margin: 0;
+}
+.console-orgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+.console-org-head h2 {
+  margin: 0 0 4px;
+}
+.console-org-head p {
+  margin: 0;
+}
+.console-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+.console-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.console-facts dt {
+  color: var(--muted);
+}
+.console-facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+/* 05/11/2026: the federation's rulebook. */
+.policy-group {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.policy-group > legend {
+  padding-inline: var(--space-2);
+  font-weight: 600;
+}
+.policy-group .form-grid + .form-grid {
+  margin-top: var(--space-3);
+}
+.policy-scope {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* 05/11/2026: an international dossier and its badges. */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 4px 0 0;
+}
+.intl-dossier > div {
+  flex: 1;
+  min-width: 0;
+}
 /* The money card. */
 .finance-treasury {
   display: grid;

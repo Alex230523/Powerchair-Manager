@@ -186,6 +186,8 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     en: "This affiliation is already settled.",
   },
   /* 05/11/2026 (revue): codes that reached the screen as they were. */
+  SELF_REVOKE: { fr: "Vous ne pouvez pas retirer votre propre accès à la console.", nl: "U kunt uw eigen toegang tot de console niet intrekken.", en: "You cannot revoke your own access to the console." },
+  COUNTRY_REQUIRED: { fr: "Indiquez le pays, ou choisissez une fédération de la plateforme.", nl: "Geef het land op, of kies een federatie van het platform.", en: "Give the country, or choose a federation of the platform." },
   ADDRESS_REQUIRED: { fr: "L'adresse de la salle est obligatoire.", nl: "Het adres van de zaal is verplicht.", en: "The hall's address is required." },
   ALREADY_POSTPONED: { fr: "Ce point a déjà été reporté.", nl: "Dit punt werd al uitgesteld.", en: "This step was already postponed." },
   AWARD_EXISTS: { fr: "Cette distinction existe déjà.", nl: "Deze onderscheiding bestaat al.", en: "This award already exists." },

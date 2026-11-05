@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-05",
+  "roles": [
+    "federation"
+  ],
+  "link": "/federation/policy",
+  "image": null,
+  "fr": {
+    "title": "Règlement par fédération et dossiers entre pays",
+    "text": "La fédération choisit son pays et règle son barème (indemnités de formation, frais de dossier, plafonds, amendes), chaque enregistrement gardant une version. Un transfert vers une fédération de la plateforme devient un dossier qu'elle accepte ou refuse, avec un certificat ; les deux commissions le gardent."
+  },
+  "nl": {
+    "title": "Reglement per federatie en dossiers tussen landen",
+    "text": "De federatie kiest haar land en stelt haar barema in (opleidingsvergoedingen, dossierkosten, plafonds, boetes); elke opslag bewaart een versie. Een transfer naar een federatie van het platform wordt een dossier dat zij aanvaardt of weigert, met een certificaat; beide commissies bewaren het."
+  },
+  "en": {
+    "title": "Rulebook per federation and dossiers between countries",
+    "text": "The federation chooses its country and sets its scale (training compensation, file fee, caps, fines), every save keeping a version. A transfer to a federation of the platform becomes a dossier it accepts or refuses, with a certificate; both commissions keep it."
+  }
+}
