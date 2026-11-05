@@ -346,3 +346,10 @@ export function tripDays(startsOn: string, endsOn: string) {
       .slice(0, 10),
   );
 }
+
+/** Point 15 (04/11/2026): a licence held for less than two years (a young driver), on a given day. */
+export function youngDriver(obtainedOn: string | null | undefined, today: string) {
+  if (!obtainedOn) return false;
+  const [y, m, d] = today.split("-");
+  return obtainedOn > `${Number(y) - 2}-${m}-${d}`;
+}

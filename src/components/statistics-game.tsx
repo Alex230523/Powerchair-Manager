@@ -160,7 +160,7 @@ export function StatisticsGame({ locale }: { locale: Locale }) {
   );
 }
 
-type Teams = Spanned & { colors: Record<string, string | null>; teams: (Record_ & { name: string })[] };
+type Teams = Spanned & { colors: Record<string, string | null>; teams: (Record_ & { name: string; corners: { ours: number; theirs: number } })[] };
 function TeamsCard({ locale, register }: { locale: Locale; register: Register }) {
   const t = statisticsCopy[locale],
     g = t.game.teams;
@@ -170,8 +170,8 @@ function TeamsCard({ locale, register }: { locale: Locale; register: Register })
     () =>
       data
         ? [
-            [g.team, g.played, g.won, g.drawn, g.lost, g.goalsFor, g.goalsAgainst, g.difference, g.form],
-            ...data.teams.map((x) => [x.name, x.played, x.won, x.drawn, x.lost, x.goalsFor, x.goalsAgainst, signed(x.difference), x.form.map((o) => t.game.outcomes[o]).join(" ")]),
+            [g.team, g.played, g.won, g.drawn, g.lost, g.goalsFor, g.goalsAgainst, g.difference, g.cornersFor, g.cornersAgainst, g.form],
+            ...data.teams.map((x) => [x.name, x.played, x.won, x.drawn, x.lost, x.goalsFor, x.goalsAgainst, signed(x.difference), x.corners.ours, x.corners.theirs, x.form.map((o) => t.game.outcomes[o]).join(" ")]),
           ]
         : [],
     [data, g, t.game.outcomes],
@@ -197,6 +197,9 @@ function TeamsCard({ locale, register }: { locale: Locale; register: Register })
     { key: "for", header: g.goalsFor, sort: (x) => x.goalsFor, cell: (x) => x.goalsFor, className: "num" },
     { key: "against", header: g.goalsAgainst, sort: (x) => x.goalsAgainst, cell: (x) => x.goalsAgainst, className: "num" },
     { key: "diff", header: g.difference, sort: (x) => x.difference, cell: (x) => signed(x.difference), className: "num" },
+    // Point 14: corners for and against.
+    { key: "cornersFor", header: g.cornersFor, sort: (x) => x.corners.ours, cell: (x) => x.corners.ours, className: "num" },
+    { key: "cornersAgainst", header: g.cornersAgainst, sort: (x) => x.corners.theirs, cell: (x) => x.corners.theirs, className: "num" },
     { key: "form", header: g.form, cell: (x) => <Form locale={locale} form={x.form} /> },
   ];
   return (

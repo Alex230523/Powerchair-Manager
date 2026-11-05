@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { LicenceView } from "@/domains/licences/service";
 import { licenceCategories } from "@/domains/licences/schema";
+import { youngDriver } from "@/domains/trips/schema";
 import { coachSpaceCopy } from "./coach-space-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, EmptyState } from "./ui";
@@ -130,6 +131,7 @@ export function DriverLicence({ locale, profileId }: { locale: Locale; profileId
               {l.valid_until ? dayOf(locale, l.valid_until) : t.noDate}{" "}
               {expired && <Badge tone="danger">{t.expired}</Badge>}
               {soon && <Badge tone="warning">{t.soon}</Badge>}
+              {youngDriver(l.obtained_on, data.today) && <Badge tone="warning">{t.young}</Badge>}
             </dd>
           </dl>
           <p className="licence-state">

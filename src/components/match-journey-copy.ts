@@ -20,7 +20,7 @@ export type JourneyCopy = {
   lineupSaved: string;
   blocking: string;
   warning: string;
-  problems: Record<"licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended", string>;
+  problems: Record<"licence" | "chairBroken" | "documents" | "chairService" | "noChair" | "speedCheck" | "suspended" | "transferPayment", string>;
   suspendedFor: string;
   notPresent: string;
   publish: string;
@@ -104,7 +104,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Composition enregistrée.",
     blocking: "Bloquant",
     warning: "À vérifier",
-    problems: { licence: "pas de licence valide", chairBroken: "fauteuil en panne", documents: "documents à fournir", chairService: "révision dépassée", noChair: "pas de fauteuil attribué", speedCheck: "contrôle de vitesse à refaire", suspended: "suspendu" },
+    problems: { licence: "pas de licence valide", chairBroken: "fauteuil en panne", documents: "documents à fournir", chairService: "révision dépassée", noChair: "pas de fauteuil attribué", speedCheck: "contrôle de vitesse à refaire", suspended: "suspendu", transferPayment: "indemnité de transfert pas encore confirmée par la fédération" },
     suspendedFor: "suspendu, encore {n} match(s)",
     notPresent: "n'a pas répondu « présent »",
     publish: "Publier la composition",
@@ -196,7 +196,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Opstelling opgeslagen.",
     blocking: "Blokkerend",
     warning: "Na te kijken",
-    problems: { licence: "geen geldige licentie", chairBroken: "rolstoel defect", documents: "documenten te bezorgen", chairService: "nazicht verlopen", noChair: "geen rolstoel toegewezen", speedCheck: "snelheidscontrole opnieuw te doen", suspended: "geschorst" },
+    problems: { licence: "geen geldige licentie", chairBroken: "rolstoel defect", documents: "documenten te bezorgen", chairService: "nazicht verlopen", noChair: "geen rolstoel toegewezen", speedCheck: "snelheidscontrole opnieuw te doen", suspended: "geschorst", transferPayment: "transfervergoeding nog niet bevestigd door de federatie" },
     suspendedFor: "geschorst, nog {n} wedstrijd(en)",
     notPresent: "antwoordde niet « aanwezig »",
     publish: "Opstelling publiceren",
@@ -288,7 +288,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     lineupSaved: "Line-up saved.",
     blocking: "Blocking",
     warning: "To check",
-    problems: { licence: "no valid licence", chairBroken: "chair broken", documents: "documents to provide", chairService: "service overdue", noChair: "no chair assigned", speedCheck: "speed check to redo", suspended: "suspended" },
+    problems: { licence: "no valid licence", chairBroken: "chair broken", documents: "documents to provide", chairService: "service overdue", noChair: "no chair assigned", speedCheck: "speed check to redo", suspended: "suspended", transferPayment: "transfer compensation not yet confirmed by the federation" },
     suspendedFor: "suspended, {n} more match(es)",
     notPresent: "did not answer « present »",
     publish: "Publish the line-up",

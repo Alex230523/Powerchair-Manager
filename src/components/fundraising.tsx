@@ -1,4 +1,5 @@
 "use client";
+import { brusselsToday } from "./chair-sheet";
 import { PotExtras } from "./fundraising-goals";
 import { goalsCopy } from "./fundraising-goals-copy";
 import Link from "next/link";
@@ -361,7 +362,7 @@ function CollectForm({
         )}
         <label>
           {t.date}
-          <input name="date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+          <input name="date" type="date" required defaultValue={brusselsToday()} />
         </label>
         <label>
           {t.kind}
@@ -550,7 +551,7 @@ export function Fundraising({ locale }: { locale: Locale }) {
       >
         <label>
           {t.date}
-          <input name="date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+          <input name="date" type="date" required defaultValue={brusselsToday()} />
         </label>
         <label>
           {t.kind}

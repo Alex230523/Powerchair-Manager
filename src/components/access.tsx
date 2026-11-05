@@ -511,7 +511,7 @@ export function Access({ locale }: { locale: Locale }) {
                     minLength={2}
                     maxLength={80}
                     required
-                    placeholder="Club pilote — Président"
+                    placeholder={st.nameExample}
                   />
                 </label>
                 <label className="check">

@@ -1,4 +1,5 @@
 "use client";
+import { HoverBubble } from "./hover-bubble";
 import { NewsPopup } from "./news";
 import { WelcomeJourney } from "./onboarding";
 import { SeasonPlanCard } from "./season-plan";
@@ -523,11 +524,8 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
     { key: "other", label: b.splitOther, n: metric.split.other },
   ].filter((x) => x.n > 0);
   return (
-    <div className="metric-split">
-      {card}
-      <div className="metric-split-bubble" role="tooltip">
-        <p className="metric-split-title">{b.splitTitle}</p>
-        <ul>
+    <HoverBubble className="metric-split" title={b.splitTitle} trigger={() => card}>
+        <ul className="metric-split-list">
           {parts.map((x) => (
             <li key={x.key}>
               <span>{x.label}</span>
@@ -538,8 +536,7 @@ function MetricCard({ locale, metric }: { locale: Locale; metric: Metric }) {
             </li>
           ))}
         </ul>
-      </div>
-    </div>
+    </HoverBubble>
   );
 }
 const badgeTone = (tone: "ok" | "warn" | "low") => (tone === "ok" ? "success" : tone === "warn" ? "warning" : "danger");

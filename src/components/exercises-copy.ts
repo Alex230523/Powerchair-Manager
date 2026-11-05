@@ -72,6 +72,8 @@ const fr = {
     accepted: "Fiche ajoutée à votre bibliothèque.",
     refused: "Fiche refusée.",
     cancel: "Annuler",
+    sentTitle: "Envoyée à",
+    sentStates: { pending: "en attente de réponse", accepted: "acceptée", refused: "refusée" },
   },
   x4: {
     intro: "Les exercices et les tactiques des coachs du club, réutilisables d'un entraînement ou d'un match à l'autre.",
@@ -248,6 +250,8 @@ const nl: Copy = {
     accepted: "Fiche toegevoegd aan uw bibliotheek.",
     refused: "Fiche geweigerd.",
     cancel: "Annuleren",
+    sentTitle: "Verstuurd naar",
+    sentStates: { pending: "wacht op antwoord", accepted: "aanvaard", refused: "geweigerd" },
   },
   x4: {
     intro: "De oefeningen en tactieken van de coaches van de club, herbruikbaar van training tot training en van wedstrijd tot wedstrijd.",
@@ -423,6 +427,8 @@ const en: Copy = {
     accepted: "Sheet added to your library.",
     refused: "Sheet declined.",
     cancel: "Cancel",
+    sentTitle: "Sent to",
+    sentStates: { pending: "waiting for an answer", accepted: "accepted", refused: "declined" },
   },
   x4: {
     intro: "The club coaches' exercises and tactics, reusable from one training or match to the next.",

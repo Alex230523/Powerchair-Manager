@@ -17,6 +17,7 @@ type Copy = {
   maxPerPair: string;
   consentedAnytime: string;
   consentedOnly: string;
+  yearly: string;
   bpcf: Record<"apply" | "hint" | "text", string>;
   validation: string;
   noValidation: string;
@@ -31,7 +32,35 @@ type Copy = {
   give: string;
   refuseConsent: string;
   tabsLabel: string;
-  tabs: Record<"players" | "offers" | "rules" | "provinces", string>;
+  tabs: Record<"players" | "offers" | "rules" | "provinces" | "international", string>;
+  bpcf2: {
+    formatOf: string;
+    formats: Record<"" | "academy" | "elite" | "elite_certified", string>;
+    indemnity: string;
+    forceMajeure: string;
+    forceReason: string;
+    forceBadge: string;
+    kinds: Record<"consented" | "free" | "force_majeure", string>;
+    proofAdd: string;
+    proofOf: string;
+    paymentConfirmed: string;
+    paymentWaiting: string;
+    confirmPayment: string;
+    unconfirmPayment: string;
+    intlIntro: string;
+    intlPlayer: string;
+    intlForeignClub: string;
+    intlCountry: string;
+    intlYears: string;
+    intlNote: string;
+    intlRecord: string;
+    intlNone: string;
+    intlPaid: string;
+    intlToPay: string;
+    intlMarkPaid: string;
+    intlMarkUnpaid: string;
+    intlRates: string;
+  };
   search: string;
   club: string;
   allClubs: string;
@@ -80,7 +109,7 @@ type Copy = {
   post: string;
   threadsTitle: string;
   threadsIntro: string;
-  rulesForm: Record<"from" | "to" | "addWindow" | "removeWindow" | "amountsAllowed" | "cap" | "max" | "validation" | "text" | "save" | "windowOf" | "consentedAnytime" | "maxPair", string>;
+  rulesForm: Record<"from" | "to" | "addWindow" | "removeWindow" | "amountsAllowed" | "cap" | "max" | "validation" | "text" | "save" | "windowOf" | "consentedAnytime" | "maxPair" | "yearly", string>;
   provinceOf: string;
   provinces: Record<string, string>;
   saved: string;
@@ -121,6 +150,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     maxPerPair: "Au plus {n} transfert(s) d'un club vers un même club par saison",
     consentedAnytime: "Transfert consenti (tous d'accord) possible toute la saison ; sinon, départ libre pendant une période, validé par la fédération",
     consentedOnly: "Hors période : transferts consentis uniquement",
+    yearly: "chaque année",
     bpcf: {
       apply: "Reprendre le règlement BPCF 2025",
       hint: "Remplit les périodes de la saison (1er juillet au 31 août, 20 décembre au 10 janvier), le plafond de 500 €, un transfert par saison d'un club vers un autre et le texte ; vérifiez puis enregistrez.",
@@ -139,7 +169,35 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     give: "Donner mon accord",
     refuseConsent: "Refuser",
     tabsLabel: "Sections de la bourse",
-    tabs: { players: "Joueurs", offers: "Demandes de transfert", rules: "Règles", provinces: "Provinces des clubs" },
+    tabs: { players: "Joueurs", offers: "Demandes de transfert", rules: "Règles", provinces: "Clubs", international: "Transferts internationaux" },
+    bpcf2: {
+      formatOf: "Format de formation : {name}",
+      formats: { "": "Non précisé", academy: "Académie", elite: "Élite", elite_certified: "Élite, entraîneurs diplômés BPCF" },
+      indemnity: "Indemnité de formation BPCF proposée : {amount} ({n} saison(s), format {format})",
+      forceMajeure: "Cas de force majeure (déménagement, scolarité…) : la commission décide, même hors période",
+      forceReason: "Raison de la force majeure",
+      forceBadge: "Force majeure",
+      kinds: { consented: "Consenti", free: "Libre", force_majeure: "Force majeure" },
+      proofAdd: "Déposer la preuve de paiement",
+      proofOf: "Preuve de paiement : {name}",
+      paymentConfirmed: "Paiement confirmé par la fédération",
+      paymentWaiting: "Paiement à confirmer : le joueur ne joue pas encore",
+      confirmPayment: "Confirmer le paiement",
+      unconfirmPayment: "Retirer la confirmation",
+      intlIntro: "Un joueur formé en Belgique part vers un club étranger : la fédération l'enregistre, l'indemnité est calculée (500, 750 ou 1 000 € par année selon le format du club formateur, 250 € de dossier, 3 000 € au plus) et la fédération la reverse au club.",
+      intlPlayer: "Joueur",
+      intlForeignClub: "Club étranger",
+      intlCountry: "Pays",
+      intlYears: "Années de formation",
+      intlNote: "Note (facultatif)",
+      intlRecord: "Enregistrer le transfert international",
+      intlNone: "Aucun transfert international.",
+      intlPaid: "Payée",
+      intlToPay: "À recevoir",
+      intlMarkPaid: "Marquer reçue",
+      intlMarkUnpaid: "Marquer à recevoir",
+      intlRates: "Le format du club formateur doit être précisé dans l'onglet Clubs.",
+    },
     search: "Rechercher un joueur",
     club: "Club",
     allClubs: "Tous les clubs",
@@ -202,6 +260,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       windowOf: "Période {n}",
       consentedAnytime: "Transfert consenti possible toute la saison (hors période : départ libre validé par la fédération pendant une période)",
       maxPair: "Transferts au plus d'un club vers un même club par saison (facultatif)",
+      yearly: "Les mêmes périodes chaque année (seuls le jour et le mois comptent)",
     },
     provinceOf: "Province : {name}",
     provinces: provincesFr,
@@ -212,6 +271,9 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       OWN_PLAYER: "Ce joueur est déjà dans votre club.",
       TRANSFER_LIMIT: "Le nombre maximum de transferts pour cette saison est atteint.",
       TRANSFER_PAIR_LIMIT: "Un transfert entre ces deux clubs a déjà eu lieu cette saison.",
+      FORMAT_REQUIRED: "Précisez d'abord le format de formation du club (onglet Clubs).",
+      PROOF_REQUIRED: "Le club entrant doit d'abord déposer la preuve de paiement.",
+      REASON_REQUIRED: "Expliquez la raison de la force majeure.",
       CONSENT_REQUIRED: "Le joueur, ou un parent, doit d'abord donner son accord.",
       DUPLICATE: "Une demande est déjà en cours pour ce joueur, ou il est déjà dans ce club.",
       NO_FEDERATION: "Votre club n'est rattaché à aucune fédération.",
@@ -237,6 +299,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     maxPerPair: "Hoogstens {n} transfer(s) van een club naar dezelfde club per seizoen",
     consentedAnytime: "Transfer met akkoord van iedereen het hele seizoen mogelijk; anders vrij vertrek tijdens een periode, gevalideerd door de federatie",
     consentedOnly: "Buiten de periode: enkel transfers met akkoord",
+    yearly: "elk jaar",
     bpcf: {
       apply: "Het BPCF-reglement 2025 overnemen",
       hint: "Vult de periodes van het seizoen in (1 juli tot 31 augustus, 20 december tot 10 januari), het plafond van 500 €, één transfer per seizoen van een club naar een andere en de tekst; controleer en sla op.",
@@ -255,7 +318,35 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     give: "Mijn akkoord geven",
     refuseConsent: "Weigeren",
     tabsLabel: "Onderdelen van de beurs",
-    tabs: { players: "Spelers", offers: "Transferaanvragen", rules: "Regels", provinces: "Provincies van de clubs" },
+    tabs: { players: "Spelers", offers: "Transferaanvragen", rules: "Regels", provinces: "Clubs", international: "Internationale transfers" },
+    bpcf2: {
+      formatOf: "Opleidingsformaat: {name}",
+      formats: { "": "Niet opgegeven", academy: "Academie", elite: "Elite", elite_certified: "Elite, door BPCF gediplomeerde trainers" },
+      indemnity: "Voorgestelde BPCF-opleidingsvergoeding: {amount} ({n} seizoen(en), formaat {format})",
+      forceMajeure: "Overmacht (verhuis, school…): de commissie beslist, ook buiten de periode",
+      forceReason: "Reden van de overmacht",
+      forceBadge: "Overmacht",
+      kinds: { consented: "Met akkoord", free: "Vrij", force_majeure: "Overmacht" },
+      proofAdd: "Betalingsbewijs neerleggen",
+      proofOf: "Betalingsbewijs: {name}",
+      paymentConfirmed: "Betaling bevestigd door de federatie",
+      paymentWaiting: "Betaling te bevestigen: de speler speelt nog niet",
+      confirmPayment: "Betaling bevestigen",
+      unconfirmPayment: "Bevestiging intrekken",
+      intlIntro: "Een in België opgeleide speler vertrekt naar een buitenlandse club: de federatie registreert het, de vergoeding wordt berekend (500, 750 of 1 000 € per jaar volgens het formaat van de opleidende club, 250 € dossierkosten, hoogstens 3 000 €) en de federatie stort ze door aan de club.",
+      intlPlayer: "Speler",
+      intlForeignClub: "Buitenlandse club",
+      intlCountry: "Land",
+      intlYears: "Opleidingsjaren",
+      intlNote: "Opmerking (optioneel)",
+      intlRecord: "Internationale transfer registreren",
+      intlNone: "Geen internationale transfers.",
+      intlPaid: "Betaald",
+      intlToPay: "Te ontvangen",
+      intlMarkPaid: "Als ontvangen markeren",
+      intlMarkUnpaid: "Als te ontvangen markeren",
+      intlRates: "Het formaat van de opleidende club moet in het tabblad Clubs opgegeven zijn.",
+    },
     search: "Een speler zoeken",
     club: "Club",
     allClubs: "Alle clubs",
@@ -318,6 +409,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       windowOf: "Periode {n}",
       consentedAnytime: "Transfer met akkoord het hele seizoen mogelijk (buiten de periode: vrij vertrek gevalideerd door de federatie tijdens een periode)",
       maxPair: "Hoogstens transfers van een club naar dezelfde club per seizoen (optioneel)",
+      yearly: "Elk jaar dezelfde periodes (enkel dag en maand tellen)",
     },
     provinceOf: "Provincie: {name}",
     provinces: {
@@ -341,6 +433,9 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       OWN_PLAYER: "Deze speler zit al in uw club.",
       TRANSFER_LIMIT: "Het maximum aantal transfers voor dit seizoen is bereikt.",
       TRANSFER_PAIR_LIMIT: "Er was dit seizoen al een transfer tussen deze twee clubs.",
+      FORMAT_REQUIRED: "Geef eerst het opleidingsformaat van de club op (tabblad Clubs).",
+      PROOF_REQUIRED: "De ontvangende club moet eerst het betalingsbewijs neerleggen.",
+      REASON_REQUIRED: "Leg de reden van de overmacht uit.",
       CONSENT_REQUIRED: "De speler, of een ouder, moet eerst akkoord gaan.",
       DUPLICATE: "Er loopt al een aanvraag voor deze speler, of hij zit al in deze club.",
       NO_FEDERATION: "Uw club is bij geen enkele federatie aangesloten.",
@@ -366,6 +461,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     maxPerPair: "At most {n} transfer(s) from one club to the same club per season",
     consentedAnytime: "A transfer everyone agrees to is possible all season; otherwise, a free leave during a period, validated by the federation",
     consentedOnly: "Outside a period: agreed transfers only",
+    yearly: "every year",
     bpcf: {
       apply: "Use the BPCF 2025 rules",
       hint: "Fills in the season's periods (1 July to 31 August, 20 December to 10 January), the 500 € cap, one transfer per season from one club to another and the text; check, then save.",
@@ -384,7 +480,35 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
     give: "Give my agreement",
     refuseConsent: "Refuse",
     tabsLabel: "Sections of the market",
-    tabs: { players: "Players", offers: "Transfer requests", rules: "Rules", provinces: "Provinces of the clubs" },
+    tabs: { players: "Players", offers: "Transfer requests", rules: "Rules", provinces: "Clubs", international: "International transfers" },
+    bpcf2: {
+      formatOf: "Training format: {name}",
+      formats: { "": "Not set", academy: "Academy", elite: "Elite", elite_certified: "Elite, BPCF-qualified coaches" },
+      indemnity: "Suggested BPCF training compensation: {amount} ({n} season(s), {format} format)",
+      forceMajeure: "Force majeure (moving, school…): the commission decides, even outside a period",
+      forceReason: "Reason for the force majeure",
+      forceBadge: "Force majeure",
+      kinds: { consented: "Agreed", free: "Free", force_majeure: "Force majeure" },
+      proofAdd: "File the proof of payment",
+      proofOf: "Proof of payment: {name}",
+      paymentConfirmed: "Payment confirmed by the federation",
+      paymentWaiting: "Payment to confirm: the player does not play yet",
+      confirmPayment: "Confirm the payment",
+      unconfirmPayment: "Withdraw the confirmation",
+      intlIntro: "A player trained in Belgium leaves for a club abroad: the federation records it, the compensation is computed (500, 750 or 1,000 € per year by the training club's format, 250 € file fee, 3,000 € at most) and the federation passes it on to the club.",
+      intlPlayer: "Player",
+      intlForeignClub: "Club abroad",
+      intlCountry: "Country",
+      intlYears: "Years of training",
+      intlNote: "Note (optional)",
+      intlRecord: "Record the international transfer",
+      intlNone: "No international transfers.",
+      intlPaid: "Paid",
+      intlToPay: "To receive",
+      intlMarkPaid: "Mark received",
+      intlMarkUnpaid: "Mark to receive",
+      intlRates: "The training club's format must be set in the Clubs tab.",
+    },
     search: "Search a player",
     club: "Club",
     allClubs: "All clubs",
@@ -447,6 +571,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       windowOf: "Period {n}",
       consentedAnytime: "Agreed transfer possible all season (outside a period: free leave validated by the federation during a period)",
       maxPair: "Transfers at most from one club to the same club per season (optional)",
+      yearly: "The same periods every year (only the day and month count)",
     },
     provinceOf: "Province: {name}",
     provinces: {
@@ -470,6 +595,9 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       OWN_PLAYER: "This player is already in your club.",
       TRANSFER_LIMIT: "The maximum number of transfers for this season is reached.",
       TRANSFER_PAIR_LIMIT: "A transfer between these two clubs already took place this season.",
+      FORMAT_REQUIRED: "First set the club's training format (Clubs tab).",
+      PROOF_REQUIRED: "The receiving club must first file the proof of payment.",
+      REASON_REQUIRED: "Explain the reason for the force majeure.",
       CONSENT_REQUIRED: "The player, or a parent, must agree first.",
       DUPLICATE: "A request is already under way for this player, or they are already in this club.",
       NO_FEDERATION: "Your club is not affiliated to a federation.",

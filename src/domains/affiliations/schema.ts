@@ -104,7 +104,24 @@ export const federationAffiliationCommand = z.discriminatedUnion("action", [
 export type FederationAffiliationCommand = z.infer<typeof federationAffiliationCommand>;
 
 /** Proposed to a federation, amounts to fill in. */
-export const federationExamples = [
-  { key: "bpcf", name: "Affiliation BPCF", basis: "club" as const, frequency: "annual" as const },
-  { key: "sportea", name: "Sportéa", basis: "player" as const, frequency: "annual" as const },
+export type FeeExample = {
+  key: string;
+  name: string;
+  basis: "player" | "club";
+  frequency: "annual" | "monthly";
+  /** Point 9: a ready rule (BPCF 1/18: 80 € per player at most, paid by 30 September). */
+  amountCents?: number;
+  opensMonth?: number;
+  opensDay?: number;
+  dueMonth?: number;
+  dueDay?: number;
+};
+export const federationExamples: FeeExample[] = [
+  { key: "bpcf", name: "Affiliation BPCF", basis: "club", frequency: "annual" },
+  { key: "bpcf_participation", name: "Participation BPCF", basis: "player", frequency: "annual", amountCents: 8000, opensMonth: 9, opensDay: 1, dueMonth: 9, dueDay: 30 },
+  { key: "sportea", name: "Sportéa", basis: "player", frequency: "annual" },
 ];
+/** BPCF 1/18: the participation asked of each player cannot exceed 80 €. */
+export const bpcfPlayerCapCents = 8000;
+/** Point 9: the second reminder, this many days before the deadline. */
+export const reminderDaysBefore = 7;

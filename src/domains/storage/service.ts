@@ -53,6 +53,10 @@ export function originHref(origin: string, ref: string) {
       return `/tournaments/${ref}`;
     case "exercise":
       return `/exercises/${ref}`;
+    case "match_sheet":
+      return `/matches/${ref}`;
+    case "transfer_proof":
+      return "/transfers";
     case "award":
       return `/statistics/club#hall-of-fame`;
     default:

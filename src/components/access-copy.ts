@@ -185,6 +185,18 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "Deze aansluiting is al in orde.",
     en: "This affiliation is already settled.",
   },
+  /* 05/11/2026 (revue): codes that reached the screen as they were. */
+  ADDRESS_REQUIRED: { fr: "L'adresse de la salle est obligatoire.", nl: "Het adres van de zaal is verplicht.", en: "The hall's address is required." },
+  ALREADY_POSTPONED: { fr: "Ce point a déjà été reporté.", nl: "Dit punt werd al uitgesteld.", en: "This step was already postponed." },
+  AWARD_EXISTS: { fr: "Cette distinction existe déjà.", nl: "Deze onderscheiding bestaat al.", en: "This award already exists." },
+  INVITATION_DISPUTED: { fr: "Cette invitation a été contestée : elle ne peut plus être acceptée.", nl: "Deze uitnodiging werd betwist: ze kan niet meer aanvaard worden.", en: "This invitation was disputed: it can no longer be accepted." },
+  LEGAL_FORM_REQUIRED: { fr: "Choisissez d'abord la forme du club (Réglages, Club).", nl: "Kies eerst de rechtsvorm van de club (Instellingen, Club).", en: "First choose the club's legal form (Settings, Club)." },
+  NOT_SENT: { fr: "Cette circulaire n'est pas encore envoyée.", nl: "Deze omzendbrief is nog niet verstuurd.", en: "This circular is not sent yet." },
+  REPRESENTATIVE_NAME_REQUIRED: { fr: "Indiquez le nom de la personne qui représente le joueur.", nl: "Geef de naam van wie de speler vertegenwoordigt.", en: "Give the name of the person who represents the player." },
+  REPRESENTATIVE_REQUIRED: { fr: "Ajoutez la personne qui représente le joueur, ou décochez la case.", nl: "Voeg wie de speler vertegenwoordigt toe, of vink het vakje uit.", en: "Add the person who represents the player, or untick the box." },
+  SEASON_IMMUTABLE: { fr: "La saison ne peut plus être changée.", nl: "Het seizoen kan niet meer gewijzigd worden.", en: "The season can no longer be changed." },
+  SEASON_REQUIRED: { fr: "Aucune saison en cours : créez-la d'abord.", nl: "Geen lopend seizoen: maak het eerst aan.", en: "No current season: create it first." },
+  VERSION_CONFLICT: { fr: "Quelqu'un a modifié cet événement entre-temps : rechargez la page.", nl: "Iemand heeft deze activiteit intussen gewijzigd: herlaad de pagina.", en: "Someone changed this event meanwhile: reload the page." },
   STORAGE_FULL: {
     fr: "L'espace de stockage du club est plein : le fichier n'a pas été envoyé. Le président voit ce qui prend de la place dans Statistiques, carte Stockage.",
     nl: "De opslagruimte van de club is vol: het bestand werd niet verstuurd. De voorzitter ziet wat ruimte inneemt in Statistieken, kaart Opslag.",

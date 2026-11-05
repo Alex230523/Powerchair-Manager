@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
+import { accountIn, notice, presidentsOf } from "../notifications/notice";
 
 /**
  * Wave 16 (E2): the exercise sheets of the club's coaches. Read by the
@@ -174,6 +175,14 @@ export async function exerciseDetail(db: Pool, p: Principal, id: string) {
     return {
       organization_id: s.org,
       can: { write: s.write, propose: s.write && !!federation },
+      // Point 12: where the sheet was sent, and the answers.
+      sent: (
+        await s.c.query(
+          `SELECT f.id,o.name AS club,f.status,f.created_at::text AS created_at,f.decided_at::text AS decided_at FROM exercise_offer f JOIN organization o ON o.id=f.to_organization_id
+            WHERE f.exercise_id=$1 AND f.from_organization_id=$2 ORDER BY f.created_at DESC LIMIT 20`,
+          [id, s.org],
+        )
+      ).rows as { id: string; club: string; status: "pending" | "accepted" | "refused"; created_at: string; decided_at: string | null }[],
       // 04/11/2026: the clubs of the federation the sheet can be sent to.
       clubs: federation && s.write
         ? ((await s.c.query("SELECT id,name FROM organization WHERE kind='club' AND federation_id=$1 AND id<>$2 ORDER BY lower(name)", [federation, s.org])).rows as { id: string; name: string }[])
@@ -369,6 +378,20 @@ export async function exerciseExecute(db: Pool, p: Principal, command: ExerciseC
         );
         if (!sent.rowCount) throw new AccessError("ALREADY_SENT", 409);
         await audit(s.c, s.org, s.userId, "exercise.sent", x.id, { to: command.clubId });
+        // Point 13: the receiving club's presidency is told, with the link to answer.
+        const from = (await s.c.query("SELECT name FROM organization WHERE id=$1", [s.org])).rows[0].name as string;
+        await notice(
+          s.c,
+          command.clubId,
+          await presidentsOf(s.c, command.clubId),
+          {
+            fr: { title: `Fiche reçue : ${x.title}`, message: `${from} vous propose la fiche d'exercice « ${x.title} ». Acceptez-la pour l'ajouter à votre bibliothèque, ou refusez-la.` },
+            nl: { title: `Fiche ontvangen: ${x.title}`, message: `${from} stelt u de oefenfiche « ${x.title} » voor. Aanvaard ze om ze aan uw bibliotheek toe te voegen, of weiger ze.` },
+            en: { title: `Sheet received: ${x.title}`, message: `${from} offers you the exercise sheet « ${x.title} ». Accept it to add it to your library, or decline it.` },
+          },
+          "/exercises#exercise-offers",
+          `exercise_offer:${sent.rows[0].id}`,
+        );
         return { ok: true as const, id: sent.rows[0].id as string };
       }
       if (command.action === "offerDecide") {
@@ -397,9 +420,32 @@ export async function exerciseExecute(db: Pool, p: Principal, command: ExerciseC
           if (size) await ensureStorage(s.c, s.org, size, 0);
           await s.c.query("INSERT INTO exercise_diagram(exercise_id,organization_id,media_type,content,updated_by) SELECT $1,$3,media_type,content,$4 FROM exercise_diagram WHERE exercise_id=$2", [copy, x.id, s.org, s.userId]);
           await s.c.query("INSERT INTO exercise_drawing(exercise_id,organization_id,content,updated_by) SELECT $1,$3,content,$4 FROM exercise_drawing WHERE exercise_id=$2", [copy, x.id, s.org, s.userId]);
+          // Point 12: the tags come along, created in this club when it has none of that name.
+          const tags = (await s.c.query("SELECT g.name FROM exercise_tag_link l JOIN exercise_tag g ON g.id=l.tag_id WHERE l.exercise_id=$1", [x.id])).rows.map((r) => r.name as string);
+          if (tags.length) await setTags(s.c, s.org, s.userId, copy, tags);
           await audit(s.c, s.org, s.userId, "exercise.created", copy);
         }
         await s.c.query("UPDATE exercise_offer SET status=$2,decided_by=$3,decided_at=now(),copy_id=$4 WHERE id=$1", [f.id, command.accept ? "accepted" : "refused", s.userId, copy]);
+        // Points 12 and 13: the sender learns the answer.
+        const names = (await s.c.query("SELECT (SELECT name FROM organization WHERE id=$1) AS club,(SELECT title FROM exercise WHERE id=$2) AS title", [s.org, f.exercise_id])).rows[0] as { club: string; title: string };
+        await notice(
+          s.c,
+          f.from_organization_id,
+          await accountIn(s.c, f.from_organization_id, f.sent_by),
+          command.accept
+            ? {
+                fr: { title: `Fiche acceptée : ${names.title}`, message: `${names.club} a ajouté la fiche « ${names.title} » à sa bibliothèque.` },
+                nl: { title: `Fiche aanvaard: ${names.title}`, message: `${names.club} heeft de fiche « ${names.title} » aan zijn bibliotheek toegevoegd.` },
+                en: { title: `Sheet accepted: ${names.title}`, message: `${names.club} added the sheet « ${names.title} » to its library.` },
+              }
+            : {
+                fr: { title: `Fiche refusée : ${names.title}`, message: `${names.club} n'a pas pris la fiche « ${names.title} ».` },
+                nl: { title: `Fiche geweigerd: ${names.title}`, message: `${names.club} heeft de fiche « ${names.title} » niet genomen.` },
+                en: { title: `Sheet declined: ${names.title}`, message: `${names.club} did not take the sheet « ${names.title} ».` },
+              },
+          `/exercises/${f.exercise_id}`,
+          `exercise_answer:${f.id}`,
+        );
         await audit(s.c, s.org, s.userId, command.accept ? "exercise.offer.accepted" : "exercise.offer.refused", f.id);
         return { ok: true as const, id: copy ?? f.id };
       }

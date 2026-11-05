@@ -472,7 +472,8 @@ export function DataTable({
 }) {
   return (
     <div className={`data-table table-scroll ${className}`.trim()} role="region" aria-label={label} tabIndex={0}>
-      <table>
+      {/* Explicit roles: a table shown as cards on a phone stays a table for screen readers. */}
+      <table role="table">
         {caption && <caption className="sr-only">{caption}</caption>}
         {children}
       </table>

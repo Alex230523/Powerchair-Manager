@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -188,7 +189,18 @@ export function Contacts({ locale, start }: { locale: Locale; start?: string }) 
                 ]}
               />
             ) : (
-              <EmptyState title={c.empty} icon="message" />
+              <EmptyState
+                title={c.empty}
+                icon="message"
+                // Point 19: the way to start, right there.
+                action={
+                  data.can.manage ? (
+                    <Button icon="plus" onClick={() => setEditing("new")}>
+                      {emptyStart[locale]}
+                    </Button>
+                  ) : undefined
+                }
+              />
             )}
           </Card>
         )}

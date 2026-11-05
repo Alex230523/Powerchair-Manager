@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { sidelineCopy } from "./sideline-copy";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -289,7 +290,17 @@ export function Matches({ locale }: { locale: Locale }) {
           })}
         </ul>
       ) : (
-        <EmptyState title={t.empty} />
+        <EmptyState
+          title={t.empty}
+          // Point 19: the way to start, right there.
+          action={
+            manageable.length > 0 ? (
+              <button type="button" className="button" onClick={() => (view.can.friendly ? setChoosing(true) : setEditing("new"))}>
+                {emptyStart[locale]}
+              </button>
+            ) : undefined
+          }
+        />
       )}
 
       <TournamentMatches locale={locale} view={view} />

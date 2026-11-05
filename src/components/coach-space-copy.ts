@@ -8,6 +8,7 @@ type Copy = {
   categories: string;
   validUntil: string;
   since: string;
+  young: string;
   noDate: string;
   copy: string;
   copyOf: string;
@@ -46,6 +47,7 @@ export const coachSpaceCopy: Record<"fr" | "nl" | "en", Copy> = {
     categories: "Catégories",
     validUntil: "Valable jusqu'au",
     since: "Depuis le",
+    young: "Jeune conducteur (moins de 2 ans)",
     noDate: "Sans date de validité",
     copy: "Copie du permis (photo ou PDF, facultatif)",
     copyOf: "Voir la copie : {name}",
@@ -82,6 +84,7 @@ export const coachSpaceCopy: Record<"fr" | "nl" | "en", Copy> = {
     categories: "Categorieën",
     validUntil: "Geldig tot",
     since: "Sinds",
+    young: "Jonge bestuurder (minder dan 2 jaar)",
     noDate: "Zonder geldigheidsdatum",
     copy: "Kopie van het rijbewijs (foto of pdf, optioneel)",
     copyOf: "De kopie bekijken: {name}",
@@ -118,6 +121,7 @@ export const coachSpaceCopy: Record<"fr" | "nl" | "en", Copy> = {
     categories: "Categories",
     validUntil: "Valid until",
     since: "Held since",
+    young: "Young driver (under 2 years)",
     noDate: "No expiry date",
     copy: "Copy of the licence (photo or PDF, optional)",
     copyOf: "See the copy: {name}",

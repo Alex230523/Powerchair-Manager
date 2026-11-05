@@ -1,10 +1,11 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useRef, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScope } from "./use-scope";
 import type { tripsView, tripDetail } from "@/domains/trips/service";
-import { licenceCategories } from "@/domains/trips/schema";
+import { licenceCategories, youngDriver } from "@/domains/trips/schema";
 import { tripsCopy } from "./trips-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
@@ -206,7 +207,7 @@ export function TripForm({
         )}
         <label htmlFor={`${id}-title`}>
           {f.title}
-          <input id={`${id}-title`} name="title" required minLength={2} maxLength={120} defaultValue={trip?.title} placeholder="Ex. Tournoi de Gand" />
+          <input id={`${id}-title`} name="title" required minLength={2} maxLength={120} defaultValue={trip?.title} placeholder={t.examples.title} />
         </label>
         <label htmlFor={`${id}-kind`}>
           {f.kind}
@@ -266,7 +267,7 @@ export function TripForm({
         </label>
         <label htmlFor={`${id}-meet`}>
           {f.meetingPoint}
-          <input id={`${id}-meet`} name="meetingPoint" maxLength={300} defaultValue={trip?.meeting_point} placeholder="Ex. Parking du club" />
+          <input id={`${id}-meet`} name="meetingPoint" maxLength={300} defaultValue={trip?.meeting_point} placeholder={t.examples.meeting} />
         </label>
         <label htmlFor={`${id}-dep`}>
           {f.departureAt}
@@ -293,7 +294,7 @@ export function TripForm({
         )}
         <label htmlFor={`${id}-contact`}>
           {f.contact}
-          <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder="Ex. Sophie, 0470 12 34 56" />
+          <input id={`${id}-contact`} name="contact" maxLength={200} defaultValue={trip?.contact} placeholder={t.examples.contact} />
         </label>
       </div>
       {/* 3: the accommodation belongs to a stay; a transport keeps what it had, hidden. */}
@@ -406,7 +407,17 @@ export function TripsPage({ locale }: { locale: Locale }) {
           ))}
         </ul>
       ) : (
-        <EmptyState title={t.none} />
+        <EmptyState
+          title={t.none}
+          // Point 19: the way to start, right there.
+          action={
+            data.can.manage && !creating ? (
+              <button type="button" className="button" onClick={() => setCreating(true)}>
+                {emptyStart[locale]}
+              </button>
+            ) : undefined
+          }
+        />
       )}
       {preview && <TripPreview locale={locale} id={preview} close={() => setPreview(null)} />}
       {(data.can.manage || data.fleet.length > 0) && (
@@ -512,7 +523,7 @@ function Fleet({ locale, data, busy, post }: { locale: Locale; data: List; busy:
         </label>
         <label>
           {t.kind}
-          <input name="kind" maxLength={60} defaultValue={v?.kind} placeholder="Ex. Minibus adapté" />
+          <input name="kind" maxLength={60} defaultValue={v?.kind} placeholder={t.examples.vehicleKind} />
         </label>
         <label>
           {t.plate}
@@ -644,6 +655,11 @@ function Drivers({ locale, data, busy, post }: { locale: Locale; data: List; bus
                   {d.categories.join(", ")}
                   {d.obtained_on && ` · ${t.since} ${fullDay(locale, d.obtained_on)}`}
                   {d.valid_until && ` · ${t.validUntil} ${fullDay(locale, d.valid_until)}`}
+                </p>
+                {/* Point 15: checked by the club, and a young driver (less than two years). */}
+                <p className="driver-badges">
+                  {d.verified && <Badge tone="success">{t.verifiedByClub}</Badge>}
+                  {youngDriver(d.obtained_on, data.today) && <Badge tone="warning">{t.youngDriver}</Badge>}
                 </p>
               </div>
               <button type="button" className="text-button" onClick={() => show(d.profile_id)}>

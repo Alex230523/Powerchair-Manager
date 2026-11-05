@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
-import { federationExamples, type DueState } from "@/domains/affiliations/schema";
+import { bpcfPlayerCapCents, federationExamples, type DueState, type FeeExample } from "@/domains/affiliations/schema";
 import { affiliationsCopy, put } from "./affiliations-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, Card, EmptyState, ExportButton, PageHeader } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
+import { Fines } from "./fines";
 import { useData, usePost } from "./use-api";
 import { FinanceNav } from "./finance-nav";
 import { undoToast, showToast } from "./toast";
@@ -85,14 +86,14 @@ function FeeDialog({
   locale: Locale;
   contacts: Contact[];
   clubs?: { id: string; name: string }[];
-  preset?: { name: string; basis: "player" | "club"; frequency: "annual" | "monthly" };
+  preset?: Omit<FeeExample, "key">;
   busy: boolean;
   save: (body: Record<string, unknown>) => void;
   close: () => void;
 }) {
   const t = affiliationsCopy[locale];
   const [frequency, setFrequency] = useState<"annual" | "monthly">(preset?.frequency ?? "annual");
-  const [mode, setMode] = useState<"after" | "fixed">("after");
+  const [mode, setMode] = useState<"after" | "fixed">(preset?.dueMonth ? "fixed" : "after");
   const [scope, setScope] = useState<"all" | "chosen">("all");
   return (
     <Modal title={clubs ? t.addFed : t.add} close={close}>
@@ -161,7 +162,7 @@ function FeeDialog({
         </fieldset>
         <label htmlFor="fee-amount">
           {t.amount}
-          <input id="fee-amount" name="amount" inputMode="decimal" required pattern="[0-9]+([.,][0-9]{1,2})?" aria-describedby="fee-amount-hint" />
+          <input id="fee-amount" name="amount" inputMode="decimal" required pattern="[0-9]+([.,][0-9]{1,2})?" aria-describedby="fee-amount-hint" defaultValue={preset?.amountCents !== undefined ? (preset.amountCents / 100).toFixed(2) : undefined} />
         </label>
         <p id="fee-amount-hint" className="muted small">
           {t.amountHint}
@@ -172,7 +173,7 @@ function FeeDialog({
           {frequency === "annual" && (
             <label htmlFor="fee-opens-month">
               {t.month}
-              <select id="fee-opens-month" name="opensMonth" defaultValue="8">
+              <select id="fee-opens-month" name="opensMonth" defaultValue={String(preset?.opensMonth ?? 8)}>
                 {t.months.map((m, i) => (
                   <option key={m} value={i + 1}>
                     {m}
@@ -183,7 +184,7 @@ function FeeDialog({
           )}
           <label htmlFor="fee-opens-day">
             {t.day}
-            <input id="fee-opens-day" name="opensDay" type="number" min={1} max={28} defaultValue={1} required />
+            <input id="fee-opens-day" name="opensDay" type="number" min={1} max={28} defaultValue={preset?.opensDay ?? 1} required />
           </label>
         </fieldset>
         <fieldset>
@@ -202,7 +203,7 @@ function FeeDialog({
             <div className="date-pair">
               <label htmlFor="fee-due-month">
                 {t.month}
-                <select id="fee-due-month" name="dueMonth" defaultValue="9">
+                <select id="fee-due-month" name="dueMonth" defaultValue={String(preset?.dueMonth ?? 9)}>
                   {t.months.map((m, i) => (
                     <option key={m} value={i + 1}>
                       {m}
@@ -212,7 +213,7 @@ function FeeDialog({
               </label>
               <label htmlFor="fee-due-day">
                 {t.day}
-                <input id="fee-due-day" name="dueDay" type="number" min={1} max={31} defaultValue={30} required />
+                <input id="fee-due-day" name="dueDay" type="number" min={1} max={31} defaultValue={preset?.dueDay ?? 30} required />
               </label>
             </div>
           ) : (
@@ -464,6 +465,8 @@ export function ClubAffiliations({ locale }: { locale: Locale }) {
           </form>
         </Modal>
       )}
+      {/* Point 10: the federation's fines. */}
+      <Fines locale={locale} />
     </main>
   );
 }
@@ -474,7 +477,7 @@ export function FederationAffiliations({ locale }: { locale: Locale }) {
   const failure = useFailure(locale);
   const { data, error, setError, denied, reload } = useData<FedView>("/api/federation/affiliations", failure);
   const { busy, message, post, postFor } = usePost("/api/federation/affiliations", reload, setError, failure);
-  const [adding, setAdding] = useState<null | { name: string; basis: "player" | "club"; frequency: "annual" | "monthly" } | "blank">(null);
+  const [adding, setAdding] = useState<null | Omit<FeeExample, "key"> | "blank">(null);
   if (denied) return <main id="main" className="access affiliations"><EmptyState title={errors.FORBIDDEN?.[locale] ?? t.title} /></main>;
   const late = data?.dues.filter((d) => d.state === "late").length ?? 0;
   return (
@@ -501,6 +504,8 @@ export function FederationAffiliations({ locale }: { locale: Locale }) {
                           money(locale, f.amount_cents),
                         ].join(" · ")}
                       </span>
+                      {/* Point 9 (BPCF 1/18): 80 € per player at most. */}
+                      {f.basis === "player" && f.amount_cents > bpcfPlayerCapCents && <Badge tone="warning">{t.overCap}</Badge>}
                     </div>
                     {data.canManage && (
                       <div className="affiliation-fee-tools">
@@ -538,7 +543,7 @@ export function FederationAffiliations({ locale }: { locale: Locale }) {
                 {federationExamples
                   .filter((x) => !data.fees.some((f) => f.name === x.name))
                   .map((x) => (
-                    <Button key={x.key} variant="secondary" size="sm" onClick={() => setAdding({ name: x.name, basis: x.basis, frequency: x.frequency })}>
+                    <Button key={x.key} variant="secondary" size="sm" onClick={() => setAdding(x)}>
                       {put(t.example, { name: x.name })}
                     </Button>
                   ))}
@@ -618,6 +623,8 @@ export function FederationAffiliations({ locale }: { locale: Locale }) {
           }
         />
       )}
+      {/* Point 10: the fines given to the clubs. */}
+      <Fines locale={locale} />
     </main>
   );
 }

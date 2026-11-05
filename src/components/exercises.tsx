@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
@@ -337,7 +338,18 @@ export function Exercises({ locale, genre }: { locale: Locale; genre?: string })
             </label>
           </Toolbar>
           {!shown.length ? (
-            <EmptyState icon="clipboardList" title={view.exercises.length ? t.noMatch : t.empty} />
+            <EmptyState
+              icon="clipboardList"
+              title={view.exercises.length ? t.noMatch : t.empty}
+              // Point 19: an empty page says what to do, with the button to start.
+              action={
+                !view.exercises.length && view.can.write ? (
+                  <Button icon="plus" onClick={() => setEditing("new")}>
+                    {emptyStart[locale]}
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : layout === "cards" ? (
             <ul className="exercise-grid">
               {shown.map((x) => (

@@ -6499,7 +6499,7 @@ ul.task-list {
 .board-day:focus-within header button {
   opacity: 1;
 }
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
   .board-day header button {
     opacity: 1;
   }
@@ -12471,6 +12471,20 @@ ul.task-page li {
 .match-score[data-outcome="draw"] {
   background: var(--surface-soft);
 }
+/* Point 3 (04/11/2026): a shape as well as the colour (WCAG 1.4.1): ▲ won, ▼ lost, = draw. */
+.match-score[data-outcome] > [aria-hidden]::before {
+  margin-inline-end: 0.25em;
+  font-size: 0.75em;
+}
+.match-score[data-outcome="win"] > [aria-hidden]::before {
+  content: "▲";
+}
+.match-score[data-outcome="loss"] > [aria-hidden]::before {
+  content: "▼";
+}
+.match-score[data-outcome="draw"] > [aria-hidden]::before {
+  content: "=";
+}
 .match-context {
   font-size: var(--text-sm);
   color: var(--muted);
@@ -12909,42 +12923,64 @@ ul.task-page > li[data-status="done"] .task-title {
   position: relative;
   display: grid;
 }
-.metric-split-bubble {
-  position: absolute;
-  z-index: 20;
-  inset-inline-start: 0;
-  top: calc(100% + var(--space-1));
+/* Points 2 and 18 (04/11/2026): the grey bubble, placed against the window (HoverBubble). */
+.hover-bubble {
+  position: relative;
+}
+.hover-bubble-panel {
+  position: fixed;
+  z-index: 60;
+  inset-inline-start: var(--bubble-x, 0);
+  top: var(--bubble-y, 0);
   width: max-content;
   min-width: 14rem;
-  max-width: min(18rem, 80vw);
+  max-width: min(18rem, calc(100vw - 16px));
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--heading);
   color: var(--surface);
   font-size: var(--text-sm);
   box-shadow: var(--shadow-card);
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity var(--transition);
-  pointer-events: none;
+  display: none;
 }
-.metric-split:hover .metric-split-bubble,
-.metric-split:focus-within .metric-split-bubble {
-  visibility: visible;
-  opacity: 1;
+.hover-bubble-panel[data-open] {
+  display: block;
 }
-.metric-split-title {
+.hover-bubble-title {
   margin: 0 0 var(--space-2);
   font-weight: 600;
 }
-.metric-split-bubble ul {
+/* A touch screen hovers nothing: the content shows under the trigger, in the page. */
+@media (hover: none), (pointer: coarse) {
+  .hover-bubble-panel,
+  .hover-bubble-panel[data-open] {
+    position: static;
+    display: block;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+  }
+  .hover-bubble-panel .metric-split-bar {
+    background: var(--border);
+  }
+  .hover-bubble-panel .metric-split-bar > span {
+    background: var(--primary);
+  }
+}
+.metric-split-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: var(--space-1);
 }
-.metric-split-bubble li {
+.metric-split-list li {
   display: grid;
   grid-template-columns: 7.5rem minmax(4rem, 1fr) auto;
   align-items: center;
@@ -13046,7 +13082,7 @@ input[type="search"] {
 :is(.toolbar-filters, .directory-filters) {
   align-items: flex-end;
 }
-:is(.toolbar-filters, .directory-filters) :is(input, select) {
+:is(.toolbar-filters, .directory-filters) :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select) {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -13054,7 +13090,7 @@ input[type="search"] {
   margin-top: 6px;
   padding-block: 0;
 }
-:is(.toolbar-filters, .directory-filters) label {
+:is(.toolbar-filters, .directory-filters) label:not(.check) {
   min-height: 0;
 }
 /* A form row keeps its fields on one line even when a label wraps (« Lieu du club » in the storage places). */
@@ -13086,4 +13122,145 @@ input[type="search"] {
   display: grid;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
+}
+/* Point 10 (04/11/2026): the federation's fines. */
+.fine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.fines-list li[data-state="cancelled"] strong {
+  text-decoration: line-through;
+}
+/* Point 8 (04/11/2026): the training compensation's proof and its confirmation. */
+.transfer-payment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+/* Point 15 (04/11/2026): a driver's badges. */
+.driver-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+}
+.driver-badges:empty {
+  display: none;
+}
+
+/*
+ * Point 16 (04/11/2026): every window the same. A form window is 640 px wide
+ * at most (the wide ones keep their own width), its title stays at the top
+ * while scrolling, and its buttons sit at the bottom right, on one line
+ * above a thin border, always within reach.
+ */
+.player-dialog:not(.side-sheet, .wide-dialog, .event-editor-dialog, .sheet-dialog, .tournament-dialog, .subscribe-dialog, .issue-wizard, .preview-dialog) {
+  width: min(640px, calc(100% - 24px));
+}
+.player-dialog:not(.side-sheet) > .dialog-heading {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  margin: -20px -20px 12px;
+  padding: 16px 20px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.player-dialog:not(.side-sheet) > .dialog-heading h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.player-dialog:not(.side-sheet) > :is(form, div) > :is(.actions, .form-actions):last-child,
+.player-dialog:not(.side-sheet) > div > form > :is(.actions, .form-actions):last-child {
+  position: sticky;
+  bottom: -20px;
+  z-index: 1;
+  justify-content: flex-end;
+  margin: 16px -20px -20px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/*
+ * Point 17 (04/11/2026): on a phone (under 600 px) the lists of DataGrid read
+ * as cards: the row's name on top, then each value with its column's name.
+ * The sortable headers stay on top as a row of buttons.
+ */
+@media (max-width: 600px) {
+  .data-table.dg-cards {
+    overflow: visible;
+    border: 0;
+  }
+  .dg-cards > table,
+  .dg-cards > table > tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .dg-cards > table > thead {
+    display: block;
+    margin-bottom: var(--space-2);
+  }
+  .dg-cards > table > thead > tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+  }
+  .dg-cards > table > thead th {
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .dg-cards > table > thead,
+  .dg-cards > table > thead > tr {
+    background: none;
+  }
+  .dg-cards > table > thead th:not(:has(.dg-sort), .dg-select) {
+    display: none;
+  }
+  .dg-cards > table > tbody > tr {
+    display: grid;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+  .dg-cards > table > tbody > tr > :is(td, th) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    height: auto;
+    min-height: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    text-align: start;
+  }
+  .dg-cards > table > tbody > tr > :is(td, th)[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    font-weight: 400;
+  }
+  .dg-cards > table > tbody > tr > th[scope="row"] {
+    font-size: var(--text-base);
+    font-weight: 600;
+  }
+  .dg-cards > table > tbody > tr > th[scope="row"]::before {
+    display: none;
+  }
+  .dg-cards > table > tbody > tr > td.dg-select {
+    justify-content: flex-start;
+  }
 }

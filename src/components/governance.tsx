@@ -222,7 +222,7 @@ export function ProfilesPanel({
               required
               minLength={2}
               maxLength={60}
-              placeholder="Ex. Kiné, Secrétaire adjoint"
+              placeholder={g.profileExample}
               value={editing.name}
               onChange={(e) => setEditing({ ...editing, name: e.target.value })}
             />

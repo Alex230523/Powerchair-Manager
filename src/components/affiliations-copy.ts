@@ -59,6 +59,7 @@ type Copy = {
   amountOf: string;
   amountSave: string;
   amountSaved: string;
+  overCap: string;
   archived: string;
   saved: string;
   examples: string;
@@ -138,6 +139,7 @@ export const affiliationsCopy: Record<"fr" | "nl" | "en", Copy> = {
     amountOf: "Montant de {name} en euros",
     amountSave: "Changer le montant",
     amountSaved: "Montant changé : les prochaines échéances le prennent.",
+    overCap: "Au-delà du plafond BPCF de 80 € par joueur",
     archived: "Affiliation archivée",
     saved: "Affiliation enregistrée",
     examples: "Exemples à compléter",
@@ -209,6 +211,7 @@ export const affiliationsCopy: Record<"fr" | "nl" | "en", Copy> = {
     amountOf: "Bedrag van {name} in euro",
     amountSave: "Bedrag wijzigen",
     amountSaved: "Bedrag gewijzigd: de volgende vervaldagen nemen het over.",
+    overCap: "Boven het BPCF-plafond van 80 € per speler",
     archived: "Aansluiting gearchiveerd",
     saved: "Aansluiting opgeslagen",
     examples: "Voorbeelden om aan te vullen",
@@ -280,6 +283,7 @@ export const affiliationsCopy: Record<"fr" | "nl" | "en", Copy> = {
     amountOf: "Amount of {name} in euros",
     amountSave: "Change the amount",
     amountSaved: "Amount changed: the next dues take it.",
+    overCap: "Above the BPCF cap of 80 € per player",
     archived: "Affiliation archived",
     saved: "Affiliation saved",
     examples: "Examples to complete",

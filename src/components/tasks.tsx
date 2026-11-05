@@ -1,4 +1,5 @@
 "use client";
+import { emptyStart } from "./empty-start-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
@@ -315,7 +316,17 @@ export function Tasks({
           );
         })
       ) : (
-        <EmptyState title={view === "mine" || embedded ? t.emptyMine : t.empty} />
+        <EmptyState
+          title={view === "mine" || embedded ? t.emptyMine : t.empty}
+          // Point 19: the way to start, right there.
+          action={
+            !embedded && all.some(canAdd) ? (
+              <Button icon="plus" onClick={() => setEditing({ category: all.find(canAdd)! })}>
+                {emptyStart[locale]}
+              </Button>
+            ) : undefined
+          }
+        />
       )}
       {editing && (
         <TaskForm

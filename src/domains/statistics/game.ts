@@ -51,7 +51,18 @@ export async function gameStatistics(db: Pool, p: Principal, chart: string, q: C
       case "teams": {
         const span = periodOf(x, "teams", q.period, "season");
         const rows = await played(c, x, span.from, span.to);
-        return { ...spanOf(span), colors: colors(rows), teams: recordsBy(rows, (m) => m.team) };
+        // Point 14: the corners noted from the side of the pitch, ours and theirs, per team.
+        const corners = new Map(
+          (
+            await c.query(
+              `SELECT t.name AS team,count(*) FILTER (WHERE e.kind='corner')::int AS ours,count(*) FILTER (WHERE e.kind='corner_against')::int AS theirs
+                 FROM match_live_event e JOIN match m ON m.id=e.match_id JOIN team t ON t.id=m.team_id
+                WHERE m.id=ANY($1::uuid[]) AND e.cancelled_at IS NULL AND e.kind IN ('corner','corner_against') GROUP BY t.name`,
+              [rows.map((r) => r.id)],
+            )
+          ).rows.map((r) => [r.team as string, { ours: r.ours as number, theirs: r.theirs as number }]),
+        );
+        return { ...spanOf(span), colors: colors(rows), teams: recordsBy(rows, (m) => m.team).map((r) => ({ ...r, corners: corners.get(r.name) ?? { ours: 0, theirs: 0 } })) };
       }
       case "goals": {
         const span = periodOf(x, "goals", q.period, "season");

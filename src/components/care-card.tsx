@@ -9,6 +9,7 @@ import { EmptyState } from "./ui";
 const copy = {
   fr: {
     title: "Consignes de soin",
+    example: "Ex. Transfert au lève-personne",
     hint: "Ce que les accompagnants doivent faire et quand : transfert, installation, ventilation, hydratation… Visibles des coachs du joueur et emportées dans le carnet des déplacements. Données de santé : chiffrées, et chaque lecture par le staff est tracée.",
     none: "Aucune consigne.",
     add: "Ajouter une consigne",
@@ -24,6 +25,7 @@ const copy = {
   },
   nl: {
     title: "Zorginstructies",
+    example: "Bv. Transfer met de tillift",
     hint: "Wat de begeleiders moeten doen en wanneer: transfer, installatie, beademing, drinken… Zichtbaar voor de coaches van de speler en opgenomen in het boekje van de verplaatsingen. Gezondheidsgegevens: versleuteld, en elke raadpleging door de staf wordt gelogd.",
     none: "Geen instructies.",
     add: "Instructie toevoegen",
@@ -39,6 +41,7 @@ const copy = {
   },
   en: {
     title: "Care instructions",
+    example: "E.g. Transfer with the hoist",
     hint: "What assistants must do and when: transfer, positioning, ventilation, drinks… Visible to the player's coaches and carried in the trip book. Health data: encrypted, and each reading by staff is logged.",
     none: "No instruction.",
     add: "Add an instruction",
@@ -107,7 +110,7 @@ export function CareCard({
       </label>
       <label>
         {t.what}
-        <input name="title" required minLength={2} maxLength={120} defaultValue={item?.title} placeholder="Ex. Transfert au lève-personne" />
+        <input name="title" required minLength={2} maxLength={120} defaultValue={item?.title} placeholder={t.example} />
       </label>
       <label>
         {t.details}

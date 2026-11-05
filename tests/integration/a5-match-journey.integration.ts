@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { matchExecute } from "../../src/domains/competitions/service";
 import { journeyCommand, journeyExecute, journeyView, matchSheet } from "../../src/domains/competitions/journey";
+import { lineupRevealTick } from "../../src/domains/competitions/lineup-reveal";
 import { matchSheetPdf } from "../../src/domains/competitions/match-sheet";
 import { seasonOf } from "../../src/domains/finance/schema";
 import { brusselsToday } from "../../src/domains/people/service";
@@ -133,6 +134,11 @@ it("flags a player without a valid licence and a broken chair, and lines up only
   await run(coach, { action: "publish", published: true });
   const after = await journeyView(db, parent, match);
   expect(!after.manage && after.lineup?.map((x) => [x.full_name, x.jersey_number])).toEqual([["Ana", 7]]);
+  // Point 13: once revealed, the players and their parents are told, once.
+  const told = await lineupRevealTick(db);
+  expect(told).toBeGreaterThanOrEqual(1);
+  expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE recipient_user_id=$1 AND kind='automation'", [parent.userId])).rows[0].n).toBe(1);
+  expect(await lineupRevealTick(db)).toBe(0);
 });
 
 it("sends the day's checklist to the to-do once, with its people in charge", async () => {
