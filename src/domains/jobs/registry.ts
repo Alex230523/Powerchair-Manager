@@ -3,6 +3,7 @@ import { processOne, recoverExpired } from "../notifications/worker";
 import { createTransport } from "../notifications/transport";
 import { createPushSender, processPush, recoverPush } from "../notifications/push";
 import { digestTick } from "../digest/service";
+import { billingTick } from "../billing/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
 import { retiredIncidentPurge } from "./retired";
@@ -137,6 +138,8 @@ export const jobs = {
         clubExports: await exportTick(db),
         clubClosures: await closureTick(db),
         retention: await retentionTick(db),
+        // Console, step 4: the platform's invoices late get their reminders by steps.
+        billing: await billingTick(db),
       };
     },
   },

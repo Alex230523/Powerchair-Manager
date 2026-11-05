@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-05",
+  "roles": [
+    "president",
+    "federation"
+  ],
+  "link": "/club/billing",
+  "image": null,
+  "fr": {
+    "title": "Votre abonnement à la plateforme",
+    "text": "Une page Abonnement à la plateforme montre à la présidence sa formule, ses factures et ce qui reste à payer. Les factures et les rappels arrivent par notification, avec le numéro à mettre en communication du virement."
+  },
+  "nl": {
+    "title": "Uw abonnement op het platform",
+    "text": "Een pagina Abonnement op het platform toont het voorzitterschap zijn formule, zijn facturen en wat nog te betalen is. Facturen en herinneringen komen per melding, met het nummer als mededeling van de overschrijving."
+  },
+  "en": {
+    "title": "Your platform subscription",
+    "text": "A Platform subscription page shows the presidency its plan, its invoices and what is left to pay. Invoices and reminders arrive by notification, with the number to put as the transfer reference."
+  }
+}

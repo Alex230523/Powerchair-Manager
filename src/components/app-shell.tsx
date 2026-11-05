@@ -792,6 +792,11 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
               )}
             </div>
           </header>
+          {state?.selected?.suspended_at && (
+            <p className="suspended-banner" role="status">
+              <Icon name="lock" size={16} /> {t.suspended.replace("{reason}", state.selected.suspended_reason ?? "")}
+            </p>
+          )}
           {children}
           <ToastHost locale={locale} />
         </div>

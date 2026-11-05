@@ -3,8 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
 import type { consoleHome, consoleOperators, consoleOrganization, consoleOrganizations, consoleSupervision } from "@/domains/console/service";
+import type { billingView } from "@/domains/billing/service";
 import { operatorRoles } from "@/domains/console/schema";
-import { formatBytes } from "@/domains/storage/summary";
+import { planBases, planPeriods } from "@/domains/billing/schema";
+import { formatCents } from "@/domains/dashboard/summary";
+import { formatBytes as bytes } from "@/domains/storage/summary";
+import { Modal } from "./modal";
 import { consoleCopy } from "./console-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
@@ -15,7 +19,8 @@ type Organizations = Awaited<ReturnType<typeof consoleOrganizations>>;
 type Organization = Awaited<ReturnType<typeof consoleOrganization>>;
 type Supervision = Awaited<ReturnType<typeof consoleSupervision>>;
 type Operators = Awaited<ReturnType<typeof consoleOperators>>;
-type Tab = "home" | "organizations" | "supervision" | "operators";
+type Billing = Awaited<ReturnType<typeof billingView>>;
+type Tab = "home" | "organizations" | "billing" | "supervision" | "operators";
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] === undefined ? m : String(v[k])));
 
@@ -39,7 +44,7 @@ export function Console({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       <Tabs
         label={t.title}
-        items={(["home", "organizations", "supervision", "operators"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
+        items={(["home", "organizations", "billing", "supervision", "operators"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
         value={tab}
         onChange={(id) => {
           setTab(id as Tab);
@@ -51,6 +56,7 @@ export function Console({ locale }: { locale: Locale }) {
       <div id="console-panel" role="tabpanel" aria-labelledby={`console-tab-${tab}`}>
         {tab === "home" && data && <HomeView locale={locale} data={data} open={open} when={when} />}
         {tab === "organizations" && (organization ? <OrganizationView locale={locale} id={organization} back={() => setOrganization(null)} day={day} when={when} /> : <OrganizationsView locale={locale} open={open} day={day} />)}
+        {tab === "billing" && <BillingView locale={locale} day={day} open={open} />}
         {tab === "supervision" && <SupervisionView locale={locale} when={when} day={day} />}
         {tab === "operators" && <OperatorsView locale={locale} day={day} />}
       </div>
@@ -90,12 +96,12 @@ function HomeView({ locale, data, open, when }: { locale: Locale; data: Home; op
       <ul className="console-tiles">
         <Tile title={k.organizations} hint={k.organizationsHint} lines={[[o.clubs, k.clubs], [o.federations, k.federations], [o.newThisMonth, k.newThisMonth]]} />
         <Tile title={k.people} lines={[[p.accounts, k.accounts], [p.players, k.players], [p.coaches, k.coaches], [p.referees, k.referees], [p.licences, k.licences]]} />
-        <Tile title={k.activity} lines={[[a.active7, k.active7], [a.active30, k.active30], [a.matches30, k.matches30], [a.mails7, k.mails7], [formatBytes(a.storageBytes, locale), k.storage]]} />
+        <Tile title={k.activity} lines={[[a.active7, k.active7], [a.active30, k.active30], [a.matches30, k.matches30], [a.mails7, k.mails7], [bytes(a.storageBytes, locale), k.storage]]} />
         <Tile title={k.health} hint={h.lastMigration ? fill(k.lastMigration, { name: h.lastMigration }) : k.noMigration} lines={[[h.jobsLate, k.jobsLate], [h.jobs - h.jobsLate, k.jobsOk], [h.mailsOverdue, k.mailsOverdue], [h.mailsFailed7, k.mailsFailed]]} />
         <Tile title={k.support} lines={[[s.feedbackOpen, k.feedbackOpen], [s.feedbackWeek, k.feedbackWeek], [s.dataRequestsOpen, k.dataRequestsOpen], [s.dataRequestsLate, k.dataRequestsLate]]} />
+        <Tile title={k.billing} hint={t.billingSoon} lines={[[formatCents(data.billing.invoicedMonth, locale), k.invoicedMonth], [formatCents(data.billing.paidMonth, locale), k.paidMonth], [formatCents(data.billing.open, locale), k.open], [`${formatCents(data.billing.late, locale)} (${data.billing.lateCount})`, k.late], [data.billing.subscriptions, k.subscriptions]]} />
         <Tile title={k.compliance} lines={[[c.noPresident, k.noPresident], [c.noDpa, k.noDpa], [c.minorsWithoutGuardian, k.minorsWithoutGuardian], [c.terminationsPending, k.terminationsPending]]} />
       </ul>
-      <p className="muted small">{t.billingSoon}</p>
       <Card title={t.byCountry}>
         <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
@@ -257,7 +263,10 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
   const { data, error, setError, reload } = useData<Organization>(`/api/console?view=organization&id=${id}`, failure);
   const { busy, message, post } = usePost("/api/console", reload, setError, failure);
+  const bill = usePost("/api/console/billing", reload, setError, failure);
   const [note, setNote] = useState("");
+  const [suspending, setSuspending] = useState(false);
+  const [reason, setReason] = useState("");
   if (!data) return error ? <p role="alert">{error}</p> : null;
   const x = data.organization;
   const facts: [string, string | number][] = [
@@ -269,7 +278,7 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
     [o.created, day(x.created_at)],
     [o.lastActivity, x.last_activity ? when(x.last_activity) : t.organizations.never],
     [o.actions30, x.actions30],
-    [o.storage, formatBytes(x.storage_bytes, locale)],
+    [o.storage, bytes(x.storage_bytes, locale)],
     [o.disabledModules, (x.disabled_modules as string[]).join(", ") || "0"],
     [o.dataRequestsOpen, x.data_requests_open],
     [o.apiKeys, x.api_keys],
@@ -287,7 +296,7 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
       </div>
       {error && <p role="alert">{error}</p>}
       <p role="status" className="sr-only">
-        {message}
+        {message || bill.message}
       </p>
       <Card title={o.facts}>
         <dl className="console-facts">
@@ -299,10 +308,102 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
           ))}
         </dl>
         <p className="badge-row">
+          {x.suspended_at && <Badge tone="danger">{o.suspended}</Badge>}
           {x.dpa_accepted_at ? <Badge tone="success">{`${o.dpa} ${day(x.dpa_accepted_at)}`}</Badge> : x.kind === "club" ? <Badge tone="warning">{o.dpaNone}</Badge> : null}
           {x.termination_on && <Badge tone="danger">{`${o.termination} ${day(x.termination_on)}`}</Badge>}
         </p>
+        {x.suspended_at && <p className="muted small">{fill(o.suspendedSince, { day: day(x.suspended_at), reason: x.suspended_reason })}</p>}
+        {data.canWrite && (
+          <p className="actions">
+            {x.suspended_at ? (
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void post({ action: "reinstate", organizationId: id }, o.reinstateDone)}>
+                {o.reinstate}
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => setSuspending(true)}>
+                {o.suspend}
+              </Button>
+            )}
+          </p>
+        )}
       </Card>
+      <Card title={o.subscription}>
+        {data.subscription ? (
+          <>
+            <p>
+              <strong>{data.subscription.plan}</strong> · {formatCents(data.subscription.amount_cents, locale)} {t.billing.periods[data.subscription.period].toLowerCase()} · {t.billing.bases[data.subscription.basis].toLowerCase()} · {o.startedOn.toLowerCase()} {day(data.subscription.started_on)}
+              {data.subscription.note ? ` · ${data.subscription.note}` : ""}
+            </p>
+            {data.canBill && (
+              <p className="actions">
+                <Button type="button" variant="secondary" disabled={bill.busy} onClick={() => void bill.post({ action: "unsubscribe", id: data.subscription!.id, endedOn: new Date().toISOString().slice(0, 10) }, o.unsubscribed)}>
+                  {o.unsubscribe}
+                </Button>
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="muted">{o.subscriptionNone}</p>
+        )}
+        {!data.subscription && data.canBill && data.plans.length > 0 && (
+          <form
+            className="stack-form"
+            aria-label={o.subscribe}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const d = new FormData(e.currentTarget);
+              void bill.post({ action: "subscribe", organizationId: id, planId: String(d.get("plan")), startedOn: String(d.get("startedOn")), note: String(d.get("note") ?? "") }, o.subscribed);
+            }}
+          >
+            <div className="form-grid">
+              <label>
+                {o.plan}
+                <select name="plan" required defaultValue={data.plans[0].id}>
+                  {data.plans.map((pl) => (
+                    <option key={pl.id} value={pl.id}>
+                      {pl.name} · {formatCents(pl.amount_cents, locale)} {t.billing.periods[pl.period].toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {o.startedOn}
+                <input name="startedOn" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+              </label>
+              <label>
+                {o.note}
+                <input name="note" maxLength={500} />
+              </label>
+            </div>
+            <p>
+              <Button disabled={bill.busy}>{o.subscribe}</Button>
+            </p>
+          </form>
+        )}
+      </Card>
+      {suspending && (
+        <Modal title={o.suspend} close={() => setSuspending(false)}>
+          <form
+            className="stack-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void post({ action: "suspend", organizationId: id, reason }, o.suspendDone).then((ok) => ok && setSuspending(false));
+            }}
+          >
+            <p>{o.suspendConfirm}</p>
+            <label>
+              {o.suspendReason}
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} minLength={5} maxLength={500} required />
+            </label>
+            <p className="actions">
+              <Button disabled={busy || reason.trim().length < 5}>{o.suspend}</Button>
+              <Button type="button" variant="secondary" onClick={() => setSuspending(false)}>
+                {t.cancel}
+              </Button>
+            </p>
+          </form>
+        </Modal>
+      )}
       <Card title={o.officers}>
         {data.officers.length ? (
           <ul className="plain-list">
@@ -423,7 +524,7 @@ function SupervisionView({ locale, when, day }: { locale: Locale; when: (iso: st
           <ul className="plain-list">
             {data.storage.map((x) => (
               <li key={x.id}>
-                {x.name} · {formatBytes(x.bytes, locale)} · {fill(s.files, { n: x.files })}
+                {x.name} · {bytes(x.bytes, locale)} · {fill(s.files, { n: x.files })}
               </li>
             ))}
           </ul>
@@ -572,3 +673,291 @@ function OperatorsView({ locale, day }: { locale: Locale; day: (iso: string) => 
     </div>
   );
 }
+
+/** Console, step 4 (05/11/2026): plans, subscriptions, invoices and reminders. */
+function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string) => string; open: (id: string) => void }) {
+  const t = consoleCopy[locale],
+    b = t.billing;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const [state, setState] = useState("");
+  const { data, error, setError, reload } = useData<Billing>(`/api/console/billing?state=${state}`, failure);
+  const { busy, message, post } = usePost("/api/console/billing", reload, setError, failure);
+  const [editing, setEditing] = useState<Billing["plans"][number] | "new" | null>(null);
+  const [invoicing, setInvoicing] = useState<string | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+  const money = (c: number) => formatCents(c, locale);
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const f = data.figures;
+  const tone = { draft: "neutral", sent: "warning", paid: "success", cancelled: "neutral" } as const;
+  const plan = editing === "new" ? null : editing;
+  return (
+    <div className="stack">
+      <p className="muted">{b.intro}</p>
+      {!data.canBill && <p className="muted small">{b.readOnly}</p>}
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      <ul className="console-tiles">
+        <Tile title={t.tiles.billing} hint={b.reminderSteps} lines={[[money(f.mrr), b.figures.mrr], [money(f.invoicedMonth), b.figures.invoicedMonth], [money(f.paidMonth), b.figures.paidMonth], [money(f.open), b.figures.open], [`${money(f.late)} (${f.lateCount})`, b.figures.late]]} />
+      </ul>
+      <Card title={b.plans} actions={data.canBill ? <Button type="button" icon="plus" size="sm" onClick={() => setEditing("new")}>{b.planAdd}</Button> : undefined}>
+        {data.plans.length ? (
+          <ul className="plain-list">
+            {data.plans.map((pl) => (
+              <li key={pl.id} className="console-plan">
+                <span>
+                  <strong>{pl.name}</strong> <code>{pl.code}</code> · {money(pl.amount_cents)} {b.periods[pl.period].toLowerCase()} · {b.bases[pl.basis].toLowerCase()} · {fill(b.subscribers, { n: pl.subscribers })}{" "}
+                  <Badge tone={pl.active ? "success" : "neutral"}>{pl.active ? b.active : b.inactive}</Badge>
+                </span>
+                {data.canBill && (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(pl)}>
+                    {b.planEdit}
+                    <span className="sr-only"> : {pl.name}</span>
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{b.plansNone}</p>
+        )}
+      </Card>
+      <Card title={b.subscriptions}>
+        {data.subscriptions.length ? (
+          <ul className="plain-list">
+            {data.subscriptions.map((su) => (
+              <li key={su.id} className="console-plan">
+                <span>
+                  <button type="button" className="text-button" onClick={() => open(su.organization_id)}>
+                    {su.organization}
+                  </button>{" "}
+                  · {su.plan} · {money(su.amount_cents)} {b.periods[su.period].toLowerCase()} · {su.ended_on ? fill(b.ended, { day: day(su.ended_on) }) : su.last_invoiced_to ? fill(b.lastInvoiced, { day: day(su.last_invoiced_to) }) : b.neverInvoiced}
+                </span>
+                {data.canBill && !su.ended_on && (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setInvoicing(invoicing === su.id ? null : su.id)} aria-expanded={invoicing === su.id}>
+                    {b.invoiceFor}
+                    <span className="sr-only"> : {su.organization}</span>
+                  </Button>
+                )}
+                {invoicing === su.id && (
+                  <form
+                    className="stack-form console-invoice-form"
+                    aria-label={b.invoiceFor}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const d = new FormData(e.currentTarget);
+                      void post({ action: "invoice", subscriptionId: su.id, periodFrom: String(d.get("from")), periodTo: String(d.get("to")), dueDays: Number(d.get("dueDays")) }, b.invoiceCreated).then((ok) => ok && setInvoicing(null));
+                    }}
+                  >
+                    <div className="form-grid">
+                      <label>
+                        {b.periodFrom}
+                        <input name="from" type="date" required defaultValue={su.last_invoiced_to ? nextDay(su.last_invoiced_to) : su.started_on} />
+                      </label>
+                      <label>
+                        {b.periodTo}
+                        <input name="to" type="date" required defaultValue={data.today} />
+                      </label>
+                      <label>
+                        {b.dueDays}
+                        <input name="dueDays" type="number" min={0} max={120} defaultValue={30} required />
+                      </label>
+                    </div>
+                    <p>
+                      <Button disabled={busy}>{b.createInvoice}</Button>
+                    </p>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{b.subscriptionsNone}</p>
+        )}
+      </Card>
+      <Card title={b.invoices}>
+        <div className="toolbar-filters">
+          <label>
+            {b.filterState}
+            <select value={state} onChange={(e) => setState(e.target.value)}>
+              <option value="">{b.allStates}</option>
+              {(["draft", "sent", "paid", "cancelled"] as const).map((st) => (
+                <option key={st} value={st}>
+                  {b.states[st]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {data.invoices.length ? (
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{b.columns.number}</th>
+                  <th scope="col">{b.columns.organization}</th>
+                  <th scope="col">{b.columns.label}</th>
+                  <th scope="col" className="num">{b.columns.amount}</th>
+                  <th scope="col">{b.columns.issued}</th>
+                  <th scope="col">{b.columns.due}</th>
+                  <th scope="col">{b.columns.state}</th>
+                  <th scope="col" className="num">{b.columns.reminders}</th>
+                  {data.canBill && <th scope="col"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {data.invoices.map((i) => (
+                  <tr key={i.id}>
+                    <th scope="row">{i.number}</th>
+                    <td>
+                      <button type="button" className="text-button" onClick={() => open(i.organization_id)}>
+                        {i.organization}
+                      </button>
+                    </td>
+                    <td>{i.label}</td>
+                    <td className="num">{money(i.amount_cents)}</td>
+                    <td>{day(i.issued_on)}</td>
+                    <td>{day(i.due_on)}</td>
+                    <td>
+                      <Badge tone={i.late ? "danger" : tone[i.state]}>{i.late ? b.late : b.states[i.state]}</Badge>
+                      {i.paid_on && <span className="muted small"> {b.paid.toLowerCase()} {day(i.paid_on)}</span>}
+                    </td>
+                    <td className="num">{i.reminders}</td>
+                    {data.canBill && (
+                      <td>
+                        <span className="console-row-actions">
+                          {i.state === "draft" && (
+                            <>
+                              <Button type="button" size="sm" disabled={busy} onClick={() => void post({ action: "send", id: i.id }, b.sent)}>
+                                {b.send}
+                                <span className="sr-only"> : {i.number}</span>
+                              </Button>
+                              <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "cancel", id: i.id }, b.cancelled)}>
+                                {b.cancel}
+                                <span className="sr-only"> : {i.number}</span>
+                              </Button>
+                            </>
+                          )}
+                          {i.state === "sent" && (
+                            <>
+                              <Button type="button" size="sm" disabled={busy} onClick={() => setPaying(paying === i.id ? null : i.id)} aria-expanded={paying === i.id}>
+                                {b.markPaid}
+                                <span className="sr-only"> : {i.number}</span>
+                              </Button>
+                              <Button type="button" variant="secondary" size="sm" disabled={busy || i.reminders >= 3} onClick={() => void post({ action: "remind", id: i.id }, b.reminded)}>
+                                {b.remind}
+                                <span className="sr-only"> : {i.number}</span>
+                              </Button>
+                              <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "cancel", id: i.id }, b.cancelled)}>
+                                {b.cancel}
+                                <span className="sr-only"> : {i.number}</span>
+                              </Button>
+                            </>
+                          )}
+                        </span>
+                        {paying === i.id && (
+                          <form
+                            className="console-invoice-form"
+                            aria-label={b.markPaid}
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              void post({ action: "paid", id: i.id, paidOn: String(new FormData(e.currentTarget).get("paidOn")) }, b.markedPaid).then((ok) => ok && setPaying(null));
+                            }}
+                          >
+                            <label>
+                              {b.paidOn}
+                              <input name="paidOn" type="date" required defaultValue={data.today} />
+                            </label>
+                            <Button size="sm" disabled={busy}>
+                              {b.markPaid}
+                            </Button>
+                          </form>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">{b.invoicesNone}</p>
+        )}
+      </Card>
+      {editing && (
+        <Modal title={plan ? b.planEdit : b.planAdd} close={() => setEditing(null)}>
+          <form
+            className="stack-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const d = new FormData(e.currentTarget);
+              void post(
+                {
+                  action: "plan",
+                  id: plan?.id ?? null,
+                  code: String(d.get("code")),
+                  name: String(d.get("name")),
+                  amountCents: Math.round(Number(String(d.get("amount")).replace(",", ".")) * 100),
+                  period: String(d.get("period")),
+                  basis: String(d.get("basis")),
+                  active: d.get("active") === "on",
+                },
+                b.saved,
+              ).then((ok) => ok && setEditing(null));
+            }}
+          >
+            <div className="form-grid">
+              <label>
+                {b.code}
+                <input name="code" required pattern="[a-z0-9-]{2,40}" defaultValue={plan?.code ?? ""} />
+              </label>
+              <label>
+                {b.name}
+                <input name="name" required minLength={2} maxLength={120} defaultValue={plan?.name ?? ""} />
+              </label>
+              <label>
+                {b.amount}
+                <input name="amount" inputMode="decimal" required pattern="[0-9]+([.,][0-9]{1,2})?" defaultValue={plan ? (plan.amount_cents / 100).toFixed(2) : ""} />
+              </label>
+              <label>
+                {b.period}
+                <select name="period" defaultValue={plan?.period ?? "year"}>
+                  {planPeriods.map((pe) => (
+                    <option key={pe} value={pe}>
+                      {b.periods[pe]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {b.basis}
+                <select name="basis" defaultValue={plan?.basis ?? "organization"}>
+                  {planBases.map((ba) => (
+                    <option key={ba} value={ba}>
+                      {b.bases[ba]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="check">
+                <input name="active" type="checkbox" defaultChecked={plan?.active ?? true} /> {b.active}
+              </label>
+            </div>
+            <p className="actions">
+              <Button disabled={busy}>{b.save}</Button>
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                {t.cancel}
+              </Button>
+            </p>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+const nextDay = (iso: string) => {
+  const d = new Date(iso + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};

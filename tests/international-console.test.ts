@@ -70,3 +70,28 @@ describe("the operator's console", () => {
     expect(shell).toMatch(/\/console\(\\\/\|\$\)\//);
   });
 });
+
+describe("the platform's billing (console, step 4) and the suspension (step 3)", () => {
+  it("numbers invoices per year, computes the monthly equivalent and the reminder steps", async () => {
+    const { invoiceNumber, monthlyCents, reminderDue, billingCommand } = await import("../src/domains/billing/schema");
+    expect(invoiceNumber(2026, 12)).toBe("F-2026-0012");
+    expect(monthlyCents(24000, "year")).toBe(2000);
+    expect(monthlyCents(300, "month", 3)).toBe(900);
+    expect(reminderDue("2026-11-01", "2026-11-02", 0)).toBe(0);
+    expect(reminderDue("2026-11-01", "2026-11-04", 0)).toBe(1);
+    expect(reminderDue("2026-11-01", "2026-11-04", 1)).toBe(0);
+    expect(reminderDue("2026-11-01", "2026-11-12", 1)).toBe(2);
+    expect(reminderDue("2026-11-01", "2026-11-25", 2)).toBe(3);
+    expect(reminderDue("2026-11-01", "2026-12-25", 3)).toBe(0);
+    expect(billingCommand.safeParse({ action: "plan", code: "Club An", name: "x", amountCents: 1, period: "year", basis: "organization" }).success).toBe(false);
+    expect(billingCommand.safeParse({ action: "plan", code: "club-an", name: "Club", amountCents: 1, period: "year", basis: "organization" }).success).toBe(true);
+  });
+  it("blocks the writes of a suspended organisation at the door, the account and the console apart", () => {
+    const http = readFileSync("src/lib/http.ts", "utf8");
+    expect(http).toContain('ORG_SUSPENDED');
+    expect(http).toMatch(/workspace\|account\|auth\|console\|feedback/);
+    expect(readFileSync("src/components/app-shell.tsx", "utf8")).toContain("suspended-banner");
+    expect(apiRoutes["console/billing"].expect!.GET!.president).toBe(403);
+    expect(apiRoutes["club/billing"].expect!.GET!.coach).toBe(403);
+  });
+});
