@@ -115,7 +115,7 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     await dialog.getByLabel("Montant (euros)").fill("240");
     await axe(page, "plan window");
     await dialog.getByRole("button", { name: "Enregistrer la formule" }).click();
-    await expect(page.getByText("Club, annuel")).toBeVisible();
+    await expect(page.locator(".console-plan strong", { hasText: "Club, annuel" }).first()).toBeVisible();
     // The subscription opens from the club's sheet.
     await page.getByRole("tab", { name: "Organisations" }).click();
     await page.getByRole("searchbox").fill("Club facturé");
