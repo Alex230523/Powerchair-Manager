@@ -13329,3 +13329,10 @@ input[type="search"] {
   overflow-wrap: anywhere;
   font-size: var(--text-sm);
 }
+/* Lot 4 (05/11/2026): the carpool offer of a parent. */
+.carpool-mine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}

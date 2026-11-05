@@ -205,6 +205,18 @@ export const tripCommand = z.discriminatedUnion("action", [
     notes: text(1000),
     archived: z.boolean(),
   }),
+  /** Lot 4 (05/11/2026): a parent or an adult player offers seats in their car; the organiser decides. */
+  z.object({
+    action: z.literal("carpoolOffer"),
+    tripId: id,
+    seats: z.number().int().min(1).max(8),
+    wheelchairPlaces: z.number().int().min(0).max(4),
+    legs: z.enum(["both", "out", "back"]),
+    phone: text(60).default(""),
+    note: text(500).default(""),
+  }),
+  z.object({ action: z.literal("carpoolWithdraw"), id }),
+  z.object({ action: z.literal("carpoolDecide"), id, accept: z.boolean() }),
   z.object({
     action: z.literal("licence"),
     profileId: id,

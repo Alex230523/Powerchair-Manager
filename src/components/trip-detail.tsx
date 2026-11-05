@@ -15,6 +15,7 @@ import {
 import { Badge, Button, Card } from "./ui";
 import { authorizationCopy } from "@/domains/authorizations/authorization-copy";
 import { TransportSection } from "./trip-transport";
+import { Carpool } from "./trip-carpool";
 import { tripTransportCopy } from "./trip-transport-copy";
 import { authorizationSettingsCopy, familyCopy } from "./family-copy";
 
@@ -53,6 +54,8 @@ export function TripDetailSections({
       )}
       {d.can.full && <Participants locale={locale} d={d} list={list} busy={busy} send={send} />}
       <TransportSection locale={locale} d={d} list={list} busy={busy} send={send} name={name} />
+      {/* Lot 4 (05/11/2026): seats offered by parents and adult players. */}
+      <Carpool locale={locale} d={d} busy={busy} send={send} />
       {/* 3: the programme belongs to a stay; a transport shows it only when it has one. */}
       {(d.trip.mode === "stay" || d.schedule.length > 0) && <Schedule locale={locale} d={d} busy={busy} send={send} />}
       {d.can.full && <Checklist locale={locale} d={d} busy={busy} send={send} />}
