@@ -65,20 +65,20 @@ function Editor({ locale, data, season, setSeason, teamId }: { locale: Locale; d
     [busy, setBusy] = useState(false),
     [failed, setFailed] = useState("");
   const slides = buildSlides(data, { sections, word, thanks, locale }, t, financeCopy[locale].categories);
-  async function download() {
+  async function download(format: "pptx" | "pdf" = "pptx") {
     setBusy(true);
     setFailed("");
     try {
       const r = await fetch("/api/statistics/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ season, team: teamId, sections, word, thanks, locale }),
+        body: JSON.stringify({ season, team: teamId, sections, word, thanks, locale, format }),
       });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "");
       const url = URL.createObjectURL(await r.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = (r.headers.get("Content-Disposition") ?? "").match(/filename="([^"]+)"/)?.[1] ?? "rapport.pptx";
+      a.download = (r.headers.get("Content-Disposition") ?? "").match(/filename="([^"]+)"/)?.[1] ?? `rapport.${format}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
@@ -136,7 +136,11 @@ function Editor({ locale, data, season, setSeason, teamId }: { locale: Locale; d
           </span>
         </label>
         <div className="report-actions">
-          <Button icon="document" disabled={busy || !slides.length} loading={busy} onClick={() => void download()}>
+          {/* Lot 5 (05/11/2026): the PDF for the general assembly comes first. */}
+          <Button icon="document" disabled={busy || !slides.length} loading={busy} onClick={() => void download("pdf")}>
+            {t.downloadPdf}
+          </Button>
+          <Button variant="secondary" icon="document" disabled={busy || !slides.length} onClick={() => void download("pptx")}>
             {t.downloadPptx}
           </Button>
           <Button variant="secondary" onClick={() => window.print()}>

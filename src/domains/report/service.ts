@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from "pg";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, AccessError, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
+import { obligationRows } from "../club/obligations";
 
 /**
  * The season's activity report (wave 15, C11): figures only, aggregated.
@@ -167,11 +168,24 @@ export async function activityReport(db: Pool, p: Principal, raw: { season?: str
         )
       ).rows.map((r) => r.funder as string),
     };
+    // Lot 5 (05/11/2026): the season's awards (team and club ones; a person's only with their public name) and the year's obligations.
+    const awards = (
+      await c.query(
+        `SELECT a.title,a.competition,a.kind,a.place,a.awarded_on::text AS awarded_on,t.name AS team,
+                CASE WHEN a.kind='individual' AND (cp.public_name_consent OR cp.birth_date<=CURRENT_DATE-interval '18 years') THEN cp.full_name END AS person
+           FROM award a LEFT JOIN team t ON t.id=a.team_id LEFT JOIN club_person cp ON cp.id=a.profile_id
+          WHERE a.organization_id=$1 AND a.awarded_on BETWEEN $2 AND $3 ORDER BY a.awarded_on,a.title`,
+        [org, ...range],
+      )
+    ).rows as { title: string; competition: string; kind: "team" | "individual" | "club"; place: number | null; awarded_on: string; team: string | null; person: string | null }[];
+    const obligations = (await obligationRows(c, org, Number(season.ends_on.slice(0, 4)))).map((o) => ({ title: o.title, due_on: o.due_on, done_on: o.done_on }));
     return {
       organization_id: org,
       club,
       seasons,
       season,
+      awards,
+      obligations,
       previous: previous ? { name: previous.name, figures: await figures(c, org, previous, teamsOf(previous)) } : null,
       team: team ? team.name : null,
       money,

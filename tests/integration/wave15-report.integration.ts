@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { activityReport } from "../../src/domains/report/service";
 import { buildSlides } from "../../src/domains/report/slides";
+import { reportPdf } from "../../src/domains/report/pdf";
 import { reportCopy, reportSections } from "../../src/components/report-copy";
 
 /** Wave 15 (C11): the activity report's figures from the modules, one club at a time, no player name. */
@@ -100,6 +101,18 @@ it("counts from the modules, compares with last season and names no player", asy
   expect(r.highlights.map((h) => h.title)).toEqual(["Tournoi de Gand", "Journée découverte"]);
   expect(r.staff.coaches).toEqual(["Sam Coach"]);
   expect(r.finances).toEqual([{ direction: "in", category: "dues", cents: 40000 }]);
+  // Lot 5 (05/11/2026): the awards (a minor's name stays out), the year's obligations.
+  await db.query("INSERT INTO award(organization_id,season_id,awarded_on,title,competition,kind,place,team_id,created_by) VALUES($1,$2,CURRENT_DATE-10,'Coupe de Belgique','Coupe','team',2,$3,$4)", [clubA, seasonA, teamA, president.userId]);
+  await db.query("INSERT INTO award(organization_id,season_id,awarded_on,title,kind,profile_id,created_by) SELECT $1,$2,CURRENT_DATE-9,'Meilleure joueuse','individual',id,$3 FROM club_person WHERE full_name='Zoé Secrète'", [clubA, seasonA, president.userId]);
+  await db.query("INSERT INTO club_obligation(organization_id,year,template_key,title,done_on,position,created_by) VALUES($1,$2,'assembly','Assemblée générale tenue',CURRENT_DATE,1,$3)", [clubA, Number((await db.query("SELECT extract(year FROM ends_on)::int AS y FROM season WHERE id=$1", [seasonA])).rows[0].y), president.userId]);
+  const again = await activityReport(db, president);
+  if (!("awards" in again)) throw new Error("no awards");
+  expect(again.awards.map((a) => [a.title, a.team, a.person])).toEqual([["Coupe de Belgique", "Lions", null], ["Meilleure joueuse", null, null]]);
+  expect(again.obligations).toEqual([{ title: "Assemblée générale tenue", due_on: null, done_on: expect.any(String) }]);
+  const pdf = Buffer.from(reportPdf(buildSlides(again, { sections: [...reportSections], word: "", thanks: "", locale: "fr" }, reportCopy.fr, {}), "Club A", "Rapport", "aujourd'hui")).toString("latin1");
+  expect(pdf.startsWith("%PDF")).toBe(true);
+  expect(pdf).toContain("Distinctions");
+  expect(pdf).not.toContain("Zo");
   const text = JSON.stringify(buildSlides(r, { sections: [...reportSections], word: "", thanks: "", locale: "fr" }, reportCopy.fr, {})) + JSON.stringify(r);
   expect(text).not.toContain("Zoé");
   expect(text).not.toContain("Ben Discret");
