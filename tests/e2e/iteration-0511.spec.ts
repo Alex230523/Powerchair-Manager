@@ -37,7 +37,8 @@ test("a match followed live without an account, by the link the club shares", as
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/fr/matches/${match}`);
     await page.getByRole("button", { name: "Créer le lien" }).click();
-    await expect(page.getByText("Lien actif : partagez-le.")).toBeVisible();
+    await expect(page.getByText("Lien actif : partagez-le.").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Retirer le lien" })).toBeVisible();
     const token = (await db.query("SELECT live_token FROM match WHERE id=$1", [match])).rows[0].live_token as string;
     expect(token).toMatch(/^[0-9a-f]{32}$/);
 
