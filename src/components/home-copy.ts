@@ -51,6 +51,7 @@ type HomeCopy = {
   income: string;
   expenses: string;
   duesCollected: string;
+  dueSoon: string;
   noDues: string;
   playersLate: string;
   seeFinances: string;
@@ -128,6 +129,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     income: "Recettes de la saison",
     expenses: "Dépenses de la saison",
     duesCollected: "Cotisations encaissées",
+    dueSoon: "Échéances à 30 jours",
     noDues: "Aucune cotisation émise cette saison.",
     playersLate: "{n} joueurs en retard",
     seeFinances: "Voir les finances",
@@ -321,6 +323,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     income: "Inkomsten van het seizoen",
     expenses: "Uitgaven van het seizoen",
     duesCollected: "Geïnde bijdragen",
+    dueSoon: "Vervaldagen binnen 30 dagen",
     noDues: "Geen bijdrage uitgegeven dit seizoen.",
     playersLate: "{n} spelers achter",
     seeFinances: "Financiën bekijken",
@@ -514,6 +517,7 @@ export const homeCopy: Record<Locale, HomeCopy> = {
     income: "Season income",
     expenses: "Season expenses",
     duesCollected: "Dues collected",
+    dueSoon: "Due within 30 days",
     noDues: "No dues issued this season.",
     playersLate: "{n} players late",
     seeFinances: "See the finances",

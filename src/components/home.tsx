@@ -159,6 +159,8 @@ const firstMetrics: Metric["key"][] = ["activePlayers", "upcomingEvents", "pendi
 const presidentMetrics: Metric["key"][] = ["seasonPlayers", "seasonTeams", "seasonCoaches", "trainingsDone", "matchesPlayed", "chairs", "pendingResponses", "duesNext30"];
 /** 04/11/2026: the money figures stay in the money card just below and in Finances, not twice on the home. */
 const moneyMetrics: Metric["key"][] = ["treasury", "available"];
+/** 05/11/2026: the instalments due within 30 days read in the money card, under the dues collected. */
+const dueSoonKey: Metric["key"] = "duesNext30";
 const mondayOf = (iso: string) => {
   const d = new Date(iso.slice(0, 10) + "T12:00:00Z");
   const day = (d.getUTCDay() + 6) % 7;
@@ -194,7 +196,8 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
     : data.todos.reduce((n, item) => n + item.count, 0);
   const keyFigures = data.metrics.some((m) => m.key === "seasonPlayers");
   const leading = keyFigures ? presidentMetrics : firstMetrics;
-  const ordered = [...data.metrics].filter((m) => !moneyMetrics.includes(m.key)).sort((a, b) => {
+  const dueSoon = data.finance ? (data.metrics.find((m) => m.key === dueSoonKey)?.value ?? null) : null;
+  const ordered = [...data.metrics].filter((m) => !moneyMetrics.includes(m.key) && !(data.finance && m.key === dueSoonKey)).sort((a, b) => {
     const ia = leading.indexOf(a.key),
       ib = leading.indexOf(b.key);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
@@ -351,7 +354,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
                 )}
               </Card>
             )}
-            {data.finance && <FinanceCardView locale={locale} finance={data.finance} />}
+            {data.finance && <FinanceCardView locale={locale} finance={data.finance} dueSoon={dueSoon} />}
           </div>
         </div>
       )}
@@ -359,7 +362,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
   );
 }
 /** The money card of the home (wave 14): treasury, season income and expenses, dues collected, players late. */
-function FinanceCardView({ locale, finance }: { locale: Locale; finance: NonNullable<Dashboard["finance"]> }) {
+function FinanceCardView({ locale, finance, dueSoon }: { locale: Locale; finance: NonNullable<Dashboard["finance"]>; dueSoon: number | null }) {
   const t = homeCopy[locale];
   const money = (c: number) => formatCents(c, locale);
   const d = finance.dues;
@@ -395,6 +398,16 @@ function FinanceCardView({ locale, finance }: { locale: Locale; finance: NonNull
           </div>
           {d.rate === null ? <p className="muted">{t.noDues}</p> : <CollectionBar locale={locale} totals={d} />}
         </div>
+      )}
+      {dueSoon !== null && (
+        <dl className="finance-lines amounts finance-due-soon">
+          <div>
+            <dt>
+              <Link href={`/${locale}/dues`}>{t.dueSoon}</Link>
+            </dt>
+            <dd className="num">{money(dueSoon)}</dd>
+          </div>
+        </dl>
       )}
       <p className="card-link-row">
         {finance.treasury !== null ? <Link href={`/${locale}/funding`}>{t.seeFinances}</Link> : <Link href={`/${locale}/dues`}>{t.seeDues}</Link>}

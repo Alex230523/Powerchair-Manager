@@ -2726,6 +2726,9 @@ caption {
   margin: 0;
   font-weight: 600;
 }
+.finance-due-soon {
+  margin: var(--space-3) 0 0;
+}
 .finance-dues-head {
   display: flex;
   align-items: center;
@@ -5918,7 +5921,6 @@ input.narrow {
 .team-card-link:hover .team-card-name, .team-card-link:focus-visible .team-card-name { text-decoration: underline; }
 .team-card-head { display: flex; align-items: center; gap: 8px; }
 .team-card-name { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; }
-.team-card-sub { color: var(--muted); font-size: var(--text-xs); }
 .team-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
 .team-stats div { display: grid; gap: 2px; }
 .team-stats dt { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
@@ -9366,6 +9368,34 @@ details.event-section > summary {
   font-weight: 700;
   color: var(--heading);
 }
+/* 05/11/2026: the question title is the fold control, chevron first. */
+.question-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--heading);
+  text-align: left;
+  cursor: pointer;
+}
+.question-toggle:hover {
+  background: var(--surface-soft);
+}
+.question-toggle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.question-toggle > svg {
+  flex: none;
+  color: var(--muted);
+}
 .question-card.dragging {
   opacity: 0.6;
   border-style: dashed;
@@ -11116,6 +11146,9 @@ ul.task-page li {
 }
 .question-body[hidden] {
   display: none;
+}
+.question-card:has(.question-body[hidden]) .question-tools {
+  margin-bottom: 0;
 }
 
 /* 1: an event of the calendar opens in a centred window; full screen on a phone. */
