@@ -135,9 +135,26 @@ export async function financeView(db: Pool, p: Principal, raw: { season?: string
         [org],
       )
     ).rows as { id: string; title: string; starts_on: string }[];
+    // Lot 2 (05/11/2026): what the clubs owe the federation, and what it still has to pass on.
+    const kind = (await c.query("SELECT kind FROM organization WHERE id=$1", [org])).rows[0]?.kind as string;
+    const owed =
+      kind === "federation"
+        ? ((
+            await c.query(
+              `SELECT
+                 (SELECT COALESCE(sum(d.amount_cents),0)::int FROM affiliation_due d JOIN affiliation_fee f ON f.id=d.fee_id WHERE f.organization_id=$1 AND NOT f.archived AND d.paid_on IS NULL) AS dues,
+                 (SELECT COALESCE(sum(d.amount_cents),0)::int FROM affiliation_due d JOIN affiliation_fee f ON f.id=d.fee_id WHERE f.organization_id=$1 AND NOT f.archived AND d.paid_on IS NULL AND d.due_on<CURRENT_DATE) AS dues_late,
+                 (SELECT COALESCE(sum(amount_cents),0)::int FROM federation_fine WHERE federation_id=$1 AND paid_on IS NULL AND cancelled_at IS NULL) AS fines,
+                 (SELECT COALESCE(sum(amount_cents),0)::int FROM discipline_fine WHERE federation_id=$1 AND status='due') AS discipline,
+                 (SELECT COALESCE(sum(amount_cents),0)::int FROM international_transfer WHERE federation_id=$1 AND paid_on IS NULL) AS international`,
+              [org],
+            )
+          ).rows[0] as { dues: number; dues_late: number; fines: number; discipline: number; international: number })
+        : null;
     return {
       organization_id: org,
       can_edit: edit,
+      owed,
       trips,
       teams: await teamNames(c, org),
       teamId,

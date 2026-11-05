@@ -94,6 +94,14 @@ export function buildSlides(r: ActivityReport, o: ReportOptions, t: ReportCopy, 
       lines: r.highlights.length ? undefined : [t.noHighlights],
       photos: r.highlights.slice(0, 6).map((h) => ({ caption: [h.title, date(h.day), h.place].filter(Boolean).join(" · ") })),
     });
+  if (want("awards"))
+    slides.push({
+      id: "awards",
+      title: t.sectionNames.awards,
+      lines: r.awards.length
+        ? r.awards.map((a) => [a.title, a.competition, a.place !== null ? fill(t.awardPlace, { n: a.place }) : "", a.team ?? a.person ?? "", date(a.awarded_on)].filter(Boolean).join(" · "))
+        : [t.awardsNone],
+    });
   if (want("staff"))
     slides.push({
       id: "staff",
@@ -133,6 +141,14 @@ export function buildSlides(r: ActivityReport, o: ReportOptions, t: ReportCopy, 
       lines: r.finances.length ? undefined : [t.noData],
     });
   }
+  if (want("obligations"))
+    slides.push({
+      id: "obligations",
+      title: t.sectionNames.obligations,
+      lines: r.obligations.length
+        ? [fill(t.obligationsDone, { done: r.obligations.filter((o) => o.done_on).length, total: r.obligations.length }), ...r.obligations.map((o) => `${o.title} · ${o.done_on ? t.obligationDone : t.obligationOpen}${o.due_on ? ` (${date(o.due_on)})` : ""}`)]
+        : [t.obligationsNone],
+    });
   if (want("thanks") && o.thanks.trim()) slides.push({ id: "thanks", title: t.sectionNames.thanks, text: o.thanks.trim() });
   return slides;
 }

@@ -242,6 +242,15 @@ export const financeCopy: Record<Locale, Copy> = {
 /** Budget, receipts, dues payments and annual report (vague 2). */
 export const financeExtras = {
   fr: {
+    owed: {
+      title: "Dû à la fédération",
+      dues: "Affiliations des clubs à encaisser",
+      late: "{amount} en retard",
+      fines: "Amendes du règlement à encaisser",
+      discipline: "Amendes disciplinaires à encaisser",
+      international: "Indemnités internationales à recevoir",
+      hint: "Chaque paiement marqué écrit la recette ici et la dépense chez le club ; une indemnité internationale reçue est reversée au club formateur, qui l'enregistre.",
+    },
     payment: "Paiement de cotisation (facultatif)",
     paymentNone: "Aucune : autre recette ou dépense",
     paymentHint:
@@ -292,6 +301,15 @@ export const financeExtras = {
     yes: "oui",
   },
   nl: {
+    owed: {
+      title: "Verschuldigd aan de federatie",
+      dues: "Aansluitingen van de clubs te innen",
+      late: "{amount} te laat",
+      fines: "Boetes van het reglement te innen",
+      discipline: "Disciplinaire boetes te innen",
+      international: "Internationale vergoedingen te ontvangen",
+      hint: "Elke gemarkeerde betaling schrijft hier de ontvangst en bij de club de uitgave; een ontvangen internationale vergoeding wordt doorgestort aan de opleidende club, die ze registreert.",
+    },
     payment: "Betaling van lidgeld (optioneel)",
     paymentNone: "Geen: andere inkomst of uitgave",
     paymentHint:
@@ -342,6 +360,15 @@ export const financeExtras = {
     yes: "ja",
   },
   en: {
+    owed: {
+      title: "Owed to the federation",
+      dues: "Clubs' affiliations to collect",
+      late: "{amount} late",
+      fines: "Rules fines to collect",
+      discipline: "Disciplinary fines to collect",
+      international: "International compensations to receive",
+      hint: "Each payment marked writes the income here and the expense at the club; an international compensation received is passed on to the training club, which records it.",
+    },
     payment: "Dues payment (optional)",
     paymentNone: "None: other income or expense",
     paymentHint:

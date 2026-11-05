@@ -104,6 +104,16 @@ it("writes a paid affiliation as the federation's income and the club's expense,
   expect((await labels(treasurer)).filter((l) => l.includes("Affiliation"))).toHaveLength(1);
 });
 
+it("lot 2 (05/11/2026): says what the clubs owe the federation, nothing of it to a club", async () => {
+  const fine = (await db.query("INSERT INTO federation_fine(federation_id,club_id,kind,amount_cents,issued_on,created_by) VALUES($1,$2,'late',2500,CURRENT_DATE,$3) RETURNING id", [fed, clubA, president.userId])).rows[0].id;
+  const v = await financeView(db, treasurer);
+  expect(v.owed).toMatchObject({ fines: 2500, international: 0 });
+  expect(v.owed!.dues).toBeGreaterThanOrEqual(0);
+  expect((await financeView(db, presidentA)).owed).toBeNull();
+  await db.query("UPDATE federation_fine SET cancelled_at=now() WHERE id=$1", [fine]);
+  expect((await financeView(db, treasurer)).owed!.fines).toBe(0);
+});
+
 it("holds the clubs' assembly: each club a member, a proxy, votes weighted by licences", async () => {
   const v = await associationView(db, president, "fr");
   expect(v.members.map((m) => [m.full_name, m.status])).toEqual([

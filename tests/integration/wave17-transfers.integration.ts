@@ -276,6 +276,13 @@ it("points 6 to 8 and 11: compensation from the club's format, force majeure, pr
   await expect(paymentProofFile(db, presidentC, id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   await run(fed, federation, { action: "confirmPayment", id, confirmed: true });
   expect((await db.query("SELECT payment_confirmed_at IS NOT NULL AS ok FROM transfer_offer WHERE id=$1", [id])).rows[0].ok).toBe(true);
+  // Lot 2 (05/11/2026): the compensation in both books, cancelled when the confirmation is withdrawn.
+  const books = async (org: string) => (await db.query("SELECT direction,amount_cents,cancelled_at IS NOT NULL AS cancelled FROM finance_transaction WHERE organization_id=$1 AND auto_source='transfer' AND auto_ref=$2 ORDER BY created_at", [org, id])).rows;
+  expect(await books(clubA)).toEqual([{ direction: "out", amount_cents: 12500, cancelled: false }]);
+  expect(await books(clubB)).toEqual([{ direction: "in", amount_cents: 12500, cancelled: false }]);
+  await run(fed, federation, { action: "confirmPayment", id, confirmed: false });
+  expect((await books(clubA)).map((r) => r.cancelled)).toEqual([true]);
+  await run(fed, federation, { action: "confirmPayment", id, confirmed: true });
   // 11: an international transfer needs the training club's format, then computes the compensation.
   const danProfile = (await db.query("SELECT id FROM club_person WHERE person_id=$1 AND organization_id=$2", [danPerson, clubA])).rows[0].id;
   const intl = { action: "international", profileId: danProfile, foreignClub: "Lille Powerchair", country: "France", trainingYears: 3, note: "" };
@@ -288,4 +295,8 @@ it("points 6 to 8 and 11: compensation from the club's format, force majeure, pr
   expect((await db.query("SELECT status FROM club_person WHERE id=$1", [danProfile])).rows[0].status).toBe("transferred");
   await run(fed, federation, { action: "internationalPaid", id: rec, paid: true });
   expect((await transfersView(db, fed)).international[0].paid_on).not.toBeNull();
+  // Lot 2: received by the federation, passed on to club A, which records its income.
+  const fedBooks = (await db.query("SELECT direction,amount_cents FROM finance_transaction WHERE organization_id=$1 AND auto_source IN ('international','internationalOut') AND cancelled_at IS NULL ORDER BY direction", [federation])).rows;
+  expect(fedBooks).toEqual([{ direction: "in", amount_cents: 175000 }, { direction: "out", amount_cents: 175000 }]);
+  expect((await db.query("SELECT direction,amount_cents FROM finance_transaction WHERE organization_id=$1 AND auto_source='international' AND cancelled_at IS NULL", [clubA])).rows).toEqual([{ direction: "in", amount_cents: 175000 }]);
 });

@@ -197,6 +197,7 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
   SEASON_IMMUTABLE: { fr: "La saison ne peut plus être changée.", nl: "Het seizoen kan niet meer gewijzigd worden.", en: "The season can no longer be changed." },
   SEASON_REQUIRED: { fr: "Aucune saison en cours : créez-la d'abord.", nl: "Geen lopend seizoen: maak het eerst aan.", en: "No current season: create it first." },
   VERSION_CONFLICT: { fr: "Quelqu'un a modifié cet événement entre-temps : rechargez la page.", nl: "Iemand heeft deze activiteit intussen gewijzigd: herlaad de pagina.", en: "Someone changed this event meanwhile: reload the page." },
+  NO_PROFILE: { fr: "Votre compte n'a pas de fiche dans ce club : demandez au club de la créer.", nl: "Uw account heeft geen fiche in deze club: vraag de club ze aan te maken.", en: "Your account has no profile in this club: ask the club to create it." },
   STORAGE_FULL: {
     fr: "L'espace de stockage du club est plein : le fichier n'a pas été envoyé. Le président voit ce qui prend de la place dans Statistiques, carte Stockage.",
     nl: "De opslagruimte van de club is vol: het bestand werd niet verstuurd. De voorzitter ziet wat ruimte inneemt in Statistieken, kaart Opslag.",

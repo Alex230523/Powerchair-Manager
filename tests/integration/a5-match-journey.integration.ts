@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { matchExecute } from "../../src/domains/competitions/service";
 import { journeyCommand, journeyExecute, journeyView, matchSheet } from "../../src/domains/competitions/journey";
 import { lineupRevealTick } from "../../src/domains/competitions/lineup-reveal";
+import { publicLive } from "../../src/domains/competitions/live-public";
 import { matchSheetPdf } from "../../src/domains/competitions/match-sheet";
 import { seasonOf } from "../../src/domains/finance/schema";
 import { brusselsToday } from "../../src/domains/people/service";
@@ -193,6 +194,26 @@ it("takes the score live, an event sent twice written once (the offline queue), 
   v = await journeyView(db, coach, match);
   if (!v.manage) throw new Error("manage");
   expect(v.liveScore).toEqual({ ours: 1, theirs: 1 });
+  // Lot 3 (05/11/2026): the public page, by its link only; a minor without consent is named by her number.
+  expect(await publicLive(db, "0".repeat(32))).toBeNull();
+  await run(coach, { action: "livePublic", enabled: true });
+  const token = (await journeyView(db, coach, match)).match.live_token!;
+  expect(token).toMatch(/^[0-9a-f]{32}$/);
+  const pub = (await publicLive(db, token))!;
+  expect(pub).toMatchObject({ team: "Aigles", opponent: "Lions", status: "live", score: { ours: 1, theirs: 1 } });
+  expect(pub.events.map((e) => [e.minute, e.kind, e.who, e.number])).toEqual([
+    [6, "timeout", null, null],
+    [7, "corner", null, null],
+    [8, "corner_against", null, null],
+    [12, "goal", null, 7],
+    [30, "goal_against", null, null],
+    [33, "yellow", null, 7],
+  ]);
+  expect(JSON.stringify(pub)).not.toContain("Ana");
+  await run(coach, { action: "livePublic", enabled: false });
+  expect(await publicLive(db, token)).toBeNull();
+  await run(coach, { action: "livePublic", enabled: true });
+  expect((await journeyView(db, coach, match)).match.live_token).not.toBe(token);
   await expect(run(coach, { action: "validate", version: v.match.version, ourScore: 0, theirScore: 1 })).rejects.toMatchObject({ code: "GOALS_EXCEED_SCORE" });
   const done = await run(coach, { action: "validate", version: v.match.version, ourScore: 1, theirScore: 1 });
   expect((await db.query("SELECT status,our_score,their_score,validated_at IS NOT NULL AS validated FROM match WHERE id=$1", [match])).rows[0]).toEqual({ status: "played", our_score: 1, their_score: 1, validated: true });

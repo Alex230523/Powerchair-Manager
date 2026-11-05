@@ -234,6 +234,17 @@ it("prepares a trip with participants, an adapted vehicle and care, each role se
   expect(mine.participants.map((p) => p.full_name)).toEqual(["Léa Joueuse"]);
   expect(mine.vehicles.map((v) => v.driver_name)).toEqual(["Coach Marc"]);
   expect(mine.care).toBeNull();
+  // Lot 4 (05/11/2026): the player offers two seats; the president sees it, accepts: her car joins the vehicles.
+  expect(mine.can.carpool).toBe(true);
+  const offered = (await tripExecute(db, player, { action: "carpoolOffer", tripId: id, seats: 2, wheelchairPlaces: 1, legs: "both", phone: "0470 00 00 00", note: "Break" }, club)) as { offerId: string };
+  await expect(tripExecute(db, player, { action: "carpoolOffer", tripId: id, seats: 1, wheelchairPlaces: 0, legs: "out", phone: "", note: "" }, club)).rejects.toMatchObject({ code: "ALREADY_SENT" });
+  expect((await tripDetail(db, player, id)).carpool.mine.map((o) => [o.seats, o.status])).toEqual([[2, "offered"]]);
+  expect((await tripDetail(db, president, id)).carpool.offers.map((o) => [o.full_name, o.phone, o.status])).toEqual([["Léa Joueuse", "0470 00 00 00", "offered"]]);
+  await expect(tripExecute(db, player, { action: "carpoolDecide", id: offered.offerId, accept: true }, club)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  const decided = (await tripExecute(db, president, { action: "carpoolDecide", id: offered.offerId, accept: true }, club)) as { vehicleId: string };
+  const car = (await db.query("SELECT name,kind,seats,wheelchair_places,owner_profile_id,driver_profile_id FROM trip_vehicle WHERE id=$1", [decided.vehicleId])).rows[0];
+  expect(car).toMatchObject({ name: "Voiture de Léa Joueuse", kind: "private", seats: 2, wheelchair_places: 1, owner_profile_id: lea, driver_profile_id: lea });
+  expect((await tripDetail(db, player, id)).carpool.mine[0].status).toBe("accepted");
   await tripExecute(
     db,
     player,

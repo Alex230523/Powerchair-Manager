@@ -23,6 +23,8 @@ export const datasets = [
   "statistics",
   // A4: the contact book.
   "contacts",
+  // Lot 6 (05/11/2026): the federation's licences.
+  "licenses",
 ] as const;
 export type Dataset = (typeof datasets)[number];
 export const columnTypes = ["text", "number", "money", "date"] as const;

@@ -10,7 +10,8 @@ import type {
 import { licensesCopy } from "./licenses-copy";
 import { errors } from "./access-copy";
 import { useData, usePost } from "./use-api";
-import { Badge, PageHeader, Card, EmptyState } from "./ui";
+import { Badge, PageHeader, Card, EmptyState, ExportButton } from "./ui";
+import { parseCsv } from "@/lib/spreadsheet";
 import { ClassificationBadge } from "./classification-badge";
 import { ClassificationDays } from "./classification-days";
 
@@ -398,15 +399,36 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
   const { data, error, setError, denied, reload } = useData<
     Awaited<ReturnType<typeof federationLicensesView>>
   >("/api/federation/licenses", failure);
-  const { busy, message, post } = usePost(
+  const { busy, message, post, postFor } = usePost(
     "/api/federation/licenses",
     reload,
     setError,
     failure,
   );
   const [chosen, setChosen] = useState<string[]>([]);
+  const [report, setReport] = useState<{ updated: number; unmatched: string[]; conflicts: string[] } | null>(null);
   const send = (body: Record<string, unknown>) =>
     post({ ...body, organizationId: data?.organization_id }, t.done);
+  // Lot 6 (05/11/2026): the numbers from the federation's own CSV file.
+  async function importCsv(file: File) {
+    const grid = parseCsv(await file.text());
+    const head = (grid[0] ?? []).map((h) => h.toLowerCase());
+    const col = (names: string[], fallback: number) => {
+      const i = head.findIndex((h) => names.some((n) => h.includes(n)));
+      return i >= 0 ? i : fallback;
+    };
+    const ix = { number: col(["num", "nr", "number"], 0), name: col(["nom", "naam", "name"], 1), club: col(["club"], 2), season: col(["saison", "seizoen", "season"], 3) };
+    const rows = grid
+      .slice(1)
+      .map((r) => ({ number: (r[ix.number] ?? "").trim(), fullName: (r[ix.name] ?? "").trim(), club: (r[ix.club] ?? "").trim(), season: (r[ix.season] ?? "").trim() }))
+      .filter((r) => r.number && r.fullName && r.club && /^\d{4}-\d{2}$/.test(r.season));
+    if (!rows.length) {
+      setError(t.importEmpty);
+      return;
+    }
+    const r = await postFor({ action: "importLicenses", rows, organizationId: data?.organization_id }, t.done);
+    if (r) setReport(r as unknown as { updated: number; unmatched: string[]; conflicts: string[] });
+  }
   const day = (d: string | null) =>
     d
       ? new Intl.DateTimeFormat(tag(locale), {
@@ -508,6 +530,50 @@ export function FederationLicenses({ locale }: { locale: Locale }) {
               </>
             ) : (
               <EmptyState title={t.none} />
+            )}
+            {data.can.manage && (
+              <details className="licence-exchange">
+                <summary>{t.exchange}</summary>
+                <p className="muted small">{t.exchangeIntro}</p>
+                <div className="actions">
+                  <ExportButton
+                    locale={locale}
+                    organizationId={data.organization_id}
+                    dataset="licenses"
+                    subject={t.fedTitle}
+                    rows={data.licenses}
+                    columns={[
+                      { id: "number", label: t.cols.number, value: (l) => l.number ?? "" },
+                      { id: "name", label: t.cols.name, value: (l) => l.full_name },
+                      { id: "birthYear", label: t.cols.birthYear, value: (l) => l.birth_year ?? "" },
+                      { id: "club", label: t.cols.club, value: (l) => l.club },
+                      { id: "season", label: t.cols.season, value: (l) => l.season },
+                      { id: "status", label: t.cols.status, value: (l) => t.licenseStatus[l.status as keyof typeof t.licenseStatus] ?? l.status },
+                    ]}
+                  />
+                  <label className="file-button button secondary">
+                    {t.importRun}
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      aria-label={t.importFile}
+                      disabled={busy}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void importCsv(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+                {report && (
+                  <p role="status" className="small">
+                    {t.importDone.replace("{updated}", String(report.updated))}
+                    {report.unmatched.length > 0 && <> {t.importUnmatched.replace("{list}", report.unmatched.join(", "))}</>}
+                    {report.conflicts.length > 0 && <> {t.importConflicts.replace("{list}", report.conflicts.join(", "))}</>}
+                  </p>
+                )}
+              </details>
             )}
             {decided.length > 0 && (
               <details>

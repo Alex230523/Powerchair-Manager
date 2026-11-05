@@ -3135,8 +3135,11 @@ caption {
   gap: 10px;
   align-items: center;
 }
+/* One rule for every file button (merged on 05/11/2026 from four). */
 .file-button {
   position: relative;
+  display: inline-flex;
+  justify-self: start;
   cursor: pointer;
 }
 .file-button input[type="file"] {
@@ -5847,7 +5850,6 @@ input.narrow {
 /* Wave 11: profile photo */
 .avatar-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .avatar-large { width: 84px; height: 84px; font-size: var(--text-lg); object-fit: cover; border-radius: 50%; }
-.file-button { cursor: pointer; display: inline-flex; }
 .agenda-deadline .agenda-date[data-kind="grant"] { background: var(--info-soft); color: var(--info-ink); }
 .agenda-deadline .agenda-date[data-kind="partner"] { background: var(--accent-soft); color: var(--primary); }
 .toolbar-check { align-self: flex-end; padding-bottom: 10px; white-space: nowrap; }
@@ -7836,14 +7838,6 @@ ul.task-list {
 }
 .trophy-card[data-rank="1"] .trophy-placeholder {
   color: var(--warning-ink);
-}
-.file-button {
-  justify-self: start;
-  cursor: pointer;
-}
-.file-button:focus-within {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
 }
 @media (max-width: 640px) {
   .match-line .badge {
@@ -12239,13 +12233,6 @@ ul.task-page li {
   max-width: 48rem;
   margin-bottom: var(--space-4);
 }
-.file-button {
-  cursor: pointer;
-}
-.file-button:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
 
 /* 9: reserved funds and the cash in three figures. */
 .treasury {
@@ -13263,4 +13250,76 @@ input[type="search"] {
   .dg-cards > table > tbody > tr > td.dg-select {
     justify-content: flex-start;
   }
+}
+
+/* Lot 3 (05/11/2026): the public page of a match. */
+.public-live .public-hero {
+  align-items: flex-start;
+}
+.live-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.live-side {
+  min-width: 0;
+  text-align: center;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.live-figures {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--heading);
+}
+.live-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.live-events li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  min-height: 44px;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.live-events li[data-kind="goal"] {
+  background: var(--success-soft);
+}
+.live-events li[data-kind="goal_against"] {
+  background: var(--danger-soft);
+}
+.live-minute {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.journey-live {
+  display: grid;
+  gap: var(--space-2);
+}
+.journey-live .actions {
+  margin-top: 0;
+}
+.journey-live code {
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+}
+/* Lot 4 (05/11/2026): the carpool offer of a parent. */
+.carpool-mine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
 }

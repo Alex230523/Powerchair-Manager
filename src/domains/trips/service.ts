@@ -10,6 +10,7 @@ import {
 } from "../access/service";
 import { permissions, type Permission } from "../access/policy";
 import { ownProfiles } from "../calendar/access";
+import { accountIn, notice, presidentsOf } from "../notifications/notice";
 import { cancelForTrip, requestForTrip, tripAuthorizations } from "../authorizations/service";
 import { logSensitiveAccess } from "../club/governance";
 import { seal, unseal } from "../notifications/crypto";
@@ -316,6 +317,15 @@ export async function tripDetail(db: Pool, p: Principal, id: string) {
     ).rows;
     // 28: the authorizations of the travelling minors, signed or missing (each family sees its own).
     const auth = await tripAuthorizations(x.c, x.org, id);
+    // Lot 4 (05/11/2026): the seats offered by parents and adult players; each sees their own, the organiser all of them.
+    const offers = (
+      await x.c.query(
+        `SELECT o.id,o.profile_id,cp.full_name,o.seats,o.wheelchair_places,o.legs,o.phone,o.note,o.status,o.vehicle_id,o.created_at::text AS created_at
+           FROM trip_carpool_offer o JOIN club_person cp ON cp.id=o.profile_id WHERE o.trip_id=$1 AND o.status IN ('offered','accepted') ORDER BY o.created_at`,
+        [id],
+      )
+    ).rows as { id: string; profile_id: string; full_name: string; seats: number; wheelchair_places: number; legs: string; phone: string; note: string; status: "offered" | "accepted"; vehicle_id: string | null; created_at: string }[];
+    const selfProfiles = new Set((await x.c.query("SELECT c.id FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.organization_id=$1 AND p.user_id=$2", [x.org, x.userId])).rows.map((r) => r.id as string));
     const base = {
       organization_id: x.org,
       today,
@@ -323,7 +333,11 @@ export async function tripDetail(db: Pool, p: Principal, id: string) {
       serves: await serves(x, t),
       countdown: countdown(t.starts_on, today),
       schedule,
-      can: { manage: x.manage, staff, full },
+      can: { manage: x.manage, staff, full, carpool: x.mfa && selfProfiles.size > 0 && (mine.length > 0 || x.manage) },
+      carpool: {
+        mine: offers.filter((o) => selfProfiles.has(o.profile_id)).map((o) => ({ ...o, phone: undefined })),
+        offers: full ? offers : [],
+      },
     };
     if (!full) {
       // A player or a family sees their own place and the journey, not the others.
@@ -978,6 +992,92 @@ export async function tripExecute(
             )
           ).rows[0].id as string;
           return { id };
+        }
+        case "carpoolOffer": {
+          // Lot 4: someone of the trip (themselves, or a child of theirs), from their own profile.
+          if (!x.mfa) throw new AccessError("MFA_REQUIRED");
+          await tripRow(x, input.tripId, true);
+          const self = (await x.c.query("SELECT c.id FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.organization_id=$1 AND p.user_id=$2 AND c.status='active' ORDER BY c.created_at LIMIT 1", [x.org, x.userId])).rows[0]?.id as string | undefined;
+          if (!self) throw new AccessError("NO_PROFILE", 409);
+          const concerned = (await x.c.query("SELECT 1 FROM trip_participant WHERE trip_id=$1 AND profile_id=ANY($2::uuid[]) AND status<>'declined'", [input.tripId, [...x.own]])).rowCount;
+          if (!concerned && !x.manage) throw new AccessError("FORBIDDEN");
+          const r = await x.c.query(
+            `INSERT INTO trip_carpool_offer(trip_id,organization_id,profile_id,seats,wheelchair_places,legs,phone,note) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+             ON CONFLICT (trip_id,profile_id) WHERE status='offered' DO NOTHING RETURNING id`,
+            [input.tripId, x.org, self, input.seats, input.wheelchairPlaces, input.legs, input.phone ?? "", input.note ?? ""],
+          );
+          if (!r.rowCount) throw new AccessError("ALREADY_SENT", 409);
+          await audit(x.c, x.org, x.userId, "trip.carpool.offered", r.rows[0].id, { trip: input.tripId });
+          const who = (await x.c.query("SELECT full_name FROM club_person WHERE id=$1", [self])).rows[0].full_name as string;
+          const trip = (await x.c.query("SELECT title FROM trip WHERE id=$1", [input.tripId])).rows[0].title as string;
+          await notice(
+            x.c,
+            x.org,
+            await presidentsOf(x.c, x.org),
+            {
+              fr: { title: `Covoiturage proposé : ${trip}`, message: `${who} propose ${input.seats} place(s) en voiture pour « ${trip} ». Acceptez pour placer les joueurs, ou refusez.` },
+              nl: { title: `Carpool voorgesteld: ${trip}`, message: `${who} biedt ${input.seats} plaats(en) in de auto aan voor « ${trip} ». Aanvaard om spelers te plaatsen, of weiger.` },
+              en: { title: `Carpool offered: ${trip}`, message: `${who} offers ${input.seats} seat(s) in their car for « ${trip} ». Accept to place players, or decline.` },
+            },
+            `/trips/${input.tripId}`,
+            `carpool:${r.rows[0].id}`,
+          );
+          return { id: input.tripId, offerId: r.rows[0].id as string };
+        }
+        case "carpoolWithdraw": {
+          const self = (await x.c.query("SELECT c.id FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.organization_id=$1 AND p.user_id=$2", [x.org, x.userId])).rows.map((r) => r.id as string);
+          const r = await x.c.query("UPDATE trip_carpool_offer SET status='withdrawn' WHERE id=$1 AND organization_id=$2 AND status='offered' AND profile_id=ANY($3::uuid[]) RETURNING trip_id", [input.id, x.org, self]);
+          if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+          await audit(x.c, x.org, x.userId, "trip.carpool.withdrawn", input.id);
+          return { id: r.rows[0].trip_id as string };
+        }
+        case "carpoolDecide": {
+          need();
+          const o = (
+            await x.c.query(
+              "SELECT o.id,o.trip_id,o.profile_id,o.seats,o.wheelchair_places,o.legs,o.phone,o.note,cp.full_name FROM trip_carpool_offer o JOIN club_person cp ON cp.id=o.profile_id WHERE o.id=$1 AND o.organization_id=$2 AND o.status='offered' FOR UPDATE OF o",
+              [input.id, x.org],
+            )
+          ).rows[0] as { id: string; trip_id: string; profile_id: string; seats: number; wheelchair_places: number; legs: string; phone: string; note: string; full_name: string } | undefined;
+          if (!o) throw new AccessError("NOT_FOUND", 404);
+          await tripRow(x, o.trip_id, true);
+          let vehicleId: string | null = null;
+          if (input.accept) {
+            // The car joins the trip's vehicles, the parent at the wheel; the organiser then places the passengers.
+            vehicleId = (
+              await x.c.query(
+                `INSERT INTO trip_vehicle(trip_id,vehicle_id,name,legs,driver_profile_id,driver_phone,seats,wheelchair_places,notes,kind,owner_profile_id)
+                 VALUES($1,NULL,$2,$3,$4,$5,$6,$7,$8,'private',$4) RETURNING id`,
+                [o.trip_id, `Voiture de ${o.full_name}`.slice(0, 80), o.legs, o.profile_id, o.phone, o.seats, o.wheelchair_places, o.note],
+              )
+            ).rows[0].id as string;
+            await x.c.query("INSERT INTO trip_vehicle_driver(trip_vehicle_id,profile_id,legs) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [vehicleId, o.profile_id, o.legs]);
+            await proposeStops(x.c, vehicleId);
+          }
+          await x.c.query("UPDATE trip_carpool_offer SET status=$2,vehicle_id=$3,decided_by=$4,decided_at=now() WHERE id=$1", [o.id, input.accept ? "accepted" : "declined", vehicleId, x.userId]);
+          await audit(x.c, x.org, x.userId, input.accept ? "trip.carpool.accepted" : "trip.carpool.declined", o.id);
+          const trip = (await x.c.query("SELECT title FROM trip WHERE id=$1", [o.trip_id])).rows[0].title as string;
+          const owner = (await x.c.query("SELECT p.user_id FROM club_person c JOIN person p ON p.id=c.person_id WHERE c.id=$1", [o.profile_id])).rows[0]?.user_id as string | undefined;
+          if (owner)
+            await notice(
+              x.c,
+              x.org,
+              await accountIn(x.c, x.org, owner),
+              input.accept
+                ? {
+                    fr: { title: `Covoiturage accepté : ${trip}`, message: `Merci ! Votre voiture fait partie du déplacement « ${trip} » ; le club y place les joueurs.` },
+                    nl: { title: `Carpool aanvaard: ${trip}`, message: `Bedankt! Uw auto maakt deel uit van de verplaatsing « ${trip} »; de club plaatst er de spelers in.` },
+                    en: { title: `Carpool accepted: ${trip}`, message: `Thank you! Your car is part of the trip « ${trip} »; the club places the players in it.` },
+                  }
+                : {
+                    fr: { title: `Covoiturage non retenu : ${trip}`, message: `Le club n'a pas retenu votre voiture pour « ${trip} ». Merci quand même.` },
+                    nl: { title: `Carpool niet weerhouden: ${trip}`, message: `De club heeft uw auto niet weerhouden voor « ${trip} ». Toch bedankt.` },
+                    en: { title: `Carpool not taken: ${trip}`, message: `The club did not take your car for « ${trip} ». Thank you anyway.` },
+                  },
+              `/trips/${o.trip_id}`,
+              `carpool_answer:${o.id}`,
+            );
+          return { id: o.trip_id, vehicleId };
         }
         case "licence": {
           need();

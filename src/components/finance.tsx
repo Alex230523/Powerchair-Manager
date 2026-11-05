@@ -298,6 +298,27 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
       {view && s && (
         <>
           {section === "overview" && view.treasury && <Treasury locale={locale} {...view.treasury} />}
+          {/* Lot 2 (05/11/2026): the federation: what its clubs owe it, what comes from abroad. */}
+          {section === "overview" && view.owed && (
+            <Card title={x.owed.title} labelledBy="finance-owed" headingId="finance-owed" className="finance-owed">
+              <ul className="plain-list">
+                <li>
+                  <Link href={`/${locale}/federation/affiliations#federation-tracking`}>{x.owed.dues}</Link> : <strong>{money(view.owed.dues)}</strong>
+                  {view.owed.dues_late > 0 && <Badge tone="danger">{x.owed.late.replace("{amount}", money(view.owed.dues_late))}</Badge>}
+                </li>
+                <li>
+                  <Link href={`/${locale}/federation/affiliations#fines`}>{x.owed.fines}</Link> : <strong>{money(view.owed.fines)}</strong>
+                </li>
+                <li>
+                  <Link href={`/${locale}/discipline#fines`}>{x.owed.discipline}</Link> : <strong>{money(view.owed.discipline)}</strong>
+                </li>
+                <li>
+                  <Link href={`/${locale}/transfers`}>{x.owed.international}</Link> : <strong>{money(view.owed.international)}</strong>
+                </li>
+              </ul>
+              <p className="muted small">{x.owed.hint}</p>
+            </Card>
+          )}
           {section === "overview" && (
           <ul className="stat-row-grid" data-cols={view.treasury ? "3" : "4"}>
             {/* 04/11/2026: the treasury is said once; with the reserved funds above, not again here. */}

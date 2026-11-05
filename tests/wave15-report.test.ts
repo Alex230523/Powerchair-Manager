@@ -25,6 +25,12 @@ const report = {
     { direction: "out", category: "equipment", cents: 950000 },
   ],
   thanks: { partners: ["Garage Dupont"], funders: ["ADEPS"] },
+  // Lot 5 (05/11/2026): awards and the year's obligations.
+  awards: [{ title: "Coupe de Belgique", competition: "Coupe", kind: "team" as const, place: 2, awarded_on: "2026-05-01", team: "Aigles", person: null }],
+  obligations: [
+    { title: "Assemblée générale tenue", due_on: "2026-06-30", done_on: "2026-06-12" },
+    { title: "Comptes déposés", due_on: "2026-07-31", done_on: null },
+  ],
 } as unknown as ActivityReport;
 const t = reportCopy.fr;
 const all = { sections: [...reportSections], word: "Bravo à tous.", thanks: "Merci !", locale: "fr" as const };
@@ -35,11 +41,14 @@ describe("report pages", () => {
   });
   it("keeps the chosen sections in order, with the figures, the ranks and the frames", () => {
     const slides = buildSlides(report, all, t, { dues: "Cotisations", equipment: "Matériel" });
-    expect(slides.map((s) => s.id)).toEqual(["cover", "word", "figures", "results", "highlights", "staff", "equipment", "finances", "thanks"]);
+    expect(slides.map((s) => s.id)).toEqual(["cover", "word", "figures", "results", "highlights", "awards", "staff", "equipment", "finances", "obligations", "thanks"]);
+    expect(slides[5].lines).toEqual(["Coupe de Belgique · Coupe · 2e place · Aigles · 1 mai"]);
+    expect(slides[9].lines?.[0]).toBe("1 obligations sur 2 tenues cette année");
+    expect(slides[9].lines?.[2]).toContain("Comptes déposés · à faire");
     expect(slides[2].numbers?.[0]).toEqual({ label: "Membres", value: "24", note: "+4 par rapport à 2024-25" });
     expect(slides[3].lines?.[0]).toContain("2e sur 8");
     expect(slides[4].photos?.[0].caption).toContain("Fête du club");
-    expect(slides[7].charts?.map((c) => c.labels)).toEqual([["Cotisations"], ["Matériel"]]);
+    expect(slides[8].charts?.map((c) => c.labels)).toEqual([["Cotisations"], ["Matériel"]]);
     expect(buildSlides(report, { ...all, sections: ["figures", "cover"] }, t, {}).map((s) => s.id)).toEqual(["cover", "figures"]);
   });
   it("leaves the finances out without the money right, and empty texts out", () => {

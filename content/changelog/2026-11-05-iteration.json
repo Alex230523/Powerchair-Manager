@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-05",
+  "roles": [
+    "all"
+  ],
+  "link": "/",
+  "image": null,
+  "fr": {
+    "title": "Match en direct, covoiturage, rapport d'AG",
+    "text": "Chaque match a une page publique à partager aux parents et supporters. Un parent propose des places dans sa voiture pour un déplacement. Le rapport de saison se télécharge en PDF, avec les distinctions et les obligations. La fédération tient le journal de sa commission, échange ses licences par fichier, et les indemnités et amendes s'écrivent dans les finances."
+  },
+  "nl": {
+    "title": "Wedstrijd live, carpool, verslag voor de AV",
+    "text": "Elke wedstrijd heeft een publieke pagina om met ouders en supporters te delen. Een ouder biedt plaatsen in zijn auto aan voor een verplaatsing. Het seizoensverslag wordt een PDF, met de onderscheidingen en de verplichtingen. De federatie houdt het dagboek van haar commissie bij, wisselt haar licenties uit per bestand, en vergoedingen en boetes komen in de financiën."
+  },
+  "en": {
+    "title": "Match live, carpooling, assembly report",
+    "text": "Every match has a public page to share with parents and supporters. A parent offers seats in their car for a trip. The season report downloads as a PDF, with awards and obligations. The federation keeps its commission's journal, exchanges its licences by file, and compensations and fines are written in the finances."
+  }
+}

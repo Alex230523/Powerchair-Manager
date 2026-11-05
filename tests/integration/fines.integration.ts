@@ -58,8 +58,20 @@ it("lets the federation fine its clubs, each club seeing only its own", async ()
   expect((await finesView(db, otherFed)).fines).toEqual([]);
   await expect(finesView(db, coachA)).rejects.toMatchObject({ code: "FORBIDDEN" });
   // Paid, then the other cancelled; a cancelled fine stays as it is.
+  // Lot 2: the club got a task; paid, the club's expense and the federation's income are written, the task closes.
+  expect((await db.query("SELECT status,amount_cents FROM task WHERE organization_id=$1 AND source_key=$2", [clubA, `fine:${a}`])).rows[0]).toMatchObject({ status: "todo", amount_cents: 2500 });
   await finesExecute(db, fedPresident, { action: "paid", id: a, paid: true }, fed);
   expect((await finesView(db, presidentA)).fines[0].state).toBe("paid");
+  const books = async (org: string) => (await db.query("SELECT direction,amount_cents,cancelled_at IS NOT NULL AS cancelled FROM finance_transaction WHERE organization_id=$1 AND auto_source='fine' AND auto_ref=$2 ORDER BY created_at", [org, a])).rows;
+  expect(await books(clubA)).toEqual([{ direction: "out", amount_cents: 2500, cancelled: false }]);
+  expect(await books(fed)).toEqual([{ direction: "in", amount_cents: 2500, cancelled: false }]);
+  expect((await db.query("SELECT status FROM task WHERE organization_id=$1 AND source_key=$2", [clubA, `fine:${a}`])).rows[0].status).toBe("done");
+  // Back to unpaid: the entries are cancelled, the task reopens; paid again: written again.
+  await finesExecute(db, fedPresident, { action: "paid", id: a, paid: false }, fed);
+  expect((await books(clubA)).map((r) => r.cancelled)).toEqual([true]);
+  expect((await db.query("SELECT status FROM task WHERE organization_id=$1 AND source_key=$2", [clubA, `fine:${a}`])).rows[0].status).toBe("todo");
+  await finesExecute(db, fedPresident, { action: "paid", id: a, paid: true }, fed);
+  expect((await books(fed)).map((r) => r.cancelled)).toEqual([true, false]);
   const b = (await finesView(db, presidentB)).fines[0].id;
   await expect(finesExecute(db, otherFed, { action: "cancel", id: b }, other)).rejects.toMatchObject({ code: "NOT_FOUND" });
   await finesExecute(db, fedPresident, { action: "cancel", id: b }, fed);

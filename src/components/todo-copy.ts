@@ -136,6 +136,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Supprimer la tâche : {title}",
     sources: {
       disciplineFine: "Payer l'amende : {about}",
+      federationFine: "Payer l'amende de la fédération : {about}",
       allocationDeadline: "Utiliser les fonds réservés avant l'échéance : {about}",
       annualReminder: "Rappel annuel : {about}",
       forecastLow: "Trésorerie prévue sous le seuil en {about} : agir avant",
@@ -256,6 +257,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "De taak verwijderen: {title}",
     sources: {
       disciplineFine: "De boete betalen: {about}",
+      federationFine: "De boete van de federatie betalen: {about}",
       allocationDeadline: "Het bestemde geld gebruiken vóór de einddatum: {about}",
       annualReminder: "Jaarlijkse herinnering: {about}",
       forecastLow: "Verwachte kas onder de drempel in {about}: vooraf handelen",
@@ -376,6 +378,7 @@ export const todoCopy: Record<"fr" | "nl" | "en", Copy> = {
     removeOf: "Delete the task: {title}",
     sources: {
       disciplineFine: "Pay the fine: {about}",
+      federationFine: "Pay the federation's fine: {about}",
       allocationDeadline: "Use the reserved funds before the deadline: {about}",
       annualReminder: "Yearly reminder: {about}",
       forecastLow: "Forecast cash under the threshold in {about}: act before",
