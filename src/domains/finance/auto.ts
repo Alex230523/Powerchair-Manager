@@ -8,7 +8,7 @@ import type { PoolClient } from "pg";
  */
 export type AutoEntry = {
   org: string;
-  source: "affiliation" | "fine" | "refereeExpense";
+  source: "affiliation" | "fine" | "refereeExpense" | "transfer" | "international" | "internationalOut";
   ref: string;
   direction: "in" | "out";
   category: "affiliation" | "competition";

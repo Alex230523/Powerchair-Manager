@@ -1,4 +1,5 @@
 import { ensureStorage } from "../storage/service";
+import { autoEntry, cancelAuto } from "../finance/auto";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { createHash, randomBytes } from "node:crypto";
@@ -429,8 +430,23 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
           return { ok: true as const };
         }
         if (command.action === "internationalPaid") {
-          const r = await s.c.query("UPDATE international_transfer SET paid_on=CASE WHEN $3 THEN CURRENT_DATE END WHERE id=$1 AND federation_id=$2 RETURNING id", [command.id, s.fed, command.paid]);
+          const r = await s.c.query(
+            "UPDATE international_transfer i SET paid_on=CASE WHEN $3 THEN CURRENT_DATE END FROM organization c WHERE i.id=$1 AND i.federation_id=$2 AND c.id=i.club_id RETURNING i.id,i.club_id,i.full_name,i.foreign_club,i.amount_cents,c.name AS club",
+            [command.id, s.fed, command.paid],
+          );
           if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+          // Lot 2: received by the federation from abroad, then passed on to the training club (which records its income).
+          const x = r.rows[0] as { id: string; club_id: string; full_name: string; foreign_club: string; amount_cents: number; club: string };
+          const entry = { source: "international" as const, ref: x.id, category: "competition" as const, amountCents: x.amount_cents, occurredOn: s.today, by: s.userId };
+          if (command.paid) {
+            await autoEntry(s.c, { ...entry, org: s.org, direction: "in", label: `Indemnité internationale · ${x.full_name}`, counterparty: x.foreign_club });
+            await autoEntry(s.c, { ...entry, org: s.org, source: "internationalOut", direction: "out", label: `Indemnité reversée · ${x.full_name}`, counterparty: x.club });
+            await autoEntry(s.c, { ...entry, org: x.club_id, direction: "in", label: `Indemnité de formation · ${x.full_name}`, counterparty: (await s.c.query("SELECT name FROM organization WHERE id=$1", [s.org])).rows[0].name });
+          } else {
+            await cancelAuto(s.c, s.org, "international", x.id, s.userId, "Paiement retiré");
+            await cancelAuto(s.c, s.org, "internationalOut", x.id, s.userId, "Paiement retiré");
+            await cancelAuto(s.c, x.club_id, "international", x.id, s.userId, "Paiement retiré");
+          }
           await audit(s.c, s.org, s.userId, command.paid ? "transfer.international.paid" : "transfer.international.unpaid", command.id);
           return { ok: true as const };
         }
@@ -539,6 +555,17 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         if (!s.federation || (await s.c.query("SELECT federation_id FROM transfer_offer WHERE id=$1", [o.id])).rows[0].federation_id !== s.fed) throw new AccessError("FORBIDDEN");
         if (command.confirmed && !o.payment_proof_filename) throw new AccessError("PROOF_REQUIRED", 409);
         await s.c.query("UPDATE transfer_offer SET payment_confirmed_at=CASE WHEN $2 THEN now() END,payment_confirmed_by=CASE WHEN $2 THEN $3 END,version=version+1 WHERE id=$1", [o.id, command.confirmed, s.userId]);
+        // Lot 2 (05/11/2026): the compensation in both clubs' books, the entering club's expense and the leaving club's income.
+        if (o.from_organization_id && o.amount_cents) {
+          const entry = { source: "transfer" as const, ref: o.id, category: "competition" as const, amountCents: o.amount_cents, occurredOn: s.today, by: s.userId };
+          if (command.confirmed) {
+            await autoEntry(s.c, { ...entry, org: o.to_organization_id, direction: "out", label: `Indemnité de formation · ${o.full_name}`, counterparty: o.from_club ?? "" });
+            await autoEntry(s.c, { ...entry, org: o.from_organization_id, direction: "in", label: `Indemnité de formation · ${o.full_name}`, counterparty: o.to_club });
+          } else {
+            await cancelAuto(s.c, o.to_organization_id, "transfer", o.id, s.userId, "Confirmation retirée");
+            await cancelAuto(s.c, o.from_organization_id, "transfer", o.id, s.userId, "Confirmation retirée");
+          }
+        }
         await audit(s.c, s.org, s.userId, command.confirmed ? "transfer.payment.confirmed" : "transfer.payment.unconfirmed", o.id);
         return { ok: true as const };
       }
