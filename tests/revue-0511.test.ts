@@ -14,6 +14,13 @@ function files(dir: string, out: string[] = []) {
 const read = (f: string) => readFileSync(f, "utf8");
 
 describe("review of 05/11/2026", () => {
+  it("keeps the stylesheet within its budget, each file button rule once", () => {
+    const css = read("src/app/globals.css");
+    // Lot 7: 300 kB before minification; a module that grows beyond it gets its own file.
+    expect(Buffer.byteLength(css)).toBeLessThan(300 * 1024);
+    expect(css.match(/^\.file-button \{/gm)).toHaveLength(1);
+    expect(css.match(/^\.file-button:focus-within \{/gm)).toHaveLength(1);
+  });
   it("every server error code has a sentence in the three languages somewhere in the interface", () => {
     const codes = new Set<string>();
     for (const f of files("src/domains")) for (const m of read(f).matchAll(/AccessError\("([A-Z_]+)"/g)) codes.add(m[1]);
