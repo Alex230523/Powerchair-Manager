@@ -164,6 +164,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 04/11/2026 | [Ergonomie : champs, à faire, sections du formulaire, menu](evolutions/2026-11-04-zzw-ergonomie.md) |
 | 04/11/2026 | [Retours : retraits, to-do, fenêtres, fiches entre clubs, matchs, transferts BPCF](evolutions/2026-11-04-zzx-retours.md) |
 | 04/11/2026 | [Vingt améliorations : règlement BPCF, notifications, fenêtres, listes en cartes](evolutions/2026-11-04-zzy-ameliorations.md) |
+| 05/11/2026 | [Revue générale : stockage, codes d'erreur, dates, filtres](evolutions/2026-11-05-zzz-revue.md) |
 
 ## Convention
 
