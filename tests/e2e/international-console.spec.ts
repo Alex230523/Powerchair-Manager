@@ -120,7 +120,9 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     await page.getByRole("tab", { name: "Organisations" }).click();
     await page.getByRole("searchbox").fill("Club facturé");
     await page.getByRole("button", { name: "Club facturé" }).click();
-    await page.getByRole("form", { name: "Ouvrir un abonnement" }).getByRole("combobox", { name: "Formule" }).selectOption({ label: /Club, annuel/ });
+    const planSelect = page.getByRole("form", { name: "Ouvrir un abonnement" }).getByRole("combobox", { name: "Formule" });
+    const planLabel = await planSelect.locator("option", { hasText: "Club, annuel" }).first().textContent();
+    await planSelect.selectOption({ label: planLabel ?? "" });
     await page.getByRole("button", { name: "Ouvrir un abonnement" }).click();
     await expect(page.getByText("Terminer aujourd'hui")).toBeVisible();
     // The invoice, created then sent.
