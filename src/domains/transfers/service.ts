@@ -1,3 +1,4 @@
+import { ensureStorage } from "../storage/service";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { createHash, randomBytes } from "node:crypto";
@@ -451,7 +452,12 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
             [s.fed, who.organization_id, who.id, who.full_name, command.foreignClub, command.country, command.trainingYears, who.training_format, amount, command.note ?? "", s.userId],
           )
         ).rows[0].id as string;
-        await s.c.query("UPDATE club_person SET status='transferred',updated_at=now() WHERE id=$1", [who.id]);
+        await s.c.query("UPDATE club_person SET status='transferred',version=version+1,updated_at=now() WHERE id=$1", [who.id]);
+        // Like a domestic transfer: the player leaves their teams today.
+        await s.c.query(
+          "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE organization_id=$1 AND profile_id=$2 AND (ends_on IS NULL OR ends_on>CURRENT_DATE)",
+          [who.organization_id, who.id],
+        );
         await audit(s.c, s.org, s.userId, "transfer.international", id, { amount });
         await audit(s.c, who.organization_id, s.userId, "people.transfer.out", who.id);
         await tell(s.c, await officers(s.c, who.organization_id), "validated", { name: who.full_name, club: command.foreignClub, season: seasonOf(s.today).label }, id);
@@ -522,6 +528,9 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
           webp = bytes.subarray(8, 12).toString("latin1") === "WEBP";
         const ok = { "application/pdf": pdf, "image/png": png, "image/jpeg": jpg, "image/webp": webp }[command.type];
         if (!ok || bytes.length > 6 * 1024 * 1024) throw new AccessError("INVALID_FILE", 400);
+        // The proof counts in the entering club's storage.
+        const previousProof = Number((await s.c.query("SELECT octet_length(payment_proof) AS n FROM transfer_offer WHERE id=$1", [o.id])).rows[0]?.n ?? 0);
+        await ensureStorage(s.c, s.org, bytes.length, previousProof);
         await s.c.query("UPDATE transfer_offer SET payment_proof=$2,payment_proof_type=$3,payment_proof_filename=$4,payment_confirmed_at=NULL,payment_confirmed_by=NULL,version=version+1 WHERE id=$1", [o.id, bytes, command.type, command.filename]);
         await audit(s.c, s.org, s.userId, "transfer.payment.proof", o.id);
         return { ok: true as const };

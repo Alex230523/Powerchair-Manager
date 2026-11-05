@@ -2,6 +2,7 @@ import { suspensionsFor } from "../discipline/service";
 import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
+import { ensureStorage } from "../storage/service";
 import { audit, AccessError, type Principal } from "../access/service";
 import { peopleScope, peopleRecords, peopleVisibility, type PeopleScope } from "../people/service";
 import { brusselsToday } from "../people/service";
@@ -401,6 +402,9 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
       case "sheetPhoto": {
         const bytes = Buffer.from(cmd.base64, "base64");
         if (!bytes.length || bytes.length > 6291456) throw new AccessError("INVALID_FILE", 400);
+        // The photo counts in the club's storage (a second one replaces the first).
+        const previousPhoto = Number((await c.query("SELECT octet_length(content) AS n FROM match_sheet_photo WHERE match_id=$1", [m.id])).rows[0]?.n ?? 0);
+        await ensureStorage(c, org, bytes.length, previousPhoto);
         await c.query(
           "INSERT INTO match_sheet_photo(match_id,organization_id,media_type,content,uploaded_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT (match_id) DO UPDATE SET media_type=EXCLUDED.media_type,content=EXCLUDED.content,uploaded_by=EXCLUDED.uploaded_by,uploaded_at=now()",
           [m.id, org, cmd.type, bytes, p.userId],
