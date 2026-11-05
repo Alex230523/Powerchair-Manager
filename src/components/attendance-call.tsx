@@ -1,4 +1,5 @@
 "use client";
+import { brusselsToday } from "./chair-sheet";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { attendanceView } from "@/domains/attendance/service";
@@ -25,7 +26,7 @@ const page = 8;
 /** The season of the top bar (or the last twelve months), loaded once for the roll call and the statistics. */
 export function useSeasonAttendance(revision: number) {
   const scope = useScope();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = brusselsToday();
   // No Date.now in render (the purity rule): the day 360 days before, from a new Date.
   const back = new Date();
   back.setUTCDate(back.getUTCDate() - 360);

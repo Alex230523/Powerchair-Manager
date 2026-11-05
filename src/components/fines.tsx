@@ -1,4 +1,5 @@
 "use client";
+import { brusselsToday } from "./chair-sheet";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { finesView } from "@/domains/fines/service";
@@ -117,7 +118,7 @@ export function Fines({ locale }: { locale: Locale }) {
               </label>
               <label>
                 {t.issuedOn}
-                <input name="issuedOn" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+                <input name="issuedOn" type="date" required defaultValue={brusselsToday()} />
               </label>
             </div>
             <label>

@@ -1,4 +1,5 @@
 "use client";
+import { brusselsToday } from "./chair-sheet";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -1115,7 +1116,7 @@ export function Registrations({
                     name="birth"
                     type="date"
                     required
-                    max={new Date().toISOString().slice(0, 10)}
+                    max={brusselsToday()}
                   />
                 </FieldLabel>
                 <FieldLabel id="prior" label={t.renew}>
