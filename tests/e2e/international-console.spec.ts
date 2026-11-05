@@ -35,7 +35,7 @@ test("the federation sets its country and its scale, every save versioned", asyn
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/federation/policy");
     await expect(page.getByText("Barème BPCF 2025, sans modification.")).toBeVisible();
-    await page.getByLabel("Pays de la fédération").selectOption("NL");
+    await page.getByRole("combobox", { name: "Pays de la fédération" }).selectOption("NL");
     await page.getByRole("button", { name: "Enregistrer le pays" }).click();
     await expect.poll(async () => (await db.query("SELECT country_code FROM organization WHERE id=$1", [fed])).rows[0].country_code).toBe("NL");
     const academy = page.getByRole("group", { name: "Transfert international" }).getByLabel(/^Académie/);
