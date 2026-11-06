@@ -179,6 +179,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Console, série C : support et demandes RGPD de bout en bout](evolutions/2026-11-06-zzzzzzzz-console-serie-c.md) |
 | 06/11/2026 | [Console, série D : fiche enrichie et sécurité des opérateurs](evolutions/2026-11-06-zzzzzzzzz-console-serie-d.md) |
 | 06/11/2026 | [Console, série E : connecteur MCP de chaque club, console des pays](evolutions/2026-11-06-zzzzzzzzzz-console-serie-e.md) |
+| 06/11/2026 | [Sécurité : audit Broken Access Control (IDOR/BOLA), affiliation validée par la fédération](evolutions/2026-11-06-zzzzzzzzzzz-securite-bola.md) |
 
 ## Convention
 

@@ -16,6 +16,8 @@ import { permissions } from "../access/policy";
 import { palettes, tints } from "./appearance";
 import { proposeObligations } from "./obligations";
 import { today } from "../calendar/access";
+import { notice } from "../notifications/notice";
+import { presidencyOf } from "../console/service";
 
 export const identitySchema = z.object({
   action: z.literal("identity"),
@@ -75,7 +77,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,o.federation_id,o.legal_form,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,o.federation_request_id,o.federation_requested_at,(SELECT f.name FROM organization f WHERE f.id=o.federation_request_id) AS federation_request_name,o.legal_form,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -160,20 +162,30 @@ export async function clubExecute(
       }
       if (input.federationId !== undefined) {
         if (a.kind !== "club") throw new AccessError("CLUB_ONLY");
-        if (
-          input.federationId &&
-          !(
-            await c.query(
-              "SELECT 1 FROM organization WHERE id=$1 AND kind='federation'",
-              [input.federationId],
-            )
-          ).rowCount
-        )
-          throw new AccessError("NOT_FOUND", 404);
-        await c.query("UPDATE organization SET federation_id=$2 WHERE id=$1", [
-          a.organization_id,
-          input.federationId,
-        ]);
+        // Security (06/11/2026): the club never attaches itself to a federation. Choosing one sends a
+        // request the federation accepts or refuses; choosing none leaves (and withdraws a request).
+        const now = (await c.query("SELECT federation_id,federation_request_id FROM organization WHERE id=$1", [a.organization_id])).rows[0] as { federation_id: string | null; federation_request_id: string | null };
+        if (input.federationId === null) {
+          if (now.federation_id || now.federation_request_id) {
+            await c.query("UPDATE organization SET federation_id=NULL,federation_request_id=NULL,federation_requested_at=NULL,federation_requested_by=NULL WHERE id=$1", [a.organization_id]);
+            if (now.federation_id) {
+              await audit(c, a.organization_id, p.userId, "club.federation_left", now.federation_id);
+              await audit(c, now.federation_id, p.userId, "federation.club_left", a.organization_id);
+            }
+          }
+        } else if (input.federationId !== now.federation_id && input.federationId !== now.federation_request_id) {
+          const fed = (await c.query("SELECT id,name FROM organization WHERE id=$1 AND kind='federation'", [input.federationId])).rows[0] as { id: string; name: string } | undefined;
+          if (!fed) throw new AccessError("NOT_FOUND", 404);
+          await c.query("UPDATE organization SET federation_request_id=$2,federation_requested_at=now(),federation_requested_by=$3 WHERE id=$1", [a.organization_id, fed.id, p.userId]);
+          await audit(c, a.organization_id, p.userId, "club.federation_requested", fed.id);
+          await audit(c, fed.id, p.userId, "federation.club_requested", a.organization_id);
+          const clubName = (await c.query("SELECT name FROM organization WHERE id=$1", [a.organization_id])).rows[0].name as string;
+          await notice(c, fed.id, await presidencyOf(c, fed.id), {
+            fr: { title: "Demande d'affiliation", message: `Le club ${clubName} demande à rejoindre votre fédération. Acceptez ou refusez dans Clubs.` },
+            nl: { title: "Aansluitingsaanvraag", message: `De club ${clubName} vraagt uw federatie te vervoegen. Aanvaard of weiger in Clubs.` },
+            en: { title: "Affiliation request", message: `The club ${clubName} asks to join your federation. Accept or refuse in Clubs.` },
+          }, "/federation/clubs", `affiliation_request:${a.organization_id}:${Date.now()}`, "administrative");
+        }
       }
     } else if (input.action === "appearance") {
       if (a.kind !== "club") throw new AccessError("CLUB_ONLY");

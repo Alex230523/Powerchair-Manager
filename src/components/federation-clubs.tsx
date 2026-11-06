@@ -121,6 +121,40 @@ export function FederationClubs({ locale }: { locale: Locale }) {
       {error && !creating && !inviting && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {!view && !error && <p role="status">{t.loading}</p>}
+      {view && view.requests.length > 0 && (
+        <section className="card" aria-labelledby="federation-requests">
+          <h2 id="federation-requests">{t.requests}</h2>
+          <p className="muted small">{t.requestsIntro}</p>
+          <ul className="records">
+            {view.requests.map((r) => (
+              <li key={r.id} className="link-row">
+                <span>
+                  <strong>{r.name}</strong>
+                  {r.city && <span className="muted small"> · {r.city}</span>}
+                  {r.company_number && <span className="muted small"> · {r.company_number}</span>}
+                  <span className="muted small">
+                    {" "}
+                    · {t.requestLine.replace("{day}", new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric" }).format(new Date(r.requested_at))).replace("{by}", r.requested_by ?? "?")}
+                    {r.current_federation && ` · ${t.requestFrom.replace("{name}", r.current_federation)}`}
+                  </span>
+                </span>
+                {manage && (
+                  <span className="console-row-actions">
+                    <Button size="sm" onClick={() => void send({ action: "acceptClub", clubId: r.id }, t.accepted)}>
+                      {t.acceptClub}
+                      <span className="sr-only"> : {r.name}</span>
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => void send({ action: "refuseClub", clubId: r.id }, t.refused)}>
+                      {t.refuseClub}
+                      <span className="sr-only"> : {r.name}</span>
+                    </Button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {view &&
         (view.clubs.length ? (
           <div className="table-scroll" role="region" aria-label={t.title} tabIndex={0}>
