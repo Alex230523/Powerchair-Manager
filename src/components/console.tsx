@@ -6,6 +6,7 @@ import type { consoleHome, consoleOperators, consoleOrganization, consoleOrganiz
 import type { billingView } from "@/domains/billing/service";
 import type { mcpKeys } from "@/domains/mcp/service";
 import type { assistantView, AssistantTurn } from "@/domains/assistant/service";
+import type { alertPrefView, reportsView } from "@/domains/console/metrics";
 import { operatorRoles } from "@/domains/console/schema";
 import { planBases, planPeriods } from "@/domains/billing/schema";
 import { formatCents } from "@/domains/dashboard/summary";
@@ -23,6 +24,8 @@ type Supervision = Awaited<ReturnType<typeof consoleSupervision>>;
 type Operators = Awaited<ReturnType<typeof consoleOperators>>;
 type Billing = Awaited<ReturnType<typeof billingView>>;
 type Keys = Awaited<ReturnType<typeof mcpKeys>>;
+type Alerts = Awaited<ReturnType<typeof alertPrefView>>;
+type Reports = Awaited<ReturnType<typeof reportsView>>;
 type Tab = "home" | "organizations" | "billing" | "supervision" | "operators" | "assistant";
 type AssistantState = Awaited<ReturnType<typeof assistantView>>;
 type Turn = AssistantTurn;
@@ -70,16 +73,22 @@ export function Console({ locale }: { locale: Locale }) {
   );
 }
 
-function Tile({ title, hint, lines }: { title: string; hint?: string; lines: [number | string, string][] }) {
+/** A tile of counts; a third element is the change over 30 days (series A), shown after the label. */
+function Tile({ title, hint, lines, deltaLabel }: { title: string; hint?: string; lines: [number | string, string, (number | string | null)?][]; deltaLabel?: string }) {
   return (
     <li className="console-tile">
       <p className="stat-label">{title}</p>
       {hint && <p className="stat-hint">{hint}</p>}
       <dl className="console-lines">
-        {lines.map(([value, label]) => (
+        {lines.map(([value, label, delta]) => (
           <div key={label}>
             <dt className="num">{value}</dt>
-            <dd>{label}</dd>
+            <dd>
+              {label}
+              {delta !== undefined && delta !== null && (
+                <span className={`console-delta ${typeof delta === "number" && delta < 0 ? "down" : typeof delta === "number" && delta > 0 ? "up" : ""}`}> {typeof delta === "number" ? (delta > 0 ? "+" : "") + delta : delta} {deltaLabel}</span>
+              )}
+            </dd>
           </div>
         ))}
       </dl>
@@ -96,18 +105,60 @@ function HomeView({ locale, data, open, when }: { locale: Locale; data: Home; op
     h = data.health,
     s = data.support,
     c = data.compliance;
+  // Series A: the change over 30 days, when a snapshot that old exists.
+  const d = (key: string, now: number) => (data.trends[key]?.prev30 === null || data.trends[key]?.prev30 === undefined ? null : now - data.trends[key].prev30!);
+  const dc = (key: string, now: number) => {
+    const x = d(key, now);
+    return x === null ? null : `${x > 0 ? "+" : ""}${formatCents(x, locale)}`;
+  };
+  const months = data.trends.clubs?.series ?? [];
   return (
     <div className="stack">
       <p className="muted small">{fill(t.generated, { time: when(data.generatedAt) })}</p>
       <ul className="console-tiles">
-        <Tile title={k.organizations} hint={k.organizationsHint} lines={[[o.clubs, k.clubs], [o.federations, k.federations], [o.newThisMonth, k.newThisMonth]]} />
-        <Tile title={k.people} lines={[[p.accounts, k.accounts], [p.players, k.players], [p.coaches, k.coaches], [p.referees, k.referees], [p.licences, k.licences]]} />
-        <Tile title={k.activity} lines={[[a.active7, k.active7], [a.active30, k.active30], [a.matches30, k.matches30], [a.mails7, k.mails7], [bytes(a.storageBytes, locale), k.storage]]} />
+        <Tile title={k.organizations} hint={k.organizationsHint} deltaLabel={t.delta30} lines={[[o.clubs, k.clubs, d("clubs", o.clubs)], [o.federations, k.federations], [o.newThisMonth, k.newThisMonth]]} />
+        <Tile title={k.people} deltaLabel={t.delta30} lines={[[p.accounts, k.accounts, d("accounts", p.accounts)], [p.players, k.players, d("players", p.players)], [p.coaches, k.coaches], [p.referees, k.referees], [p.licences, k.licences]]} />
+        <Tile title={k.activity} deltaLabel={t.delta30} lines={[[a.active7, k.active7], [a.active30, k.active30, d("active30", a.active30)], [a.matches30, k.matches30, d("matches30", a.matches30)], [a.mails7, k.mails7], [bytes(a.storageBytes, locale), k.storage]]} />
         <Tile title={k.health} hint={h.lastMigration ? fill(k.lastMigration, { name: h.lastMigration }) : k.noMigration} lines={[[h.jobsLate, k.jobsLate], [h.jobs - h.jobsLate, k.jobsOk], [h.mailsOverdue, k.mailsOverdue], [h.mailsFailed7, k.mailsFailed]]} />
         <Tile title={k.support} lines={[[s.feedbackOpen, k.feedbackOpen], [s.feedbackWeek, k.feedbackWeek], [s.dataRequestsOpen, k.dataRequestsOpen], [s.dataRequestsLate, k.dataRequestsLate]]} />
-        <Tile title={k.billing} hint={t.billingSoon} lines={[[formatCents(data.billing.invoicedMonth, locale), k.invoicedMonth], [formatCents(data.billing.paidMonth, locale), k.paidMonth], [formatCents(data.billing.open, locale), k.open], [`${formatCents(data.billing.late, locale)} (${data.billing.lateCount})`, k.late], [data.billing.subscriptions, k.subscriptions]]} />
+        <Tile title={k.billing} hint={t.billingSoon} deltaLabel={t.delta30} lines={[[formatCents(data.billing.invoicedMonth, locale), k.invoicedMonth], [formatCents(data.billing.paidMonth, locale), k.paidMonth], [formatCents(data.billing.open, locale), k.open, dc("open", data.billing.open)], [`${formatCents(data.billing.late, locale)} (${data.billing.lateCount})`, k.late, dc("late", data.billing.late)], [data.billing.subscriptions, k.subscriptions, d("subscriptions", data.billing.subscriptions)]]} />
         <Tile title={k.compliance} lines={[[c.noPresident, k.noPresident], [c.noDpa, k.noDpa], [c.minorsWithoutGuardian, k.minorsWithoutGuardian], [c.terminationsPending, k.terminationsPending]]} />
       </ul>
+      <Card title={t.trends}>
+        {months.length ? (
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t.month}</th>
+                  <th scope="col" className="num">{k.clubs}</th>
+                  <th scope="col" className="num">{k.players}</th>
+                  <th scope="col" className="num">{k.active30}</th>
+                  <th scope="col" className="num">{t.billing.figures.mrr}</th>
+                  <th scope="col" className="num">{k.open}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {months.map((m) => {
+                  const at = (key: string) => data.trends[key]?.series.find((x) => x.month === m.month)?.value;
+                  return (
+                    <tr key={m.month}>
+                      <th scope="row">{m.month}</th>
+                      <td className="num">{m.value}</td>
+                      <td className="num">{at("players") ?? ""}</td>
+                      <td className="num">{at("active30") ?? ""}</td>
+                      <td className="num">{at("mrr") !== undefined ? formatCents(at("mrr")!, locale) : ""}</td>
+                      <td className="num">{at("open") !== undefined ? formatCents(at("open")!, locale) : ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">{t.trendsNone}</p>
+        )}
+      </Card>
       <Card title={t.byCountry}>
         <div className="table-scroll" tabIndex={0}>
           <table className="data-table">
@@ -649,7 +700,119 @@ function SupervisionView({ locale, when, day }: { locale: Locale; when: (iso: st
           <p className="muted">{s.dataRequestsNone}</p>
         )}
       </Card>
+      <ReportsCard locale={locale} day={day} />
     </div>
+  );
+}
+
+/** Series A: the operator's daily alert, its rules and hour, and what it would hold now. */
+function AlertPrefs({ locale, day }: { locale: Locale; day: (iso: string) => string }) {
+  const t = consoleCopy[locale],
+    a = t.alerts;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const { data, error, setError, reload } = useData<Alerts>("/api/console/alerts", failure);
+  const { busy, message, post } = usePost("/api/console/alerts", reload, setError, failure);
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  return (
+    <Card title={a.title} id="console-alerts">
+      <p className="muted">{a.intro}</p>
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      <form
+        key={`${data.email}-${data.hour}-${data.rules.join(",")}`}
+        className="stack-form"
+        aria-label={a.title}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const d = new FormData(e.currentTarget);
+          void post({ action: "alertPref", email: d.get("email") === "on", hour: Number(d.get("hour")), rules: d.getAll("rule").map(String) }, a.saved);
+        }}
+      >
+        <label className="check">
+          <input type="checkbox" name="email" defaultChecked={data.email} /> {a.email}
+        </label>
+        <label>
+          {a.hour}
+          <input name="hour" type="number" min={0} max={23} defaultValue={data.hour} required />
+        </label>
+        <fieldset className="policy-group">
+          <legend>{a.rules}</legend>
+          {data.allRules.map((r) => (
+            <label key={r} className="check">
+              <input type="checkbox" name="rule" value={r} defaultChecked={data.rules.includes(r)} /> {a.ruleNames[r]}
+            </label>
+          ))}
+        </fieldset>
+        <p>
+          <Button disabled={busy}>{a.save}</Button>
+        </p>
+      </form>
+      <h3>{a.now}</h3>
+      {data.now.length ? (
+        <ul className="plain-list">
+          {data.now.map((i) => (
+            <li key={i.rule}>
+              <Badge tone="warning">{i.count}</Badge> {a.ruleNames[i.rule]}
+              {i.detail ? ` · ${i.detail}` : ""}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">{a.nowNone}</p>
+      )}
+      <p className="muted small">{data.last ? fill(a.last, { day: day(data.last.day) }) : a.lastNone}</p>
+    </Card>
+  );
+}
+
+/** Series A: the monthly reports, downloaded or generated again. */
+function ReportsCard({ locale, day }: { locale: Locale; day: (iso: string) => string }) {
+  const t = consoleCopy[locale],
+    r = t.reports;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const { data, error, setError, reload } = useData<Reports>("/api/console/reports", failure);
+  const { busy, message, post } = usePost("/api/console/reports", reload, setError, failure);
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const monthLabel = (iso: string) => new Intl.DateTimeFormat(tag(locale), { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(iso + "T12:00:00Z"));
+  const missing = data.months.filter((m) => !data.reports.some((x) => x.month === m));
+  return (
+    <Card title={r.title} id="console-reports">
+      <p className="muted">{r.intro}</p>
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      {data.reports.length ? (
+        <ul className="plain-list">
+          {data.reports.map((x) => (
+            <li key={x.id} className="console-plan">
+              <span>
+                <strong>{fill(r.monthOf, { month: monthLabel(x.month) })}</strong> · {day(x.generated_at)}
+                <br />
+                <span className="muted small">
+                  {fill(r.line, { clubs: x.summary.end.clubs ?? 0, players: x.summary.end.players ?? 0, invoiced: formatCents(x.summary.billing.invoiced, locale), collected: formatCents(x.summary.billing.collected, locale), interventions: x.summary.interventions })}
+                </span>
+              </span>
+              <a className="button secondary sm" href={`/api/console/reports?id=${x.id}`}>
+                {r.download}
+                <span className="sr-only"> : {monthLabel(x.month)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">{r.none}</p>
+      )}
+      {missing.slice(0, 3).map((m) => (
+        <p key={m}>
+          <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ month: m }, r.generated)}>
+            {fill(r.generate, { month: monthLabel(m) })}
+          </Button>
+        </p>
+      ))}
+    </Card>
   );
 }
 
@@ -743,6 +906,7 @@ function OperatorsView({ locale, day }: { locale: Locale; day: (iso: string) => 
       ) : (
         <p className="muted small">{o.ownerOnly}</p>
       )}
+      <AlertPrefs locale={locale} day={day} />
       <McpKeys locale={locale} day={day} />
       <p>
         <Link href={`/${locale}`}>{t.backToApp}</Link>

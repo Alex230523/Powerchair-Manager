@@ -174,6 +174,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Console : l'assistant dans la console, écritures sur confirmation](evolutions/2026-11-06-zzz-assistant-console.md) |
 | 06/11/2026 | [International : identité de la personne et registre des classifications](evolutions/2026-11-06-zzzz-identite-registre.md) |
 | 06/11/2026 | [International : la compétition vue par les deux clubs, niveau, miroir dans les calendriers](evolutions/2026-11-06-zzzzz-competitions-deux-clubs.md) |
+| 06/11/2026 | [Console, série A : relevés quotidiens, tendances, alerte des opérateurs, rapport mensuel](evolutions/2026-11-06-zzzzzz-console-serie-a.md) |
 
 ## Convention
 

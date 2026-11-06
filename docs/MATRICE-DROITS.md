@@ -39,6 +39,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/communication` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/console` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/mcp-keys` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
+| `/api/console/alerts` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
+| `/api/console/reports` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/assistant` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/billing` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -205,6 +207,8 @@ Notes :
 - `/api/club/billing` : Abonnement à la plateforme (05/11/2026) : la présidence lit sa formule et ses factures
 - `/api/console` : Console de l'exploitant de la plateforme (05/11/2026) : comptages et états, organisations, supervision, opérateurs ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/mcp-keys` : Clés MCP d'un opérateur (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
+- `/api/console/alerts` : Alerte quotidienne d'un opérateur (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
+- `/api/console/reports` : Rapports mensuels de la console (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/assistant` : Assistant de la console (06/11/2026) : opérateurs seulement, écritures sur confirmation ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/billing` : Facturation de la plateforme (05/11/2026) : formules, abonnements, factures, rappels ; opérateurs owner et finance ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)

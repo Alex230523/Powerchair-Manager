@@ -117,8 +117,13 @@ test("an operator reads the console; a club president is refused", async ({ page
     expect(probe.list.status).toBe(200);
     expect((probe.list.body as { result: { tools: { name: string }[] } }).result.tools.map((x) => x.name)).toContain("platform_overview");
     await axe(page, "console operators");
+    // Series A: the daily alert's rules, saved; the reports card.
+    await page.locator("#console-alerts").getByLabel("À partir de (heure, Bruxelles)").fill("8");
+    await page.locator("#console-alerts").getByRole("button", { name: "Enregistrer mes alertes" }).click();
+    await expect.poll(async () => (await db.query("SELECT hour FROM platform_alert_pref WHERE operator_id=$1", [user])).rows[0]?.hour).toBe(8);
     await page.getByRole("tab", { name: "Supervision" }).click();
     await expect(page.getByRole("heading", { name: "Tâches planifiées" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Rapports mensuels" })).toBeVisible();
     await axe(page, "console supervision");
     // The assistant without a key: says so, sends nothing.
     await page.getByRole("tab", { name: "Assistant" }).click();

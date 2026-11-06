@@ -5,6 +5,7 @@ import { createPushSender, processPush, recoverPush } from "../notifications/pus
 import { digestTick } from "../digest/service";
 import { billingTick } from "../billing/service";
 import { borrowTick } from "../console/service";
+import { alertTick, monthlyReportTick, snapshotMetrics } from "../console/metrics";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
 import { retiredIncidentPurge } from "./retired";
@@ -90,6 +91,13 @@ export const jobs = {
       // B6: the webhooks waiting to leave (signed, retried).
       // Point 13: the line-ups revealed (by hand or at their time) are told to the players and parents.
       return { attendance: auto.sent, attendanceErrors: auto.errors, eventMails: await eventMailTick(db), openEvents: await openEventTick(db), webhooks: await webhookTick(db), lineups: await lineupRevealTick(db) };
+    },
+  },
+  /** Console, series A (06/11/2026): the platform's figures snapshot, the operators' daily alert, the monthly report. */
+  platform: {
+    every: 60,
+    async run(db, env) {
+      return { metrics: await snapshotMetrics(db), alerts: await alertTick(db, env), reports: await monthlyReportTick(db) };
     },
   },
   /** The daily reminders: tasks (A1), the automations' catalogue (B7), affiliations, chair loans. */
