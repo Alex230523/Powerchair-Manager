@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import { AccessError, type Principal } from "../access/service";
+import { AccessError, audit, type Principal } from "../access/service";
 import { jobStates, overdueMails } from "../jobs/health";
 
 /**
@@ -13,7 +13,7 @@ import { jobStates, overdueMails } from "../jobs/health";
 import { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole } from "./schema";
 export { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole };
 
-type Operator = { userId: string; name: string; role: OperatorRole };
+export type Operator = { userId: string; name: string; role: OperatorRole };
 export function envOperators(env: Record<string, string | undefined> = process.env) {
   return (env.PFM_OPERATOR_EMAILS ?? "")
     .split(",")
@@ -29,8 +29,10 @@ async function operatorOf(c: PoolClient, p: Principal): Promise<Operator> {
   if (envOperators().includes(u.email)) return { userId: u.id, name: u.name, role: "owner" };
   throw new AccessError("FORBIDDEN");
 }
-const canWrite = (o: Operator) => o.role === "owner" || o.role === "support";
-async function scope<T>(db: Pool, p: Principal, fn: (c: PoolClient, o: Operator) => Promise<T>) {
+export const canWrite = (o: Operator) => o.role === "owner" || o.role === "support";
+/** Owner and finance keep the books of the platform. */
+export const canBill = (o: Operator) => o.role === "owner" || o.role === "finance";
+export async function operatorScope<T>(db: Pool, p: Principal, fn: (c: PoolClient, o: Operator) => Promise<T>) {
   const c = await db.connect();
   try {
     await c.query("BEGIN");
@@ -88,11 +90,13 @@ async function todos(c: PoolClient): Promise<Todo[]> {
     await rule("terminations", `SELECT o.id,o.name FROM club_termination t JOIN organization o ON o.id=t.organization_id WHERE t.cancelled_at IS NULL AND t.completed_at IS NULL ORDER BY t.effective_on`),
     await rule("apiKeysIdle", `SELECT DISTINCT o.id,o.name FROM api_key k JOIN organization o ON o.id=k.organization_id WHERE k.revoked_at IS NULL AND COALESCE(k.last_used_at,k.created_at)<now()-interval '90 days' ORDER BY o.name`),
     await rule("noDpa", `SELECT o.id,o.name FROM organization o WHERE o.kind='club' AND NOT EXISTS(SELECT 1 FROM club_dpa_acceptance d WHERE d.organization_id=o.id) ORDER BY o.name`),
+    await rule("suspended", "SELECT o.id,o.name FROM organization o WHERE o.suspended_at IS NOT NULL ORDER BY o.suspended_at DESC"),
+    await rule("invoicesLate", "SELECT DISTINCT o.id,o.name FROM billing_invoice i JOIN organization o ON o.id=i.organization_id WHERE i.state='sent' AND i.due_on<CURRENT_DATE ORDER BY o.name"),
   ];
 }
 
 export async function consoleHome(db: Pool, p: Principal) {
-  return scope(db, p, async (c, o) => {
+  return operatorScope(db, p, async (c, o) => {
     const byKind = (await c.query("SELECT kind,count(*)::int AS n FROM organization GROUP BY kind")).rows as { kind: string; n: number }[];
     const byCountry = (await c.query("SELECT country_code AS country,count(*) FILTER (WHERE kind='federation')::int AS federations,count(*) FILTER (WHERE kind='club')::int AS clubs FROM organization GROUP BY country_code ORDER BY country_code")).rows as {
       country: string;
@@ -136,6 +140,14 @@ export async function consoleHome(db: Pool, p: Principal) {
         dataRequestsOpen: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress')"),
         dataRequestsLate: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress') AND due_on<CURRENT_DATE"),
       },
+      billing: {
+        invoicedMonth: await n(c, "SELECT COALESCE(sum(amount_cents),0)::int AS n FROM billing_invoice WHERE state IN ('sent','paid') AND issued_on>=date_trunc('month',CURRENT_DATE)"),
+        paidMonth: await n(c, "SELECT COALESCE(sum(amount_cents),0)::int AS n FROM billing_invoice WHERE state='paid' AND paid_on>=date_trunc('month',CURRENT_DATE)"),
+        open: await n(c, "SELECT COALESCE(sum(amount_cents),0)::int AS n FROM billing_invoice WHERE state='sent'"),
+        late: await n(c, "SELECT COALESCE(sum(amount_cents),0)::int AS n FROM billing_invoice WHERE state='sent' AND due_on<CURRENT_DATE"),
+        lateCount: await n(c, "SELECT count(*)::int AS n FROM billing_invoice WHERE state='sent' AND due_on<CURRENT_DATE"),
+        subscriptions: await n(c, "SELECT count(*)::int AS n FROM billing_subscription WHERE ended_on IS NULL"),
+      },
       compliance: {
         noPresident: await n(c, `SELECT count(*)::int AS n FROM organization o WHERE NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=o.id AND ${presidentRole})`),
         noDpa: await n(c, "SELECT count(*)::int AS n FROM organization o WHERE o.kind='club' AND NOT EXISTS(SELECT 1 FROM club_dpa_acceptance d WHERE d.organization_id=o.id)"),
@@ -168,9 +180,10 @@ export type OrganizationRow = {
   presidents: number;
   last_activity: string | null;
   disabled_modules: number;
+  suspended_at: string | null;
 };
 export async function consoleOrganizations(db: Pool, p: Principal, raw: { q?: string; kind?: string; country?: string }) {
-  return scope(db, p, async (c) => {
+  return operatorScope(db, p, async (c) => {
     const q = (raw.q ?? "").trim().slice(0, 80);
     const rows = (
       await c.query(
@@ -179,7 +192,7 @@ export async function consoleOrganizations(db: Pool, p: Principal, raw: { q?: st
                 (SELECT count(*)::int FROM club_person cp WHERE cp.organization_id=o.id AND cp.status='active' AND 'player'=ANY(cp.directory_roles)) AS players,
                 (SELECT count(*)::int FROM role_assignment r WHERE r.organization_id=o.id AND ${presidentRole}) AS presidents,
                 (SELECT max(a.created_at) FROM audit_log a WHERE a.organization_id=o.id) AS last_activity,
-                COALESCE(array_length(o.disabled_modules,1),0) AS disabled_modules
+                COALESCE(array_length(o.disabled_modules,1),0) AS disabled_modules,o.suspended_at
            FROM organization o LEFT JOIN organization f ON f.id=o.federation_id
           WHERE ($1='' OR o.name ILIKE '%'||$1||'%') AND ($2='' OR o.kind=$2) AND ($3='' OR o.country_code=$3)
           ORDER BY o.kind DESC,lower(o.name) LIMIT 500`,
@@ -192,10 +205,10 @@ export async function consoleOrganizations(db: Pool, p: Principal, raw: { q?: st
 }
 
 export async function consoleOrganization(db: Pool, p: Principal, id: string) {
-  return scope(db, p, async (c, o) => {
+  return operatorScope(db, p, async (c, o) => {
     const org = (
       await c.query(
-        `SELECT o.id,o.name,o.kind,o.country_code AS country,f.name AS federation,o.created_at,o.disabled_modules,o.province,o.training_format,
+        `SELECT o.id,o.name,o.kind,o.country_code AS country,f.name AS federation,o.created_at,o.disabled_modules,o.province,o.training_format,o.suspended_at,o.suspended_reason,
                 (SELECT count(*)::int FROM organization_membership m WHERE m.organization_id=o.id AND m.active) AS members,
                 (SELECT count(*)::int FROM club_person cp WHERE cp.organization_id=o.id AND cp.status='active' AND 'player'=ANY(cp.directory_roles)) AS players,
                 (SELECT count(*)::int FROM club_person cp WHERE cp.organization_id=o.id AND cp.status='active' AND 'coach'=ANY(cp.directory_roles)) AS coaches,
@@ -235,12 +248,20 @@ export async function consoleOrganization(db: Pool, p: Principal, id: string) {
       created_at: string;
       operator: string;
     }[];
-    return { organization: { ...org, storage_bytes: Number(org.storage_bytes) }, officers, notes, actions, canWrite: canWrite(o) };
+    // Step 4: the running subscription and the plans offered, to open one from here.
+    const subscription = (
+      await c.query(
+        "SELECT s.id,p.name AS plan,p.period,p.basis,p.amount_cents,s.started_on::text AS started_on,s.note,(SELECT count(*)::int FROM billing_invoice i WHERE i.organization_id=s.organization_id AND i.state='sent') AS open_invoices FROM billing_subscription s JOIN billing_plan p ON p.id=s.plan_id WHERE s.organization_id=$1 AND s.ended_on IS NULL",
+        [id],
+      )
+    ).rows[0] as { id: string; plan: string; period: "month" | "year"; basis: "organization" | "player"; amount_cents: number; started_on: string; note: string; open_invoices: number } | undefined;
+    const plans = (await c.query("SELECT id,name,amount_cents,period,basis FROM billing_plan WHERE active ORDER BY name")).rows as { id: string; name: string; amount_cents: number; period: "month" | "year"; basis: "organization" | "player" }[];
+    return { organization: { ...org, storage_bytes: Number(org.storage_bytes) }, officers, notes, actions, canWrite: canWrite(o), canBill: canBill(o), subscription: subscription ?? null, plans };
   });
 }
 
 export async function consoleSupervision(db: Pool, p: Principal) {
-  return scope(db, p, async (c) => {
+  return operatorScope(db, p, async (c) => {
     const jobs = await jobStates(db);
     const mails = (await c.query("SELECT state,count(*)::int AS n FROM mail_job WHERE created_at>now()-interval '7 days' GROUP BY state ORDER BY state")).rows as { state: string; n: number }[];
     const storage = (await c.query("SELECT o.id,o.name,sum(s.size_bytes)::bigint AS bytes,count(*)::int AS files FROM storage_file s JOIN organization o ON o.id=s.organization_id GROUP BY o.id,o.name ORDER BY bytes DESC LIMIT 20")).rows.map((r) => ({
@@ -263,7 +284,7 @@ export async function consoleSupervision(db: Pool, p: Principal) {
 }
 
 export async function consoleOperators(db: Pool, p: Principal) {
-  return scope(db, p, async (c, o) => {
+  return operatorScope(db, p, async (c, o) => {
     const rows = (
       await c.query(
         'SELECT o.user_id,u.name,u.email,o.role,o.created_at,o.revoked_at FROM platform_operator o JOIN "user" u ON u.id=o.user_id ORDER BY o.revoked_at NULLS FIRST,o.created_at',
@@ -274,7 +295,7 @@ export async function consoleOperators(db: Pool, p: Principal) {
 }
 
 export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCommand) {
-  return scope(db, p, async (c, o) => {
+  return operatorScope(db, p, async (c, o) => {
     if (command.action === "note") {
       if (!canWrite(o)) throw new AccessError("FORBIDDEN");
       const ok = (await c.query("SELECT 1 FROM organization WHERE id=$1", [command.organizationId])).rowCount;
@@ -282,6 +303,22 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
       const id = (await c.query("INSERT INTO platform_note(organization_id,operator_id,text) VALUES($1,$2,$3) RETURNING id", [command.organizationId, o.userId, command.text])).rows[0].id as string;
       await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,payload) VALUES($1,$2,'note',$3)", [o.userId, command.organizationId, JSON.stringify({ id })]);
       return { ok: true as const, id };
+    }
+    if (command.action === "suspend" || command.action === "reinstate") {
+      // Step 3: read only for the organisation's members, with the reason; written in its own journal too.
+      if (!canWrite(o)) throw new AccessError("FORBIDDEN");
+      const org = (await c.query("SELECT id,suspended_at FROM organization WHERE id=$1 FOR UPDATE", [command.organizationId])).rows[0] as { id: string; suspended_at: string | null } | undefined;
+      if (!org) throw new AccessError("NOT_FOUND", 404);
+      if (command.action === "suspend") {
+        if (org.suspended_at) throw new AccessError("ALREADY_SUSPENDED", 409);
+        await c.query("UPDATE organization SET suspended_at=now(),suspended_reason=$2 WHERE id=$1", [org.id, command.reason]);
+      } else {
+        if (!org.suspended_at) throw new AccessError("NOT_SUSPENDED", 409);
+        await c.query("UPDATE organization SET suspended_at=NULL,suspended_reason='' WHERE id=$1", [org.id]);
+      }
+      await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,reason) VALUES($1,$2,$3,$4)", [o.userId, org.id, command.action, command.action === "suspend" ? command.reason : ""]);
+      await audit(c, org.id, o.userId, `platform.${command.action}`, org.id, command.action === "suspend" ? { reason: command.reason } : undefined);
+      return { ok: true as const };
     }
     if (o.role !== "owner") throw new AccessError("FORBIDDEN");
     if (command.action === "addOperator") {

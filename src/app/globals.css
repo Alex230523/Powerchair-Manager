@@ -2702,6 +2702,18 @@ caption {
   background: var(--surface-soft);
   color: var(--text);
 }
+/* 05/11/2026: an organisation suspended by the platform reads the reason under the bar. */
+.suspended-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--content-padding);
+  background: var(--warning-soft);
+  color: var(--heading);
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--border);
+}
 /* 05/11/2026: the operator's console: its own bar, tinted, and tiles of counts. */
 .console-bar {
   border-bottom: 3px solid var(--warning);
@@ -2766,6 +2778,32 @@ caption {
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: 4px;
+}
+.console-plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.console-plan > span {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.console-invoice-form {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.console-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
 }
 .console-org-head h2 {
   margin: 0 0 4px;

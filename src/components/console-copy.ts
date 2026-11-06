@@ -7,7 +7,8 @@ type Copy = {
   intro: string;
   backToApp: string;
   denied: string;
-  tabs: Record<"home" | "organizations" | "supervision" | "operators", string>;
+  cancel: string;
+  tabs: Record<"home" | "organizations" | "billing" | "supervision" | "operators", string>;
   roles: Record<"owner" | "support" | "finance" | "readonly", string>;
   signedAs: string;
   generated: string;
@@ -46,11 +47,17 @@ type Copy = {
     noDpa: string;
     minorsWithoutGuardian: string;
     terminationsPending: string;
+    billing: string;
+    invoicedMonth: string;
+    paidMonth: string;
+    open: string;
+    late: string;
+    subscriptions: string;
   };
   byCountry: string;
   todo: string;
   todoNone: string;
-  todoKeys: Record<"noPresident" | "inactive60" | "seasonEnding" | "dataRequestsLate" | "terminations" | "apiKeysIdle" | "noDpa", string>;
+  todoKeys: Record<"noPresident" | "inactive60" | "seasonEnding" | "dataRequestsLate" | "terminations" | "apiKeysIdle" | "noDpa" | "suspended" | "invoicesLate", string>;
   more: string;
   recentActions: string;
   recentNone: string;
@@ -98,6 +105,74 @@ type Copy = {
     interventions: string;
     interventionsNone: string;
     readOnly: string;
+    suspended: string;
+    suspendedSince: string;
+    suspend: string;
+    suspendReason: string;
+    suspendConfirm: string;
+    suspendDone: string;
+    reinstate: string;
+    reinstateDone: string;
+    subscription: string;
+    subscriptionNone: string;
+    subscribe: string;
+    plan: string;
+    startedOn: string;
+    note: string;
+    subscribed: string;
+    unsubscribe: string;
+    unsubscribed: string;
+    invoicesOf: string;
+  };
+  billing: {
+    intro: string;
+    readOnly: string;
+    figures: { mrr: string; invoicedMonth: string; paidMonth: string; open: string; late: string };
+    plans: string;
+    plansNone: string;
+    planAdd: string;
+    planEdit: string;
+    code: string;
+    name: string;
+    amount: string;
+    period: string;
+    periods: Record<"month" | "year", string>;
+    basis: string;
+    bases: Record<"organization" | "player", string>;
+    active: string;
+    inactive: string;
+    subscribers: string;
+    save: string;
+    saved: string;
+    subscriptions: string;
+    subscriptionsNone: string;
+    invoiceFor: string;
+    periodFrom: string;
+    periodTo: string;
+    dueDays: string;
+    createInvoice: string;
+    invoiceCreated: string;
+    lastInvoiced: string;
+    neverInvoiced: string;
+    ended: string;
+    invoices: string;
+    invoicesNone: string;
+    filterState: string;
+    allStates: string;
+    states: Record<"draft" | "sent" | "paid" | "cancelled", string>;
+    late: string;
+    columns: { number: string; organization: string; label: string; amount: string; issued: string; due: string; state: string; reminders: string };
+    send: string;
+    sent: string;
+    paid: string;
+    paidOn: string;
+    markPaid: string;
+    markedPaid: string;
+    cancel: string;
+    cancelled: string;
+    remind: string;
+    reminded: string;
+    reminderSteps: string;
   };
   supervision: {
     jobs: string;
@@ -146,7 +221,8 @@ const fr: Copy = {
   intro: "Comptages et états de toutes les organisations, santé du service, support et conformité. Aucune donnée personnelle de joueur : la console lit des chiffres, et chaque intervention est journalisée.",
   backToApp: "Retour à l'application",
   denied: "Cette console est réservée aux exploitants de la plateforme.",
-  tabs: { home: "Tableau de bord", organizations: "Organisations", supervision: "Supervision", operators: "Opérateurs" },
+  cancel: "Annuler",
+  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", supervision: "Supervision", operators: "Opérateurs" },
   roles: { owner: "Propriétaire", support: "Support", finance: "Finance", readonly: "Lecture seule" },
   signedAs: "{name} · {role}",
   generated: "Chiffres au {time}",
@@ -185,6 +261,12 @@ const fr: Copy = {
     noDpa: "clubs sans accord de traitement signé",
     minorsWithoutGuardian: "mineurs sans tuteur rattaché",
     terminationsPending: "fermetures programmées",
+    billing: "Facturation",
+    invoicedMonth: "facturé ce mois",
+    paidMonth: "encaissé ce mois",
+    open: "à encaisser",
+    late: "en retard",
+    subscriptions: "abonnements en cours",
   },
   byCountry: "Par pays",
   todo: "À faire aujourd'hui",
@@ -197,12 +279,28 @@ const fr: Copy = {
     terminations: "Fermetures programmées",
     apiKeysIdle: "Clés d'API inutilisées depuis 90 jours",
     noDpa: "Clubs sans accord de traitement",
+    suspended: "Organisations suspendues",
+    invoicesLate: "Factures en retard",
   },
   more: "et {n} de plus",
   recentActions: "Dernières interventions",
   recentNone: "Aucune intervention pour l'instant.",
-  actionKinds: { note: "Note interne", "operator.add": "Opérateur ajouté", "operator.revoke": "Opérateur retiré" },
-  billingSoon: "La facturation des abonnements et les relances viendront dans une étape suivante : rien n'est encore facturé depuis la console.",
+  actionKinds: {
+    note: "Note interne",
+    "operator.add": "Opérateur ajouté",
+    "operator.revoke": "Opérateur retiré",
+    suspend: "Suspension",
+    reinstate: "Réactivation",
+    "billing.plan": "Formule enregistrée",
+    "billing.subscribe": "Abonnement ouvert",
+    "billing.unsubscribe": "Abonnement terminé",
+    "billing.invoice": "Facture créée",
+    "billing.send": "Facture envoyée",
+    "billing.paid": "Paiement enregistré",
+    "billing.cancel": "Facture annulée",
+    "billing.remind": "Rappel envoyé",
+  },
+  billingSoon: "Les paiements sont enregistrés à la main depuis l'onglet Facturation ; aucun prestataire de paiement n'est branché.",
   organizations: {
     search: "Rechercher une organisation",
     kind: "Type",
@@ -245,6 +343,74 @@ const fr: Copy = {
     interventions: "Interventions",
     interventionsNone: "Aucune intervention.",
     readOnly: "Lecture seule : les rôles Support et Propriétaire écrivent.",
+    suspended: "Suspendue",
+    suspendedSince: "Suspendue depuis le {day} : {reason}",
+    suspend: "Suspendre (lecture seule)",
+    suspendReason: "Raison, lue par les membres de l'organisation",
+    suspendConfirm: "Suspendre l'organisation ? Ses membres passent en lecture seule et lisent la raison en haut de chaque page. L'intervention est inscrite dans leur journal.",
+    suspendDone: "Organisation suspendue.",
+    reinstate: "Réactiver",
+    reinstateDone: "Organisation réactivée.",
+    subscription: "Abonnement",
+    subscriptionNone: "Aucun abonnement en cours.",
+    subscribe: "Ouvrir un abonnement",
+    plan: "Formule",
+    startedOn: "Depuis le",
+    note: "Note (facultatif)",
+    subscribed: "Abonnement ouvert.",
+    unsubscribe: "Terminer aujourd'hui",
+    unsubscribed: "Abonnement terminé.",
+    invoicesOf: "Voir ses factures",
+  },
+  billing: {
+    intro: "Formules, abonnements, factures et rappels de la plateforme. Les paiements sont enregistrés à la main (virement avec le numéro de facture) ; les rappels partent aux présidents, à la main ou par paliers (3, 10 et 20 jours après l'échéance).",
+    readOnly: "Lecture seule : les rôles Finance et Propriétaire tiennent la facturation.",
+    figures: { mrr: "revenu mensuel récurrent", invoicedMonth: "facturé ce mois", paidMonth: "encaissé ce mois", open: "à encaisser", late: "en retard" },
+    plans: "Formules",
+    plansNone: "Aucune formule. Créez-en une pour abonner une organisation.",
+    planAdd: "Nouvelle formule",
+    planEdit: "Modifier",
+    code: "Code",
+    name: "Nom",
+    amount: "Montant (euros)",
+    period: "Période",
+    periods: { month: "Mensuelle", year: "Annuelle" },
+    basis: "Base",
+    bases: { organization: "Par organisation", player: "Par joueur actif" },
+    active: "Proposée",
+    inactive: "Retirée",
+    subscribers: "{n} abonné(s)",
+    save: "Enregistrer la formule",
+    saved: "Formule enregistrée.",
+    subscriptions: "Abonnements",
+    subscriptionsNone: "Aucun abonnement. Ouvrez-en un depuis la fiche d'une organisation.",
+    invoiceFor: "Facturer une période",
+    periodFrom: "Du",
+    periodTo: "Au",
+    dueDays: "Échéance (jours)",
+    createInvoice: "Créer la facture",
+    invoiceCreated: "Facture créée (brouillon).",
+    lastInvoiced: "facturé jusqu'au {day}",
+    neverInvoiced: "jamais facturé",
+    ended: "terminé le {day}",
+    invoices: "Factures",
+    invoicesNone: "Aucune facture.",
+    filterState: "État",
+    allStates: "Tous les états",
+    states: { draft: "Brouillon", sent: "Envoyée", paid: "Payée", cancelled: "Annulée" },
+    late: "En retard",
+    columns: { number: "Numéro", organization: "Organisation", label: "Objet", amount: "Montant", issued: "Émise", due: "Échéance", state: "État", reminders: "Rappels" },
+    send: "Envoyer",
+    sent: "Facture envoyée aux présidents.",
+    paid: "Payée le",
+    paidOn: "Date du paiement",
+    markPaid: "Marquer payée",
+    markedPaid: "Paiement enregistré.",
+    cancel: "Annuler",
+    cancelled: "Facture annulée.",
+    remind: "Envoyer un rappel",
+    reminded: "Rappel envoyé.",
+    reminderSteps: "Rappels automatiques : courtois à J+3, ferme à J+10, préavis de lecture seule à J+20.",
   },
   supervision: {
     jobs: "Tâches planifiées",
@@ -293,7 +459,8 @@ const nl: Copy = {
   intro: "Tellingen en toestanden van alle organisaties, gezondheid van de dienst, support en conformiteit. Geen persoonsgegevens van spelers: de console leest cijfers, en elke tussenkomst wordt gelogd.",
   backToApp: "Terug naar de toepassing",
   denied: "Deze console is voorbehouden aan de beheerders van het platform.",
-  tabs: { home: "Dashboard", organizations: "Organisaties", supervision: "Toezicht", operators: "Beheerders" },
+  cancel: "Annuleren",
+  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", supervision: "Toezicht", operators: "Beheerders" },
   roles: { owner: "Eigenaar", support: "Support", finance: "Financiën", readonly: "Alleen lezen" },
   signedAs: "{name} · {role}",
   generated: "Cijfers om {time}",
@@ -332,6 +499,12 @@ const nl: Copy = {
     noDpa: "clubs zonder getekende verwerkersovereenkomst",
     minorsWithoutGuardian: "minderjarigen zonder gekoppelde voogd",
     terminationsPending: "geplande sluitingen",
+    billing: "Facturatie",
+    invoicedMonth: "gefactureerd deze maand",
+    paidMonth: "geïnd deze maand",
+    open: "te innen",
+    late: "te laat",
+    subscriptions: "lopende abonnementen",
   },
   byCountry: "Per land",
   todo: "Vandaag te doen",
@@ -344,12 +517,28 @@ const nl: Copy = {
     terminations: "Geplande sluitingen",
     apiKeysIdle: "API-sleutels ongebruikt sinds 90 dagen",
     noDpa: "Clubs zonder verwerkersovereenkomst",
+    suspended: "Geschorste organisaties",
+    invoicesLate: "Facturen te laat",
   },
   more: "en {n} meer",
   recentActions: "Laatste tussenkomsten",
   recentNone: "Nog geen tussenkomst.",
-  actionKinds: { note: "Interne nota", "operator.add": "Beheerder toegevoegd", "operator.revoke": "Beheerder verwijderd" },
-  billingSoon: "De facturatie van abonnementen en de herinneringen komen in een volgende stap: er wordt nog niets gefactureerd vanuit de console.",
+  actionKinds: {
+    note: "Interne nota",
+    "operator.add": "Beheerder toegevoegd",
+    "operator.revoke": "Beheerder verwijderd",
+    suspend: "Schorsing",
+    reinstate: "Heractivering",
+    "billing.plan": "Formule opgeslagen",
+    "billing.subscribe": "Abonnement geopend",
+    "billing.unsubscribe": "Abonnement beëindigd",
+    "billing.invoice": "Factuur aangemaakt",
+    "billing.send": "Factuur verzonden",
+    "billing.paid": "Betaling geregistreerd",
+    "billing.cancel": "Factuur geannuleerd",
+    "billing.remind": "Herinnering verzonden",
+  },
+  billingSoon: "Betalingen worden met de hand geregistreerd in het tabblad Facturatie; er is geen betaaldienst gekoppeld.",
   organizations: {
     search: "Een organisatie zoeken",
     kind: "Type",
@@ -392,6 +581,74 @@ const nl: Copy = {
     interventions: "Tussenkomsten",
     interventionsNone: "Geen tussenkomst.",
     readOnly: "Alleen lezen: de rollen Support en Eigenaar schrijven.",
+    suspended: "Geschorst",
+    suspendedSince: "Geschorst sinds {day}: {reason}",
+    suspend: "Schorsen (alleen lezen)",
+    suspendReason: "Reden, gelezen door de leden van de organisatie",
+    suspendConfirm: "De organisatie schorsen? Haar leden gaan naar alleen-lezen en lezen de reden bovenaan elke pagina. De tussenkomst komt in hun logboek.",
+    suspendDone: "Organisatie geschorst.",
+    reinstate: "Heractiveren",
+    reinstateDone: "Organisatie geheractiveerd.",
+    subscription: "Abonnement",
+    subscriptionNone: "Geen lopend abonnement.",
+    subscribe: "Een abonnement openen",
+    plan: "Formule",
+    startedOn: "Sinds",
+    note: "Nota (facultatief)",
+    subscribed: "Abonnement geopend.",
+    unsubscribe: "Vandaag beëindigen",
+    unsubscribed: "Abonnement beëindigd.",
+    invoicesOf: "Haar facturen bekijken",
+  },
+  billing: {
+    intro: "Formules, abonnementen, facturen en herinneringen van het platform. Betalingen worden met de hand geregistreerd (overschrijving met het factuurnummer); herinneringen gaan naar de voorzitters, met de hand of in stappen (3, 10 en 20 dagen na de vervaldag).",
+    readOnly: "Alleen lezen: de rollen Financiën en Eigenaar houden de facturatie bij.",
+    figures: { mrr: "maandelijks terugkerende omzet", invoicedMonth: "gefactureerd deze maand", paidMonth: "geïnd deze maand", open: "te innen", late: "te laat" },
+    plans: "Formules",
+    plansNone: "Geen formule. Maak er een om een organisatie te abonneren.",
+    planAdd: "Nieuwe formule",
+    planEdit: "Wijzigen",
+    code: "Code",
+    name: "Naam",
+    amount: "Bedrag (euro)",
+    period: "Periode",
+    periods: { month: "Maandelijks", year: "Jaarlijks" },
+    basis: "Basis",
+    bases: { organization: "Per organisatie", player: "Per actieve speler" },
+    active: "Aangeboden",
+    inactive: "Ingetrokken",
+    subscribers: "{n} abonnee(s)",
+    save: "Formule opslaan",
+    saved: "Formule opgeslagen.",
+    subscriptions: "Abonnementen",
+    subscriptionsNone: "Geen abonnement. Open er een vanuit de fiche van een organisatie.",
+    invoiceFor: "Een periode factureren",
+    periodFrom: "Van",
+    periodTo: "Tot",
+    dueDays: "Vervaldag (dagen)",
+    createInvoice: "Factuur aanmaken",
+    invoiceCreated: "Factuur aangemaakt (ontwerp).",
+    lastInvoiced: "gefactureerd tot {day}",
+    neverInvoiced: "nooit gefactureerd",
+    ended: "beëindigd op {day}",
+    invoices: "Facturen",
+    invoicesNone: "Geen factuur.",
+    filterState: "Toestand",
+    allStates: "Alle toestanden",
+    states: { draft: "Ontwerp", sent: "Verzonden", paid: "Betaald", cancelled: "Geannuleerd" },
+    late: "Te laat",
+    columns: { number: "Nummer", organization: "Organisatie", label: "Omschrijving", amount: "Bedrag", issued: "Uitgereikt", due: "Vervaldag", state: "Toestand", reminders: "Herinneringen" },
+    send: "Verzenden",
+    sent: "Factuur verzonden naar de voorzitters.",
+    paid: "Betaald op",
+    paidOn: "Datum van betaling",
+    markPaid: "Als betaald markeren",
+    markedPaid: "Betaling geregistreerd.",
+    cancel: "Annuleren",
+    cancelled: "Factuur geannuleerd.",
+    remind: "Een herinnering sturen",
+    reminded: "Herinnering verzonden.",
+    reminderSteps: "Automatische herinneringen: vriendelijk op D+3, kordaat op D+10, vooraankondiging alleen-lezen op D+20.",
   },
   supervision: {
     jobs: "Geplande taken",
@@ -440,7 +697,8 @@ const en: Copy = {
   intro: "Counts and states of every organisation, health of the service, support and compliance. No player's personal data: the console reads figures, and every intervention is journaled.",
   backToApp: "Back to the application",
   denied: "This console is for the platform's operators.",
-  tabs: { home: "Dashboard", organizations: "Organisations", supervision: "Supervision", operators: "Operators" },
+  cancel: "Cancel",
+  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", supervision: "Supervision", operators: "Operators" },
   roles: { owner: "Owner", support: "Support", finance: "Finance", readonly: "Read only" },
   signedAs: "{name} · {role}",
   generated: "Figures at {time}",
@@ -479,6 +737,12 @@ const en: Copy = {
     noDpa: "clubs without a signed processing agreement",
     minorsWithoutGuardian: "minors without a linked guardian",
     terminationsPending: "closures scheduled",
+    billing: "Billing",
+    invoicedMonth: "invoiced this month",
+    paidMonth: "collected this month",
+    open: "to collect",
+    late: "late",
+    subscriptions: "running subscriptions",
   },
   byCountry: "By country",
   todo: "To do today",
@@ -491,12 +755,28 @@ const en: Copy = {
     terminations: "Closures scheduled",
     apiKeysIdle: "API keys unused for 90 days",
     noDpa: "Clubs without a processing agreement",
+    suspended: "Suspended organisations",
+    invoicesLate: "Invoices late",
   },
   more: "and {n} more",
   recentActions: "Latest interventions",
   recentNone: "No intervention yet.",
-  actionKinds: { note: "Internal note", "operator.add": "Operator added", "operator.revoke": "Operator revoked" },
-  billingSoon: "Subscription billing and reminders come in a later step: nothing is billed from the console yet.",
+  actionKinds: {
+    note: "Internal note",
+    "operator.add": "Operator added",
+    "operator.revoke": "Operator revoked",
+    suspend: "Suspension",
+    reinstate: "Reinstatement",
+    "billing.plan": "Plan saved",
+    "billing.subscribe": "Subscription opened",
+    "billing.unsubscribe": "Subscription ended",
+    "billing.invoice": "Invoice created",
+    "billing.send": "Invoice sent",
+    "billing.paid": "Payment recorded",
+    "billing.cancel": "Invoice cancelled",
+    "billing.remind": "Reminder sent",
+  },
+  billingSoon: "Payments are recorded by hand in the Billing tab; no payment provider is connected.",
   organizations: {
     search: "Search an organisation",
     kind: "Kind",
@@ -539,6 +819,74 @@ const en: Copy = {
     interventions: "Interventions",
     interventionsNone: "No intervention.",
     readOnly: "Read only: the Support and Owner roles write.",
+    suspended: "Suspended",
+    suspendedSince: "Suspended since {day}: {reason}",
+    suspend: "Suspend (read only)",
+    suspendReason: "Reason, read by the organisation's members",
+    suspendConfirm: "Suspend the organisation? Its members become read only and read the reason at the top of every page. The intervention is written in their journal.",
+    suspendDone: "Organisation suspended.",
+    reinstate: "Reinstate",
+    reinstateDone: "Organisation reinstated.",
+    subscription: "Subscription",
+    subscriptionNone: "No running subscription.",
+    subscribe: "Open a subscription",
+    plan: "Plan",
+    startedOn: "Since",
+    note: "Note (optional)",
+    subscribed: "Subscription opened.",
+    unsubscribe: "End today",
+    unsubscribed: "Subscription ended.",
+    invoicesOf: "See its invoices",
+  },
+  billing: {
+    intro: "Plans, subscriptions, invoices and reminders of the platform. Payments are recorded by hand (transfer with the invoice number); reminders go to the presidents, by hand or by steps (3, 10 and 20 days after the due date).",
+    readOnly: "Read only: the Finance and Owner roles keep the billing.",
+    figures: { mrr: "monthly recurring revenue", invoicedMonth: "invoiced this month", paidMonth: "collected this month", open: "to collect", late: "late" },
+    plans: "Plans",
+    plansNone: "No plan. Create one to subscribe an organisation.",
+    planAdd: "New plan",
+    planEdit: "Edit",
+    code: "Code",
+    name: "Name",
+    amount: "Amount (euros)",
+    period: "Period",
+    periods: { month: "Monthly", year: "Yearly" },
+    basis: "Basis",
+    bases: { organization: "Per organisation", player: "Per active player" },
+    active: "Offered",
+    inactive: "Withdrawn",
+    subscribers: "{n} subscriber(s)",
+    save: "Save the plan",
+    saved: "Plan saved.",
+    subscriptions: "Subscriptions",
+    subscriptionsNone: "No subscription. Open one from an organisation's sheet.",
+    invoiceFor: "Invoice a period",
+    periodFrom: "From",
+    periodTo: "To",
+    dueDays: "Due (days)",
+    createInvoice: "Create the invoice",
+    invoiceCreated: "Invoice created (draft).",
+    lastInvoiced: "invoiced up to {day}",
+    neverInvoiced: "never invoiced",
+    ended: "ended on {day}",
+    invoices: "Invoices",
+    invoicesNone: "No invoice.",
+    filterState: "State",
+    allStates: "All states",
+    states: { draft: "Draft", sent: "Sent", paid: "Paid", cancelled: "Cancelled" },
+    late: "Late",
+    columns: { number: "Number", organization: "Organisation", label: "Subject", amount: "Amount", issued: "Issued", due: "Due", state: "State", reminders: "Reminders" },
+    send: "Send",
+    sent: "Invoice sent to the presidents.",
+    paid: "Paid on",
+    paidOn: "Date of payment",
+    markPaid: "Mark paid",
+    markedPaid: "Payment recorded.",
+    cancel: "Cancel",
+    cancelled: "Invoice cancelled.",
+    remind: "Send a reminder",
+    reminded: "Reminder sent.",
+    reminderSteps: "Automatic reminders: courteous at D+3, firm at D+10, read-only notice at D+20.",
   },
   supervision: {
     jobs: "Scheduled tasks",

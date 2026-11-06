@@ -23,6 +23,9 @@ export type Workspace = {
     disabled_modules?: string[];
     /** B8: approved for tax receipts. */
     tax_approved?: boolean;
+    /** Console, step 3: suspended by the platform, read only, with the reason. */
+    suspended_at?: string | null;
+    suspended_reason?: string;
   };
   permissions: string[];
   fundraisingOpen?: boolean;
@@ -157,6 +160,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/club/public", "publicPage", "globe"),
                 // 17: the register of members and the assemblies, for the presidency (the secretary reaches it from the invitation).
                 ...item("/club/association", "association", "landmark", president || has("mandates.manage")),
+                // Console, step 4 (05/11/2026): the platform's invoices, for the presidency.
+                ...item("/club/billing", "platformBilling", "landmark", president),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 // 34: the federation's sanctions, the club's appeals and fines.
                 ...item("/discipline", "discipline", "shield"),
@@ -282,6 +287,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                     ...item("/funding", "finances", "funding", role !== "referee" && fed("federation.finance")),
                     ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", role !== "referee" && fed("federation.finance")),
                     ...item("/club/association", "association", "landmark", role !== "referee" && fed("federation.finance")),
+                    ...item("/club/billing", "platformBilling", "landmark", role === "federation_president"),
                   ],
                 },
               ]
