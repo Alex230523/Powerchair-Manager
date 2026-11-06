@@ -178,7 +178,7 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     await axe(page, "borrow window");
     await page.getByRole("dialog").getByRole("button", { name: "Ouvrir l'accès" }).click();
     await expect(page.getByText(/^Accès de support ouvert jusqu'à /)).toBeVisible();
-    await expect(page.getByText("Vérifier la page des cotisations avec la présidente")).toBeVisible();
+    await expect(page.getByText("Vérifier la page des cotisations avec la présidente").first()).toBeVisible();
     await page.getByRole("button", { name: "Passer dans l'organisation" }).click();
     await expect(page).toHaveURL(/\/fr$/);
     await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
