@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { tournamentView } from "@/domains/tournaments/service";
 import { stages, type Stage } from "@/domains/tournaments/schema";
@@ -31,11 +31,10 @@ export function TournamentDetail({ locale, id }: { locale: Locale; id: string })
   const { busy, post } = usePost("/api/tournaments", reload, setError, failure);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [teamName, setTeamName] = useState("");
-  const [teamId, setTeamId] = useState("");
-  // The team named earlier shows selected once the page is read.
-  useEffect(() => {
-    if (data?.myTeam) setTeamId(data.myTeam);
-  }, [data?.myTeam]);
+  // The team the person picks here; until then, the one named earlier.
+  const [pickedTeam, setPickedTeam] = useState<string | null>(null);
+  const teamId = pickedTeam ?? data?.myTeam ?? "";
+  const setTeamId = setPickedTeam;
   const [inviteFilter, setInviteFilter] = useState("");
   const [inviteChosen, setInviteChosen] = useState<string[]>([]);
   const [confirming, setConfirming] = useState("");
