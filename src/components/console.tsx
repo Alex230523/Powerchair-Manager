@@ -7,6 +7,7 @@ import type { billingView } from "@/domains/billing/service";
 import type { mcpKeys } from "@/domains/mcp/service";
 import type { assistantView, AssistantTurn } from "@/domains/assistant/service";
 import type { alertPrefView, reportsView } from "@/domains/console/metrics";
+import type { consoleSupport, consoleTicket } from "@/domains/support/service";
 import { operatorRoles } from "@/domains/console/schema";
 import { planBases, planPeriods } from "@/domains/billing/schema";
 import { formatCents } from "@/domains/dashboard/summary";
@@ -26,7 +27,9 @@ type Billing = Awaited<ReturnType<typeof billingView>>;
 type Keys = Awaited<ReturnType<typeof mcpKeys>>;
 type Alerts = Awaited<ReturnType<typeof alertPrefView>>;
 type Reports = Awaited<ReturnType<typeof reportsView>>;
-type Tab = "home" | "organizations" | "billing" | "supervision" | "operators" | "assistant";
+type SupportList = Awaited<ReturnType<typeof consoleSupport>>;
+type SupportTicket = Awaited<ReturnType<typeof consoleTicket>>;
+type Tab = "home" | "organizations" | "billing" | "support" | "supervision" | "operators" | "assistant";
 type AssistantState = Awaited<ReturnType<typeof assistantView>>;
 type Turn = AssistantTurn;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -52,7 +55,7 @@ export function Console({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       <Tabs
         label={t.title}
-        items={(["home", "organizations", "billing", "supervision", "operators", "assistant"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
+        items={(["home", "organizations", "billing", "support", "supervision", "operators", "assistant"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
         value={tab}
         onChange={(id) => {
           setTab(id as Tab);
@@ -65,6 +68,7 @@ export function Console({ locale }: { locale: Locale }) {
         {tab === "home" && data && <HomeView locale={locale} data={data} open={open} when={when} />}
         {tab === "organizations" && (organization ? <OrganizationView locale={locale} id={organization} back={() => setOrganization(null)} day={day} when={when} /> : <OrganizationsView locale={locale} open={open} day={day} />)}
         {tab === "billing" && <BillingView locale={locale} day={day} open={open} />}
+        {tab === "support" && <SupportView locale={locale} when={when} day={day} open={open} />}
         {tab === "supervision" && <SupervisionView locale={locale} when={when} day={day} />}
         {tab === "operators" && <OperatorsView locale={locale} day={day} />}
         {tab === "assistant" && <AssistantView locale={locale} />}
@@ -120,7 +124,7 @@ function HomeView({ locale, data, open, when }: { locale: Locale; data: Home; op
         <Tile title={k.people} deltaLabel={t.delta30} lines={[[p.accounts, k.accounts, d("accounts", p.accounts)], [p.players, k.players, d("players", p.players)], [p.coaches, k.coaches], [p.referees, k.referees], [p.licences, k.licences]]} />
         <Tile title={k.activity} deltaLabel={t.delta30} lines={[[a.active7, k.active7], [a.active30, k.active30, d("active30", a.active30)], [a.matches30, k.matches30, d("matches30", a.matches30)], [a.mails7, k.mails7], [bytes(a.storageBytes, locale), k.storage]]} />
         <Tile title={k.health} hint={h.lastMigration ? fill(k.lastMigration, { name: h.lastMigration }) : k.noMigration} lines={[[h.jobsLate, k.jobsLate], [h.jobs - h.jobsLate, k.jobsOk], [h.mailsOverdue, k.mailsOverdue], [h.mailsFailed7, k.mailsFailed]]} />
-        <Tile title={k.support} lines={[[s.feedbackOpen, k.feedbackOpen], [s.feedbackWeek, k.feedbackWeek], [s.dataRequestsOpen, k.dataRequestsOpen], [s.dataRequestsLate, k.dataRequestsLate]]} />
+        <Tile title={k.support} lines={[[s.ticketsOpen, k.ticketsOpen], [s.ticketsWaiting24, k.ticketsWaiting24], [s.firstReplyHours === null ? "·" : s.firstReplyHours, s.firstReplyHours === null ? k.firstReplyNone : k.firstReplyHours], [s.feedbackOpen, k.feedbackOpen], [s.dataRequestsOpen, k.dataRequestsOpen], [s.dataRequestsLate, k.dataRequestsLate]]} />
         <Tile title={k.billing} hint={t.billingSoon} deltaLabel={t.delta30} lines={[[formatCents(data.billing.invoicedMonth, locale), k.invoicedMonth], [formatCents(data.billing.paidMonth, locale), k.paidMonth], [formatCents(data.billing.open, locale), k.open, dc("open", data.billing.open)], [`${formatCents(data.billing.late, locale)} (${data.billing.lateCount})`, k.late, dc("late", data.billing.late)], [data.billing.subscriptions, k.subscriptions, d("subscriptions", data.billing.subscriptions)]]} />
         <Tile title={k.compliance} lines={[[c.noPresident, k.noPresident], [c.noDpa, k.noDpa], [c.minorsWithoutGuardian, k.minorsWithoutGuardian], [c.terminationsPending, k.terminationsPending]]} />
       </ul>
@@ -1436,6 +1440,313 @@ function AssistantView({ locale }: { locale: Locale }) {
           )}
         </p>
       </form>
+    </div>
+  );
+}
+
+/** Console, series C (06/11/2026): the support desk, the canned replies and the GDPR requests followed. */
+function SupportView({ locale, when, day, open }: { locale: Locale; when: (iso: string) => string; day: (iso: string) => string; open: (id: string) => void }) {
+  const t = consoleCopy[locale],
+    s = t.supportDesk;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const [state, setState] = useState("");
+  const [q, setQ] = useState("");
+  const [ticket, setTicket] = useState<string | null>(null);
+  const { data, error, setError, reload } = useData<SupportList>(`/api/console/support?state=${state}&q=${encodeURIComponent(q)}`, failure);
+  const { busy, message, post } = usePost("/api/console/support", reload, setError, failure);
+  const [template, setTemplate] = useState<SupportList["templates"][number] | "new" | null>(null);
+  if (ticket) return <TicketView locale={locale} id={ticket} back={() => { setTicket(null); void reload(); }} when={when} templates={data?.templates ?? []} open={open} />;
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const tone = { open: "warning", answered: "info", closed: "neutral" } as const;
+  const tpl = template === "new" ? null : template;
+  return (
+    <div className="stack">
+      <p className="muted">{s.intro}</p>
+      {!data.canWrite && <p className="muted small">{s.readOnly}</p>}
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      <p className="muted small">
+        {fill(s.counts, data.counts)} · {data.firstReplyHours === null ? s.firstReplyNone : fill(s.firstReply, { h: data.firstReplyHours })}
+      </p>
+      <Card title={t.tabs.support}>
+        <div className="toolbar-filters">
+          <label>
+            {s.filter}
+            <select value={state} onChange={(e) => setState(e.target.value)}>
+              <option value="">{s.all}</option>
+              {(["open", "answered", "closed"] as const).map((st) => (
+                <option key={st} value={st}>
+                  {s.states[st]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <input type="search" aria-label={s.search} placeholder={s.search} value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        {data.tickets.length ? (
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{s.columns.subject}</th>
+                  <th scope="col">{s.columns.from}</th>
+                  <th scope="col">{s.columns.state}</th>
+                  <th scope="col">{s.columns.priority}</th>
+                  <th scope="col">{s.columns.last}</th>
+                  <th scope="col">{s.columns.assigned}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.tickets.map((k) => (
+                  <tr key={k.id}>
+                    <th scope="row">
+                      <button type="button" className="text-button" onClick={() => setTicket(k.id)}>
+                        {k.subject}
+                        <span className="sr-only"> : {s.open}</span>
+                      </button>
+                      <span className="muted small"> · {s.categories[k.category]}</span>
+                    </th>
+                    <td>
+                      {k.requester}
+                      {k.organization && <span className="muted small"> · {k.organization}</span>}
+                    </td>
+                    <td>
+                      <Badge tone={tone[k.state]}>{s.states[k.state]}</Badge>
+                    </td>
+                    <td>{s.priorities[k.priority]}</td>
+                    <td>{when(k.last_message_at)}</td>
+                    <td>{k.assigned ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">{s.none}</p>
+        )}
+      </Card>
+      <Card title={s.privacy} id="console-privacy">
+        <p className="muted small">{s.privacyIntro}</p>
+        {data.privacy.length ? (
+          <ul className="plain-list">
+            {data.privacy.map((d) => (
+              <li key={d.id} className="console-plan">
+                <span>
+                  <button type="button" className="text-button" onClick={() => open(d.organization_id)}>
+                    {d.organization}
+                  </button>{" "}
+                  · {t.supervision.dataRequestKinds[d.kind] ?? d.kind} · {t.supervision.dataRequestStates[d.status] ?? d.status} ·{" "}
+                  <Badge tone={d.days_left < 0 ? "danger" : d.days_left <= 7 ? "warning" : "neutral"}>{d.days_left < 0 ? fill(s.overdue, { n: -d.days_left }) : d.days_left === 0 ? s.dueToday : fill(s.daysLeft, { n: d.days_left })}</Badge>
+                  {d.notices > 0 && d.last_notice && <span className="muted small"> · {fill(s.notices, { n: d.notices, day: day(d.last_notice) })}</span>}
+                </span>
+                {data.canWrite && (
+                  <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "privacyRemind", requestId: d.id }, s.reminded)}>
+                    {s.remind}
+                    <span className="sr-only"> : {d.organization}</span>
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{s.privacyNone}</p>
+        )}
+        <p className="muted small">{fill(s.certificates, { n: data.certificates })}</p>
+      </Card>
+      <Card title={s.templates} actions={data.canWrite ? <Button type="button" icon="plus" size="sm" onClick={() => setTemplate("new")}>{s.saveTemplate}</Button> : undefined}>
+        <p className="muted small">{s.templatesIntro}</p>
+        {data.templates.length ? (
+          <ul className="plain-list">
+            {data.templates.map((x) => (
+              <li key={x.id} className="console-plan">
+                <span>
+                  <strong>{x.name}</strong> <span className="muted small">· {x.text_fr.slice(0, 120)}</span>
+                </span>
+                {data.canWrite && (
+                  <span className="console-row-actions">
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setTemplate(x)}>
+                      {t.billing.planEdit}
+                      <span className="sr-only"> : {x.name}</span>
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "archiveTemplate", id: x.id }, "")}>
+                      {s.archiveTemplate}
+                      <span className="sr-only"> : {x.name}</span>
+                    </Button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{s.templatesNone}</p>
+        )}
+      </Card>
+      {template && (
+        <Modal title={s.template} close={() => setTemplate(null)}>
+          <form
+            className="stack-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              void post({ action: "template", id: tpl?.id ?? null, name: f.get("name"), fr: f.get("fr"), nl: f.get("nl"), en: f.get("en") }, "").then((ok) => {
+                if (ok) setTemplate(null);
+              });
+            }}
+          >
+            <label>
+              {s.templateName}
+              <input name="name" required minLength={2} maxLength={80} defaultValue={tpl?.name ?? ""} />
+            </label>
+            <label>
+              {s.templateFr}
+              <textarea name="fr" required rows={4} maxLength={4000} defaultValue={tpl?.text_fr ?? ""} />
+            </label>
+            <label>
+              {s.templateNl}
+              <textarea name="nl" rows={3} maxLength={4000} defaultValue={tpl?.text_nl ?? ""} />
+            </label>
+            <label>
+              {s.templateEn}
+              <textarea name="en" rows={3} maxLength={4000} defaultValue={tpl?.text_en ?? ""} />
+            </label>
+            <Button type="submit" disabled={busy}>
+              {s.saveTemplate}
+            </Button>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function TicketView({ locale, id, back, when, templates, open }: { locale: Locale; id: string; back: () => void; when: (iso: string) => string; templates: SupportList["templates"]; open: (id: string) => void }) {
+  const t = consoleCopy[locale],
+    s = t.supportDesk;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const { data, error, setError, reload } = useData<SupportTicket>(`/api/console/support?ticket=${id}`, failure);
+  const { busy, message, post } = usePost("/api/console/support", reload, setError, failure);
+  const [text, setText] = useState("");
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const k = data.ticket;
+  const tone = { open: "warning", answered: "info", closed: "neutral" } as const;
+  const send = (close: boolean) => void post({ action: "reply", id: k.id, text, close }, s.told).then((ok) => { if (ok) setText(""); });
+  return (
+    <div className="stack">
+      <Button type="button" variant="secondary" icon="back" onClick={back}>
+        {s.back}
+      </Button>
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      <Card title={k.subject}>
+        <p className="muted small">
+          {k.requester} &lt;{k.email}&gt;
+          {k.organization_id && k.organization && (
+            <>
+              {" "}
+              ·{" "}
+              <button type="button" className="text-button" onClick={() => open(k.organization_id!)}>
+                {k.organization}
+              </button>
+            </>
+          )}{" "}
+          · {s.categories[k.category]} · {when(k.created_at)} · <Badge tone={tone[k.state]}>{s.states[k.state]}</Badge> · {s.priorities[k.priority]}
+          {k.assigned && ` · ${s.columns.assigned} ${k.assigned}`}
+        </p>
+        {data.canWrite && (
+          <div className="console-row-actions">
+            <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "assign", id: k.id, toMe: k.assigned_to !== data.me }, "")}>
+              {k.assigned_to === data.me ? s.unassign : s.assignMe}
+            </Button>
+            <label>
+              {s.columns.priority}
+              <select value={k.priority} disabled={busy} onChange={(e) => void post({ action: "priority", id: k.id, priority: e.target.value }, "")}>
+                {(["low", "normal", "high"] as const).map((p) => (
+                  <option key={p} value={p}>
+                    {s.priorities[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {k.state === "closed" ? (
+              <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "reopen", id: k.id }, "")}>
+                {s.reopen}
+              </Button>
+            ) : (
+              <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "close", id: k.id }, s.told)}>
+                {s.close}
+              </Button>
+            )}
+          </div>
+        )}
+        <h3>{s.thread}</h3>
+        <div className="assistant-log" role="log" aria-label={s.thread}>
+          {data.messages.map((m) => (
+            <div key={m.id} className={`assistant-message ${m.by_operator ? "" : "user"}`}>
+              <div className="assistant-who">
+                {m.by_operator ? `${s.operator} · ${m.author}` : m.author} · {when(m.created_at)}
+              </div>
+              <div className="assistant-text">{m.text}</div>
+            </div>
+          ))}
+        </div>
+        {data.canWrite && (
+          <form
+            className="stack-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send(false);
+            }}
+          >
+            {templates.length > 0 && (
+              <label>
+                {s.template}
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    const x = templates.find((y) => y.id === e.target.value);
+                    if (x) setText(locale === "nl" && x.text_nl ? x.text_nl : locale === "en" && x.text_en ? x.text_en : x.text_fr);
+                  }}
+                >
+                  <option value="">{s.noTemplate}</option>
+                  {templates.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              {s.reply}
+              <textarea value={text} onChange={(e) => setText(e.target.value)} required rows={5} maxLength={4000} />
+            </label>
+            <div className="console-row-actions">
+              <Button type="submit" disabled={busy || !text.trim()}>
+                {s.send}
+              </Button>
+              <Button type="button" variant="secondary" disabled={busy || !text.trim()} onClick={() => send(true)}>
+                {s.sendClose}
+              </Button>
+            </div>
+          </form>
+        )}
+        {data.log.length > 0 && (
+          <>
+            <h3>{s.log}</h3>
+            <ul className="plain-list">
+              {data.log.map((l, i) => (
+                <li key={i}>
+                  {when(l.created_at)} · {s.logKinds[l.kind] ?? l.kind} · {l.operator}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </Card>
     </div>
   );
 }

@@ -661,6 +661,12 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                   <Icon name="clipboardList" size={16} /> {t.myReports}
                 </Link>
               )}
+              {/* Console, series C: write to the platform's support, for every profile. */}
+              {state && (
+                <Link className="menu-link" href={`/${locale}/support`}>
+                  <Icon name="message" size={16} /> {t.support}
+                </Link>
+              )}
               {/* Wave 16 (M1): one line per setting, label left, compact control right. */}
               <hr className="menu-separator" />
               <div className="menu-row">
@@ -710,7 +716,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                 locale={locale}
                 enabled={!!state?.selected}
                 variant="field"
-                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, { route: "/signalements?new=1", label: t.feedback }, { route: "/nouveautes", label: t.news }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
+                pages={[{ route: "", label: t.home }, { route: "/guide", label: t.guide }, { route: "/signalements?new=1", label: t.feedback }, { route: "/support", label: t.support }, { route: "/nouveautes", label: t.news }, ...groups.flatMap((g) => g.items.map((i) => ({ route: i.route, label: t[i.label] }))), ...settingsPages]}
                 actions={paletteActions({
                   kind: state?.selected?.kind,
                   role,

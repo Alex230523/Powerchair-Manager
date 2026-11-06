@@ -365,7 +365,7 @@ export async function myDataRequests(db: Pool, p: Principal) {
   ).rows as { id: string; name: string }[];
   const requests = (
     await db.query(
-      "SELECT r.id,r.kind,r.status,r.details,r.response,r.created_at,r.due_on::text AS due_on,o.name AS club FROM data_request r JOIN organization o ON o.id=r.organization_id WHERE r.requester_id=$1 ORDER BY r.created_at DESC LIMIT 50",
+      "SELECT r.id,r.kind,r.status,r.details,r.response,r.created_at,r.due_on::text AS due_on,r.certificate_number,o.name AS club FROM data_request r JOIN organization o ON o.id=r.organization_id WHERE r.requester_id=$1 ORDER BY r.created_at DESC LIMIT 50",
       [p.userId],
     )
   ).rows;
@@ -399,11 +399,11 @@ export async function securityView(db: Pool, p: Principal) {
       null) as { id: string; requested_at: string; effective_on: string; reason: string } | null;
     const requests = (
       await s.c.query(
-        `SELECT r.id,r.kind,r.status,r.details,r.response,r.created_at,r.due_on::text AS due_on,u.name AS requester,cp.full_name AS person
+        `SELECT r.id,r.kind,r.status,r.details,r.response,r.created_at,r.due_on::text AS due_on,r.certificate_number,u.name AS requester,cp.full_name AS person
            FROM data_request r JOIN "user" u ON u.id=r.requester_id LEFT JOIN club_person cp ON cp.id=r.profile_id WHERE r.organization_id=$1 ORDER BY r.status IN ('done','refused'),r.due_on LIMIT 100`,
         [s.org],
       )
-    ).rows as { id: string; kind: string; status: string; details: string; response: string; created_at: string; due_on: string; requester: string; person: string | null }[];
+    ).rows as { id: string; kind: string; status: string; details: string; response: string; created_at: string; due_on: string; certificate_number: string | null; requester: string; person: string | null }[];
     return { organization_id: s.org, can: { president: s.president }, dpa, hosting: { region: "UE", subprocessors }, access, health, retention, bounds: retentionBounds, purges, exports, closure, requests };
   });
 }
@@ -474,6 +474,11 @@ export async function careExecute(db: Pool, p: Principal, command: CareCommand, 
           ]);
           if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
           await audit(s.c, s.org, s.userId, "privacy.request_" + command.status, command.id);
+          // Console, series C: a request answered gets its certificate, for the person and the presidency.
+          if (command.status === "done" || command.status === "refused") {
+            const { numberCertificate } = await import("../support/service");
+            await numberCertificate(s.c, command.id);
+          }
           return { ok: true as const };
         }
       }

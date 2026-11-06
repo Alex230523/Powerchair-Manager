@@ -239,3 +239,75 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     await db.end();
   }
 });
+
+test("a president writes to the support, the operator answers from the console and follows a GDPR request", async ({ page, browser }) => {
+  test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use test:e2e:db");
+  test.setTimeout(120000);
+  const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
+  const stamp = Date.now();
+  try {
+    const club = (await db.query("INSERT INTO organization(name,kind) VALUES('Club support','club') RETURNING id")).rows[0].id as string;
+    // The president, in a browser of their own, at phone width.
+    const other = await browser.newContext({ baseURL: "http://127.0.0.1:3100", viewport: { width: 390, height: 844 } });
+    const presidentPage = await other.newPage();
+    const president = await signIn(presidentPage, db, "Présidente Demandeuse", `asking-${stamp}@example.test`);
+    await mandate(presidentPage, db, president, club, "club_president");
+    await presidentPage.goto("/fr/support");
+    await presidentPage.getByRole("button", { name: "Écrire au support" }).click();
+    await presidentPage.getByLabel("Sujet").fill("Facture introuvable");
+    await presidentPage.getByLabel("Votre message").fill("Je ne trouve pas la facture de novembre.");
+    await axe(presidentPage, "support form");
+    await presidentPage.getByRole("button", { name: "Envoyer", exact: true }).click();
+    await expect(presidentPage.getByText("Votre demande est envoyée ; le support vous répond ici.")).toBeVisible();
+    await expect(presidentPage.getByRole("heading", { name: /Facture introuvable/ })).toBeVisible();
+    await expect(presidentPage.getByText("En attente de réponse")).toBeVisible();
+    expect(await presidentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    // The operator answers from the console.
+    const user = await signIn(page, db, "Sam Support", `desk-${stamp}@example.test`);
+    await db.query("INSERT INTO platform_operator(user_id,role) VALUES($1,'support')", [user]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/fr/console");
+    await page.getByRole("tab", { name: "Support" }).click();
+    await expect(page.getByText(/1 en attente/)).toBeVisible();
+    await axe(page, "support desk");
+    await page.getByRole("button", { name: "Facture introuvable : Ouvrir le ticket" }).click();
+    await expect(page.getByText("Je ne trouve pas la facture de novembre.")).toBeVisible();
+    await page.getByLabel("Votre réponse").fill("Elle est sur la page Abonnement à la plateforme.");
+    await axe(page, "ticket");
+    await page.getByRole("button", { name: "Répondre", exact: true }).click();
+    await expect(page.getByText("Répondu", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Réponse · Sam Support/)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    // The president reads the answer and replies; the ticket waits again.
+    await presidentPage.reload();
+    await expect(presidentPage.getByText("Elle est sur la page Abonnement à la plateforme.")).toBeVisible();
+    await expect(presidentPage.getByText("Répondu", { exact: true })).toBeVisible();
+    await presidentPage.getByRole("button", { name: /^Répondre : Facture introuvable/ }).click();
+    await presidentPage.getByLabel("Votre réponse").fill("Trouvée, merci.");
+    await presidentPage.getByRole("button", { name: "Envoyer", exact: true }).click();
+    await expect(presidentPage.getByText("Votre réponse est envoyée.")).toBeVisible();
+    await page.getByRole("button", { name: "Retour aux tickets" }).click();
+    await expect(page.locator(".badge", { hasText: "En attente de réponse" })).toBeVisible();
+    // A GDPR request of a member, three days from its deadline: the operator reminds the presidency.
+    const member = (await db.query('INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true) RETURNING id', [`m-${stamp}`, "Membre Curieux", `member-${stamp}@example.test`])).rows[0].id as string;
+    await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)", [club, member]);
+    const request = (await db.query("INSERT INTO data_request(organization_id,requester_id,kind,details,due_on) VALUES($1,$2,'access','Tout',CURRENT_DATE+3) RETURNING id", [club, member])).rows[0].id as string;
+    await page.reload();
+    await page.getByRole("tab", { name: "Support" }).click();
+    await expect(page.getByText("3 jour(s) restant(s)")).toBeVisible();
+    await page.getByRole("button", { name: "Rappeler la présidence : Club support" }).click();
+    await expect(page.getByText(/1 rappel\(s\), dernier le/)).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE resource_id LIKE $1", [`privacy:${request}:manual%`])).rows[0].n).toBe(1);
+    // Answered by the president: the certificate downloads for the president, not for the operator.
+    await db.query("UPDATE data_request SET status='done',response='Copie envoyée.',handled_by=$2,handled_at=now(),certificate_number='RGPD-2026-' || lpad((floor(random()*8999)+1000)::text,4,'0') WHERE id=$1", [request, president]);
+    const mine = await presidentPage.evaluate(async (id) => {
+      const r = await fetch(`/api/privacy/requests?certificate=${id}`);
+      return { status: r.status, type: r.headers.get("content-type") ?? "", head: (await r.text()).slice(0, 5) };
+    }, request);
+    expect(mine).toEqual({ status: 200, type: "application/pdf", head: "%PDF-" });
+    expect(await page.evaluate(async (id) => (await fetch(`/api/privacy/requests?certificate=${id}`)).status, request)).toBe(404);
+    await other.close();
+  } finally {
+    await db.end();
+  }
+});

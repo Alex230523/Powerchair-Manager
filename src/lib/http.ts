@@ -13,7 +13,7 @@ export async function principal(request: Request) {
   const p = { userId: s.user.id, sessionId: s.session.id };
   // Console, step 3 (05/11/2026): an organisation suspended by the platform is read only for its
   // members; switching context, the account and the console itself stay reachable.
-  if (request.method !== "GET" && request.method !== "HEAD" && !/^\/api\/(workspace|account|auth|console|feedback)(\/|$)/.test(new URL(request.url).pathname)) {
+  if (request.method !== "GET" && request.method !== "HEAD" && !/^\/api\/(workspace|account|auth|console|feedback|support)(\/|$)/.test(new URL(request.url).pathname)) {
     const r = await getDb().query("SELECT 1 FROM active_context c JOIN organization o ON o.id=c.organization_id WHERE c.session_id=$1 AND c.user_id=$2 AND o.suspended_at IS NOT NULL", [p.sessionId, p.userId]);
     if (r.rowCount) throw new AccessError("ORG_SUSPENDED", 403);
   }

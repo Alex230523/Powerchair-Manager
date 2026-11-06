@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-06",
+  "roles": [
+    "all"
+  ],
+  "link": "/support",
+  "image": null,
+  "fr": {
+    "title": "Écrire au support, et vos demandes sur vos données suivies",
+    "text": "Une question sur l'application, votre abonnement ou vos données ? Écrivez au support depuis le menu de votre compte : la réponse arrive dans l'application et par notification. Quand un club répond à une demande sur vos données, vous téléchargez une attestation numérotée."
+  },
+  "nl": {
+    "title": "Aan de ondersteuning schrijven, en uw gegevensverzoeken opgevolgd",
+    "text": "Een vraag over de toepassing, uw abonnement of uw gegevens? Schrijf aan de ondersteuning vanuit het menu van uw account: het antwoord komt in de toepassing en per melding. Als een club op een verzoek over uw gegevens antwoordt, downloadt u een genummerd attest."
+  },
+  "en": {
+    "title": "Write to support, and your data requests followed",
+    "text": "A question about the application, your subscription or your data? Write to support from your account menu: the answer comes in the application and by notification. When a club answers a request about your data, you download a numbered certificate."
+  }
+}

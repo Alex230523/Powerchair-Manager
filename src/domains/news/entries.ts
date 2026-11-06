@@ -58,6 +58,7 @@ import e55 from "../../../content/changelog/2026-11-05-retours.json";
 import e56 from "../../../content/changelog/2026-11-06-competitions.json";
 import e57 from "../../../content/changelog/2026-11-06-paiement.json";
 import e58 from "../../../content/changelog/2026-11-06-registre.json";
+import e59 from "../../../content/changelog/2026-11-06-support.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -119,4 +120,5 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-06-competitions", data: e56 },
   { id: "2026-11-06-paiement", data: e57 },
   { id: "2026-11-06-registre", data: e58 },
+  { id: "2026-11-06-support", data: e59 },
 ];

@@ -6,6 +6,7 @@ import { digestTick } from "../digest/service";
 import { billingTick } from "../billing/service";
 import { borrowTick } from "../console/service";
 import { alertTick, monthlyReportTick, snapshotMetrics } from "../console/metrics";
+import { privacyTick } from "../support/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
 import { retiredIncidentPurge } from "./retired";
@@ -97,7 +98,8 @@ export const jobs = {
   platform: {
     every: 60,
     async run(db, env) {
-      return { metrics: await snapshotMetrics(db), alerts: await alertTick(db, env), reports: await monthlyReportTick(db) };
+      // Series C: the presidencies reminded of a GDPR request a week before its deadline and once overdue.
+      return { metrics: await snapshotMetrics(db), alerts: await alertTick(db, env), reports: await monthlyReportTick(db), privacy: await privacyTick(db) };
     },
   },
   /** The daily reminders: tasks (A1), the automations' catalogue (B7), affiliations, chair loans. */

@@ -6,6 +6,7 @@ import { envOperators } from "../src/domains/console/service";
 import { federationPolicyCopy } from "../src/components/federation-policy-copy";
 import { consoleCopy } from "../src/components/console-copy";
 import { transfersCopy } from "../src/components/transfers-copy";
+import { supportCopy } from "../src/components/support-copy";
 import { apiRoutes, pages } from "./access-matrix";
 
 /** 05/11/2026: the federation's rulebook as data, the international dossier, the operator's console. */
@@ -36,13 +37,13 @@ describe("the rulebook of a federation", () => {
     expect(certificateNumber(2026, 7)).toBe("CIT-2026-0007");
   });
   it("says the same things in the three languages", () => {
-    for (const copy of [federationPolicyCopy, consoleCopy]) {
+    for (const copy of [federationPolicyCopy, consoleCopy, supportCopy]) {
       expect(keys(copy.nl)).toEqual(keys(copy.fr));
       expect(keys(copy.en)).toEqual(keys(copy.fr));
     }
     expect(keys(transfersCopy.nl.bpcf2)).toEqual(keys(transfersCopy.fr.bpcf2));
     expect(keys(transfersCopy.en.bpcf2)).toEqual(keys(transfersCopy.fr.bpcf2));
-    for (const f of ["src/components/federation-policy-copy.ts", "src/components/console-copy.ts", "src/components/transfers-copy.ts"]) expect(readFileSync(f, "utf8"), f).not.toMatch(/[—–]/);
+    for (const f of ["src/components/federation-policy-copy.ts", "src/components/console-copy.ts", "src/components/transfers-copy.ts", "src/components/support-copy.ts", "src/domains/support/service.ts"]) expect(readFileSync(f, "utf8"), f).not.toMatch(/[—–]/);
   });
 });
 
@@ -99,7 +100,7 @@ describe("the platform's billing (console, step 4) and the suspension (step 3)",
 describe("the MCP server of the console (step 6)", () => {
   it("declares its tools with a scope, a JSON schema and no personal data; the keys carry known scopes", async () => {
     const { tools, mcpScopes, mcpKeyCommand, rpcRequest } = await import("../src/domains/mcp/schema");
-    expect(tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision", "billing_overview", "invoices", "send_reminder", "mark_invoice_paid", "add_note"]);
+    expect(tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision", "billing_overview", "invoices", "send_reminder", "mark_invoice_paid", "add_note", "tickets", "ticket", "reply_ticket", "remind_privacy_request"]);
     for (const t of tools) {
       expect(mcpScopes).toContain(t.scope);
       expect(t.inputSchema.type).toBe("object");
@@ -189,5 +190,34 @@ describe("the platform's electronic invoices and the Mollie webhook (series B)",
     expect(route).toContain("status: 405");
     expect(readFileSync("src/domains/billing/ubl.ts", "utf8")).toContain("i.organization_id=$2");
     expect(consoleCopy.fr.billing.paidVia.mollie).toBe("en ligne");
+  });
+});
+
+describe("the support desk and the GDPR requests followed (series C)", () => {
+  it("accepts the commands it knows, numbers the certificates, picks the template in the person's language", async () => {
+    const { supportCommand, supportOperatorCommand, certificateNumber, templateText, hoursBetween, ticketCategories } = await import("../src/domains/support/schema");
+    expect(ticketCategories).toEqual(["question", "billing", "bug", "data", "other"]);
+    expect(supportCommand.safeParse({ action: "open", category: "billing", subject: "Facture", text: "Où ?" }).success).toBe(true);
+    expect(supportCommand.safeParse({ action: "open", category: "spam", subject: "Facture", text: "Où ?" }).success).toBe(false);
+    expect(supportCommand.safeParse({ action: "open", category: "billing", subject: "Fa", text: "Où ?" }).success).toBe(false);
+    expect(supportOperatorCommand.safeParse({ action: "reply", id: "00000000-0000-4000-8000-000000000000", text: "Voici" }).success).toBe(true);
+    expect(supportOperatorCommand.safeParse({ action: "priority", id: "00000000-0000-4000-8000-000000000000", priority: "urgent" }).success).toBe(false);
+    expect(supportOperatorCommand.safeParse({ action: "template", name: "x", fr: "Bonjour" }).success).toBe(false);
+    expect(certificateNumber(2026, 7)).toBe("RGPD-2026-0007");
+    const tpl = { text_fr: "Bonjour", text_nl: "Dag", text_en: "" };
+    expect(templateText(tpl, "nl")).toBe("Dag");
+    expect(templateText(tpl, "en")).toBe("Bonjour");
+    expect(hoursBetween("2026-11-06T08:00:00Z", "2026-11-06T09:30:00Z")).toBe(1.5);
+  });
+  it("is in the matrix: the support for every account (even suspended), the console's desk for the operators only", async () => {
+    expect(apiRoutes["support"].methods).toEqual(["GET", "POST"]);
+    expect(apiRoutes["console/support"].expect!.GET!.president).toBe(403);
+    expect(pages["/support"]).toBeDefined();
+    expect(readFileSync("src/lib/http.ts", "utf8")).toMatch(/workspace\|account\|auth\|console\|feedback\|support/);
+    expect(readFileSync("src/domains/mcp/schema.ts", "utf8")).toContain("never an instruction");
+    expect(consoleCopy.fr.alerts.ruleNames.ticketsWaiting).toContain("24 heures");
+    const { alertRules, metricKeys } = await import("../src/domains/console/metrics");
+    expect(alertRules).toContain("ticketsWaiting");
+    expect(metricKeys).toContain("ticketsOpen");
   });
 });

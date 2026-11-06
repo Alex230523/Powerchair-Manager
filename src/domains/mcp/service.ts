@@ -5,6 +5,8 @@ import { AccessError, type Principal } from "../access/service";
 import { canBill, canWrite, consoleExecute, consoleHome, consoleOrganization, consoleOrganizations, consoleSupervision, operatorScope, type Operator } from "../console/service";
 import { billingCommand, billingExecute, billingView } from "../billing/service";
 import { consoleCommand } from "../console/schema";
+import { consoleSupport, consoleTicket, supportOperatorExecute } from "../support/service";
+import { supportOperatorCommand } from "../support/schema";
 import { PROTOCOL_VERSION, mcpScopes, rpcRequest, serverInfo, tools, type McpKeyCommand, type McpScope, type RpcRequest } from "./schema";
 export { mcpKeyCommand } from "./schema";
 
@@ -112,6 +114,22 @@ export async function runTool(db: Pool, p: Principal, name: string, a: Record<st
       break;
     case "add_note":
       out = await consoleExecute(db, p, consoleCommand.parse({ action: "note", organizationId: arg(a, "organizationId"), text: arg(a, "text") }));
+      break;
+    case "tickets": {
+      const v = await consoleSupport(db, p, { state: arg(a, "state"), q: arg(a, "q") });
+      out = { tickets: v.tickets, counts: v.counts, firstReplyHours: v.firstReplyHours, privacy: v.privacy };
+      break;
+    }
+    case "ticket": {
+      const v = await consoleTicket(db, p, z.uuid().parse(arg(a, "id")));
+      out = { ticket: v.ticket, messages: v.messages };
+      break;
+    }
+    case "reply_ticket":
+      out = await supportOperatorExecute(db, p, supportOperatorCommand.parse({ action: "reply", id: arg(a, "id"), text: arg(a, "text"), close: a.close === true }));
+      break;
+    case "remind_privacy_request":
+      out = await supportOperatorExecute(db, p, supportOperatorCommand.parse({ action: "privacyRemind", requestId: arg(a, "requestId") }));
       break;
   }
   return out;

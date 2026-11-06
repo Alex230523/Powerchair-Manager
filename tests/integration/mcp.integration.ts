@@ -83,7 +83,7 @@ it("answers the protocol, offers the tools of the key's scopes, journals the wri
   expect((await mcpHandle(db, auth, { jsonrpc: "2.0", id: 3, method: "resources/list" }))?.error?.code).toBe(-32601);
   expect((await mcpHandle(db, auth, { nope: true }))?.error?.code).toBe(-32600);
   const list = (await mcpHandle(db, auth, { jsonrpc: "2.0", id: 4, method: "tools/list" }))?.result as { tools: { name: string; annotations: { readOnlyHint: boolean } }[] };
-  expect(list.tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision", "billing_overview", "invoices", "send_reminder", "mark_invoice_paid"]);
+  expect(list.tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision", "billing_overview", "invoices", "send_reminder", "mark_invoice_paid", "tickets", "ticket"]);
   expect(list.tools.find((t) => t.name === "send_reminder")?.annotations.readOnlyHint).toBe(false);
   // Reads: counts and states, no personal data.
   const overview = result(await call(auth, "platform_overview"));
@@ -110,7 +110,7 @@ it("answers the protocol, offers the tools of the key's scopes, journals the wri
   const { key: readKey } = await mcpKeysExecute(db, reader, { action: "createKey", name: "Lecture", scopes: ["console:read"] });
   const readAuth = await mcpAuth(db, `Bearer ${readKey}`);
   const readList = (await mcpHandle(db, readAuth, { jsonrpc: "2.0", id: 5, method: "tools/list" }))?.result as { tools: { name: string }[] };
-  expect(readList.tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision"]);
+  expect(readList.tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision", "tickets", "ticket"]);
   // Revoked: stops at once.
   await mcpKeysExecute(db, owner, { action: "revokeKey", id: keyId! });
   await expect(mcpAuth(db, `Bearer ${key}`)).rejects.toMatchObject({ status: 401 });
