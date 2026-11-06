@@ -115,3 +115,14 @@ describe("the MCP server of the console (step 6)", () => {
     expect(readFileSync("src/app/api/mcp/route.ts", "utf8")).not.toContain("principal(");
   });
 });
+
+describe("the support access (console, step 3b)", () => {
+  it("asks a reason and a bounded duration, and never counts as the organisation's own president", () => {
+    expect(consoleCommand.safeParse({ action: "borrow", organizationId: "00000000-0000-4000-8000-000000000000", reason: "Vérification", minutes: 30 }).success).toBe(true);
+    expect(consoleCommand.safeParse({ action: "borrow", organizationId: "00000000-0000-4000-8000-000000000000", reason: "x", minutes: 30 }).success).toBe(false);
+    expect(consoleCommand.safeParse({ action: "borrow", organizationId: "00000000-0000-4000-8000-000000000000", reason: "Vérification", minutes: 600 }).success).toBe(false);
+    // The « at least one president » rule looks at mandates without an end: a borrow has one.
+    expect(readFileSync("src/domains/access/service.ts", "utf8")).toMatch(/role IN \('club_president','federation_president'\) AND r\.valid_until IS NULL/);
+    expect(readFileSync("src/domains/console/service.ts", "utf8")).toContain("make_interval(mins => $4)");
+  });
+});

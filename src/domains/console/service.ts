@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { AccessError, audit, type Principal } from "../access/service";
+import { notice } from "../notifications/notice";
 import { jobStates, overdueMails } from "../jobs/health";
 
 /**
@@ -61,6 +62,17 @@ export async function isOperator(db: Pool, p: Principal) {
 }
 
 const n = async (c: PoolClient, sql: string, params: unknown[] = []) => (await c.query(sql, params)).rows[0].n as number;
+/** The presidency of a club or a federation, with their account, for the notices of the console. */
+export async function presidencyOf(c: PoolClient, org: string) {
+  return (
+    await c.query(
+      `SELECT DISTINCT u.id AS user_id,u.email,u.name,pe.locale FROM role_assignment r JOIN "user" u ON u.id=r.user_id AND u.active LEFT JOIN person pe ON pe.user_id=u.id
+        WHERE r.organization_id=$1 AND r.role IN ('club_president','federation_president') AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())
+          AND NOT EXISTS(SELECT 1 FROM platform_operator o WHERE o.user_id=u.id AND o.revoked_at IS NULL)`,
+      [org],
+    )
+  ).rows as { user_id: string; email: string; name: string; locale: string | null }[];
+}
 /** The migrations applied by scripts/migrate.mjs; a test schema has no such table. */
 async function migrations(c: PoolClient, limit: number) {
   const has = (await c.query("SELECT to_regclass('schema_migrations') IS NOT NULL AS ok")).rows[0].ok as boolean;
@@ -255,8 +267,27 @@ export async function consoleOrganization(db: Pool, p: Principal, id: string) {
         [id],
       )
     ).rows[0] as { id: string; plan: string; period: "month" | "year"; basis: "organization" | "player"; amount_cents: number; started_on: string; note: string; open_invoices: number } | undefined;
+    // Step 3b: the borrows of this organisation, the open one first.
+    const borrows = (
+      await c.query(
+        'SELECT b.id,b.reason,b.started_at,b.expires_at,b.ended_at,b.mandate_id,u.name AS operator,b.operator_id FROM platform_borrow b JOIN "user" u ON u.id=b.operator_id WHERE b.organization_id=$1 ORDER BY (b.ended_at IS NULL AND b.expires_at>now()) DESC,b.started_at DESC LIMIT 20',
+        [id],
+      )
+    ).rows as { id: string; reason: string; started_at: string; expires_at: string; ended_at: string | null; mandate_id: string; operator: string; operator_id: string }[];
+    const myBorrow = borrows.find((b) => b.operator_id === o.userId && !b.ended_at && new Date(b.expires_at) > new Date()) ?? null;
     const plans = (await c.query("SELECT id,name,amount_cents,period,basis FROM billing_plan WHERE active ORDER BY name")).rows as { id: string; name: string; amount_cents: number; period: "month" | "year"; basis: "organization" | "player" }[];
-    return { organization: { ...org, storage_bytes: Number(org.storage_bytes) }, officers, notes, actions, canWrite: canWrite(o), canBill: canBill(o), subscription: subscription ?? null, plans };
+    return {
+      organization: { ...org, storage_bytes: Number(org.storage_bytes) },
+      officers,
+      notes,
+      actions,
+      canWrite: canWrite(o),
+      canBill: canBill(o),
+      subscription: subscription ?? null,
+      plans,
+      borrows: borrows.map(({ operator_id: _omit, ...b }) => ({ ...b, active: !b.ended_at && new Date(b.expires_at) > new Date() })),
+      myBorrow: myBorrow ? { id: myBorrow.id, mandateId: myBorrow.mandate_id, expiresAt: myBorrow.expires_at } : null,
+    };
   });
 }
 
@@ -320,6 +351,50 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
       await audit(c, org.id, o.userId, `platform.${command.action}`, org.id, command.action === "suspend" ? { reason: command.reason } : undefined);
       return { ok: true as const };
     }
+    if (command.action === "borrow") {
+      // Step 3b: a presidency mandate for a while, the presidency told, both journals written.
+      if (!canWrite(o)) throw new AccessError("FORBIDDEN");
+      const org = (await c.query("SELECT id,name,kind FROM organization WHERE id=$1", [command.organizationId])).rows[0] as { id: string; name: string; kind: "club" | "federation" } | undefined;
+      if (!org) throw new AccessError("NOT_FOUND", 404);
+      if ((await c.query("SELECT 1 FROM platform_borrow WHERE operator_id=$1 AND organization_id=$2 AND ended_at IS NULL AND expires_at>now()", [o.userId, org.id])).rowCount) throw new AccessError("BORROW_OPEN", 409);
+      await c.query("INSERT INTO organization_membership(organization_id,user_id,active) VALUES($1,$2,true) ON CONFLICT (organization_id,user_id) DO UPDATE SET active=true", [org.id, o.userId]);
+      const role = org.kind === "club" ? "club_president" : "federation_president";
+      const mandate = (
+        await c.query("INSERT INTO role_assignment(organization_id,user_id,role,valid_until,created_by) VALUES($1,$2,$3,now()+make_interval(mins => $4),$2) RETURNING id", [org.id, o.userId, role, command.minutes])
+      ).rows[0].id as string;
+      const id = (await c.query("INSERT INTO platform_borrow(operator_id,organization_id,mandate_id,reason,expires_at) VALUES($1,$2,$3,$4,now()+make_interval(mins => $5)) RETURNING id,expires_at", [o.userId, org.id, mandate, command.reason, command.minutes])).rows[0] as {
+        id: string;
+        expires_at: string;
+      };
+      await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,reason,payload) VALUES($1,$2,'borrow',$3,$4)", [o.userId, org.id, command.reason, JSON.stringify({ id: id.id, minutes: command.minutes })]);
+      await audit(c, org.id, o.userId, "platform.borrow", org.id, { reason: command.reason, minutes: command.minutes });
+      const notified = await notice(
+        c,
+        org.id,
+        await presidencyOf(c, org.id),
+        {
+          fr: { title: "Accès de support ouvert sur votre organisation", message: `${o.name}, de la plateforme, ouvre ${org.name} comme président pendant ${command.minutes} minutes. Raison : ${command.reason}. Tout ce qu'il fait est dans votre journal.` },
+          nl: { title: "Supporttoegang geopend op uw organisatie", message: `${o.name}, van het platform, opent ${org.name} als voorzitter gedurende ${command.minutes} minuten. Reden: ${command.reason}. Alles wat hij doet staat in uw logboek.` },
+          en: { title: "Support access opened on your organisation", message: `${o.name}, from the platform, opens ${org.name} as president for ${command.minutes} minutes. Reason: ${command.reason}. Everything done is in your journal.` },
+        },
+        "/audit",
+        `borrow:${id.id}`,
+        "administrative",
+      );
+      await c.query("UPDATE platform_borrow SET notified=$2 WHERE id=$1", [id.id, notified]);
+      return { ok: true as const, id: id.id, mandateId: mandate, expiresAt: new Date(id.expires_at).toISOString() };
+    }
+    if (command.action === "borrowEnd") {
+      const b = (await c.query("SELECT id,organization_id,mandate_id FROM platform_borrow WHERE id=$1 AND operator_id=$2 AND ended_at IS NULL FOR UPDATE", [command.id, o.userId])).rows[0] as { id: string; organization_id: string; mandate_id: string } | undefined;
+      if (!b) throw new AccessError("NOT_FOUND", 404);
+      await c.query("UPDATE platform_borrow SET ended_at=now() WHERE id=$1", [b.id]);
+      await c.query("UPDATE role_assignment SET revoked_at=now() WHERE id=$1 AND revoked_at IS NULL", [b.mandate_id]);
+      await c.query("UPDATE organization_membership SET active=false WHERE organization_id=$1 AND user_id=$2 AND NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=$1 AND r.user_id=$2 AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()))", [b.organization_id, o.userId]);
+      await c.query("DELETE FROM active_context WHERE user_id=$1 AND organization_id=$2", [o.userId, b.organization_id]);
+      await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,payload) VALUES($1,$2,'borrow.end',$3)", [o.userId, b.organization_id, JSON.stringify({ id: b.id })]);
+      await audit(c, b.organization_id, o.userId, "platform.borrow.end", b.organization_id);
+      return { ok: true as const };
+    }
     if (o.role !== "owner") throw new AccessError("FORBIDDEN");
     if (command.action === "addOperator") {
       const u = (await c.query('SELECT id FROM "user" WHERE lower(email)=lower($1) AND active', [command.email])).rows[0] as { id: string } | undefined;
@@ -337,4 +412,28 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
     await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'operator.revoke',$2)", [o.userId, JSON.stringify({ userId: command.userId })]);
     return { ok: true as const };
   });
+}
+
+/** Hourly: the borrows past their end are closed (mandate revoked, membership inactive, context dropped). */
+export async function borrowTick(db: Pool) {
+  const c = await db.connect();
+  let closed = 0;
+  try {
+    await c.query("BEGIN");
+    const rows = (await c.query("SELECT id,operator_id,organization_id,mandate_id FROM platform_borrow WHERE ended_at IS NULL AND expires_at<now() FOR UPDATE SKIP LOCKED LIMIT 100")).rows as { id: string; operator_id: string; organization_id: string; mandate_id: string }[];
+    for (const b of rows) {
+      await c.query("UPDATE platform_borrow SET ended_at=expires_at WHERE id=$1", [b.id]);
+      await c.query("UPDATE role_assignment SET revoked_at=now() WHERE id=$1 AND revoked_at IS NULL", [b.mandate_id]);
+      await c.query("UPDATE organization_membership SET active=false WHERE organization_id=$1 AND user_id=$2 AND NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=$1 AND r.user_id=$2 AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()))", [b.organization_id, b.operator_id]);
+      await c.query("DELETE FROM active_context WHERE user_id=$1 AND organization_id=$2", [b.operator_id, b.organization_id]);
+      closed++;
+    }
+    await c.query("COMMIT");
+  } catch (e) {
+    await c.query("ROLLBACK");
+    throw e;
+  } finally {
+    c.release();
+  }
+  return closed;
 }

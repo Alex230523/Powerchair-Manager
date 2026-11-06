@@ -123,6 +123,20 @@ type Copy = {
     unsubscribe: string;
     unsubscribed: string;
     invoicesOf: string;
+    borrow: string;
+    borrowIntro: string;
+    borrowReason: string;
+    borrowMinutes: string;
+    borrowConfirm: string;
+    borrowDone: string;
+    borrowOpen: string;
+    borrowGo: string;
+    borrowEnd: string;
+    borrowEnded: string;
+    borrows: string;
+    borrowsNone: string;
+    borrowLine: string;
+    borrowActive: string;
   };
   billing: {
     intro: string;
@@ -384,6 +398,20 @@ const fr: Copy = {
     unsubscribe: "Terminer aujourd'hui",
     unsubscribed: "Abonnement terminé.",
     invoicesOf: "Voir ses factures",
+    borrow: "Ouvrir comme président (support)",
+    borrowIntro: "Vous entrez dans l'organisation avec un mandat de président limité dans le temps. La présidence est prévenue par notification avec votre nom et la raison ; tout ce que vous faites est dans son journal. Vous terminez l'accès dès que possible.",
+    borrowReason: "Raison, lue par la présidence",
+    borrowMinutes: "Durée (minutes)",
+    borrowConfirm: "Ouvrir l'accès",
+    borrowDone: "Accès de support ouvert.",
+    borrowOpen: "Accès de support ouvert jusqu'à {time}",
+    borrowGo: "Passer dans l'organisation",
+    borrowEnd: "Terminer l'accès",
+    borrowEnded: "Accès de support terminé.",
+    borrows: "Accès de support",
+    borrowsNone: "Aucun accès de support.",
+    borrowLine: "{operator} · {start} · {reason}",
+    borrowActive: "En cours",
   },
   billing: {
     intro: "Formules, abonnements, factures et rappels de la plateforme. Les paiements sont enregistrés à la main (virement avec le numéro de facture) ; les rappels partent aux présidents, à la main ou par paliers (3, 10 et 20 jours après l'échéance).",
@@ -645,6 +673,20 @@ const nl: Copy = {
     unsubscribe: "Vandaag beëindigen",
     unsubscribed: "Abonnement beëindigd.",
     invoicesOf: "Haar facturen bekijken",
+    borrow: "Openen als voorzitter (support)",
+    borrowIntro: "U gaat de organisatie binnen met een in de tijd beperkt mandaat van voorzitter. Het voorzitterschap wordt per melding verwittigd met uw naam en de reden; alles wat u doet staat in zijn logboek. U beëindigt de toegang zodra mogelijk.",
+    borrowReason: "Reden, gelezen door het voorzitterschap",
+    borrowMinutes: "Duur (minuten)",
+    borrowConfirm: "Toegang openen",
+    borrowDone: "Supporttoegang geopend.",
+    borrowOpen: "Supporttoegang open tot {time}",
+    borrowGo: "Naar de organisatie gaan",
+    borrowEnd: "Toegang beëindigen",
+    borrowEnded: "Supporttoegang beëindigd.",
+    borrows: "Supporttoegangen",
+    borrowsNone: "Geen supporttoegang.",
+    borrowLine: "{operator} · {start} · {reason}",
+    borrowActive: "Bezig",
   },
   billing: {
     intro: "Formules, abonnementen, facturen en herinneringen van het platform. Betalingen worden met de hand geregistreerd (overschrijving met het factuurnummer); herinneringen gaan naar de voorzitters, met de hand of in stappen (3, 10 en 20 dagen na de vervaldag).",
@@ -906,6 +948,20 @@ const en: Copy = {
     unsubscribe: "End today",
     unsubscribed: "Subscription ended.",
     invoicesOf: "See its invoices",
+    borrow: "Open as president (support)",
+    borrowIntro: "You enter the organisation with a time-limited president mandate. The presidency is told by notification with your name and the reason; everything you do is in its journal. You end the access as soon as possible.",
+    borrowReason: "Reason, read by the presidency",
+    borrowMinutes: "Duration (minutes)",
+    borrowConfirm: "Open the access",
+    borrowDone: "Support access opened.",
+    borrowOpen: "Support access open until {time}",
+    borrowGo: "Go into the organisation",
+    borrowEnd: "End the access",
+    borrowEnded: "Support access ended.",
+    borrows: "Support accesses",
+    borrowsNone: "No support access.",
+    borrowLine: "{operator} · {start} · {reason}",
+    borrowActive: "Open",
   },
   billing: {
     intro: "Plans, subscriptions, invoices and reminders of the platform. Payments are recorded by hand (transfer with the invoice number); reminders go to the presidents, by hand or by steps (3, 10 and 20 days after the due date).",

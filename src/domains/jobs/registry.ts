@@ -4,6 +4,7 @@ import { createTransport } from "../notifications/transport";
 import { createPushSender, processPush, recoverPush } from "../notifications/push";
 import { digestTick } from "../digest/service";
 import { billingTick } from "../billing/service";
+import { borrowTick } from "../console/service";
 import { sweepDocuments } from "../documents/service";
 import { taxPurge } from "../tax/service";
 import { retiredIncidentPurge } from "./retired";
@@ -140,6 +141,8 @@ export const jobs = {
         retention: await retentionTick(db),
         // Console, step 4: the platform's invoices late get their reminders by steps.
         billing: await billingTick(db),
+        // Console, step 3b: the support accesses past their end are closed.
+        borrows: await borrowTick(db),
       };
     },
   },

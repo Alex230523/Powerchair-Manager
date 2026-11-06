@@ -187,6 +187,7 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
   },
   /* 05/11/2026 (revue): codes that reached the screen as they were. */
   ORG_SUSPENDED: { fr: "Votre organisation est en lecture seule, suspendue par la plateforme. Le bandeau en haut de page en donne la raison.", nl: "Uw organisatie is alleen-lezen, geschorst door het platform. De banner bovenaan geeft de reden.", en: "Your organisation is read only, suspended by the platform. The banner at the top gives the reason." },
+  BORROW_OPEN: { fr: "Vous avez déjà un accès de support ouvert sur cette organisation.", nl: "U hebt al een supporttoegang open op deze organisatie.", en: "You already have a support access open on this organisation." },
   ALREADY_SUSPENDED: { fr: "Cette organisation est déjà suspendue.", nl: "Deze organisatie is al geschorst.", en: "This organisation is already suspended." },
   NOT_SUSPENDED: { fr: "Cette organisation n'est pas suspendue.", nl: "Deze organisatie is niet geschorst.", en: "This organisation is not suspended." },
   SUBSCRIPTION_EXISTS: { fr: "Cette organisation a déjà un abonnement en cours : terminez-le d'abord.", nl: "Deze organisatie heeft al een lopend abonnement: beëindig het eerst.", en: "This organisation already has a running subscription: end it first." },
