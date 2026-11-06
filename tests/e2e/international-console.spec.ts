@@ -381,10 +381,12 @@ test("a president creates the club's MCP connector and asks it the teams; the ow
     await presidentPage.goto("/fr/club/public");
     await presidentPage.getByRole("tab", { name: "API", exact: true }).click();
     await expect(presidentPage.getByRole("heading", { name: "Connecteur pour votre assistant (MCP)" })).toBeVisible();
-    await presidentPage.getByLabel("Nom de la clé").nth(1).fill("Mon Claude");
+    await presidentPage.getByLabel("Nom du connecteur").fill("Mon Claude");
     await axe(presidentPage, "mcp connector");
     await presidentPage.getByRole("button", { name: "Créer la clé du connecteur" }).click();
-    const secret = (await presidentPage.locator(".secret-value").first().textContent()) ?? "";
+    const shown = presidentPage.locator(".secret-value", { hasText: /^pfmorg_/ });
+    await expect(shown).toBeVisible();
+    const secret = (await shown.textContent()) ?? "";
     expect(secret).toMatch(/^pfmorg_[a-z0-9]{8}_/);
     await expect(presidentPage.getByText("Mon Claude")).toBeVisible();
     expect(await presidentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);

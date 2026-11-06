@@ -7,14 +7,14 @@
   "image": null,
   "fr": {
     "title": "Branchez votre assistant sur votre club",
-    "text": "Dans Page publique, onglet API, créez la clé d'un connecteur MCP : votre Claude (ou un autre assistant) lit vos équipes, vos matchs, votre calendrier et, si vous le choisissez, vos cotisations. Lecture seule, révocable à tout moment."
+    "text": "Dans Page publique, onglet des accès pour vos systèmes, créez la clé d'un connecteur MCP : votre Claude (ou un autre assistant) lit vos équipes, vos matchs, votre calendrier et, si vous le choisissez, vos cotisations. Lecture seule, révocable à tout moment."
   },
   "nl": {
     "title": "Koppel uw assistent aan uw club",
-    "text": "Maak in Openbare pagina, tabblad API, de sleutel van een MCP-connector aan: uw Claude (of een andere assistent) leest uw ploegen, wedstrijden, kalender en, als u dat kiest, uw lidgelden. Alleen-lezen, op elk moment in te trekken."
+    "text": "Maak in Openbare pagina, tabblad van de toegangen voor uw systemen, de sleutel van een MCP-connector aan: uw Claude (of een andere assistent) leest uw ploegen, wedstrijden, kalender en, als u dat kiest, uw lidgelden. Alleen-lezen, op elk moment in te trekken."
   },
   "en": {
     "title": "Plug your assistant on your club",
-    "text": "In Public page, API tab, create the key of an MCP connector: your Claude (or another assistant) reads your teams, matches, calendar and, if you choose so, your dues. Read only, revocable at any time."
+    "text": "In Public page, in the tab of the accesses for your systems, create the key of an MCP connector: your Claude (or another assistant) reads your teams, matches, calendar and, if you choose so, your dues. Read only, revocable at any time."
   }
 }

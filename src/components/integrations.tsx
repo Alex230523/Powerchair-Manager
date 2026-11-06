@@ -191,7 +191,7 @@ export function Integrations({ locale }: { locale: Locale }) {
                   }}
                 >
                   <label htmlFor="mcp-key-name">
-                    {t.keyName}
+                    {t.mcpKeyName}
                     <input id="mcp-key-name" name="name" required minLength={2} maxLength={80} />
                   </label>
                   <fieldset>
