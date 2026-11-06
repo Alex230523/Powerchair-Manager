@@ -172,6 +172,24 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     expect(status).toBe(403);
     await page.getByRole("button", { name: "Réactiver" }).click();
     await expect(page.getByRole("button", { name: "Suspendre (lecture seule)" })).toBeVisible();
+    // Support access: the operator opens the club as president for a while, goes in, and ends it.
+    await page.getByRole("button", { name: "Ouvrir comme président (support)" }).click();
+    await page.getByRole("dialog").getByLabel("Raison, lue par la présidence").fill("Vérifier la page des cotisations avec la présidente");
+    await axe(page, "borrow window");
+    await page.getByRole("dialog").getByRole("button", { name: "Ouvrir l'accès" }).click();
+    await expect(page.getByText(/^Accès de support ouvert jusqu'à /)).toBeVisible();
+    await expect(page.getByText("Vérifier la page des cotisations avec la présidente")).toBeVisible();
+    await page.getByRole("button", { name: "Passer dans l'organisation" }).click();
+    await expect(page).toHaveURL(/\/fr$/);
+    await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
+    await expect(page.locator(".brand-org")).toContainText("Club facturé");
+    await page.goto("/fr/console");
+    await page.getByRole("tab", { name: "Organisations" }).click();
+    await page.getByRole("searchbox").fill("Club facturé");
+    await page.getByRole("button", { name: "Club facturé" }).click();
+    await page.getByRole("button", { name: "Terminer l'accès" }).click();
+    await expect(page.getByRole("button", { name: "Ouvrir comme président (support)" })).toBeVisible();
+    expect((await db.query("SELECT count(*)::int AS n FROM audit_log WHERE organization_id=$1 AND action IN ('platform.borrow','platform.borrow.end')", [club])).rows[0].n).toBe(2);
     await other.close();
   } finally {
     await db.end();

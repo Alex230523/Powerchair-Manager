@@ -269,6 +269,9 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
   const [note, setNote] = useState("");
   const [suspending, setSuspending] = useState(false);
   const [reason, setReason] = useState("");
+  const [borrowing, setBorrowing] = useState(false);
+  const [borrowReason, setBorrowReason] = useState("");
+  const [borrowMinutes, setBorrowMinutes] = useState(30);
   if (!data) return error ? <p role="alert">{error}</p> : null;
   const x = data.organization;
   const facts: [string, string | number][] = [
@@ -329,6 +332,73 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
           </p>
         )}
       </Card>
+      <Card title={o.borrows}>
+        {data.myBorrow ? (
+          <p className="actions">
+            <span>{fill(o.borrowOpen, { time: when(data.myBorrow.expiresAt) })}</span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                void fetch("/api/workspace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "context", mandateId: data.myBorrow!.mandateId }) }).then((r) => {
+                  if (r.ok) window.location.assign(`/${locale}`);
+                });
+              }}
+            >
+              {o.borrowGo}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "borrowEnd", id: data.myBorrow!.id }, o.borrowEnded)}>
+              {o.borrowEnd}
+            </Button>
+          </p>
+        ) : (
+          data.canWrite && (
+            <p className="actions">
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => setBorrowing(true)}>
+                {o.borrow}
+              </Button>
+            </p>
+          )
+        )}
+        {data.borrows.length ? (
+          <ul className="plain-list">
+            {data.borrows.map((b) => (
+              <li key={b.id}>
+                {fill(o.borrowLine, { operator: b.operator, start: when(b.started_at), reason: b.reason })} {b.active && <Badge tone="warning">{o.borrowActive}</Badge>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{o.borrowsNone}</p>
+        )}
+      </Card>
+      {borrowing && (
+        <Modal title={o.borrow} close={() => setBorrowing(false)}>
+          <form
+            className="stack-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void post({ action: "borrow", organizationId: id, reason: borrowReason, minutes: borrowMinutes }, o.borrowDone).then((ok) => ok && setBorrowing(false));
+            }}
+          >
+            <p>{o.borrowIntro}</p>
+            <label>
+              {o.borrowReason}
+              <textarea value={borrowReason} onChange={(e) => setBorrowReason(e.target.value)} rows={3} minLength={5} maxLength={500} required />
+            </label>
+            <label>
+              {o.borrowMinutes}
+              <input type="number" min={5} max={120} value={borrowMinutes} onChange={(e) => setBorrowMinutes(Number(e.target.value) || 30)} required />
+            </label>
+            <p className="actions">
+              <Button disabled={busy || borrowReason.trim().length < 5}>{o.borrowConfirm}</Button>
+              <Button type="button" variant="secondary" onClick={() => setBorrowing(false)}>
+                {t.cancel}
+              </Button>
+            </p>
+          </form>
+        </Modal>
+      )}
       <Card title={o.subscription}>
         {data.subscription ? (
           <>
