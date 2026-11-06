@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Locale } from "@/lib/locale";
 import type { consoleHome, consoleOperators, consoleOrganization, consoleOrganizations, consoleSupervision } from "@/domains/console/service";
 import type { billingView } from "@/domains/billing/service";
+import type { mcpKeys } from "@/domains/mcp/service";
 import { operatorRoles } from "@/domains/console/schema";
 import { planBases, planPeriods } from "@/domains/billing/schema";
 import { formatCents } from "@/domains/dashboard/summary";
@@ -20,6 +21,7 @@ type Organization = Awaited<ReturnType<typeof consoleOrganization>>;
 type Supervision = Awaited<ReturnType<typeof consoleSupervision>>;
 type Operators = Awaited<ReturnType<typeof consoleOperators>>;
 type Billing = Awaited<ReturnType<typeof billingView>>;
+type Keys = Awaited<ReturnType<typeof mcpKeys>>;
 type Tab = "home" | "organizations" | "billing" | "supervision" | "operators";
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] === undefined ? m : String(v[k])));
@@ -667,10 +669,114 @@ function OperatorsView({ locale, day }: { locale: Locale; day: (iso: string) => 
       ) : (
         <p className="muted small">{o.ownerOnly}</p>
       )}
+      <McpKeys locale={locale} day={day} />
       <p>
         <Link href={`/${locale}`}>{t.backToApp}</Link>
       </p>
     </div>
+  );
+}
+
+/** Console, step 6 (06/11/2026): an operator's keys for the MCP server, the secret shown once. */
+function McpKeys({ locale, day }: { locale: Locale; day: (iso: string) => string }) {
+  const t = consoleCopy[locale],
+    m = t.mcp;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const { data, error, setError, reload } = useData<Keys>("/api/console/mcp-keys", failure);
+  const { busy, message, post, postFor } = usePost("/api/console/mcp-keys", reload, setError, failure);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const url = typeof window === "undefined" ? data.endpoint : `${window.location.origin}${data.endpoint}`;
+  return (
+    <Card title={m.title} id="console-mcp">
+      <p className="muted">{m.intro}</p>
+      <p>
+        <code>{fill(m.endpoint, { url })}</code>
+      </p>
+      <p className="muted small">{m.howTo}</p>
+      <p className="muted small">{m.tools}</p>
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      {secret && (
+        <div className="panel mcp-secret" role="group" aria-label={m.secretOnce}>
+          <p>
+            <strong>{m.secretOnce}</strong>
+          </p>
+          <p>
+            <code>{secret}</code>
+          </p>
+          <p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                void navigator.clipboard?.writeText(secret).then(() => setCopied(true));
+              }}
+            >
+              {copied ? m.copied : m.copy}
+            </Button>
+          </p>
+        </div>
+      )}
+      <h3>{m.keys}</h3>
+      {data.keys.length ? (
+        <ul className="plain-list">
+          {data.keys.map((k) => (
+            <li key={k.id} className="console-plan">
+              <span>
+                <strong>{k.name}</strong> <code>pfmop_{k.prefix}_…</code> · {k.scopes.map((sc) => m.scopeNames[sc] ?? sc).join(", ")} · {fill(m.calls, { n: k.calls })} · {k.last_used_at ? fill(m.lastUsed, { day: day(k.last_used_at) }) : m.never}{" "}
+                {k.revoked_at && <Badge tone="neutral">{m.revokedBadge}</Badge>}
+              </span>
+              {!k.revoked_at && (
+                <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "revokeKey", id: k.id }, m.revoked)}>
+                  {m.revoke}
+                  <span className="sr-only"> : {k.name}</span>
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">{m.keysNone}</p>
+      )}
+      <form
+        className="stack-form"
+        aria-label={m.create}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const d = new FormData(e.currentTarget),
+            form = e.currentTarget;
+          void postFor({ action: "createKey", name: String(d.get("name") ?? ""), scopes: d.getAll("scope").map(String) }, m.created).then((r) => {
+            const key = (r as { key?: string } | null)?.key;
+            if (key) {
+              setSecret(key);
+              setCopied(false);
+              form.reset();
+            }
+          });
+        }}
+      >
+        <label>
+          {m.name}
+          <input name="name" required minLength={2} maxLength={80} />
+        </label>
+        <fieldset className="policy-group">
+          <legend>{m.scopes}</legend>
+          {data.scopes.map((sc) => (
+            <label key={sc} className="check">
+              <input type="checkbox" name="scope" value={sc} defaultChecked={sc.endsWith(":read")} /> {m.scopeNames[sc] ?? sc}
+            </label>
+          ))}
+        </fieldset>
+        <p>
+          <Button disabled={busy}>{m.create}</Button>
+        </p>
+      </form>
+    </Card>
   );
 }
 

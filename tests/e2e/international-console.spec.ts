@@ -82,6 +82,25 @@ test("an operator reads the console; a club president is refused", async ({ page
     await axe(page, "console organisation");
     await page.getByRole("tab", { name: "Opérateurs" }).click();
     await expect(page.getByRole("rowheader", { name: "Alex Exploitant" })).toBeVisible();
+    // A key for the MCP server: the secret shown once, then listed by its prefix only.
+    await page.getByLabel("Nom de la clé (par exemple : Claude sur mon portable)").fill("Claude portable");
+    await page.getByRole("button", { name: "Créer la clé" }).click();
+    await expect(page.getByText("Copiez cette clé maintenant : elle ne sera plus affichée.")).toBeVisible();
+    const secret = (await page.locator(".mcp-secret code").textContent()) ?? "";
+    expect(secret).toMatch(/^pfmop_[a-z0-9]{8}_/);
+    await expect(page.locator("#console-mcp .console-plan strong", { hasText: "Claude portable" })).toBeVisible();
+    // The server answers the protocol with that key, and refuses without it.
+    const probe = await page.evaluate(async (key) => {
+      const post = (headers: Record<string, string>, body: unknown) => fetch("/api/mcp", { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
+      return {
+        noKey: (await post({}, { jsonrpc: "2.0", id: 1, method: "ping" })).status,
+        list: await post({ Authorization: `Bearer ${key}` }, { jsonrpc: "2.0", id: 2, method: "tools/list" }),
+      };
+    }, secret);
+    expect(probe.noKey).toBe(401);
+    expect(probe.list.status).toBe(200);
+    expect((probe.list.body as { result: { tools: { name: string }[] } }).result.tools.map((x) => x.name)).toContain("platform_overview");
+    await axe(page, "console operators");
     await page.getByRole("tab", { name: "Supervision" }).click();
     await expect(page.getByRole("heading", { name: "Tâches planifiées" })).toBeVisible();
     await axe(page, "console supervision");

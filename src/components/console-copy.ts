@@ -214,6 +214,29 @@ type Copy = {
     revokedBadge: string;
     ownerOnly: string;
   };
+  mcp: {
+    title: string;
+    intro: string;
+    endpoint: string;
+    howTo: string;
+    keys: string;
+    keysNone: string;
+    name: string;
+    scopes: string;
+    scopeNames: Record<"console:read" | "billing:read" | "billing:write" | "support:write", string>;
+    create: string;
+    created: string;
+    secretOnce: string;
+    copy: string;
+    copied: string;
+    revoke: string;
+    revoked: string;
+    revokedBadge: string;
+    calls: string;
+    lastUsed: string;
+    never: string;
+    tools: string;
+  };
 };
 const fr: Copy = {
   title: "Console de la plateforme",
@@ -451,6 +474,29 @@ const fr: Copy = {
     revoked: "Opérateur retiré.",
     revokedBadge: "Retiré",
     ownerOnly: "Seul le propriétaire gère les opérateurs.",
+  },
+  mcp: {
+    title: "Brancher votre assistant (MCP)",
+    intro: "La console expose un serveur MCP : votre Claude (bureau ou Claude Code) lit les chiffres, liste les factures en retard, prépare les rappels, et vous confirmez chaque action. Une clé par usage, avec les seules portées utiles ; chaque écriture est journalisée à votre nom.",
+    endpoint: "Adresse du serveur : {url}",
+    howTo: "Dans Claude, ajoutez un connecteur distant avec cette adresse et la clé en jeton Bearer. Les outils proposés dépendent des portées de la clé.",
+    keys: "Vos clés",
+    keysNone: "Aucune clé.",
+    name: "Nom de la clé (par exemple : Claude sur mon portable)",
+    scopes: "Portées",
+    scopeNames: { "console:read": "Lire les chiffres, les organisations et la supervision", "billing:read": "Lire la facturation", "billing:write": "Envoyer un rappel, enregistrer un paiement", "support:write": "Ajouter une note interne" },
+    create: "Créer la clé",
+    created: "Clé créée.",
+    secretOnce: "Copiez cette clé maintenant : elle ne sera plus affichée.",
+    copy: "Copier la clé",
+    copied: "Clé copiée.",
+    revoke: "Révoquer",
+    revoked: "Clé révoquée.",
+    revokedBadge: "Révoquée",
+    calls: "{n} appel(s)",
+    lastUsed: "dernier appel {day}",
+    never: "jamais utilisée",
+    tools: "Outils : vue d'ensemble, organisations, fiche, supervision, facturation, factures, rappel, paiement, note.",
   },
 };
 const nl: Copy = {
@@ -690,6 +736,29 @@ const nl: Copy = {
     revokedBadge: "Verwijderd",
     ownerOnly: "Alleen de eigenaar beheert de beheerders.",
   },
+  mcp: {
+    title: "Uw assistent koppelen (MCP)",
+    intro: "De console biedt een MCP-server: uw Claude (desktop of Claude Code) leest de cijfers, lijst de te late facturen op, bereidt de herinneringen voor, en u bevestigt elke actie. Eén sleutel per gebruik, met enkel de nuttige rechten; elke schrijfactie wordt op uw naam gelogd.",
+    endpoint: "Adres van de server: {url}",
+    howTo: "Voeg in Claude een externe connector toe met dit adres en de sleutel als Bearer-token. De aangeboden tools hangen af van de rechten van de sleutel.",
+    keys: "Uw sleutels",
+    keysNone: "Geen sleutel.",
+    name: "Naam van de sleutel (bijvoorbeeld: Claude op mijn laptop)",
+    scopes: "Rechten",
+    scopeNames: { "console:read": "Cijfers, organisaties en toezicht lezen", "billing:read": "Facturatie lezen", "billing:write": "Een herinnering sturen, een betaling registreren", "support:write": "Een interne nota toevoegen" },
+    create: "Sleutel aanmaken",
+    created: "Sleutel aangemaakt.",
+    secretOnce: "Kopieer deze sleutel nu: ze wordt niet meer getoond.",
+    copy: "Sleutel kopiëren",
+    copied: "Sleutel gekopieerd.",
+    revoke: "Intrekken",
+    revoked: "Sleutel ingetrokken.",
+    revokedBadge: "Ingetrokken",
+    calls: "{n} oproep(en)",
+    lastUsed: "laatste oproep {day}",
+    never: "nooit gebruikt",
+    tools: "Tools: overzicht, organisaties, fiche, toezicht, facturatie, facturen, herinnering, betaling, nota.",
+  },
 };
 const en: Copy = {
   title: "Platform console",
@@ -927,6 +996,29 @@ const en: Copy = {
     revoked: "Operator revoked.",
     revokedBadge: "Revoked",
     ownerOnly: "Only the owner manages the operators.",
+  },
+  mcp: {
+    title: "Connect your assistant (MCP)",
+    intro: "The console exposes an MCP server: your Claude (desktop or Claude Code) reads the figures, lists the late invoices, prepares the reminders, and you confirm each action. One key per use, with the useful scopes only; every write is journaled in your name.",
+    endpoint: "Server address: {url}",
+    howTo: "In Claude, add a remote connector with this address and the key as Bearer token. The tools offered depend on the key's scopes.",
+    keys: "Your keys",
+    keysNone: "No key.",
+    name: "Name of the key (for example: Claude on my laptop)",
+    scopes: "Scopes",
+    scopeNames: { "console:read": "Read figures, organisations and supervision", "billing:read": "Read billing", "billing:write": "Send a reminder, record a payment", "support:write": "Add an internal note" },
+    create: "Create the key",
+    created: "Key created.",
+    secretOnce: "Copy this key now: it will not be shown again.",
+    copy: "Copy the key",
+    copied: "Key copied.",
+    revoke: "Revoke",
+    revoked: "Key revoked.",
+    revokedBadge: "Revoked",
+    calls: "{n} call(s)",
+    lastUsed: "last call {day}",
+    never: "never used",
+    tools: "Tools: overview, organisations, sheet, supervision, billing, invoices, reminder, payment, note.",
   },
 };
 export const consoleCopy: Record<Locale, Copy> = { fr, nl, en };

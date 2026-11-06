@@ -95,3 +95,23 @@ describe("the platform's billing (console, step 4) and the suspension (step 3)",
     expect(apiRoutes["club/billing"].expect!.GET!.coach).toBe(403);
   });
 });
+
+describe("the MCP server of the console (step 6)", () => {
+  it("declares its tools with a scope, a JSON schema and no personal data; the keys carry known scopes", async () => {
+    const { tools, mcpScopes, mcpKeyCommand, rpcRequest } = await import("../src/domains/mcp/schema");
+    expect(tools.map((t) => t.name)).toEqual(["platform_overview", "list_organizations", "organization", "supervision", "billing_overview", "invoices", "send_reminder", "mark_invoice_paid", "add_note"]);
+    for (const t of tools) {
+      expect(mcpScopes).toContain(t.scope);
+      expect(t.inputSchema.type).toBe("object");
+      expect(t.inputSchema.additionalProperties).toBe(false);
+      expect(t.readOnly).toBe(t.scope.endsWith(":read"));
+    }
+    expect(mcpKeyCommand.safeParse({ action: "createKey", name: "x", scopes: ["console:read"] }).success).toBe(false);
+    expect(mcpKeyCommand.safeParse({ action: "createKey", name: "Claude", scopes: ["console:read", "root"] }).success).toBe(false);
+    expect(rpcRequest.safeParse({ jsonrpc: "2.0", id: 1, method: "tools/list" }).success).toBe(true);
+    expect(rpcRequest.safeParse({ jsonrpc: "1.0", id: 1, method: "tools/list" }).success).toBe(false);
+    expect(apiRoutes["mcp"].expect!.POST!.president).toBe(401);
+    expect(apiRoutes["mcp"].expect!.GET!.anonymous).toBe(405);
+    expect(readFileSync("src/app/api/mcp/route.ts", "utf8")).not.toContain("principal(");
+  });
+});

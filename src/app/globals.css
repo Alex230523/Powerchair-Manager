@@ -2805,6 +2805,13 @@ caption {
   flex-wrap: wrap;
   gap: var(--space-1);
 }
+.mcp-secret code {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
 .console-org-head h2 {
   margin: 0 0 4px;
 }
