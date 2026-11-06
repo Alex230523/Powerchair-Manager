@@ -71,7 +71,8 @@ describe("leaked keys and secrets", () => {
         sessionId: "s",
         note: "key pfmorg_abcd1234_" + "x".repeat(43),
         hook: "whsec_abc",
-        url: "postgresql://pfm:verysecret@db.example.com/pfm",
+        // Built in pieces: this very file is scanned by the first test.
+        url: ["postgresql://pfm", ":verysecret", "@db.example", ".com/pfm"].join(""),
         anthropic: "sk-ant-api03-" + "a".repeat(30),
       }),
     ).toEqual({ job: "mail", ms: 12 });
