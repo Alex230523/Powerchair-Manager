@@ -60,6 +60,21 @@ type Copy = {
     intlMarkPaid: string;
     intlMarkUnpaid: string;
     intlRates: string;
+    intlToFederation: string;
+    intlOffPlatform: string;
+    intlStatus: Record<"recorded" | "sent" | "accepted" | "refused", string>;
+    intlCertificate: string;
+    intlIncoming: string;
+    intlIncomingIntro: string;
+    intlIncomingNone: string;
+    intlFrom: string;
+    intlReceivingClub: string;
+    intlReceivingUnknown: string;
+    intlDecisionNote: string;
+    intlAccept: string;
+    intlRefuse: string;
+    intlDecided: string;
+    intlClassification: string;
   };
   search: string;
   club: string;
@@ -197,6 +212,21 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       intlMarkPaid: "Marquer reçue",
       intlMarkUnpaid: "Marquer à recevoir",
       intlRates: "Le format du club formateur doit être précisé dans l'onglet Clubs.",
+      intlToFederation: "Fédération d'accueil",
+      intlOffPlatform: "Hors plateforme (saisie libre)",
+      intlStatus: { recorded: "Enregistré", sent: "Envoyé, en attente", accepted: "Accepté", refused: "Refusé" },
+      intlCertificate: "Certificat {n}",
+      intlIncoming: "Dossiers reçus de l'étranger",
+      intlIncomingIntro: "Les fédérations de la plateforme vous envoient le dossier d'un joueur qui rejoint un de vos clubs : nom, classification, formation et indemnité, rien d'autre. Vous acceptez, en nommant le club d'accueil si vous le connaissez, ou vous refusez en expliquant.",
+      intlIncomingNone: "Aucun dossier reçu.",
+      intlFrom: "De {federation} ({country}), club {club}",
+      intlReceivingClub: "Club d'accueil",
+      intlReceivingUnknown: "Pas encore connu",
+      intlDecisionNote: "Note pour la fédération d'origine (facultatif)",
+      intlAccept: "Accepter le dossier",
+      intlRefuse: "Refuser le dossier",
+      intlDecided: "Décidé le {day}",
+      intlClassification: "Classification",
     },
     search: "Rechercher un joueur",
     club: "Club",
@@ -272,6 +302,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       TRANSFER_LIMIT: "Le nombre maximum de transferts pour cette saison est atteint.",
       TRANSFER_PAIR_LIMIT: "Un transfert entre ces deux clubs a déjà eu lieu cette saison.",
       FORMAT_REQUIRED: "Précisez d'abord le format de formation du club (onglet Clubs).",
+      COUNTRY_REQUIRED: "Indiquez le pays, ou choisissez une fédération de la plateforme.",
       PROOF_REQUIRED: "Le club entrant doit d'abord déposer la preuve de paiement.",
       REASON_REQUIRED: "Expliquez la raison de la force majeure.",
       CONSENT_REQUIRED: "Le joueur, ou un parent, doit d'abord donner son accord.",
@@ -346,6 +377,21 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       intlMarkPaid: "Als ontvangen markeren",
       intlMarkUnpaid: "Als te ontvangen markeren",
       intlRates: "Het formaat van de opleidende club moet in het tabblad Clubs opgegeven zijn.",
+      intlToFederation: "Ontvangende federatie",
+      intlOffPlatform: "Buiten het platform (vrije invoer)",
+      intlStatus: { recorded: "Geregistreerd", sent: "Verzonden, in afwachting", accepted: "Aanvaard", refused: "Geweigerd" },
+      intlCertificate: "Certificaat {n}",
+      intlIncoming: "Dossiers ontvangen uit het buitenland",
+      intlIncomingIntro: "De federaties van het platform sturen u het dossier van een speler die naar een van uw clubs komt: naam, classificatie, opleiding en vergoeding, niets anders. U aanvaardt, met de ontvangende club als u die kent, of u weigert met een uitleg.",
+      intlIncomingNone: "Geen dossier ontvangen.",
+      intlFrom: "Van {federation} ({country}), club {club}",
+      intlReceivingClub: "Ontvangende club",
+      intlReceivingUnknown: "Nog niet gekend",
+      intlDecisionNote: "Nota voor de federatie van herkomst (facultatief)",
+      intlAccept: "Dossier aanvaarden",
+      intlRefuse: "Dossier weigeren",
+      intlDecided: "Beslist op {day}",
+      intlClassification: "Classificatie",
     },
     search: "Een speler zoeken",
     club: "Club",
@@ -434,6 +480,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       TRANSFER_LIMIT: "Het maximum aantal transfers voor dit seizoen is bereikt.",
       TRANSFER_PAIR_LIMIT: "Er was dit seizoen al een transfer tussen deze twee clubs.",
       FORMAT_REQUIRED: "Geef eerst het opleidingsformaat van de club op (tabblad Clubs).",
+      COUNTRY_REQUIRED: "Geef het land op, of kies een federatie van het platform.",
       PROOF_REQUIRED: "De ontvangende club moet eerst het betalingsbewijs neerleggen.",
       REASON_REQUIRED: "Leg de reden van de overmacht uit.",
       CONSENT_REQUIRED: "De speler, of een ouder, moet eerst akkoord gaan.",
@@ -508,6 +555,21 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       intlMarkPaid: "Mark received",
       intlMarkUnpaid: "Mark to receive",
       intlRates: "The training club's format must be set in the Clubs tab.",
+      intlToFederation: "Receiving federation",
+      intlOffPlatform: "Off the platform (free entry)",
+      intlStatus: { recorded: "Recorded", sent: "Sent, pending", accepted: "Accepted", refused: "Refused" },
+      intlCertificate: "Certificate {n}",
+      intlIncoming: "Dossiers received from abroad",
+      intlIncomingIntro: "The federations of the platform send you the dossier of a player joining one of your clubs: name, classification, training and compensation, nothing else. You accept, naming the receiving club if you know it, or refuse with a note.",
+      intlIncomingNone: "No dossier received.",
+      intlFrom: "From {federation} ({country}), club {club}",
+      intlReceivingClub: "Receiving club",
+      intlReceivingUnknown: "Not known yet",
+      intlDecisionNote: "Note for the federation of origin (optional)",
+      intlAccept: "Accept the dossier",
+      intlRefuse: "Refuse the dossier",
+      intlDecided: "Decided on {day}",
+      intlClassification: "Classification",
     },
     search: "Search a player",
     club: "Club",
@@ -596,6 +658,7 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       TRANSFER_LIMIT: "The maximum number of transfers for this season is reached.",
       TRANSFER_PAIR_LIMIT: "A transfer between these two clubs already took place this season.",
       FORMAT_REQUIRED: "First set the club's training format (Clubs tab).",
+      COUNTRY_REQUIRED: "Give the country, or choose a federation of the platform.",
       PROOF_REQUIRED: "The receiving club must first file the proof of payment.",
       REASON_REQUIRED: "Explain the reason for the force majeure.",
       CONSENT_REQUIRED: "The player, or a parent, must agree first.",

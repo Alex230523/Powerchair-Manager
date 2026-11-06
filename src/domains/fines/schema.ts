@@ -5,10 +5,10 @@ import { z } from "zod";
  * its clubs. The amounts the rules set are offered, the federation can
  * change them; the club sees its own fines, nothing of the others.
  */
-export const fineKinds = ["late", "forfeit", "forfeit_day", "other"] as const;
-export type FineKind = (typeof fineKinds)[number];
-/** BPCF: 25 € a late club, 50 € a forfeit, up to 500 € a day of matches not held. */
-export const fineDefaults: Record<FineKind, number | null> = { late: 2500, forfeit: 5000, forfeit_day: 50000, other: null };
+export { fineKinds, type FineKind } from "../federation/policy";
+import { bpcfPolicy, fineKinds, type FineKind as Kind } from "../federation/policy";
+/** BPCF: 25 € a late club, 50 € a forfeit, up to 500 € a day of matches not held (05/11/2026: the federation's policy may say otherwise). */
+export const fineDefaults: Record<Kind, number | null> = { ...bpcfPolicy.fineDefaults, other: null };
 
 const id = z.uuid();
 export const fineCommand = z.discriminatedUnion("action", [

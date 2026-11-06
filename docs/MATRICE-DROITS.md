@@ -36,6 +36,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/club/security` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/coach-profile` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/communication` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
+| `/api/console` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/courses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/courses/proof` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
@@ -68,6 +69,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/federal-calendar` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/fines` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
 | `/api/federation/commission` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/federation/policy` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/affiliations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/clubs` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
@@ -194,6 +196,7 @@ Notes :
 - `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
 - `/api/circulars` : Circulaires : reçues par les membres et arbitres ; rédaction, envoi, suivi et export par la compétence communication de la fédération
 - `/api/circulars/file` : Pièce jointe d'une circulaire : destinataires et communication de la fédération
+- `/api/console` : Console de l'exploitant de la plateforme (05/11/2026) : comptages et états, organisations, supervision, opérateurs ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
 - `/api/discipline` : Discipline (point 34) : bureau de la fédération (compétence discipline : règles par saison, sanctions proposées, décisions, recours, amendes) ; page du club (présidence et coachs ; recours et paiement des amendes par la présidence) ; ?player= historique d'un joueur (son club et sa fédération) ; ?file= pièce d'un recours
 - `/api/dues/attestations/form` : Formulaire propre à une mutuelle, vierge ou complété (point 9)
@@ -251,6 +254,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/coaches/former` |  |  |  |  |  |  |  |  |  |   |
 | `/communication` |  |  |  |  |  |  |  |  |  |   |
 | `/communication/templates` |  |  |  |  |  |  |  |  |  |   |
+| `/console` |  |  |  |  |  |  |  |  |  |   |
 | `/contacts` |  |  |  |  |  |  |  |  |  |   |
 | `/design` |  |  |  |  |  |  |  |  |  |   |
 | `/desinscription/[id]` |  |  |  |  |  |  |  |  |  |   |
@@ -273,6 +277,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/clubs` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/courses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/commission` |  |  |  |  |  |  |  |  |  |   |
+| `/federation/policy` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/national` |  |  |  |  |  |  |  |  |  |   |

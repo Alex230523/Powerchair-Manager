@@ -3,7 +3,7 @@ import { brusselsToday } from "./chair-sheet";
 import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { finesView } from "@/domains/fines/service";
-import { fineDefaults, fineKinds, type FineKind } from "@/domains/fines/schema";
+import { fineKinds, type FineKind } from "@/domains/fines/schema";
 import { finesCopy } from "./fines-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, Card, EmptyState } from "./ui";
@@ -114,7 +114,7 @@ export function Fines({ locale }: { locale: Locale }) {
             <div className="form-grid">
               <label>
                 {t.amount}
-                <input key={kind} name="amount" inputMode="decimal" required pattern="[0-9]+([.,][0-9]{1,2})?" defaultValue={fineDefaults[kind] !== null ? (fineDefaults[kind]! / 100).toFixed(2) : ""} />
+                <input key={kind} name="amount" inputMode="decimal" required pattern="[0-9]+([.,][0-9]{1,2})?" defaultValue={data.defaults[kind] !== null ? (data.defaults[kind]! / 100).toFixed(2) : ""} />
               </label>
               <label>
                 {t.issuedOn}

@@ -901,10 +901,15 @@ function Provinces({ locale, view, busy, send }: { locale: Locale; view: View; b
   );
 }
 
-/** Point 11: the international transfers the federation records, with their compensation. */
+/** Point 11: the international transfers the federation records, with their compensation; 05/11/2026: sent to the receiving federation when it is on the platform, and the dossiers received. */
 function International({ locale, view, busy, send }: { locale: Locale; view: View; busy: boolean; send: Send }) {
   const t = transfersCopy[locale],
-    b = t.bpcf2;
+    b = t.bpcf2,
+    cc = classificationCopy[locale];
+  const [toFederation, setToFederation] = useState("");
+  const [deciding, setDeciding] = useState<string | null>(null);
+  const tone = { recorded: "neutral", sent: "warning", accepted: "success", refused: "danger" } as const;
+  const stamp = (iso: string) => day(locale, iso.slice(0, 10));
   return (
     <div className="stack">
       <p className="muted">{b.intlIntro}</p>
@@ -921,11 +926,17 @@ function International({ locale, view, busy, send }: { locale: Locale; view: Vie
               profileId: d.get("profile"),
               foreignClub: String(d.get("foreignClub") ?? ""),
               country: String(d.get("country") ?? ""),
+              toFederationId: toFederation || null,
               trainingYears: Number(d.get("years")),
               note: String(d.get("note") ?? ""),
             },
             t.saved,
-          ).then((ok) => ok && form.reset());
+          ).then((ok) => {
+            if (ok) {
+              form.reset();
+              setToFederation("");
+            }
+          });
         }}
       >
         <div className="form-grid">
@@ -947,9 +958,22 @@ function International({ locale, view, busy, send }: { locale: Locale; view: Vie
             <input name="foreignClub" required minLength={2} maxLength={160} />
           </label>
           <label>
-            {b.intlCountry}
-            <input name="country" required minLength={2} maxLength={80} />
+            {b.intlToFederation}
+            <select name="toFederation" value={toFederation} onChange={(e) => setToFederation(e.target.value)}>
+              <option value="">{b.intlOffPlatform}</option>
+              {view.federations.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} ({f.country})
+                </option>
+              ))}
+            </select>
           </label>
+          {!toFederation && (
+            <label>
+              {b.intlCountry}
+              <input name="country" required minLength={2} maxLength={80} />
+            </label>
+          )}
           <label>
             {b.intlYears}
             <input name="years" type="number" min={1} max={30} required defaultValue={1} />
@@ -975,9 +999,12 @@ function International({ locale, view, busy, send }: { locale: Locale; view: Vie
                   {x.full_name} · {x.club} → {x.foreign_club} ({x.country})
                 </strong>
                 <p className="muted small">
-                  {[`${x.training_years} × ${b.formats[x.training_format as keyof typeof b.formats] ?? x.training_format}`, money(locale, x.amount_cents), x.note].filter(Boolean).join(" · ")}
+                  {[`${x.training_years} × ${b.formats[x.training_format as keyof typeof b.formats] ?? x.training_format}`, money(locale, x.amount_cents), x.to_federation, x.to_club, x.certificate ? fill(b.intlCertificate, { n: x.certificate }) : "", x.note, x.decision_note].filter(Boolean).join(" · ")}
                 </p>
-                <Badge tone={x.paid_on ? "success" : "warning"}>{x.paid_on ? b.intlPaid : b.intlToPay}</Badge>
+                <p className="badge-row">
+                  {x.status !== "recorded" && <Badge tone={tone[x.status]}>{b.intlStatus[x.status]}</Badge>}
+                  <Badge tone={x.paid_on ? "success" : "warning"}>{x.paid_on ? b.intlPaid : b.intlToPay}</Badge>
+                </p>
               </div>
               <button type="button" className="button secondary sm" disabled={busy} onClick={() => void send({ action: "internationalPaid", id: x.id, paid: !x.paid_on }, t.saved)}>
                 {x.paid_on ? b.intlMarkUnpaid : b.intlMarkPaid}
@@ -989,6 +1016,79 @@ function International({ locale, view, busy, send }: { locale: Locale; view: Vie
       ) : (
         <EmptyState title={b.intlNone} />
       )}
+      <section aria-labelledby="intl-incoming" className="stack">
+        <h3 id="intl-incoming">{b.intlIncoming}</h3>
+        <p className="muted">{b.intlIncomingIntro}</p>
+        {view.incoming.length ? (
+          <ul className="profile-list">
+            {view.incoming.map((x) => (
+              <li key={x.id} className="intl-dossier">
+                <div>
+                  <strong>
+                    {x.full_name} → {x.foreign_club}
+                  </strong>
+                  <p className="muted small">{fill(b.intlFrom, { federation: x.federation, country: x.country, club: x.club })}</p>
+                  <p className="muted small">
+                    {[`${b.intlClassification} : ${cc.classes[x.classification as keyof typeof cc.classes] ?? x.classification}`, `${x.training_years} × ${b.formats[x.training_format as keyof typeof b.formats] ?? x.training_format}`, money(locale, x.amount_cents), x.note].filter(Boolean).join(" · ")}
+                  </p>
+                  <p className="badge-row">
+                    <Badge tone={tone[x.status]}>{b.intlStatus[x.status]}</Badge>
+                    {x.certificate && <span className="muted small">{fill(b.intlCertificate, { n: x.certificate })}</span>}
+                    {x.decided_at && <span className="muted small">{fill(b.intlDecided, { day: stamp(x.decided_at) })}</span>}
+                    {x.to_club && <span className="muted small">{x.to_club}</span>}
+                  </p>
+                  {x.status === "sent" && deciding === x.id && (
+                    <form
+                      className="stack-form"
+                      aria-label={b.intlAccept}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const d = new FormData(e.currentTarget);
+                        const decision = (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") === "refused" ? "refused" : "accepted";
+                        void send({ action: "internationalDecide", id: x.id, decision, toClubId: String(d.get("club") ?? "") || null, note: String(d.get("note") ?? "") }, t.saved).then((ok) => ok && setDeciding(null));
+                      }}
+                    >
+                      <div className="form-grid">
+                        <label>
+                          {b.intlReceivingClub}
+                          <select name="club" defaultValue="">
+                            <option value="">{b.intlReceivingUnknown}</option>
+                            {view.clubs.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          {b.intlDecisionNote}
+                          <input name="note" maxLength={1000} />
+                        </label>
+                      </div>
+                      <p className="actions">
+                        <button className="button" value="accepted" disabled={busy}>
+                          {b.intlAccept}
+                        </button>
+                        <button className="button secondary" value="refused" disabled={busy}>
+                          {b.intlRefuse}
+                        </button>
+                      </p>
+                    </form>
+                  )}
+                </div>
+                {x.status === "sent" && deciding !== x.id && (
+                  <button type="button" className="button secondary sm" disabled={busy} onClick={() => setDeciding(x.id)}>
+                    {b.intlAccept}
+                    <span className="sr-only"> : {x.full_name}</span>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState title={b.intlIncomingNone} />
+        )}
+      </section>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { fineCommand, fineState, type FineCommand } from "./schema";
 import { autoEntry, cancelAuto } from "../finance/auto";
 import { brusselsToday } from "../people/service";
 import { recordDecision } from "../commission/service";
+import { policyFor } from "../federation/policy-service";
+import { fineDefault, fineKinds } from "../federation/policy";
 export { fineCommand };
 
 /** Point 10: the federation's fines; the federation writes, each club reads its own. */
@@ -52,10 +54,14 @@ export async function finesView(db: Pool, p: Principal) {
     ).rows as Row[];
     const clubs = s.federation ? ((await s.c.query("SELECT id,name FROM organization WHERE kind='club' AND federation_id=$1 ORDER BY lower(name)", [s.org])).rows as { id: string; name: string }[]) : [];
     const fines = rows.map((r) => ({ ...r, state: fineState(r) }));
+    // 05/11/2026: the amounts offered come from the federation's policy (the BPCF scale without one).
+    const policy = await policyFor(s.c, s.federation ? s.org : ((await s.c.query("SELECT federation_id FROM organization WHERE id=$1", [s.org])).rows[0]?.federation_id ?? null));
+    const defaults = Object.fromEntries(fineKinds.map((k) => [k, fineDefault(policy, k)])) as Record<(typeof fineKinds)[number], number | null>;
     return {
       organization_id: s.org,
       mode: s.federation ? ("federation" as const) : ("club" as const),
       canManage: s.manage,
+      defaults,
       clubs,
       fines,
       open: fines.filter((f) => f.state === "open").reduce((n, f) => n + f.amount_cents, 0),

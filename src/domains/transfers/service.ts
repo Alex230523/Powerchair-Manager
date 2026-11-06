@@ -1,6 +1,9 @@
 import { ensureStorage } from "../storage/service";
 import { autoEntry, cancelAuto } from "../finance/auto";
 import { recordDecision } from "../commission/service";
+import { policyFor } from "../federation/policy-service";
+import { certificateNumber } from "../federation/policy";
+import { notice } from "../notifications/notice";
 import type { Pool, PoolClient } from "pg";
 import { fedCan } from "../access/policy";
 import { createHash, randomBytes } from "node:crypto";
@@ -117,9 +120,12 @@ const marketSql = `
     FROM chosen ch JOIN clubs o ON o.id=ch.organization_id LEFT JOIN player_sport_profile sp ON sp.profile_id=ch.id
    ORDER BY lower(ch.full_name)`;
 type MarketRow = { key: string; profile_id: string; full_name: string; birth_date: string | null; club_id: string | null; club: string | null; province: string; team: string | null; classification: string; seasons: number; training_format: string | null };
+export type InternationalRow = { id: string; full_name: string; club: string; foreign_club: string; country: string; training_years: number; training_format: string; amount_cents: number; paid_on: string | null; note: string; created_at: string; status: "recorded" | "sent" | "accepted" | "refused"; certificate: string; decision_note: string; to_federation: string | null; to_club: string | null };
+export type IncomingRow = { id: string; full_name: string; classification: string; club: string; federation: string; country: string; foreign_club: string; training_years: number; training_format: string; amount_cents: number; note: string; created_at: string; status: "sent" | "accepted" | "refused"; certificate: string; decision_note: string; decided_at: string | null; to_club: string | null };
 export type Listed = Omit<MarketRow, "birth_date" | "profile_id" | "classification"> & { age: ReturnType<typeof ageBand>; classification: ReturnType<typeof shownClass>; own: boolean; indemnity: number | null };
 
 async function market(s: Ctx) {
+  const policy = await policyFor(s.c, s.fed);
   if (!s.fed) return [];
   const season = seasonOf(s.today).from;
   return ((await s.c.query(marketSql, [s.fed])).rows as MarketRow[]).map(
@@ -137,7 +143,7 @@ async function market(s: Ctx) {
       own: r.club_id === s.org,
       // Point 6: the BPCF training compensation the current club may ask (seasons played times its format's rate).
       training_format: r.training_format,
-      indemnity: r.club_id ? trainingIndemnity(r.training_format, r.seasons) : null,
+      indemnity: r.club_id ? trainingIndemnity(r.training_format, r.seasons, "national", policy) : null,
     }),
   );
 }
@@ -219,12 +225,32 @@ export async function transfersView(db: Pool, p: Principal) {
     const international = s.federation
       ? (
           await s.c.query(
-            `SELECT i.id,i.full_name,o.name AS club,i.foreign_club,i.country,i.training_years,i.training_format,i.amount_cents,i.paid_on::text AS paid_on,i.note,i.created_at
-               FROM international_transfer i JOIN organization o ON o.id=i.club_id WHERE i.federation_id=$1 ORDER BY i.created_at DESC LIMIT 200`,
+            `SELECT i.id,i.full_name,o.name AS club,i.foreign_club,i.country,i.training_years,i.training_format,i.amount_cents,i.paid_on::text AS paid_on,i.note,i.created_at,
+                    i.status,i.certificate,i.decision_note,f.name AS to_federation,tc.name AS to_club
+               FROM international_transfer i JOIN organization o ON o.id=i.club_id
+               LEFT JOIN organization f ON f.id=i.to_federation_id LEFT JOIN organization tc ON tc.id=i.to_club_id
+              WHERE i.federation_id=$1 ORDER BY i.created_at DESC LIMIT 200`,
             [s.fed],
           )
         ).rows
       : [];
+    // 05/11/2026: the dossiers sent to this federation by another one of the platform (name, training summary, amount: nothing else).
+    const incoming = s.federation
+      ? (
+          await s.c.query(
+            `SELECT i.id,i.full_name,i.classification,o.name AS club,f.name AS federation,f.country_code AS country,i.foreign_club,i.training_years,i.training_format,i.amount_cents,i.note,i.created_at,
+                    i.status,i.certificate,i.decision_note,i.decided_at,tc.name AS to_club
+               FROM international_transfer i JOIN organization o ON o.id=i.club_id JOIN organization f ON f.id=i.federation_id LEFT JOIN organization tc ON tc.id=i.to_club_id
+              WHERE i.to_federation_id=$1 ORDER BY (i.status='sent') DESC,i.created_at DESC LIMIT 200`,
+            [s.fed],
+          )
+        ).rows
+      : [];
+    // The other federations of the platform, to send a dossier to.
+    const federations = s.federation
+      ? ((await s.c.query("SELECT o.id,o.name,o.country_code AS country FROM organization o WHERE o.kind='federation' AND o.id<>$1 ORDER BY o.country_code,lower(o.name)", [s.fed])).rows as { id: string; name: string; country: string }[])
+      : [];
+    const country = s.federation ? ((await s.c.query("SELECT country_code FROM organization WHERE id=$1", [s.fed])).rows[0]?.country_code as string) : "";
     const leaving = s.federation
       ? (
           await s.c.query(
@@ -254,7 +280,10 @@ export async function transfersView(db: Pool, p: Principal) {
         moves: offerMoves(o, s.federation ? "federation" : o.to_organization_id === s.org ? "to" : "from", rules.federationValidation, !!s.federation && freeLeave(o, rules, s.today)),
       })),
       clubs: clubs as { id: string; name: string; province: string; training_format: string }[],
-      international: international as { id: string; full_name: string; club: string; foreign_club: string; country: string; training_years: number; training_format: string; amount_cents: number; paid_on: string | null; note: string; created_at: string }[],
+      international: international as InternationalRow[],
+      incoming: incoming as IncomingRow[],
+      federations,
+      country,
       leaving: leaving as { id: string; full_name: string; club: string }[],
       can: { request: s.players && !!s.fed, rules: s.federation },
     };
@@ -302,6 +331,17 @@ export async function sheetView(db: Pool, p: Principal, person: string) {
 /* ---------------------------------------------------------- Notifications */
 
 type Recipient = { id: string; email: string; name: string; locale: Lang; organization: string };
+/** The presidency and the licence workers of a federation, for the notices of a dossier. */
+async function federationOfficers(c: PoolClient, fed: string) {
+  return (
+    await c.query(
+      `SELECT DISTINCT u.id AS user_id,u.email,u.name,pe.locale FROM role_assignment r JOIN "user" u ON u.id=r.user_id AND u.active LEFT JOIN person pe ON pe.user_id=u.id
+        WHERE r.organization_id=$1 AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())
+          AND (r.role='federation_president' OR (r.role='federation_worker' AND 'federation.licences'=ANY(r.grants)))`,
+      [fed],
+    )
+  ).rows as { user_id: string; email: string; name: string; locale: string | null }[];
+}
 async function officers(c: PoolClient, org: string) {
   const rows = (
     await c.query(
@@ -460,17 +500,39 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
           )
         ).rows[0] as { id: string; full_name: string; organization_id: string; training_format: string } | undefined;
         if (!who) throw new AccessError("NOT_FOUND", 404);
-        const amount = trainingIndemnity(who.training_format, command.trainingYears, "international");
+        const amount = trainingIndemnity(who.training_format, command.trainingYears, "international", await policyFor(s.c, s.fed));
         if (amount === null) throw new AccessError("FORMAT_REQUIRED", 409);
+        // 05/11/2026: to a federation of the platform, the dossier is sent; its country is the dossier's country.
+        const to = command.toFederationId
+          ? ((await s.c.query("SELECT id,name,country_code FROM organization WHERE id=$1 AND kind='federation' AND id<>$2", [command.toFederationId, s.fed])).rows[0] as { id: string; name: string; country_code: string } | undefined)
+          : undefined;
+        if (command.toFederationId && !to) throw new AccessError("NOT_FOUND", 404);
+        const country = to ? to.country_code : command.country.trim();
+        if (country.length < 2) throw new AccessError("COUNTRY_REQUIRED", 409);
+        const classification = shownClass((await s.c.query("SELECT classification FROM player_sport_profile WHERE profile_id=$1", [who.id])).rows[0]?.classification);
         const id = (
           await s.c.query(
-            `INSERT INTO international_transfer(federation_id,club_id,profile_id,full_name,foreign_club,country,training_years,training_format,amount_cents,note,created_by)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-            [s.fed, who.organization_id, who.id, who.full_name, command.foreignClub, command.country, command.trainingYears, who.training_format, amount, command.note ?? "", s.userId],
+            `INSERT INTO international_transfer(federation_id,club_id,profile_id,full_name,foreign_club,country,training_years,training_format,amount_cents,note,created_by,to_federation_id,status,classification)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
+            [s.fed, who.organization_id, who.id, who.full_name, command.foreignClub, country, command.trainingYears, who.training_format, amount, command.note ?? "", s.userId, to?.id ?? null, to ? "sent" : "recorded", classification],
           )
         ).rows[0].id as string;
         await s.c.query("UPDATE club_person SET status='transferred',version=version+1,updated_at=now() WHERE id=$1", [who.id]);
-        await recordDecision(s.c, s.fed, s.userId, { kind: "international", subject: `${who.full_name} → ${command.foreignClub} (${command.country})`, decision: `Transfert international enregistré · indemnité ${(amount / 100).toFixed(2)} €`, reference: id });
+        await recordDecision(s.c, s.fed, s.userId, { kind: "international", subject: `${who.full_name} → ${command.foreignClub} (${country})`, decision: `Transfert international ${to ? "envoyé à " + to.name : "enregistré"} · indemnité ${(amount / 100).toFixed(2)} €`, reference: id });
+        if (to)
+          await notice(
+            s.c,
+            to.id,
+            await federationOfficers(s.c, to.id),
+            {
+              fr: { title: "Dossier de transfert international reçu", message: `${s.orgName} vous envoie le dossier de ${who.full_name} (${command.foreignClub}). À accepter ou refuser.` },
+              nl: { title: "Internationaal transferdossier ontvangen", message: `${s.orgName} stuurt u het dossier van ${who.full_name} (${command.foreignClub}). Te aanvaarden of te weigeren.` },
+              en: { title: "International transfer dossier received", message: `${s.orgName} sends you the dossier of ${who.full_name} (${command.foreignClub}). To accept or refuse.` },
+            },
+            "/transfers",
+            `international:${id}:sent`,
+            "administrative",
+          );
         // Like a domestic transfer: the player leaves their teams today.
         await s.c.query(
           "UPDATE team_membership SET ends_on=GREATEST(starts_on,CURRENT_DATE),cancelled=starts_on>CURRENT_DATE,closed_at=now() WHERE organization_id=$1 AND profile_id=$2 AND (ends_on IS NULL OR ends_on>CURRENT_DATE)",
@@ -480,6 +542,59 @@ export async function transferExecute(db: Pool, p: Principal, command: TransferC
         await audit(s.c, who.organization_id, s.userId, "people.transfer.out", who.id);
         await tell(s.c, await officers(s.c, who.organization_id), "validated", { name: who.full_name, club: command.foreignClub, season: seasonOf(s.today).label }, id);
         return { ok: true as const, id };
+      }
+
+      if (command.action === "internationalDecide") {
+        // 05/11/2026: the receiving federation decides; the origin federation is told and both journals keep it.
+        if (!s.federation || !s.fed) throw new AccessError("FORBIDDEN");
+        const fed = s.fed;
+        const row = (
+          await s.c.query(
+            `SELECT i.id,i.full_name,i.foreign_club,i.federation_id,f.name AS from_federation FROM international_transfer i JOIN organization f ON f.id=i.federation_id
+              WHERE i.id=$1 AND i.to_federation_id=$2 AND i.status='sent' FOR UPDATE OF i`,
+            [command.id, s.fed],
+          )
+        ).rows[0] as { id: string; full_name: string; foreign_club: string; federation_id: string; from_federation: string } | undefined;
+        if (!row) throw new AccessError("NOT_FOUND", 404);
+        let toClub: { id: string; name: string } | null = null;
+        if (command.toClubId) {
+          toClub = (await s.c.query("SELECT id,name FROM organization WHERE id=$1 AND kind='club' AND federation_id=$2", [command.toClubId, s.fed])).rows[0] ?? null;
+          if (!toClub) throw new AccessError("NOT_FOUND", 404);
+        }
+        let certificate = "";
+        if (command.decision === "accepted") {
+          const year = Number(s.today.slice(0, 4));
+          const n = (await s.c.query("SELECT count(*)::int AS n FROM international_transfer WHERE to_federation_id=$1 AND certificate LIKE $2", [s.fed, `CIT-${year}-%`])).rows[0].n as number;
+          certificate = certificateNumber(year, n + 1);
+        }
+        await s.c.query("UPDATE international_transfer SET status=$3,decided_at=now(),decided_by=$4,decision_note=$5,to_club_id=$6,certificate=$7 WHERE id=$1 AND to_federation_id=$2", [
+          row.id,
+          s.fed,
+          command.decision,
+          s.userId,
+          command.note,
+          toClub?.id ?? null,
+          certificate,
+        ]);
+        const subject = `${row.full_name} ← ${row.from_federation}`;
+        const decision = command.decision === "accepted" ? `Transfert international accepté${toClub ? " · " + toClub.name : ""} · certificat ${certificate}` : `Transfert international refusé${command.note ? " · " + command.note : ""}`;
+        await recordDecision(s.c, fed, s.userId, { kind: "international", subject, decision, reference: row.id });
+        await recordDecision(s.c, row.federation_id, s.userId, { kind: "international", subject: `${row.full_name} → ${s.orgName}`, decision, reference: row.id, signed: false });
+        await audit(s.c, fed, s.userId, `transfer.international.${command.decision}`, row.id);
+        await notice(
+          s.c,
+          row.federation_id,
+          await federationOfficers(s.c, row.federation_id),
+          {
+            fr: { title: command.decision === "accepted" ? "Transfert international accepté" : "Transfert international refusé", message: `${s.orgName} : ${row.full_name}${certificate ? " · certificat " + certificate : ""}${command.note ? " · " + command.note : ""}` },
+            nl: { title: command.decision === "accepted" ? "Internationale transfer aanvaard" : "Internationale transfer geweigerd", message: `${s.orgName}: ${row.full_name}${certificate ? " · certificaat " + certificate : ""}${command.note ? " · " + command.note : ""}` },
+            en: { title: command.decision === "accepted" ? "International transfer accepted" : "International transfer refused", message: `${s.orgName}: ${row.full_name}${certificate ? " · certificate " + certificate : ""}${command.note ? " · " + command.note : ""}` },
+          },
+          "/transfers",
+          `international:${row.id}:${command.decision}`,
+          "administrative",
+        );
+        return { ok: true as const, certificate };
       }
 
       if (command.action === "rules" || command.action === "province") {

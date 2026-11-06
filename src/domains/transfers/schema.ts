@@ -10,26 +10,12 @@ const id = z.uuid();
 const text = (n: number) => z.string().trim().max(n);
 
 /** Point 6: the training format of a club (BPCF 1/12), set by the federation. */
-export const trainingFormats = ["academy", "elite", "elite_certified"] as const;
-export type TrainingFormat = (typeof trainingFormats)[number];
-/** Per year of training, in cents: national and international transfers. */
-export const trainingRates: Record<"national" | "international", Record<TrainingFormat, number>> = {
-  national: { academy: 5000, elite: 12500, elite_certified: 25000 },
-  international: { academy: 50000, elite: 75000, elite_certified: 100000 },
-};
-/** Point 11: the file fee of an international transfer, and the caps. */
-export const internationalFileFeeCents = 25000;
-export const indemnityCaps = { national: 50000, international: 300000 } as const;
-/**
- * The BPCF training compensation: years (one at least) times the rate of the
- * training club's format, capped; an international one adds the file fee.
- * No format known: nothing to suggest.
- */
-export function trainingIndemnity(format: string | null | undefined, years: number, scope: "national" | "international" = "national") {
-  if (!format || !(trainingFormats as readonly string[]).includes(format)) return null;
-  const base = Math.max(1, Math.floor(years)) * trainingRates[scope][format as TrainingFormat] + (scope === "international" ? internationalFileFeeCents : 0);
-  return Math.min(indemnityCaps[scope], base);
-}
+export { trainingFormats, type TrainingFormat, trainingIndemnity } from "../federation/policy";
+import { bpcfPolicy, trainingFormats } from "../federation/policy";
+/** The BPCF 2025 scale (05/11/2026: read from the federation's policy; these stay for the tests and the texts). */
+export const trainingRates = bpcfPolicy.trainingRates;
+export const internationalFileFeeCents = bpcfPolicy.internationalFileFeeCents;
+export const indemnityCaps = bpcfPolicy.indemnityCaps;
 const window = z.object({ from: z.iso.date(), to: z.iso.date() }).refine((w) => w.from <= w.to, { message: "WINDOW" });
 export const rulesSchema = z.object({
   windows: z.array(window).max(12),
@@ -105,11 +91,16 @@ export const transferCommand = z.discriminatedUnion("action", [
     action: z.literal("international"),
     profileId: id,
     foreignClub: text(160).min(2),
-    country: text(80).min(2),
+    /** The country, free when the other federation is not on the platform; otherwise its country. */
+    country: text(80).default(""),
+    /** 05/11/2026: the receiving federation, when it is on the platform: the dossier is sent to it. */
+    toFederationId: id.nullable().default(null),
     trainingYears: z.number().int().min(1).max(30),
     note: text(1000).default(""),
   }),
   z.object({ action: z.literal("internationalPaid"), id, paid: z.boolean() }),
+  /** 05/11/2026: the receiving federation accepts (naming the club, if known) or refuses the dossier. */
+  z.object({ action: z.literal("internationalDecide"), id, decision: z.enum(["accepted", "refused"]), toClubId: id.nullable().default(null), note: text(1000).default("") }),
 ]);
 export type TransferCommand = z.infer<typeof transferCommand>;
 

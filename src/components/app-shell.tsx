@@ -514,6 +514,30 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
   ];
   const orgName = state?.selected?.organization_name ?? (state ? t.noContext : "");
   if (!signedIn || signedOut) return <GuestShell locale={locale}>{children}</GuestShell>;
+  // Console (05/11/2026): the operator's console has its own bar, never the club menu.
+  if (/^\/(fr|nl|en)\/console(\/|$)/.test(path))
+    return (
+      <div className="guest-shell console-shell">
+        <header className="guest-bar console-bar">
+          <Link className="brand" href={`/${locale}/console`}>
+            <BrandMark size={28} />
+            <span className="brand-name">{t.brandName}</span>
+            <Badge tone="warning">{t.console}</Badge>
+          </Link>
+          <div className="guest-tools">
+            <LanguageMenu t={t} locale={locale} />
+            <Link className="button secondary sm" href={`/${locale}`}>
+              {t.consoleBack}
+            </Link>
+            <button type="button" className="button secondary sm" disabled={busy} onClick={() => void signOut()}>
+              {t.signOut}
+            </button>
+          </div>
+        </header>
+        {children}
+        <ToastHost locale={locale} />
+      </div>
+    );
   return (
     <ScopeProvider
       organizationId={state?.selected?.kind === "club" ? state.selected.organization_id : null}
