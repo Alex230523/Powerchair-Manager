@@ -7,6 +7,8 @@ import { transferExecute, transfersView } from "../../src/domains/transfers/serv
 import { policyExecute, policyView } from "../../src/domains/federation/policy-service";
 import { finesView } from "../../src/domains/fines/service";
 import { commissionView } from "../../src/domains/commission/service";
+import { registryExecute, registryView } from "../../src/domains/classification/registry";
+import { playerProfileView } from "../../src/domains/player-profile/service";
 
 /**
  * International (05/11/2026): two federations of two countries on the
@@ -17,7 +19,7 @@ import { commissionView } from "../../src/domains/commission/service";
 const schema = "intl_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
-let bpcf: string, knvb: string, clubA: string, clubN: string, be: Principal, nl: Principal, nlWorker: Principal, presidentA: Principal, danProfile: string;
+let bpcf: string, knvb: string, clubA: string, clubN: string, be: Principal, nl: Principal, nlWorker: Principal, presidentA: Principal, presidentN: Principal, danProfile: string, danPerson: string;
 
 async function actor(org: string, role: string, name: string, grants: string[] = []) {
   const userId = randomUUID(),
@@ -44,7 +46,9 @@ beforeAll(async () => {
   nl = await actor(knvb, "federation_president", "Voorzitter NL");
   nlWorker = await actor(knvb, "federation_worker", "Scheidsrechters NL", ["federation.referees"]);
   presidentA = await actor(clubA, "club_president", "Président A");
+  presidentN = await actor(clubN, "club_president", "Voorzitter N");
   const person = (await db.query("INSERT INTO person DEFAULT VALUES RETURNING id")).rows[0].id;
+  danPerson = person;
   danProfile = (await db.query("INSERT INTO club_person(organization_id,person_id,full_name,birth_date,directory_roles,status,phone) VALUES($1,$2,'Dan Leroy','1999-05-05','{player}','active','0470 11 22 33') RETURNING id", [clubA, person])).rows[0].id;
   await db.query("INSERT INTO player_sport_profile(profile_id,organization_id,classification) VALUES($1,$2,'PF1') ON CONFLICT DO NOTHING", [danProfile, clubA]);
 });
@@ -118,4 +122,47 @@ it("sends a dossier from one federation to the other, which accepts it with a ce
     ["international", 1],
   ]);
   expect((await db.query("SELECT count(*)::int AS n FROM mail_job WHERE organization_id=$1 AND resource_id=$2", [bpcf, `international:${id}:accepted`])).rows[0].n).toBe(1);
+});
+
+it("keeps the person's identity and classification across clubs and countries: registry, dossier, arrival", async () => {
+  // Every person carries an identity code; the Belgian federation records Dan's classification by hand (older than the platform).
+  const code = (await db.query("SELECT identity_code FROM person WHERE id=$1", [danPerson])).rows[0].identity_code as string;
+  expect(code).toMatch(/^PFM-[0-9A-F]{10}$/);
+  await expect(registryView(db, presidentA)).rejects.toMatchObject({ code: "FEDERATION_ONLY" });
+  // Dan already left for Rotterdam (dossier accepted above): no longer an active player of a Belgian club, but his person is known.
+  expect((await registryView(db, be)).players.map((x) => x.full_name)).not.toContain("Dan Leroy");
+  await expect(registryExecute(db, be, { action: "record", identityCode: "PFM-0000000000", classification: "PF2", decidedOn: "2025-03-01", validUntil: null, classifier: "", international: false, note: "" }, bpcf)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await registryExecute(db, be, { action: "record", identityCode: code.toLowerCase(), classification: "PF2", decidedOn: "2025-03-01", validUntil: "2027-03-01", classifier: "Dr Peeters", international: false, note: "Avant la plateforme" }, bpcf);
+  const after = await registryView(db, be);
+  expect(after.records.map((r) => [r.identity_code, r.full_name, r.classification, r.source, r.valid_until])).toEqual([[code, "Dan Leroy", "PF2", "manual", "2027-03-01"]]);
+  // The former club's sheet (transferred) is left alone; the player's page shows the code and the record all the same.
+  expect((await db.query("SELECT classification FROM player_sport_profile WHERE profile_id=$1", [danProfile])).rows[0]?.classification ?? "not_classified").not.toBe("PF2");
+  const sheet = await playerProfileView(db, presidentA, danProfile);
+  expect(sheet.identity_code).toBe(code);
+  // The latest record wins: the one the Dutch federation wrote from the dossier (PF1, recognised from abroad), newer than the 2025 one.
+  expect(sheet.registry).toMatchObject({ classification: "PF1", federation: "KNVB Powerchair", international: true });
+  // The Dutch federation sees nothing of Dan in its registry (not its club), and cannot remove the Belgian record.
+  expect((await registryView(db, nl)).players.map((x) => x.full_name)).not.toContain("Dan Leroy");
+  await expect(registryExecute(db, nl, { action: "remove", id: after.records[0].id }, knvb)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  // The dossier carried his code and his person.
+  const dossier = (await db.query("SELECT identity_code,classification,person_id,to_club_id FROM international_transfer WHERE profile_id=$1", [danProfile])).rows[0];
+  expect(dossier).toMatchObject({ identity_code: code, person_id: danPerson, to_club_id: clubN });
+  // The receiving club opens the sheet: same person, same code, the registry followed into the Dutch club.
+  const arrivalsBefore = (await transfersView(db, presidentN)).arrivals;
+  expect(arrivalsBefore.map((a) => [a.full_name, a.identity_code, a.arrival_profile_id])).toEqual([["Dan Leroy", code, null]]);
+  await expect(run(presidentA, clubA, { action: "internationalArrive", id: arrivalsBefore[0].id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  const { profileId } = (await run(presidentN, clubN, { action: "internationalArrive", id: arrivalsBefore[0].id })) as unknown as { profileId: string };
+  const created = (await db.query("SELECT person_id,full_name,status,organization_id FROM club_person WHERE id=$1", [profileId])).rows[0];
+  expect(created).toMatchObject({ person_id: danPerson, full_name: "Dan Leroy", status: "active", organization_id: clubN });
+  expect((await db.query("SELECT classification,classification_status FROM player_sport_profile WHERE profile_id=$1", [profileId])).rows[0]).toEqual({ classification: "PF1", classification_status: "validated" });
+  expect((await transfersView(db, presidentN)).arrivals[0].arrival_profile_id).toBe(profileId);
+  await expect(run(presidentN, clubN, { action: "internationalArrive", id: arrivalsBefore[0].id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  // Now the Dutch registry lists him, with the Belgian record; and the Belgian federation's records still show him.
+  const nlRegistry = await registryView(db, nl);
+  expect(nlRegistry.players.map((x) => [x.full_name, x.club, x.identity_code, x.current?.federation, x.current?.source])).toEqual([["Dan Leroy", "Rotterdam PC", code, "KNVB Powerchair", "dossier"]]);
+  expect(nlRegistry.records.map((r) => [r.classification, r.source])).toEqual([
+    ["PF1", "dossier"],
+    ["PF2", "manual"],
+  ]);
+  expect((await playerProfileView(db, presidentN, profileId)).identity_code).toBe(code);
 });

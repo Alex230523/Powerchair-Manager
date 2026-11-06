@@ -48,6 +48,22 @@ test("the federation sets its country and its scale, every save versioned", asyn
     await page.getByRole("button", { name: "Revenir au barème BPCF 2025" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Revenir au barème BPCF 2025" }).click();
     await expect(page.getByText("Barème BPCF 2025, sans modification.")).toBeVisible();
+    // The registry: a player of a club of this federation, recorded by hand, the sheet following.
+    const club = (await db.query("INSERT INTO organization(name,kind,federation_id) VALUES('Club registre','club',$1) RETURNING id", [fed])).rows[0].id as string;
+    const person = (await db.query("INSERT INTO person DEFAULT VALUES RETURNING id,identity_code")).rows[0] as { id: string; identity_code: string };
+    const profile = (await db.query("INSERT INTO club_person(organization_id,person_id,full_name,birth_date,directory_roles,status,phone) VALUES($1,$2,'Rafa Dupont','2001-02-02','{player}','active','0470 00 00 00') RETURNING id", [club, person.id])).rows[0].id as string;
+    await page.goto("/fr/federation/registry");
+    await expect(page.getByRole("rowheader", { name: "Rafa Dupont" })).toBeVisible();
+    await expect(page.getByText(person.identity_code).first()).toBeVisible();
+    await page.getByRole("radio", { name: "Par code d'identité" }).check();
+    await page.getByRole("textbox", { name: /Par code d'identité/ }).fill(person.identity_code.toLowerCase());
+    await page.getByLabel("Décidée le").fill("2026-01-15");
+    await page.getByLabel("Classificateur ou organe (facultatif)").fill("Dr Janssens");
+    await axe(page, "registry");
+    await page.getByRole("button", { name: "Inscrire", exact: true }).click();
+    await expect(page.getByText("PF1 · Fédé règlement · 15 janv. 2026").first()).toBeVisible();
+    await expect.poll(async () => (await db.query("SELECT classification FROM player_sport_profile WHERE profile_id=$1", [profile])).rows[0]?.classification).toBe("PF1");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   } finally {
     await db.end();
   }

@@ -18,6 +18,7 @@ import { docAccess, type Doc } from "../documents/access";
 import { chairsFor } from "../equipment/service";
 import { playerMatchStats } from "../competitions/service";
 import { seal, unseal } from "../notifications/crypto";
+import { currentRecord } from "../classification/registry";
 import { logSensitiveAccess } from "../club/governance";
 import { careFor, saveCare } from "../trips/service";
 import {
@@ -192,6 +193,9 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
       classification_status: "unverified",
       classification_note: "",
     };
+    // International, step 3 (06/11/2026): the person's identity code and the registry record that applies.
+    const identity = (await c.query("SELECT pe.identity_code,pe.id AS person_id FROM club_person cp JOIN person pe ON pe.id=cp.person_id WHERE cp.id=$1 AND cp.organization_id=$2", [id, org])).rows[0] as { identity_code: string; person_id: string } | undefined;
+    const registry = identity ? await currentRecord(c, identity.person_id, day) : null;
     const supportRow = (
       await c.query(
         "SELECT support_needs,safety_notes,emergency_contact,confidential_ciphertext,version FROM player_support_profile WHERE profile_id=$1 AND organization_id=$2",
@@ -328,6 +332,8 @@ export async function playerProfileView(db: Pool, p: Principal, id: string) {
         })),
       },
       sport,
+      identity_code: identity?.identity_code ?? "",
+      registry: registry ? { classification: registry.classification, federation: registry.federation, decided_on: registry.decided_on, valid_until: registry.valid_until, international: registry.international } : null,
       support: can.viewSupport
         ? {
             support_needs: supportRow?.support_needs ?? "",

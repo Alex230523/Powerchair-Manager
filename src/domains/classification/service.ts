@@ -452,6 +452,15 @@ export async function classificationExecute(db: Pool, p: Principal, command: Cla
              classification_checked_by=EXCLUDED.classification_checked_by,classification_checked_at=now(),updated_by=EXCLUDED.updated_by,updated_at=now(),version=player_sport_profile.version+1`,
           [l.profile_id, l.organization_id, result.classification, result.status, result.note, s.userId],
         );
+        // International, step 3: a PF1/PF2 decision goes to the person's registry, with this federation as classifier.
+        if (result.status === "validated" && (result.classification === "PF1" || result.classification === "PF2")) {
+          const personId = (await s.c.query("SELECT person_id FROM club_person WHERE id=$1", [l.profile_id])).rows[0]?.person_id as string | undefined;
+          if (personId)
+            await s.c.query(
+              "INSERT INTO classification_record(person_id,classification,decided_on,valid_until,federation_id,classifier,international,source,session_id,note,created_by) VALUES($1,$2,$3,NULL,$4,'',false,'session',$5,$6,$7)",
+              [personId, result.classification, session.day, s.fed, session.id, l.comment ?? "", s.userId],
+            );
+        }
         await audit(s.c, l.organization_id, s.userId, "classification.session.decision", l.profile_id, { session: session.id, decision: l.decision, federation: s.fed });
         await tell(s.c, l.organization_id, [...(await presidents(s.c, l.organization_id)), ...(await aroundPlayer(s.c, l.organization_id, l.profile_id))], {
           person: l.full_name,

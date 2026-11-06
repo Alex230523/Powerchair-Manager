@@ -257,6 +257,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           ...item("/federation/commission", "commission", "document", fed("federation.licences", "federation.discipline")),
                           // International (05/11/2026): the federation's rulebook (amounts) and country.
                           ...item("/federation/policy", "policy", "globe", fed("federation.licences")),
+                          // International, step 3 (06/11/2026): the registry of classifications.
+                          ...item("/federation/registry", "registry", "medal", fed("federation.licences")),
                           ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
                           ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
                           ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),

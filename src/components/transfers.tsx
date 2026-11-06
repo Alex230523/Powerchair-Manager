@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { sheetView, threadsView, transfersView } from "@/domains/transfers/service";
@@ -61,6 +62,8 @@ export function Transfers({ locale }: { locale: Locale }) {
             </>
           )}
           {sheet && <SheetDialog locale={locale} view={data} who={sheet} busy={busy} send={send} close={() => setSheet(null)} />}
+          {/* 06/11/2026: the players arriving from abroad, accepted by the federation for this club. */}
+          {data.mode === "club" && data.arrivals.length > 0 && <Arrivals locale={locale} view={data} busy={busy} send={send} />}
           {/* 24: the conversations between clubs, here since the messaging page is gone. */}
           {data.mode === "club" && <InterclubThreads locale={locale} />}
         </>
@@ -1027,7 +1030,10 @@ function International({ locale, view, busy, send }: { locale: Locale; view: Vie
                   <strong>
                     {x.full_name} → {x.foreign_club}
                   </strong>
-                  <p className="muted small">{fill(b.intlFrom, { federation: x.federation, country: x.country, club: x.club })}</p>
+                  <p className="muted small">
+                    {fill(b.intlFrom, { federation: x.federation, country: x.country, club: x.club })}
+                    {x.identity_code ? <> · <code>{x.identity_code}</code></> : null}
+                  </p>
                   <p className="muted small">
                     {[`${b.intlClassification} : ${cc.classes[x.classification as keyof typeof cc.classes] ?? x.classification}`, `${x.training_years} × ${b.formats[x.training_format as keyof typeof b.formats] ?? x.training_format}`, money(locale, x.amount_cents), x.note].filter(Boolean).join(" · ")}
                   </p>
@@ -1090,5 +1096,42 @@ function International({ locale, view, busy, send }: { locale: Locale; view: Vie
         )}
       </section>
     </div>
+  );
+}
+
+/** 06/11/2026: the club opens the sheet of a player arriving from abroad, linked to the same person (identity code, registry). */
+function Arrivals({ locale, view, busy, send }: { locale: Locale; view: View; busy: boolean; send: Send }) {
+  const b = transfersCopy[locale].bpcf2,
+    cc = classificationCopy[locale];
+  return (
+    <section className="card" aria-labelledby="intl-arrivals">
+      <h2 id="intl-arrivals" className="card-title">
+        {b.arrivals}
+      </h2>
+      <p className="muted">{b.arrivalsIntro}</p>
+      <ul className="profile-list">
+        {view.arrivals.map((x) => (
+          <li key={x.id}>
+            <div>
+              <strong>{x.full_name}</strong>
+              <p className="muted small">
+                {fill(b.intlFrom, { federation: x.federation, country: x.country, club: x.club })} · <code>{x.identity_code}</code> · {b.intlClassification} : {cc.classes[x.classification as keyof typeof cc.classes] ?? x.classification}
+                {x.certificate ? ` · ${fill(b.intlCertificate, { n: x.certificate })}` : ""}
+              </p>
+            </div>
+            {x.arrival_profile_id ? (
+              <Link className="button secondary sm" href={`/${locale}/players/${x.arrival_profile_id}`}>
+                {b.arrivalOpen}
+              </Link>
+            ) : (
+              <button type="button" className="button sm" disabled={busy} onClick={() => void send({ action: "internationalArrive", id: x.id }, b.arrivalDone)}>
+                {b.arrivalCreate}
+                <span className="sr-only"> : {x.full_name}</span>
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

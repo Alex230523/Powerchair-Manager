@@ -55,6 +55,7 @@ import e52 from "../../../content/changelog/2026-11-05-abonnement.json";
 import e53 from "../../../content/changelog/2026-11-05-international.json";
 import e54 from "../../../content/changelog/2026-11-05-iteration.json";
 import e55 from "../../../content/changelog/2026-11-05-retours.json";
+import e56 from "../../../content/changelog/2026-11-06-registre.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -113,4 +114,5 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-05-international", data: e53 },
   { id: "2026-11-05-iteration", data: e54 },
   { id: "2026-11-05-retours", data: e55 },
+  { id: "2026-11-06-registre", data: e56 },
 ];

@@ -758,6 +758,16 @@ export function PlayerProfile({ locale, id, embedded = false, onChanged, initial
                   }
                 </Badge>
               </dd>
+              <dt>{t.identityCode}</dt>
+              <dd>
+                <code>{view.identity_code}</code> <span className="muted small">{t.identityHint}</span>
+              </dd>
+              <dt>{t.registry}</dt>
+              <dd>
+                {view.registry
+                  ? `${t.registryLine.replace("{classification}", view.registry.classification).replace("{federation}", view.registry.federation).replace("{day}", day(view.registry.decided_on))}${view.registry.valid_until ? ` · ${t.validUntil.toLocaleLowerCase()} ${day(view.registry.valid_until)}` : ""}${view.registry.international ? ` · ${t.registryInternational}` : ""}`
+                  : t.registryNone}
+              </dd>
               <dt>{licensesCopy[locale].license}</dt>
               <dd>
                 {view.license

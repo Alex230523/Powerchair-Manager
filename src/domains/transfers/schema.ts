@@ -101,6 +101,8 @@ export const transferCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("internationalPaid"), id, paid: z.boolean() }),
   /** 05/11/2026: the receiving federation accepts (naming the club, if known) or refuses the dossier. */
   z.object({ action: z.literal("internationalDecide"), id, decision: z.enum(["accepted", "refused"]), toClubId: id.nullable().default(null), note: text(1000).default("") }),
+  /** 06/11/2026: the receiving club opens the player's sheet from the accepted dossier, linked to the same person. */
+  z.object({ action: z.literal("internationalArrive"), id }),
 ]);
 export type TransferCommand = z.infer<typeof transferCommand>;
 
