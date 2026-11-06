@@ -181,6 +181,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Console, série E : connecteur MCP de chaque club, console des pays](evolutions/2026-11-06-zzzzzzzzzz-console-serie-e.md) |
 | 06/11/2026 | [Sécurité : audit Broken Access Control (IDOR/BOLA), affiliation validée par la fédération](evolutions/2026-11-06-zzzzzzzzzzz-securite-bola.md) |
 | 06/11/2026 | [Sécurité : audit d'injection SQL et garde-fou automatique](evolutions/2026-11-06-zzzzzzzzzzzz-securite-injection-sql.md) |
+| 06/11/2026 | [Sécurité : fuite de clés API et de secrets](evolutions/2026-11-06-zzzzzzzzzzzzz-securite-secrets.md) |
 
 ## Convention
 

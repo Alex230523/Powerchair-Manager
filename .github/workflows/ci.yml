@@ -10,6 +10,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Security (06/11/2026): the workflow's token reads the code, nothing more.
+permissions:
+  contents: read
+
 env:
   DATABASE_URL: postgresql://pfm:pfm_ci@localhost:5432/pfm
 
