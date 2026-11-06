@@ -8,6 +8,7 @@ import type { mcpKeys } from "@/domains/mcp/service";
 import type { assistantView, AssistantTurn } from "@/domains/assistant/service";
 import type { alertPrefView, reportsView } from "@/domains/console/metrics";
 import type { consoleSupport, consoleTicket } from "@/domains/support/service";
+import type { consoleCountries } from "@/domains/console/service";
 import { operatorRoles } from "@/domains/console/schema";
 import { planBases, planPeriods } from "@/domains/billing/schema";
 import { formatCents } from "@/domains/dashboard/summary";
@@ -28,8 +29,9 @@ type Keys = Awaited<ReturnType<typeof mcpKeys>>;
 type Alerts = Awaited<ReturnType<typeof alertPrefView>>;
 type Reports = Awaited<ReturnType<typeof reportsView>>;
 type SupportList = Awaited<ReturnType<typeof consoleSupport>>;
+type Countries = Awaited<ReturnType<typeof consoleCountries>>;
 type SupportTicket = Awaited<ReturnType<typeof consoleTicket>>;
-type Tab = "home" | "organizations" | "billing" | "support" | "supervision" | "operators" | "assistant";
+type Tab = "home" | "organizations" | "billing" | "support" | "supervision" | "countries" | "operators" | "assistant";
 type AssistantState = Awaited<ReturnType<typeof assistantView>>;
 type Turn = AssistantTurn;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -55,7 +57,7 @@ export function Console({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       <Tabs
         label={t.title}
-        items={(["home", "organizations", "billing", "support", "supervision", "operators", "assistant"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
+        items={(["home", "organizations", "billing", "support", "supervision", "countries", "operators", "assistant"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
         value={tab}
         onChange={(id) => {
           setTab(id as Tab);
@@ -70,6 +72,7 @@ export function Console({ locale }: { locale: Locale }) {
         {tab === "billing" && <BillingView locale={locale} day={day} open={open} />}
         {tab === "support" && <SupportView locale={locale} when={when} day={day} open={open} />}
         {tab === "supervision" && <SupervisionView locale={locale} when={when} day={day} />}
+        {tab === "countries" && <CountriesView locale={locale} when={when} />}
         {tab === "operators" && <OperatorsView locale={locale} day={day} />}
         {tab === "assistant" && <AssistantView locale={locale} />}
       </div>
@@ -346,6 +349,7 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
     [o.disabledModules, (x.disabled_modules as string[]).join(", ") || "0"],
     [o.dataRequestsOpen, x.data_requests_open],
     [o.apiKeys, x.api_keys],
+    [o.mcpKeys, x.mcp_keys],
   ];
   return (
     <div className="stack">
@@ -1136,7 +1140,8 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
     b = t.billing;
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
   const [state, setState] = useState("");
-  const { data, error, setError, reload } = useData<Billing>(`/api/console/billing?state=${state}`, failure);
+  const [country, setCountry] = useState("");
+  const { data, error, setError, reload } = useData<Billing>(`/api/console/billing?state=${state}&country=${country}`, failure);
   const { busy, message, post } = usePost("/api/console/billing", reload, setError, failure);
   const [editing, setEditing] = useState<Billing["plans"][number] | "new" | null>(null);
   const [invoicing, setInvoicing] = useState<string | null>(null);
@@ -1242,6 +1247,17 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
               {(["draft", "sent", "paid", "cancelled"] as const).map((st) => (
                 <option key={st} value={st}>
                   {b.states[st]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {t.organizations.country}
+            <select value={country} onChange={(e) => setCountry(e.target.value)}>
+              <option value="">{t.organizations.allCountries}</option>
+              {[...new Set(data.subscriptions.map((x) => x.country))].sort().map((c) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>
@@ -1855,6 +1871,131 @@ function TicketView({ locale, id, back, when, templates, open }: { locale: Local
           </>
         )}
       </Card>
+    </div>
+  );
+}
+
+/** Console, series E (06/11/2026): the countries, what lives in each, the owner's additions. */
+function CountriesView({ locale, when }: { locale: Locale; when: (iso: string) => string }) {
+  const t = consoleCopy[locale],
+    k = t.countries;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const { data, error, setError, reload } = useData<Countries>("/api/console?view=countries", failure);
+  const { busy, message, post } = usePost("/api/console", reload, setError, failure);
+  const [editing, setEditing] = useState<Countries["countries"][number] | "new" | null>(null);
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const name = (c: Countries["countries"][number]) => (locale === "nl" ? c.name_nl : locale === "en" ? c.name_en : c.name_fr);
+  const e = editing === "new" ? null : editing;
+  return (
+    <div className="stack">
+      <p className="muted">{k.intro}</p>
+      <p className="muted small">{k.eurOnly}</p>
+      {!data.canEdit && <p className="muted small">{k.ownerOnly}</p>}
+      {error && <p role="alert">{error}</p>}
+      <p role="status" className="sr-only">
+        {message}
+      </p>
+      <Card title={t.tabs.countries} actions={data.canEdit ? <Button type="button" icon="plus" size="sm" onClick={() => setEditing("new")}>{k.add}</Button> : undefined}>
+        {data.countries.length ? (
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{k.columns.country}</th>
+                  <th scope="col" className="num">{k.columns.federations}</th>
+                  <th scope="col" className="num">{k.columns.clubs}</th>
+                  <th scope="col" className="num">{k.columns.players}</th>
+                  <th scope="col" className="num">{k.columns.policies}</th>
+                  <th scope="col" className="num">{k.columns.mrr}</th>
+                  <th scope="col" className="num">{k.columns.open}</th>
+                  <th scope="col" className="num">{k.columns.late}</th>
+                  <th scope="col">{k.columns.transfers}</th>
+                  <th scope="col">{k.columns.lastActivity}</th>
+                  {data.canEdit && <th scope="col"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {data.countries.map((c) => (
+                  <tr key={c.code}>
+                    <th scope="row">
+                      {name(c)} <span className="muted small">({c.code} · {c.currency})</span>
+                      {c.suspended > 0 && (
+                        <>
+                          {" "}
+                          <Badge tone="warning">{fill(k.suspended, { n: c.suspended })}</Badge>
+                        </>
+                      )}
+                    </th>
+                    <td className="num">{c.federations}</td>
+                    <td className="num">{c.clubs}</td>
+                    <td className="num">{c.players}</td>
+                    <td className="num">{c.policies}</td>
+                    <td className="num">{formatCents(c.mrr, locale)}</td>
+                    <td className="num">{formatCents(c.open, locale)}</td>
+                    <td className="num">{c.late ? <Badge tone="danger">{formatCents(c.late, locale)}</Badge> : formatCents(0, locale)}</td>
+                    <td>
+                      {c.transfers_in} / {c.transfers_out}
+                    </td>
+                    <td>{c.last_activity ? when(c.last_activity) : "·"}</td>
+                    {data.canEdit && (
+                      <td>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(c)}>
+                          {k.edit}
+                          <span className="sr-only"> : {name(c)}</span>
+                        </Button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">{k.none}</p>
+        )}
+      </Card>
+      {editing && (
+        <Modal title={e ? k.edit : k.add} close={() => setEditing(null)}>
+          <form
+            className="stack-form"
+            onSubmit={(ev) => {
+              ev.preventDefault();
+              const f = new FormData(ev.currentTarget);
+              void post({ action: "country", code: f.get("code"), name_fr: f.get("name_fr"), name_nl: f.get("name_nl"), name_en: f.get("name_en"), currency: f.get("currency"), sort: Number(f.get("sort")) || 100 }, k.saved).then((ok) => {
+                if (ok) setEditing(null);
+              });
+            }}
+          >
+            <label>
+              {k.code}
+              <input name="code" required pattern="[A-Za-z]{2}" maxLength={2} defaultValue={e?.code ?? ""} readOnly={!!e} />
+            </label>
+            <label>
+              {k.nameFr}
+              <input name="name_fr" required minLength={2} maxLength={80} defaultValue={e?.name_fr ?? ""} />
+            </label>
+            <label>
+              {k.nameNl}
+              <input name="name_nl" required minLength={2} maxLength={80} defaultValue={e?.name_nl ?? ""} />
+            </label>
+            <label>
+              {k.nameEn}
+              <input name="name_en" required minLength={2} maxLength={80} defaultValue={e?.name_en ?? ""} />
+            </label>
+            <label>
+              {k.currency}
+              <input name="currency" required pattern="[A-Za-z]{3}" maxLength={3} defaultValue={e?.currency ?? "EUR"} />
+            </label>
+            <label>
+              {k.sort}
+              <input name="sort" type="number" min={1} max={999} defaultValue={e?.sort ?? 100} />
+            </label>
+            <Button type="submit" disabled={busy}>
+              {k.save}
+            </Button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

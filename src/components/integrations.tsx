@@ -173,6 +173,70 @@ export function Integrations({ locale }: { locale: Locale }) {
                 )}
               </Panel>
             )}
+            {tab === "api" && (
+              <Panel title={t.mcp} id="integrations-mcp">
+                <p className="field-help">{t.mcpHint}</p>
+                <form
+                  className="stack-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const d = new FormData(form);
+                    void send({ action: "createMcpKey", name: String(d.get("name") ?? "").trim(), scopes: d.getAll("scopes") }).then((r) => {
+                      if (r?.key) {
+                        setSecret({ kind: "key", value: String(r.key) });
+                        form.reset();
+                      }
+                    });
+                  }}
+                >
+                  <label htmlFor="mcp-key-name">
+                    {t.keyName}
+                    <input id="mcp-key-name" name="name" required minLength={2} maxLength={80} />
+                  </label>
+                  <fieldset>
+                    <legend>{t.scopes}</legend>
+                    {(["club:read", "calendar:read", "dues:read"] as const).map((s) => (
+                      <label key={s} className="check">
+                        <input type="checkbox" name="scopes" value={s} defaultChecked={s !== "dues:read"} />
+                        {t.mcpScopes[s]}
+                      </label>
+                    ))}
+                  </fieldset>
+                  <p className="actions">
+                    <button className="button" disabled={busy}>
+                      {t.mcpCreate}
+                    </button>
+                  </p>
+                </form>
+                <p className="muted small">{t.mcpHowTo}</p>
+                <code className="secret-value">{`${origin}${view.mcpEndpoint}`}</code>
+                <p className="muted small">{t.mcpTools}</p>
+                {view.mcpKeys.length ? (
+                  <ul className="records">
+                    {view.mcpKeys.map((k) => (
+                      <li key={k.id} className="link-row">
+                        <span>
+                          <strong>{k.name}</strong> <code>pfmorg_{k.prefix}_…</code> {k.revoked_at && <Badge tone="neutral">{t.revoked}</Badge>}
+                          <span className="muted small">
+                            {" "}
+                            · {k.scopes.map((s) => t.mcpScopes[s]).join(", ")} · {fill(t.mcpBy, { name: k.created_by_name })} · {k.last_used_at ? fill(t.lastUsed, { date: when(locale, k.last_used_at) }) : t.never}
+                          </span>
+                        </span>
+                        {!k.revoked_at && (
+                          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void send({ action: "revokeMcpKey", id: k.id })}>
+                            {t.revoke}
+                            <span className="sr-only"> : {k.name}</span>
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">{t.mcpNone}</p>
+                )}
+              </Panel>
+            )}
             {tab === "webhooks" && <HooksTab locale={locale} view={view} busy={busy} send={send} shown={(value) => setSecret({ kind: "hook", value })} />}
           </div>
         </>

@@ -32,3 +32,14 @@ export const keyReview = (k: { created_at: string | Date; last_used_at: string |
 export const onboardingSteps = { club: ["president", "dpa", "identity", "season", "team", "players", "match", "subscription", "paid"], federation: ["president", "identity", "clubs", "policy", "season", "competition", "subscription", "paid"] } as const;
 export type OnboardingStep = (typeof onboardingSteps)[keyof typeof onboardingSteps][number];
 export type ConsoleCommand = z.infer<typeof consoleCommand>;
+/** Series E: a country added or renamed by the owner (ISO 3166-1 alpha-2, ISO 4217). */
+export const countryCommand = z.object({
+  action: z.literal("country"),
+  code: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
+  name_fr: z.string().trim().min(2).max(80),
+  name_nl: z.string().trim().min(2).max(80),
+  name_en: z.string().trim().min(2).max(80),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).default("EUR"),
+  sort: z.number().int().min(1).max(999).default(100),
+});
+export type CountryCommand = z.infer<typeof countryCommand>;

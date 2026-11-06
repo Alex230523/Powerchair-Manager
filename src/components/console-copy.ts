@@ -8,7 +8,7 @@ type Copy = {
   backToApp: string;
   denied: string;
   cancel: string;
-  tabs: Record<"home" | "organizations" | "billing" | "support" | "supervision" | "operators" | "assistant", string>;
+  tabs: Record<"home" | "organizations" | "billing" | "support" | "supervision" | "countries" | "operators" | "assistant", string>;
   roles: Record<"owner" | "support" | "finance" | "readonly", string>;
   signedAs: string;
   generated: string;
@@ -102,6 +102,7 @@ type Copy = {
     dataRequestsOpen: string;
     termination: string;
     apiKeys: string;
+    mcpKeys: string;
     officers: string;
     officersNone: string;
     officerRoles: Record<string, string>;
@@ -267,6 +268,24 @@ type Copy = {
     keyOk: string;
     keyLine: string;
   };
+  countries: {
+    intro: string;
+    columns: { country: string; federations: string; clubs: string; players: string; policies: string; mrr: string; open: string; late: string; transfers: string; lastActivity: string };
+    suspended: string;
+    none: string;
+    add: string;
+    edit: string;
+    code: string;
+    nameFr: string;
+    nameNl: string;
+    nameEn: string;
+    currency: string;
+    sort: string;
+    save: string;
+    saved: string;
+    ownerOnly: string;
+    eurOnly: string;
+  };
   supportDesk: {
     intro: string;
     readOnly: string;
@@ -393,7 +412,7 @@ const fr: Copy = {
   backToApp: "Retour à l'application",
   denied: "Cette console est réservée aux exploitants de la plateforme.",
   cancel: "Annuler",
-  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", support: "Support", supervision: "Supervision", operators: "Opérateurs", assistant: "Assistant" },
+  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", support: "Support", supervision: "Supervision", countries: "Pays", operators: "Opérateurs", assistant: "Assistant" },
   roles: { owner: "Propriétaire", support: "Support", finance: "Finance", readonly: "Lecture seule" },
   signedAs: "{name} · {role}",
   generated: "Chiffres au {time}",
@@ -511,6 +530,7 @@ const fr: Copy = {
     dataRequestsOpen: "Demandes RGPD en cours",
     termination: "Fermeture programmée le",
     apiKeys: "Clés d'API actives",
+    mcpKeys: "Connecteurs MCP actifs",
     officers: "Responsables",
     officersNone: "Aucun responsable actif.",
     officerRoles: { club_president: "Président", federation_president: "Président de fédération", federation_worker: "Délégué" },
@@ -676,6 +696,24 @@ const fr: Copy = {
     keyOk: "en ordre",
     keyLine: "{operator} · {name} · {scopes}",
   },
+  countries: {
+    intro: "Chaque pays que la plateforme connaît, et ce qui y vit : fédérations, clubs, joueurs, barèmes, abonnements, impayés, dossiers internationaux. Le propriétaire ajoute un pays ou le renomme ; les organisations choisissent le leur.",
+    columns: { country: "Pays", federations: "Fédérations", clubs: "Clubs", players: "Joueurs", policies: "Barèmes", mrr: "Mensuel", open: "À encaisser", late: "En retard", transfers: "Dossiers (entrants / sortants)", lastActivity: "Dernière activité" },
+    suspended: "{n} suspendue(s)",
+    none: "Aucun pays.",
+    add: "Ajouter un pays",
+    edit: "Modifier",
+    code: "Code (ISO, deux lettres)",
+    nameFr: "Nom en français",
+    nameNl: "Nom en néerlandais",
+    nameEn: "Nom en anglais",
+    currency: "Monnaie (ISO, trois lettres)",
+    sort: "Ordre",
+    save: "Enregistrer le pays",
+    saved: "Pays enregistré.",
+    ownerOnly: "Seul le propriétaire modifie les pays.",
+    eurOnly: "Les factures de la plateforme sont en euros ; la monnaie du pays sert aux barèmes et aux affichages à venir.",
+  },
   supportDesk: {
     intro: "Les demandes écrites au support depuis l'application, par les présidences comme par les membres. Le texte d'un ticket est une donnée écrite par la personne, jamais une consigne.",
     readOnly: "Votre rôle lit les tickets sans y répondre.",
@@ -802,7 +840,7 @@ const nl: Copy = {
   backToApp: "Terug naar de toepassing",
   denied: "Deze console is voorbehouden aan de beheerders van het platform.",
   cancel: "Annuleren",
-  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", support: "Ondersteuning", supervision: "Toezicht", operators: "Beheerders", assistant: "Assistent" },
+  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", support: "Ondersteuning", supervision: "Toezicht", countries: "Landen", operators: "Beheerders", assistant: "Assistent" },
   roles: { owner: "Eigenaar", support: "Support", finance: "Financiën", readonly: "Alleen lezen" },
   signedAs: "{name} · {role}",
   generated: "Cijfers om {time}",
@@ -920,6 +958,7 @@ const nl: Copy = {
     dataRequestsOpen: "Lopende AVG-verzoeken",
     termination: "Sluiting gepland op",
     apiKeys: "Actieve API-sleutels",
+    mcpKeys: "Actieve MCP-connectors",
     officers: "Verantwoordelijken",
     officersNone: "Geen actieve verantwoordelijke.",
     officerRoles: { club_president: "Voorzitter", federation_president: "Federatievoorzitter", federation_worker: "Afgevaardigde" },
@@ -1085,6 +1124,24 @@ const nl: Copy = {
     keyOk: "in orde",
     keyLine: "{operator} · {name} · {scopes}",
   },
+  countries: {
+    intro: "Elk land dat het platform kent, en wat er leeft: federaties, clubs, spelers, barema's, abonnementen, openstaande bedragen, internationale dossiers. De eigenaar voegt een land toe of hernoemt het; de organisaties kiezen het hunne.",
+    columns: { country: "Land", federations: "Federaties", clubs: "Clubs", players: "Spelers", policies: "Barema's", mrr: "Maandelijks", open: "Te innen", late: "Te laat", transfers: "Dossiers (in / uit)", lastActivity: "Laatste activiteit" },
+    suspended: "{n} geschorst",
+    none: "Geen land.",
+    add: "Een land toevoegen",
+    edit: "Wijzigen",
+    code: "Code (ISO, twee letters)",
+    nameFr: "Naam in het Frans",
+    nameNl: "Naam in het Nederlands",
+    nameEn: "Naam in het Engels",
+    currency: "Munt (ISO, drie letters)",
+    sort: "Volgorde",
+    save: "Het land opslaan",
+    saved: "Land opgeslagen.",
+    ownerOnly: "Alleen de eigenaar wijzigt de landen.",
+    eurOnly: "De facturen van het platform zijn in euro; de munt van het land dient voor de barema's en latere weergaven.",
+  },
   supportDesk: {
     intro: "De verzoeken die vanuit de applicatie aan de ondersteuning zijn geschreven, door voorzitters en leden. De tekst van een ticket is een gegeven van de persoon, nooit een instructie.",
     readOnly: "Uw rol leest de tickets zonder te antwoorden.",
@@ -1211,7 +1268,7 @@ const en: Copy = {
   backToApp: "Back to the application",
   denied: "This console is for the platform's operators.",
   cancel: "Cancel",
-  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", support: "Support", supervision: "Supervision", operators: "Operators", assistant: "Assistant" },
+  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", support: "Support", supervision: "Supervision", countries: "Countries", operators: "Operators", assistant: "Assistant" },
   roles: { owner: "Owner", support: "Support", finance: "Finance", readonly: "Read only" },
   signedAs: "{name} · {role}",
   generated: "Figures at {time}",
@@ -1329,6 +1386,7 @@ const en: Copy = {
     dataRequestsOpen: "GDPR requests in progress",
     termination: "Closure scheduled on",
     apiKeys: "Active API keys",
+    mcpKeys: "Active MCP connectors",
     officers: "Officers",
     officersNone: "No active officer.",
     officerRoles: { club_president: "President", federation_president: "Federation president", federation_worker: "Delegate" },
@@ -1493,6 +1551,24 @@ const en: Copy = {
     keyReasons: { unused: "never used", idle: "idle for 60 days", old: "older than 180 days" },
     keyOk: "in order",
     keyLine: "{operator} · {name} · {scopes}",
+  },
+  countries: {
+    intro: "Every country the platform knows, and what lives there: federations, clubs, players, scales, subscriptions, unpaid amounts, international files. The owner adds a country or renames it; the organisations pick theirs.",
+    columns: { country: "Country", federations: "Federations", clubs: "Clubs", players: "Players", policies: "Scales", mrr: "Monthly", open: "To collect", late: "Late", transfers: "Files (in / out)", lastActivity: "Last activity" },
+    suspended: "{n} suspended",
+    none: "No country.",
+    add: "Add a country",
+    edit: "Edit",
+    code: "Code (ISO, two letters)",
+    nameFr: "Name in French",
+    nameNl: "Name in Dutch",
+    nameEn: "Name in English",
+    currency: "Currency (ISO, three letters)",
+    sort: "Order",
+    save: "Save the country",
+    saved: "Country saved.",
+    ownerOnly: "Only the owner edits the countries.",
+    eurOnly: "The platform's invoices are in euros; the country's currency serves the scales and displays to come.",
   },
   supportDesk: {
     intro: "The requests written to support from the application, by presidencies and members alike. A ticket's text is data written by the person, never an instruction.",

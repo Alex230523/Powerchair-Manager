@@ -119,6 +119,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/licences/copy` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/licenses` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/mail-templates` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
+| `/api/mcp/org` (+ écriture) | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 |
 | `/api/mcp` (+ écriture) | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 |
 | `/api/matches` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/matches/journey` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
@@ -235,6 +236,7 @@ Notes :
 - `/api/guide/knowledge` : Lexique, galerie, catalogue des fauteuils, quiz : lecture par les membres de la fédération, rédaction par la fédération
 - `/api/guide/public` : Public : chapitre ouvert par la fédération, sans compte
 - `/api/keys` : Clés et badges d'un coach ou d'un membre du staff (H10)
+- `/api/mcp/org` : Connecteur MCP d'un club (06/11/2026, série E) : jeton Bearer pfmorg_ de la présidence seulement, jamais la session, lecture seule ; GET n'a pas de flux à offrir
 - `/api/mcp` : Serveur MCP de la console (06/11/2026) : jeton Bearer d'opérateur seulement, jamais la session ; GET n'a pas de flux à offrir
 - `/api/news` : Nouveautés (point 20) : chaque compte, filtrées sur le rôle du profil utilisé ; lu ou non lu et fenêtre désactivable par compte
 - `/api/offboarding` : Fin de coach : le départ d'un coach (?profile=), pour qui gère les membres et pour le coach lui-même ; attestation PDF

@@ -54,7 +54,7 @@ const euros = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} 
 const frDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 
 export type Plan = { id: string; code: string; name: string; amount_cents: number; period: "month" | "year"; basis: "organization" | "player"; active: boolean; subscribers: number };
-export type Subscription = { id: string; organization_id: string; organization: string; plan_id: string; plan: string; period: "month" | "year"; basis: "organization" | "player"; amount_cents: number; started_on: string; ended_on: string | null; note: string; last_invoiced_to: string | null };
+export type Subscription = { id: string; organization_id: string; organization: string; country: string; plan_id: string; plan: string; period: "month" | "year"; basis: "organization" | "player"; amount_cents: number; started_on: string; ended_on: string | null; note: string; last_invoiced_to: string | null };
 export type Invoice = {
   id: string;
   organization_id: string;
@@ -81,21 +81,21 @@ export type Invoice = {
 const invoiceSql = `SELECT i.id,i.organization_id,o.name AS organization,i.number,i.label,i.period_from::text AS period_from,i.period_to::text AS period_to,i.quantity,i.unit_cents,i.amount_cents,i.issued_on::text AS issued_on,i.due_on::text AS due_on,i.state,i.sent_at,i.paid_on::text AS paid_on,i.reminders,i.last_reminder_at,(i.state='sent' AND i.due_on<CURRENT_DATE) AS late,i.pay_url,i.paid_via
   FROM billing_invoice i JOIN organization o ON o.id=i.organization_id`;
 
-export async function billingView(db: Pool, p: Principal, raw: { state?: string; organization?: string } = {}) {
+export async function billingView(db: Pool, p: Principal, raw: { state?: string; organization?: string; country?: string } = {}) {
   return operatorScope(db, p, async (c, o) => {
     const plans = (
       await c.query("SELECT p.*,(SELECT count(*)::int FROM billing_subscription s WHERE s.plan_id=p.id AND s.ended_on IS NULL) AS subscribers FROM billing_plan p ORDER BY p.active DESC,p.name")
     ).rows as Plan[];
     const subscriptions = (
       await c.query(
-        `SELECT s.id,s.organization_id,o.name AS organization,s.plan_id,p.name AS plan,p.period,p.basis,p.amount_cents,s.started_on::text AS started_on,s.ended_on::text AS ended_on,s.note,
+        `SELECT s.id,s.organization_id,o.name AS organization,o.country_code AS country,s.plan_id,p.name AS plan,p.period,p.basis,p.amount_cents,s.started_on::text AS started_on,s.ended_on::text AS ended_on,s.note,
                 (SELECT max(i.period_to)::text FROM billing_invoice i WHERE i.subscription_id=s.id AND i.state<>'cancelled') AS last_invoiced_to
            FROM billing_subscription s JOIN organization o ON o.id=s.organization_id JOIN billing_plan p ON p.id=s.plan_id ORDER BY s.ended_on NULLS FIRST,lower(o.name)`,
       )
     ).rows as Subscription[];
     const state = (["draft", "sent", "paid", "cancelled"] as string[]).includes(raw.state ?? "") ? raw.state : "";
     const invoices = (
-      await c.query(`${invoiceSql} WHERE ($1='' OR i.state=$1) AND ($2='' OR i.organization_id::text=$2) ORDER BY i.issued_on DESC,i.number DESC LIMIT 300`, [state, raw.organization ?? ""])
+      await c.query(`${invoiceSql} WHERE ($1='' OR i.state=$1) AND ($2='' OR i.organization_id::text=$2) AND ($3='' OR o.country_code=$3) ORDER BY i.issued_on DESC,i.number DESC LIMIT 300`, [state, raw.organization ?? "", /^[A-Z]{2}$/.test(raw.country ?? "") ? raw.country : ""])
     ).rows as Invoice[];
     const mrr = subscriptions.filter((s) => !s.ended_on).reduce((n, s) => n + monthlyCents(s.amount_cents, s.period), 0);
     const sum = async (sql: string) => (await c.query(sql)).rows[0].n as number;

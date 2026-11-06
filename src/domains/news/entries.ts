@@ -56,10 +56,11 @@ import e53 from "../../../content/changelog/2026-11-05-international.json";
 import e54 from "../../../content/changelog/2026-11-05-iteration.json";
 import e55 from "../../../content/changelog/2026-11-05-retours.json";
 import e56 from "../../../content/changelog/2026-11-06-competitions.json";
-import e57 from "../../../content/changelog/2026-11-06-doublons.json";
-import e58 from "../../../content/changelog/2026-11-06-paiement.json";
-import e59 from "../../../content/changelog/2026-11-06-registre.json";
-import e60 from "../../../content/changelog/2026-11-06-support.json";
+import e57 from "../../../content/changelog/2026-11-06-connecteur.json";
+import e58 from "../../../content/changelog/2026-11-06-doublons.json";
+import e59 from "../../../content/changelog/2026-11-06-paiement.json";
+import e60 from "../../../content/changelog/2026-11-06-registre.json";
+import e61 from "../../../content/changelog/2026-11-06-support.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -119,8 +120,9 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-05-iteration", data: e54 },
   { id: "2026-11-05-retours", data: e55 },
   { id: "2026-11-06-competitions", data: e56 },
-  { id: "2026-11-06-doublons", data: e57 },
-  { id: "2026-11-06-paiement", data: e58 },
-  { id: "2026-11-06-registre", data: e59 },
-  { id: "2026-11-06-support", data: e60 },
+  { id: "2026-11-06-connecteur", data: e57 },
+  { id: "2026-11-06-doublons", data: e58 },
+  { id: "2026-11-06-paiement", data: e59 },
+  { id: "2026-11-06-registre", data: e60 },
+  { id: "2026-11-06-support", data: e61 },
 ];

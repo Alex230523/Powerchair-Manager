@@ -249,3 +249,28 @@ describe("the sheet enriched and the operators' security (series D)", () => {
     expect(readFileSync("src/domains/console/service.ts", "utf8")).toContain("OPERATOR_SESSION_EXPIRED");
   });
 });
+
+describe("a club's own MCP connector and the console's countries (series E)", () => {
+  it("offers read-only tools by scope, keys of the presidency only, and countries by ISO codes", async () => {
+    const { orgTools, orgScopes, orgKeyCommand } = await import("../src/domains/mcp/organization");
+    expect(orgScopes).toEqual(["club:read", "calendar:read", "dues:read"]);
+    expect(orgTools.map((t) => t.name)).toEqual(["club_overview", "teams", "matches", "tournaments", "calendar", "dues"]);
+    for (const t of orgTools) {
+      expect(orgScopes).toContain(t.scope);
+      expect(t.inputSchema.additionalProperties).toBe(false);
+    }
+    expect(orgTools.find((t) => t.name === "dues")?.description).toContain("Personal data");
+    expect(orgKeyCommand.safeParse({ action: "createMcpKey", name: "Mon Claude", scopes: ["club:read"] }).success).toBe(true);
+    expect(orgKeyCommand.safeParse({ action: "createMcpKey", name: "Mon Claude", scopes: ["billing:write"] }).success).toBe(false);
+    expect(orgKeyCommand.safeParse({ action: "createMcpKey", name: "Mon Claude", scopes: [] }).success).toBe(false);
+    const { countryCommand } = await import("../src/domains/console/schema");
+    expect(countryCommand.safeParse({ action: "country", code: "no", name_fr: "Norvège", name_nl: "Noorwegen", name_en: "Norway", currency: "nok" }).data).toMatchObject({ code: "NO", currency: "NOK", sort: 100 });
+    expect(countryCommand.safeParse({ action: "country", code: "NOR", name_fr: "Norvège", name_nl: "Noorwegen", name_en: "Norway" }).success).toBe(false);
+    expect(apiRoutes["mcp/org"].expect!.POST!.president).toBe(401);
+    expect(apiRoutes["mcp/org"].expect!.GET!.anonymous).toBe(405);
+    expect(readFileSync("src/app/api/mcp/org/route.ts", "utf8")).not.toContain("principal(");
+    expect(readFileSync("src/domains/mcp/organization.ts", "utf8")).not.toMatch(/INSERT INTO (?!organization_mcp)/);
+    expect(consoleCopy.fr.tabs.countries).toBe("Pays");
+    expect(consoleCopy.nl.countries.columns.transfers).toBeTruthy();
+  });
+});
