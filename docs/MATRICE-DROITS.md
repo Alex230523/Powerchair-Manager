@@ -42,6 +42,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/console/alerts` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/reports` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/assistant` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
+| `/api/console/support` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/billing` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/courses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
@@ -83,6 +84,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/federation/licenses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/referees` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/federation/teams` | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/support` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/feedback` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/feedback/shot/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/finance` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | oui | oui | oui |
@@ -211,6 +213,7 @@ Notes :
 - `/api/console/alerts` : Alerte quotidienne d'un opérateur (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/reports` : Rapports mensuels de la console (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/assistant` : Assistant de la console (06/11/2026) : opérateurs seulement, écritures sur confirmation ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
+- `/api/console/support` : Support et demandes RGPD de la console (06/11/2026) : tickets, réponses types, rappels aux présidences ; opérateurs owner et support pour écrire ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/billing` : Facturation de la plateforme (05/11/2026) : formules, abonnements, factures, rappels ; opérateurs owner et finance ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/billing/mollie` : Retour de Mollie, sans session : l'identifiant du lien seulement, relu par l'API ; 503 tant que MOLLIE_API_KEY manque (comme les tâches sans CRON_SECRET), GET 405 (tests/international-console.test.ts, tests/integration/billing-mollie.integration.ts)
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
@@ -221,6 +224,7 @@ Notes :
 - `/api/dues/split` : Deux foyers : qui reçoit les cotisations et les attestations d'un enfant, répartition en % (point 29)
 - `/api/equipment/compliance` : Conforme pour un match : contrôles d'un fauteuil (lecture si le fauteuil est visible, saisie avec equipment.manage)
 - `/api/family` : Ma famille : les enfants de tous les clubs, réponses, autorisations, part des cotisations ; ses propres coordonnées (points 27 à 29)
+- `/api/support` : Écrire au support de la plateforme (06/11/2026) : chaque compte, ses propres demandes et leurs réponses ; vingt ouvertes au plus ; écrit même quand l'organisation est suspendue
 - `/api/feedback` : Signaler un problème dans l'application (point 19) : chaque compte, ses propres signalements et leur état ; 10 par jour ; envoi vers GitHub par le serveur, jeton jamais exposé
 - `/api/feedback/shot/[token]` : Capture d'un signalement (déjà masquée), par jeton imprévisible, liée depuis l'issue d'un dépôt privé ; 404 sans jeton valide
 - `/api/finance/allocations` : Fonds réservés : affectations, opérations rattachées, export justificatif (point 9)
@@ -353,6 +357,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/settings` |  |  |  |  |  |  |  |  |  |   |
 | `/settings/[category]` |  |  |  |  |  |  |  |  |  |   |
 | `/signalements` |  |  |  |  |  |  |  |  |  |   |
+| `/support` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/club` |  |  |  |  |  |  |  |  |  |   |
 | `/statistics/game` |  |  |  |  |  |  |  |  |  |   |

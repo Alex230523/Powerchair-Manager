@@ -4,6 +4,7 @@ import { AccessError, type Principal } from "../access/service";
 import { createTransport } from "../notifications/transport";
 import { jobStates, overdueMails } from "../jobs/health";
 import { pdfDocument, type PdfLine } from "../../lib/pdf";
+import { firstReplyMedianHours } from "../support/stats";
 import { operatorScope } from "./service";
 
 /**
@@ -14,7 +15,7 @@ import { operatorScope } from "./service";
  * choose, once a day, straight through the transport like the watchdog),
  * and the monthly report archived as a PDF.
  */
-export const metricKeys = ["clubs", "federations", "accounts", "players", "coaches", "licences", "active7", "active30", "matches30", "storageBytes", "mrr", "open", "late", "lateCount", "subscriptions", "feedbackOpen", "dataRequestsOpen", "dataRequestsLate", "noPresident", "suspended", "jobsLate"] as const;
+export const metricKeys = ["clubs", "federations", "accounts", "players", "coaches", "licences", "active7", "active30", "matches30", "storageBytes", "mrr", "open", "late", "lateCount", "subscriptions", "feedbackOpen", "dataRequestsOpen", "dataRequestsLate", "noPresident", "suspended", "jobsLate", "ticketsOpen", "ticketsFirstReplyHours"] as const;
 export type MetricKey = (typeof metricKeys)[number];
 const presidentRole = "r.role IN ('club_president','federation_president') AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())";
 
@@ -40,6 +41,9 @@ export async function computeMetrics(db: Pool): Promise<Record<string, number>> 
       lateCount: await n(c, "SELECT count(*)::int AS n FROM billing_invoice WHERE state='sent' AND due_on<CURRENT_DATE"),
       subscriptions: await n(c, "SELECT count(*)::int AS n FROM billing_subscription WHERE ended_on IS NULL"),
       feedbackOpen: await n(c, "SELECT count(*)::int AS n FROM app_feedback WHERE state<>'fixed'"),
+      // Series C: the tickets waiting for the operators, and the median delay of a first answer over 30 days.
+      ticketsOpen: await n(c, "SELECT count(*)::int AS n FROM support_ticket WHERE state='open'"),
+      ticketsFirstReplyHours: (await firstReplyMedianHours(c)) ?? 0,
       dataRequestsOpen: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress')"),
       dataRequestsLate: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress') AND due_on<CURRENT_DATE"),
       noPresident: await n(c, `SELECT count(*)::int AS n FROM organization o WHERE NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=o.id AND ${presidentRole})`),
@@ -80,7 +84,7 @@ export async function trends(c: PoolClient, keys: readonly string[]): Promise<Re
 }
 
 /* Alerts. */
-export const alertRules = ["jobsLate", "mailsOverdue", "dataRequestsLate", "invoicesFinalReminder", "noPresident", "suspended", "feedbackNew", "terminations"] as const;
+export const alertRules = ["jobsLate", "mailsOverdue", "dataRequestsLate", "invoicesFinalReminder", "noPresident", "suspended", "feedbackNew", "terminations", "ticketsWaiting"] as const;
 export type AlertRule = (typeof alertRules)[number];
 export const alertPrefCommand = z.object({ action: z.literal("alertPref"), email: z.boolean(), hour: z.number().int().min(0).max(23), rules: z.array(z.enum(alertRules)) });
 export type AlertItem = { rule: AlertRule; count: number; detail: string };
@@ -102,6 +106,7 @@ export async function alertItems(db: Pool): Promise<AlertItem[]> {
     await rule("noPresident", `SELECT o.name FROM organization o WHERE NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=o.id AND ${presidentRole}) ORDER BY o.created_at DESC`);
     await rule("suspended", "SELECT name FROM organization WHERE suspended_at IS NOT NULL ORDER BY suspended_at DESC");
     await rule("feedbackNew", "SELECT COALESCE(o.name,'?')||' · '||f.kind AS name FROM app_feedback f LEFT JOIN organization o ON o.id=f.organization_id WHERE f.created_at>now()-interval '24 hours' ORDER BY f.created_at DESC");
+    await rule("ticketsWaiting", "SELECT COALESCE(o.name,u.name)||' · '||t.subject AS name FROM support_ticket t JOIN \"user\" u ON u.id=t.user_id LEFT JOIN organization o ON o.id=t.organization_id WHERE t.state='open' AND t.last_message_at<now()-interval '24 hours' ORDER BY t.last_message_at");
     await rule("terminations", "SELECT o.name||' ('||t.effective_on||')' AS name FROM club_termination t JOIN organization o ON o.id=t.organization_id WHERE t.cancelled_at IS NULL AND t.completed_at IS NULL AND t.effective_on<=CURRENT_DATE+30 ORDER BY t.effective_on");
   } finally {
     c.release();
@@ -118,6 +123,7 @@ const ruleLabels: Record<AlertRule, string> = {
   suspended: "Organisations suspendues",
   feedbackNew: "Signalements reçus depuis 24 heures",
   terminations: "Fermetures programmées sous 30 jours",
+  ticketsWaiting: "Tickets de support sans réponse depuis 24 heures",
 };
 /** Hourly: every operator who wants the alert, from their hour, once a day, when something is there. */
 export async function alertTick(db: Pool, env: Record<string, string | undefined> = process.env) {

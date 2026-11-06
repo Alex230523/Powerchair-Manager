@@ -75,7 +75,17 @@ function RequestRow({ locale, r, busy, send }: { locale: Locale; r: View["reques
           </span>
         </form>
       ) : (
-        r.response && <p className="muted small prewrap">{r.response}</p>
+        <>
+          {r.response && <p className="muted small prewrap">{r.response}</p>}
+          {r.certificate_number && (
+            <p>
+              <a className="text-button" href={`/api/privacy/requests?certificate=${r.id}`}>
+                {t.certificate(r.certificate_number)}
+                <span className="sr-only"> : {r.person ?? r.requester}</span>
+              </a>
+            </p>
+          )}
+        </>
       )}
     </li>
   );
@@ -402,6 +412,15 @@ export function MyDataRequests({ locale }: { locale: Locale }) {
               <li key={r.id}>
                 {day(r.created_at)} · {r.club} · {t.kinds[r.kind]} · <Badge tone={r.status === "done" ? "success" : r.status === "refused" ? "danger" : "warning"}>{t.statuses[r.status]}</Badge>
                 {r.response && <span className="muted small"> · {r.response}</span>}
+                {r.certificate_number && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <a className="text-button" href={`/api/privacy/requests?certificate=${r.id}`}>
+                      {t.certificate(r.certificate_number)}
+                    </a>
+                  </>
+                )}
               </li>
             ))}
           </ul>

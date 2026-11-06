@@ -198,6 +198,8 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
   NOT_SUSPENDED: { fr: "Cette organisation n'est pas suspendue.", nl: "Deze organisatie is niet geschorst.", en: "This organisation is not suspended." },
   SUBSCRIPTION_EXISTS: { fr: "Cette organisation a déjà un abonnement en cours : terminez-le d'abord.", nl: "Deze organisatie heeft al een lopend abonnement: beëindig het eerst.", en: "This organisation already has a running subscription: end it first." },
   INVOICE_STATE: { fr: "Cette facture n'est plus dans l'état voulu.", nl: "Deze factuur is niet meer in de gewenste toestand.", en: "This invoice is no longer in the wanted state." },
+  TICKET_STATE: { fr: "Cette demande au support n'est plus dans l'état voulu.", nl: "Dit verzoek aan de ondersteuning is niet meer in de gewenste toestand.", en: "This support request is no longer in the wanted state." },
+  REQUEST_STATE: { fr: "Cette demande RGPD est déjà traitée.", nl: "Dit AVG-verzoek is al afgehandeld.", en: "This GDPR request is already handled." },
   REMINDERS_DONE: { fr: "Les trois rappels ont déjà été envoyés.", nl: "De drie herinneringen zijn al verzonden.", en: "The three reminders have already been sent." },
   INVALID_PERIOD: { fr: "La fin de la période précède son début.", nl: "Het einde van de periode ligt voor het begin.", en: "The end of the period is before its start." },
   PLAN_INACTIVE: { fr: "Ce plan n'est plus proposé.", nl: "Dit plan wordt niet meer aangeboden.", en: "This plan is no longer offered." },

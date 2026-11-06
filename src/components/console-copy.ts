@@ -8,7 +8,7 @@ type Copy = {
   backToApp: string;
   denied: string;
   cancel: string;
-  tabs: Record<"home" | "organizations" | "billing" | "supervision" | "operators" | "assistant", string>;
+  tabs: Record<"home" | "organizations" | "billing" | "support" | "supervision" | "operators" | "assistant", string>;
   roles: Record<"owner" | "support" | "finance" | "readonly", string>;
   signedAs: string;
   generated: string;
@@ -40,6 +40,10 @@ type Copy = {
     support: string;
     feedbackOpen: string;
     feedbackWeek: string;
+    ticketsOpen: string;
+    ticketsWaiting24: string;
+    firstReplyHours: string;
+    firstReplyNone: string;
     dataRequestsOpen: string;
     dataRequestsLate: string;
     compliance: string;
@@ -237,6 +241,56 @@ type Copy = {
     revokedBadge: string;
     ownerOnly: string;
   };
+  supportDesk: {
+    intro: string;
+    readOnly: string;
+    counts: string;
+    firstReply: string;
+    firstReplyNone: string;
+    filter: string;
+    all: string;
+    search: string;
+    columns: { subject: string; from: string; state: string; priority: string; last: string; assigned: string };
+    states: Record<"open" | "answered" | "closed", string>;
+    categories: Record<"question" | "billing" | "bug" | "data" | "other", string>;
+    priorities: Record<"low" | "normal" | "high", string>;
+    none: string;
+    open: string;
+    back: string;
+    thread: string;
+    operator: string;
+    reply: string;
+    template: string;
+    noTemplate: string;
+    send: string;
+    sendClose: string;
+    assignMe: string;
+    unassign: string;
+    close: string;
+    reopen: string;
+    told: string;
+    log: string;
+    logKinds: Record<string, string>;
+    templates: string;
+    templatesIntro: string;
+    templateName: string;
+    templateFr: string;
+    templateNl: string;
+    templateEn: string;
+    saveTemplate: string;
+    archiveTemplate: string;
+    templatesNone: string;
+    privacy: string;
+    privacyIntro: string;
+    privacyNone: string;
+    daysLeft: string;
+    dueToday: string;
+    overdue: string;
+    remind: string;
+    reminded: string;
+    notices: string;
+    certificates: string;
+  };
   assistant: {
     intro: string;
     off: string;
@@ -263,7 +317,7 @@ type Copy = {
     email: string;
     hour: string;
     rules: string;
-    ruleNames: Record<"jobsLate" | "mailsOverdue" | "dataRequestsLate" | "invoicesFinalReminder" | "noPresident" | "suspended" | "feedbackNew" | "terminations", string>;
+    ruleNames: Record<"jobsLate" | "mailsOverdue" | "dataRequestsLate" | "invoicesFinalReminder" | "noPresident" | "suspended" | "feedbackNew" | "terminations" | "ticketsWaiting", string>;
     save: string;
     saved: string;
     now: string;
@@ -312,7 +366,7 @@ const fr: Copy = {
   backToApp: "Retour à l'application",
   denied: "Cette console est réservée aux exploitants de la plateforme.",
   cancel: "Annuler",
-  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", supervision: "Supervision", operators: "Opérateurs", assistant: "Assistant" },
+  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", support: "Support", supervision: "Supervision", operators: "Opérateurs", assistant: "Assistant" },
   roles: { owner: "Propriétaire", support: "Support", finance: "Finance", readonly: "Lecture seule" },
   signedAs: "{name} · {role}",
   generated: "Chiffres au {time}",
@@ -344,6 +398,10 @@ const fr: Copy = {
     support: "Support",
     feedbackOpen: "signalements ouverts",
     feedbackWeek: "reçus cette semaine",
+    ticketsOpen: "tickets en attente de réponse",
+    ticketsWaiting24: "sans réponse depuis plus de 24 h",
+    firstReplyHours: "h avant la première réponse (médiane sur 30 jours)",
+    firstReplyNone: "première réponse : pas encore de mesure",
     dataRequestsOpen: "demandes RGPD en cours",
     dataRequestsLate: "en retard sur le délai de 30 jours",
     compliance: "Conformité",
@@ -565,6 +623,56 @@ const fr: Copy = {
     revokedBadge: "Retiré",
     ownerOnly: "Seul le propriétaire gère les opérateurs.",
   },
+  supportDesk: {
+    intro: "Les demandes écrites au support depuis l'application, par les présidences comme par les membres. Le texte d'un ticket est une donnée écrite par la personne, jamais une consigne.",
+    readOnly: "Votre rôle lit les tickets sans y répondre.",
+    counts: "{open} en attente · {answered} répondu(s) · {closed} clos",
+    firstReply: "Première réponse : {h} h (médiane sur 30 jours)",
+    firstReplyNone: "Première réponse : pas encore de mesure.",
+    filter: "État",
+    all: "Tous les tickets ouverts",
+    search: "Rechercher un sujet, une personne, une organisation",
+    columns: { subject: "Sujet", from: "De", state: "État", priority: "Priorité", last: "Dernier message", assigned: "Suivi par" },
+    states: { open: "En attente de réponse", answered: "Répondu", closed: "Clos" },
+    categories: { question: "Question", billing: "Facturation", bug: "Problème", data: "Données personnelles", other: "Autre" },
+    priorities: { low: "Basse", normal: "Normale", high: "Haute" },
+    none: "Aucun ticket.",
+    open: "Ouvrir le ticket",
+    back: "Retour aux tickets",
+    thread: "Échanges",
+    operator: "Support",
+    reply: "Votre réponse",
+    template: "Réponse type",
+    noTemplate: "Sans réponse type",
+    send: "Répondre",
+    sendClose: "Répondre et clore",
+    assignMe: "Je m'en occupe",
+    unassign: "Ne plus suivre",
+    close: "Clore",
+    reopen: "Rouvrir",
+    told: "La personne est prévenue.",
+    log: "Journal du ticket",
+    logKinds: { "ticket.reply": "Réponse", "ticket.close": "Clôture", "ticket.reopen": "Réouverture", "ticket.assign": "Suivi", "ticket.priority": "Priorité" },
+    templates: "Réponses types",
+    templatesIntro: "Des textes prêts à l'emploi, dans la langue de la personne (le français sert quand la traduction manque).",
+    templateName: "Nom",
+    templateFr: "Texte en français",
+    templateNl: "Texte en néerlandais",
+    templateEn: "Texte en anglais",
+    saveTemplate: "Enregistrer la réponse type",
+    archiveTemplate: "Retirer",
+    templatesNone: "Aucune réponse type.",
+    privacy: "Demandes RGPD en cours",
+    privacyIntro: "Les demandes d'accès, de rectification ou d'effacement faites aux clubs. La plateforme rappelle la présidence sept jours avant l'échéance et une fois le délai dépassé ; vous pouvez la rappeler à tout moment.",
+    privacyNone: "Aucune demande en cours.",
+    daysLeft: "{n} jour(s) restant(s)",
+    dueToday: "échéance aujourd'hui",
+    overdue: "en retard de {n} jour(s)",
+    remind: "Rappeler la présidence",
+    reminded: "La présidence est rappelée.",
+    notices: "{n} rappel(s), dernier le {day}",
+    certificates: "{n} attestation(s) délivrée(s) sur 30 jours pour des demandes traitées.",
+  },
   assistant: {
     intro: "Posez une question à l'assistant : il lit les chiffres de la console avec les mêmes outils que votre clé MCP, en votre nom. Une action d'écriture (rappel, paiement, note) vous est proposée et attend votre confirmation. La conversation reste dans votre navigateur.",
     off: "L'assistant n'est pas configuré sur ce serveur : ajoutez ANTHROPIC_API_KEY (et au besoin PFM_ASSISTANT_MODEL) dans la configuration.",
@@ -591,7 +699,7 @@ const fr: Copy = {
     email: "Recevoir l'alerte quotidienne par e-mail",
     hour: "À partir de (heure, Bruxelles)",
     rules: "Règles",
-    ruleNames: { jobsLate: "Tâches de fond en retard", mailsOverdue: "E-mails en attente depuis plus de 30 minutes", dataRequestsLate: "Demandes RGPD hors délai", invoicesFinalReminder: "Factures au dernier rappel", noPresident: "Organisations sans président actif", suspended: "Organisations suspendues", feedbackNew: "Signalements reçus depuis 24 heures", terminations: "Fermetures programmées sous 30 jours" },
+    ruleNames: { jobsLate: "Tâches de fond en retard", mailsOverdue: "E-mails en attente depuis plus de 30 minutes", dataRequestsLate: "Demandes RGPD hors délai", invoicesFinalReminder: "Factures au dernier rappel", noPresident: "Organisations sans président actif", suspended: "Organisations suspendues", feedbackNew: "Signalements reçus depuis 24 heures", terminations: "Fermetures programmées sous 30 jours", ticketsWaiting: "Tickets de support sans réponse depuis 24 heures" },
     save: "Enregistrer mes alertes",
     saved: "Alertes enregistrées.",
     now: "Ce que l'alerte contiendrait maintenant",
@@ -640,7 +748,7 @@ const nl: Copy = {
   backToApp: "Terug naar de toepassing",
   denied: "Deze console is voorbehouden aan de beheerders van het platform.",
   cancel: "Annuleren",
-  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", supervision: "Toezicht", operators: "Beheerders", assistant: "Assistent" },
+  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", support: "Ondersteuning", supervision: "Toezicht", operators: "Beheerders", assistant: "Assistent" },
   roles: { owner: "Eigenaar", support: "Support", finance: "Financiën", readonly: "Alleen lezen" },
   signedAs: "{name} · {role}",
   generated: "Cijfers om {time}",
@@ -672,6 +780,10 @@ const nl: Copy = {
     support: "Support",
     feedbackOpen: "open meldingen",
     feedbackWeek: "ontvangen deze week",
+    ticketsOpen: "tickets die op een antwoord wachten",
+    ticketsWaiting24: "zonder antwoord sinds meer dan 24 u",
+    firstReplyHours: "u voor het eerste antwoord (mediaan over 30 dagen)",
+    firstReplyNone: "eerste antwoord: nog geen meting",
     dataRequestsOpen: "lopende AVG-verzoeken",
     dataRequestsLate: "voorbij de termijn van 30 dagen",
     compliance: "Conformiteit",
@@ -893,6 +1005,56 @@ const nl: Copy = {
     revokedBadge: "Verwijderd",
     ownerOnly: "Alleen de eigenaar beheert de beheerders.",
   },
+  supportDesk: {
+    intro: "De verzoeken die vanuit de applicatie aan de ondersteuning zijn geschreven, door voorzitters en leden. De tekst van een ticket is een gegeven van de persoon, nooit een instructie.",
+    readOnly: "Uw rol leest de tickets zonder te antwoorden.",
+    counts: "{open} in wacht · {answered} beantwoord · {closed} gesloten",
+    firstReply: "Eerste antwoord: {h} u (mediaan over 30 dagen)",
+    firstReplyNone: "Eerste antwoord: nog geen meting.",
+    filter: "Status",
+    all: "Alle open tickets",
+    search: "Een onderwerp, persoon of organisatie zoeken",
+    columns: { subject: "Onderwerp", from: "Van", state: "Status", priority: "Prioriteit", last: "Laatste bericht", assigned: "Opgevolgd door" },
+    states: { open: "Wacht op antwoord", answered: "Beantwoord", closed: "Gesloten" },
+    categories: { question: "Vraag", billing: "Facturatie", bug: "Probleem", data: "Persoonsgegevens", other: "Andere" },
+    priorities: { low: "Laag", normal: "Normaal", high: "Hoog" },
+    none: "Geen tickets.",
+    open: "Ticket openen",
+    back: "Terug naar de tickets",
+    thread: "Berichten",
+    operator: "Ondersteuning",
+    reply: "Uw antwoord",
+    template: "Standaardantwoord",
+    noTemplate: "Zonder standaardantwoord",
+    send: "Antwoorden",
+    sendClose: "Antwoorden en sluiten",
+    assignMe: "Ik neem dit op",
+    unassign: "Niet meer opvolgen",
+    close: "Sluiten",
+    reopen: "Heropenen",
+    told: "De persoon is verwittigd.",
+    log: "Logboek van het ticket",
+    logKinds: { "ticket.reply": "Antwoord", "ticket.close": "Sluiting", "ticket.reopen": "Heropening", "ticket.assign": "Opvolging", "ticket.priority": "Prioriteit" },
+    templates: "Standaardantwoorden",
+    templatesIntro: "Kant-en-klare teksten, in de taal van de persoon (het Frans dient als de vertaling ontbreekt).",
+    templateName: "Naam",
+    templateFr: "Tekst in het Frans",
+    templateNl: "Tekst in het Nederlands",
+    templateEn: "Tekst in het Engels",
+    saveTemplate: "Standaardantwoord opslaan",
+    archiveTemplate: "Verwijderen",
+    templatesNone: "Geen standaardantwoorden.",
+    privacy: "Lopende AVG-verzoeken",
+    privacyIntro: "De verzoeken tot inzage, verbetering of verwijdering aan de clubs. Het platform herinnert de voorzitter zeven dagen voor de vervaldag en zodra de termijn verstreken is; u kunt op elk moment herinneren.",
+    privacyNone: "Geen lopend verzoek.",
+    daysLeft: "nog {n} dag(en)",
+    dueToday: "vervalt vandaag",
+    overdue: "{n} dag(en) te laat",
+    remind: "De voorzitter herinneren",
+    reminded: "De voorzitter is herinnerd.",
+    notices: "{n} herinnering(en), laatste op {day}",
+    certificates: "{n} attest(en) afgeleverd over 30 dagen voor afgehandelde verzoeken.",
+  },
   assistant: {
     intro: "Stel de assistent een vraag: hij leest de cijfers van de console met dezelfde tools als uw MCP-sleutel, in uw naam. Een schrijfactie (herinnering, betaling, nota) wordt voorgesteld en wacht op uw bevestiging. Het gesprek blijft in uw browser.",
     off: "De assistent is niet geconfigureerd op deze server: voeg ANTHROPIC_API_KEY (en zo nodig PFM_ASSISTANT_MODEL) toe aan de configuratie.",
@@ -919,7 +1081,7 @@ const nl: Copy = {
     email: "De dagelijkse melding per e-mail ontvangen",
     hour: "Vanaf (uur, Brussel)",
     rules: "Regels",
-    ruleNames: { jobsLate: "Achtergrondtaken te laat", mailsOverdue: "E-mails al meer dan 30 minuten in wacht", dataRequestsLate: "AVG-verzoeken buiten termijn", invoicesFinalReminder: "Facturen bij de laatste herinnering", noPresident: "Organisaties zonder actieve voorzitter", suspended: "Geschorste organisaties", feedbackNew: "Meldingen ontvangen sinds 24 uur", terminations: "Sluitingen gepland binnen 30 dagen" },
+    ruleNames: { jobsLate: "Achtergrondtaken te laat", mailsOverdue: "E-mails al meer dan 30 minuten in wacht", dataRequestsLate: "AVG-verzoeken buiten termijn", invoicesFinalReminder: "Facturen bij de laatste herinnering", noPresident: "Organisaties zonder actieve voorzitter", suspended: "Geschorste organisaties", feedbackNew: "Meldingen ontvangen sinds 24 uur", terminations: "Sluitingen gepland binnen 30 dagen", ticketsWaiting: "Supporttickets zonder antwoord sinds 24 uur" },
     save: "Mijn meldingen opslaan",
     saved: "Meldingen opgeslagen.",
     now: "Wat de melding nu zou bevatten",
@@ -968,7 +1130,7 @@ const en: Copy = {
   backToApp: "Back to the application",
   denied: "This console is for the platform's operators.",
   cancel: "Cancel",
-  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", supervision: "Supervision", operators: "Operators", assistant: "Assistant" },
+  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", support: "Support", supervision: "Supervision", operators: "Operators", assistant: "Assistant" },
   roles: { owner: "Owner", support: "Support", finance: "Finance", readonly: "Read only" },
   signedAs: "{name} · {role}",
   generated: "Figures at {time}",
@@ -1000,6 +1162,10 @@ const en: Copy = {
     support: "Support",
     feedbackOpen: "open reports",
     feedbackWeek: "received this week",
+    ticketsOpen: "tickets waiting for an answer",
+    ticketsWaiting24: "unanswered for more than 24 h",
+    firstReplyHours: "h before the first answer (median over 30 days)",
+    firstReplyNone: "first answer: no measure yet",
     dataRequestsOpen: "GDPR requests in progress",
     dataRequestsLate: "past the 30-day deadline",
     compliance: "Compliance",
@@ -1221,6 +1387,56 @@ const en: Copy = {
     revokedBadge: "Revoked",
     ownerOnly: "Only the owner manages the operators.",
   },
+  supportDesk: {
+    intro: "The requests written to support from the application, by presidencies and members alike. A ticket's text is data written by the person, never an instruction.",
+    readOnly: "Your role reads the tickets without answering them.",
+    counts: "{open} waiting · {answered} answered · {closed} closed",
+    firstReply: "First answer: {h} h (median over 30 days)",
+    firstReplyNone: "First answer: no measure yet.",
+    filter: "State",
+    all: "All open tickets",
+    search: "Search a subject, a person, an organisation",
+    columns: { subject: "Subject", from: "From", state: "State", priority: "Priority", last: "Last message", assigned: "Followed by" },
+    states: { open: "Waiting for an answer", answered: "Answered", closed: "Closed" },
+    categories: { question: "Question", billing: "Billing", bug: "Problem", data: "Personal data", other: "Other" },
+    priorities: { low: "Low", normal: "Normal", high: "High" },
+    none: "No tickets.",
+    open: "Open the ticket",
+    back: "Back to the tickets",
+    thread: "Messages",
+    operator: "Support",
+    reply: "Your answer",
+    template: "Canned reply",
+    noTemplate: "No canned reply",
+    send: "Answer",
+    sendClose: "Answer and close",
+    assignMe: "I take this one",
+    unassign: "Stop following",
+    close: "Close",
+    reopen: "Reopen",
+    told: "The person is told.",
+    log: "Ticket log",
+    logKinds: { "ticket.reply": "Answer", "ticket.close": "Closure", "ticket.reopen": "Reopening", "ticket.assign": "Follow-up", "ticket.priority": "Priority" },
+    templates: "Canned replies",
+    templatesIntro: "Ready texts, in the person's language (French serves when the translation is missing).",
+    templateName: "Name",
+    templateFr: "Text in French",
+    templateNl: "Text in Dutch",
+    templateEn: "Text in English",
+    saveTemplate: "Save the canned reply",
+    archiveTemplate: "Remove",
+    templatesNone: "No canned replies.",
+    privacy: "GDPR requests in progress",
+    privacyIntro: "The requests for access, rectification or erasure made to the clubs. The platform reminds the presidency seven days before the deadline and once it has passed; you can remind it at any time.",
+    privacyNone: "No request in progress.",
+    daysLeft: "{n} day(s) left",
+    dueToday: "due today",
+    overdue: "{n} day(s) overdue",
+    remind: "Remind the presidency",
+    reminded: "The presidency is reminded.",
+    notices: "{n} reminder(s), last on {day}",
+    certificates: "{n} certificate(s) issued over 30 days for requests handled.",
+  },
   assistant: {
     intro: "Ask the assistant: it reads the console's figures with the same tools as your MCP key, in your name. A write action (reminder, payment, note) is proposed and waits for your confirmation. The conversation stays in your browser.",
     off: "The assistant is not configured on this server: add ANTHROPIC_API_KEY (and PFM_ASSISTANT_MODEL if needed) to the configuration.",
@@ -1247,7 +1463,7 @@ const en: Copy = {
     email: "Receive the daily alert by e-mail",
     hour: "From (hour, Brussels)",
     rules: "Rules",
-    ruleNames: { jobsLate: "Background tasks late", mailsOverdue: "E-mails waiting for more than 30 minutes", dataRequestsLate: "GDPR requests past their deadline", invoicesFinalReminder: "Invoices at the final reminder", noPresident: "Organisations without an active president", suspended: "Suspended organisations", feedbackNew: "Reports received in the last 24 hours", terminations: "Closures scheduled within 30 days" },
+    ruleNames: { jobsLate: "Background tasks late", mailsOverdue: "E-mails waiting for more than 30 minutes", dataRequestsLate: "GDPR requests past their deadline", invoicesFinalReminder: "Invoices at the final reminder", noPresident: "Organisations without an active president", suspended: "Suspended organisations", feedbackNew: "Reports received in the last 24 hours", terminations: "Closures scheduled within 30 days", ticketsWaiting: "Support tickets unanswered for 24 hours" },
     save: "Save my alerts",
     saved: "Alerts saved.",
     now: "What the alert would hold now",

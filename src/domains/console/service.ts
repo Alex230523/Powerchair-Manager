@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { AccessError, audit, type Principal } from "../access/service";
 import { notice } from "../notifications/notice";
 import { trends } from "./metrics";
+import { firstReplyMedianHours } from "../support/stats";
 import { jobStates, overdueMails } from "../jobs/health";
 
 /**
@@ -150,6 +151,10 @@ export async function consoleHome(db: Pool, p: Principal) {
       support: {
         feedbackOpen: await n(c, "SELECT count(*)::int AS n FROM app_feedback WHERE state<>'fixed'"),
         feedbackWeek: await n(c, "SELECT count(*)::int AS n FROM app_feedback WHERE created_at>now()-interval '7 days'"),
+        // Series C: the support desk.
+        ticketsOpen: await n(c, "SELECT count(*)::int AS n FROM support_ticket WHERE state='open'"),
+        ticketsWaiting24: await n(c, "SELECT count(*)::int AS n FROM support_ticket WHERE state='open' AND last_message_at<now()-interval '24 hours'"),
+        firstReplyHours: await firstReplyMedianHours(c),
         dataRequestsOpen: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress')"),
         dataRequestsLate: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress') AND due_on<CURRENT_DATE"),
       },
