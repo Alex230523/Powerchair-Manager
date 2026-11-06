@@ -7,6 +7,8 @@ import { seasonOf } from "../finance/schema";
 import { brusselsToday } from "../people/service";
 import { ageBand } from "../statistics/club-math";
 import { shownClass } from "../classification/schema";
+import { notice } from "../notifications/notice";
+import { presidencyOf } from "../console/service";
 
 /**
  * Wave 16 (I3): the federation's own space. Its president creates the
@@ -59,6 +61,9 @@ export const federationClubsCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("inviteReferee"), ...person }),
   z.object({ action: z.literal("resendInvitation"), id: z.uuid() }),
   z.object({ action: z.literal("cancelInvitation"), id: z.uuid() }),
+  /** Security (06/11/2026): the clubs asking to join; the federation decides. */
+  z.object({ action: z.literal("acceptClub"), clubId: z.uuid() }),
+  z.object({ action: z.literal("refuseClub"), clubId: z.uuid() }),
 ]);
 export type FederationClubsCommand = z.infer<typeof federationClubsCommand>;
 
@@ -96,10 +101,19 @@ export async function federationClubsView(db: Pool, p: Principal) {
       teams: number;
       licensed: number;
     }[];
+    const requests = (
+      await s.c.query(
+        `SELECT o.id,o.name,o.city,o.company_number,o.federation_requested_at AS requested_at,u.name AS requested_by,cur.name AS current_federation
+           FROM organization o LEFT JOIN "user" u ON u.id=o.federation_requested_by LEFT JOIN organization cur ON cur.id=o.federation_id
+          WHERE o.federation_request_id=$1 AND o.kind='club' ORDER BY o.federation_requested_at`,
+        [s.fed],
+      )
+    ).rows as { id: string; name: string; city: string; company_number: string; requested_at: string; requested_by: string | null; current_federation: string | null }[];
     return {
       organization_id: s.fed,
       season,
       can: { manage: s.manage },
+      requests,
       clubs: clubs.map((c) => ({ ...c, status: (c.president ? "active" : "pending") as "active" | "pending" })),
     };
   });
@@ -221,6 +235,31 @@ export async function federationClubsExecute(db: Pool, p: Principal, command: Fe
           issuedByFederation: s.fed,
         });
         return { ok: true as const, id: club };
+      }
+      if (command.action === "acceptClub" || command.action === "refuseClub") {
+        const club = (await s.c.query("SELECT id,name,federation_id FROM organization WHERE id=$1 AND kind='club' AND federation_request_id=$2 FOR UPDATE", [command.clubId, s.fed])).rows[0] as { id: string; name: string; federation_id: string | null } | undefined;
+        if (!club) throw new AccessError("NOT_FOUND", 404);
+        const accept = command.action === "acceptClub";
+        await s.c.query(
+          `UPDATE organization SET federation_id=CASE WHEN $2 THEN $3::uuid ELSE federation_id END,federation_request_id=NULL,federation_requested_at=NULL,federation_requested_by=NULL WHERE id=$1`,
+          [club.id, accept, s.fed],
+        );
+        await audit(s.c, s.fed, s.userId, accept ? "federation.club_accepted" : "federation.club_refused", club.id);
+        await audit(s.c, club.id, s.userId, accept ? "club.federation_accepted" : "club.federation_refused", s.fed);
+        if (accept && club.federation_id && club.federation_id !== s.fed) await audit(s.c, club.federation_id, s.userId, "federation.club_left", club.id);
+        const fedName = (await s.c.query("SELECT name FROM organization WHERE id=$1", [s.fed])).rows[0].name as string;
+        await notice(
+          s.c,
+          club.id,
+          await presidencyOf(s.c, club.id),
+          accept
+            ? { fr: { title: "Affiliation acceptée", message: `${fedName} a accepté votre club.` }, nl: { title: "Aansluiting aanvaard", message: `${fedName} heeft uw club aanvaard.` }, en: { title: "Affiliation accepted", message: `${fedName} accepted your club.` } }
+            : { fr: { title: "Affiliation refusée", message: `${fedName} a refusé la demande de votre club.` }, nl: { title: "Aansluiting geweigerd", message: `${fedName} heeft de aanvraag van uw club geweigerd.` }, en: { title: "Affiliation refused", message: `${fedName} refused your club's request.` } },
+          "/settings/club",
+          `affiliation_${accept ? "accepted" : "refused"}:${club.id}:${Date.now()}`,
+          "administrative",
+        );
+        return { ok: true as const };
       }
       if (command.action === "invitePresident") {
         const club = (await s.c.query("SELECT id FROM organization WHERE id=$1 AND federation_id=$2 AND kind='club' FOR UPDATE", [command.clubId, s.fed])).rows[0];

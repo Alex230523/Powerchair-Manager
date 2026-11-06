@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-06",
+  "roles": [
+    "president",
+    "federation"
+  ],
+  "link": "/settings/club",
+  "image": null,
+  "fr": {
+    "title": "Rejoindre une fédération : sur son accord",
+    "text": "Choisir une fédération dans Réglages, Club lui envoie désormais une demande ; votre club n'y est rattaché qu'après son accord. Les fédérations acceptent ou refusent dans Clubs."
+  },
+  "nl": {
+    "title": "Een federatie vervoegen: met haar akkoord",
+    "text": "Een federatie kiezen in Instellingen, Club stuurt haar voortaan een aanvraag; uw club wordt pas aangesloten na haar akkoord. De federaties aanvaarden of weigeren in Clubs."
+  },
+  "en": {
+    "title": "Joining a federation: with its agreement",
+    "text": "Choosing a federation in Settings, Club now sends it a request; your club is attached only after its agreement. Federations accept or refuse in Clubs."
+  }
+}

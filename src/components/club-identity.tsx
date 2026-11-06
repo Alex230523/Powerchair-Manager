@@ -17,6 +17,8 @@ const copy = {
     contact: "Email de contact public",
     federation: "Fédération",
     noFederation: "Aucune fédération",
+    federationHelp: "Choisir une fédération lui envoie une demande : votre club n'y est rattaché qu'après son accord.",
+    federationPending: "Demande envoyée à {name} le {day}, en attente de sa réponse.",
     save: "Enregistrer",
     logo: "Logo",
     change: "Choisir un logo (PNG, JPEG ou WebP, 512 Ko max.)",
@@ -43,6 +45,8 @@ const copy = {
     contact: "Openbaar contactadres",
     federation: "Federatie",
     noFederation: "Geen federatie",
+    federationHelp: "Een federatie kiezen stuurt haar een aanvraag: uw club wordt pas aangesloten na haar akkoord.",
+    federationPending: "Aanvraag verstuurd naar {name} op {day}, wacht op haar antwoord.",
     save: "Opslaan",
     logo: "Logo",
     change: "Logo kiezen (PNG, JPEG of WebP, max. 512 kB)",
@@ -67,6 +71,8 @@ const copy = {
       "The name and logo appear in the app and on public registration forms.",
     federation: "Federation",
     noFederation: "No federation",
+    federationHelp: "Choosing a federation sends it a request: your club is attached only after its agreement.",
+    federationPending: "Request sent to {name} on {day}, waiting for its answer.",
     name: "Club name",
     contact: "Public contact email",
     save: "Save",
@@ -310,6 +316,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                     id="club-federation"
                     name="federation"
                     defaultValue={o.federation_id ?? ""}
+                    aria-describedby="club-federation-help"
                   >
                     <option value="">{t.noFederation}</option>
                     {view.federations.map((f) => (
@@ -318,6 +325,13 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                       </option>
                     ))}
                   </select>
+                  <span id="club-federation-help" className="field-help">
+                    {o.federation_request_id && o.federation_requested_at
+                      ? t.federationPending
+                          .replace("{name}", o.federation_request_name ?? "")
+                          .replace("{day}", new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric" }).format(new Date(o.federation_requested_at)))
+                      : t.federationHelp}
+                  </span>
                 </label>
               )}
               {o.kind === "club" && (
