@@ -166,6 +166,8 @@ async function deleteRows(c: PoolClient, table: string, where: string, params: u
 }
 
 /* ------------------------------------------------------------ Export */
+/** A column that holds a secret, a token, a sealed value or a hash: never written to an export. */
+export const secretColumn = (name: string) => /token|secret|password|passwd|ciphertext|sealed|_hash$|^hash$|backup_?codes/i.test(name);
 const csvCell = (v: unknown) => {
   if (v === null || v === undefined) return "";
   const s = v instanceof Date ? v.toISOString() : typeof v === "object" ? JSON.stringify(v) : String(v);
@@ -183,7 +185,9 @@ export async function buildExport(c: PoolClient, org: string) {
     if (!rows.length) continue;
     const columns = Object.keys(rows[0]);
     // Binary and encrypted columns are not readable: the files come apart, the secrets never.
-    const left = columns.filter((k) => /ciphertext|secret|token_hash|password/.test(k) || rows.some((r) => binary(r[k])));
+    // Security (06/11/2026): no live link token either (a public pot, a sponsor's report, an open
+    // event, a live match), no sealed value (national numbers) and no hash (keys, e-mail addresses).
+    const left = columns.filter((k) => secretColumn(k) || rows.some((r) => binary(r[k])));
     const kept = columns.filter((k) => !left.includes(k));
     entries.push({ name: `data/${table}.csv`, data: enc.encode([kept.join(","), ...rows.map((r) => kept.map((k) => csvCell(r[k])).join(","))].join("\n") + "\n") });
     entries.push({ name: `data/${table}.json`, data: enc.encode(JSON.stringify(rows.map((r) => Object.fromEntries(kept.map((k) => [k, r[k]]))), null, 1)) });
@@ -290,7 +294,7 @@ export async function closureTick(db: Pool) {
     } catch (e) {
       await c.query("ROLLBACK");
       // Tried again at the next run; the reason stays visible to the operator.
-      console.error("club closure failed", x.id, (e as Error).message);
+      console.error("club closure failed", x.id, e instanceof Error ? e.name : "unknown");
     } finally {
       c.release();
     }

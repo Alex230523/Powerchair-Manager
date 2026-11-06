@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { apiRoutes, matrixRoles } from "../access-matrix";
 import { menuGroups, type Workspace } from "../../src/components/menu";
-import { signIn, secretsB, origin, type AuditRole } from "./support";
+import { signIn, secretsB, origin, emailOf, type AuditRole } from "./support";
 
 /**
  * Audit 26 (npm run audit:access): every API route, called for real by
@@ -25,6 +25,12 @@ const concrete = (path: string) =>
     .replace("[widget]", "palmares");
 
 const privateB = secretsB.filter((s) => !s.startsWith("Fédération"));
+/** Security (06/11/2026): the fields that hold a secret, given with a value. */
+const secretKeys = /"(token_hash|key_hash|secret_sealed|token_sealed|[a-z_]*ciphertext|national_hash|national_sealed|backupCodes|claim_token|accessToken|refreshToken|idToken|secret|password)"\s*:\s*"[^"]{6,}"/g;
+const configSecrets = ["BETTER_AUTH_SECRET", "CRON_SECRET", "ANTHROPIC_API_KEY", "MOLLIE_API_KEY", "SMTP_PASSWORD", "PFM_VAPID_PRIVATE_KEY", "PFM_FEEDBACK_GITHUB_TOKEN", "OPENROUTESERVICE_API_KEY"]
+  .map((k) => process.env[k] ?? "")
+  .filter((v) => v.length >= 12);
+let othersTokens: string[] = [];
 
 test("each role reaches exactly what the matrix says", async () => {
   test.setTimeout(40 * 60000);
@@ -39,8 +45,11 @@ test("each role reaches exactly what the matrix says", async () => {
     expect(demoNames.length).toBeGreaterThan(0);
     for (const role of matrixRoles) {
       const ctx = await http.newContext({ baseURL: origin });
+      othersTokens = [];
       if (role !== "anonymous") {
         await signIn(ctx, db, role as AuditRole);
+        const me = (await db.query('SELECT id FROM "user" WHERE email=$1', [emailOf(role as AuditRole)])).rows[0].id as string;
+        othersTokens = (await db.query('SELECT token FROM session WHERE "userId"<>$1 AND "expiresAt">now()', [me])).rows.map((r) => r.token as string).filter((t) => t.length >= 16);
         menus[role] = menuGroups((await (await ctx.get("/api/workspace")).json()) as Workspace).flatMap((g) => g.items.map((i) => i.route));
       }
       for (const [path, route] of Object.entries(apiRoutes)) {
@@ -61,6 +70,11 @@ test("each role reaches exactly what the matrix says", async () => {
           const type = response.headers()["content-type"] ?? "";
           if (!/json|text|calendar|csv/.test(type)) continue;
           const body = await response.text();
+          // Security (06/11/2026): never a secret. No sealed, hashed or secret column with a value, no
+          // configuration secret, no other account's session token.
+          for (const m of body.matchAll(secretKeys)) problems.push(`GET ${path} as ${role}: returns the secret field « ${m[1]} »`);
+          for (const v of configSecrets) if (body.includes(v)) problems.push(`GET ${path} as ${role}: returns a configuration secret`);
+          for (const t of othersTokens) if (body.includes(t)) problems.push(`GET ${path} as ${role}: returns another account's session token`);
           // Never the other club's or the other federation's data.
           // The federations' names are public (a club picks its federation from the list): only B's private data count.
           if (!["president_b", "federation_b"].includes(role)) for (const s of privateB) if (body.includes(s)) problems.push(`GET ${path} as ${role}: shows « ${s} » of club or federation B`);
