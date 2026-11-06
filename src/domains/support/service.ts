@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { escapeLike } from "../../lib/sql";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
 import { pdfDocument, type PdfLine } from "../../lib/pdf";
 import { publish } from "../notifications/queue";
@@ -127,7 +128,7 @@ export async function consoleSupport(db: Pool, p: Principal, raw: { state?: stri
     const state = (["open", "answered", "closed"] as string[]).includes(raw.state ?? "") ? raw.state : "";
     const q = (raw.q ?? "").trim().slice(0, 80);
     const where = "($1='' AND t.state<>'closed' OR t.state=$1) AND ($2='' OR t.subject ILIKE '%'||$2||'%' OR u.name ILIKE '%'||$2||'%' OR o.name ILIKE '%'||$2||'%')";
-    const tickets = (await c.query(`${consoleTicketSql} WHERE ${where} ORDER BY CASE t.priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,t.last_message_at DESC LIMIT 100`, [state || "", q])).rows as ConsoleTicket[];
+    const tickets = (await c.query(`${consoleTicketSql} WHERE ${where} ORDER BY CASE t.priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,t.last_message_at DESC LIMIT 100`, [state || "", escapeLike(q)])).rows as ConsoleTicket[];
     const counts = Object.fromEntries(((await c.query("SELECT state,count(*)::int AS n FROM support_ticket GROUP BY state")).rows as { state: TicketState; n: number }[]).map((r) => [r.state, r.n])) as Partial<Record<TicketState, number>>;
     const templates = (await c.query("SELECT id,name,text_fr,text_nl,text_en,created_at FROM support_template WHERE archived_at IS NULL ORDER BY name")).rows as Template[];
     const privacy = (

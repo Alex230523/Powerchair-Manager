@@ -691,7 +691,10 @@ export async function associationExecute(db: Pool, p: Principal, cmd: Associatio
           need();
           const m = await meetingRow(x, cmd.meetingId, true);
           if (m.status !== "closed") throw new AccessError("MEETING_OPEN", 409);
-          await x.c.query(`UPDATE association_meeting SET signed_${cmd.role}_name=$2,signed_${cmd.role}_at=now(),version=version+1 WHERE id=$1`, [m.id, cmd.name]);
+          // Security (06/11/2026): the column comes from a fixed table, never from the command itself.
+          const signed = { president: "UPDATE association_meeting SET signed_president_name=$2,signed_president_at=now(),version=version+1 WHERE id=$1", secretary: "UPDATE association_meeting SET signed_secretary_name=$2,signed_secretary_at=now(),version=version+1 WHERE id=$1" }[cmd.role];
+          if (!signed) throw new AccessError("INVALID_INPUT", 400);
+          await x.c.query(signed, [m.id, cmd.name]);
           const after = (await x.c.query("SELECT * FROM association_meeting WHERE id=$1", [m.id])).rows[0];
           // Both signed: the minutes go to Documents (Vie de l'ASBL, the year), as a PDF.
           if (after.signed_president_at && after.signed_secretary_at && !after.document_id) await fileMinutes(x, after);

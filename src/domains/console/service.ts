@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { escapeLike } from "../../lib/sql";
 import { AccessError, audit, type Principal } from "../access/service";
 import { notice } from "../notifications/notice";
 import { trends } from "./metrics";
@@ -255,7 +256,7 @@ export async function consoleOrganizations(db: Pool, p: Principal, raw: { q?: st
            FROM organization o LEFT JOIN organization f ON f.id=o.federation_id
           WHERE ($1='' OR o.name ILIKE '%'||$1||'%') AND ($2='' OR o.kind=$2) AND ($3='' OR o.country_code=$3)
           ORDER BY o.kind DESC,lower(o.name) LIMIT 500`,
-        [q, raw.kind === "club" || raw.kind === "federation" ? raw.kind : "", /^[A-Z]{2}$/.test(raw.country ?? "") ? raw.country : ""],
+        [escapeLike(q), raw.kind === "club" || raw.kind === "federation" ? raw.kind : "", /^[A-Z]{2}$/.test(raw.country ?? "") ? raw.country : ""],
       )
     ).rows as OrganizationRow[];
     const countries = (await c.query("SELECT DISTINCT country_code AS code FROM organization ORDER BY code")).rows.map((r) => r.code as string);
