@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { apiRoutes, matrixRoles } from "../access-matrix";
 import { menuGroups, type Workspace } from "../../src/components/menu";
 import { signIn, secretsB, origin, emailOf, type AuditRole } from "./support";
+import { createAccount } from "../support/session";
 
 /**
  * Audit 26 (npm run audit:access): every API route, called for real by
@@ -213,3 +214,70 @@ test("club B cannot attach itself to the demo federation", async () => {
     await db.end();
   }
 });
+
+/**
+ * Security (06/11/2026), broken authentication, against the running server:
+ * no form of the sign-up address escapes the invitation; ten failed passwords
+ * stop an address, even the right password afterwards; a session ends with
+ * the sign-out; the reset answers the same for an account that exists or not;
+ * the session cookie is out of reach of scripts and of other sites.
+ */
+test("the sign-in resists the classic attacks", async () => {
+  test.setTimeout(5 * 60000);
+  const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
+  const ctx = await http.newContext({ baseURL: origin });
+  const stamp = Date.now();
+  try {
+    // 1. Sign-up without an invitation, under every form of the address.
+    for (const path of ["/api/auth/sign-up/email", "/api/auth/sign-up/email/", "/api/auth//sign-up//email", "/api/auth/sign-up/%65mail", "/api/auth/SIGN-UP/EMAIL", "/api/auth/sign-up/email?x=1"]) {
+      await db.query('DELETE FROM "rateLimit"');
+      const email = `intrus-${stamp}-${probeIndex++}@example.test`;
+      const r = await ctx.post(path, { headers: { origin }, data: { email, password: "Une-phrase-assez-longue-2026", name: "Intrus" } });
+      expect(r.status(), path).not.toBe(200);
+      expect((await db.query('SELECT count(*)::int AS n FROM "user" WHERE email=$1', [email])).rows[0].n, path).toBe(0);
+    }
+    // 2. Ten wrong passwords, then the right one: still refused for this address.
+    const email = `verrou-${stamp}@example.test`,
+      password = "Mot-de-passe-du-test-2026";
+    await createAccount(db, "Compte verrou", email, password);
+    for (let i = 0; i < 10; i++) {
+      await db.query('DELETE FROM "rateLimit"');
+      const r = await ctx.post("/api/auth/sign-in/email", { headers: { origin }, data: { email, password: "pas-le-bon-mot-de-passe-" + i } });
+      expect(r.status()).toBe(401);
+    }
+    await db.query('DELETE FROM "rateLimit"');
+    const blocked = await ctx.post("/api/auth/sign-in/email/", { headers: { origin }, data: { email: email.toUpperCase(), password } });
+    expect(blocked.status()).toBe(429);
+    expect((await blocked.json()).code).toBe("TOO_MANY_ATTEMPTS");
+    await db.query("DELETE FROM auth_failure");
+    // 3. Signed in: the cookie is HttpOnly and SameSite; after the sign-out the session is gone.
+    await db.query('DELETE FROM "rateLimit"');
+    const ok = await ctx.post("/api/auth/sign-in/email", { headers: { origin }, data: { email, password } });
+    expect(ok.status()).toBe(200);
+    const cookies = ok.headersArray().filter((h) => h.name.toLowerCase() === "set-cookie").map((h) => h.value);
+    const session = cookies.find((c) => /session_token=/.test(c)) ?? "";
+    expect(session).toMatch(/HttpOnly/i);
+    expect(session).toMatch(/SameSite=(Lax|Strict)/i);
+    expect((await ctx.get("/api/workspace")).status()).toBe(200);
+    const token = session.split(";")[0];
+    expect((await ctx.post("/api/auth/sign-out", { headers: { origin }, data: {} })).status()).toBe(200);
+    const replay = await http.newContext({ baseURL: origin, extraHTTPHeaders: { cookie: token } });
+    expect((await replay.get("/api/workspace")).status()).toBe(401);
+    await replay.dispose();
+    // 4. The reset answers the same for an account that exists and for one that does not.
+    await db.query('DELETE FROM "rateLimit"');
+    const known = await ctx.post("/api/auth/request-password-reset", { headers: { origin }, data: { email, redirectTo: "/fr/access" } });
+    await db.query('DELETE FROM "rateLimit"');
+    const unknown = await ctx.post("/api/auth/request-password-reset", { headers: { origin }, data: { email: `personne-${stamp}@example.test`, redirectTo: "/fr/access" } });
+    expect(unknown.status()).toBe(known.status());
+    expect(await unknown.text()).toBe(await known.text());
+    // 5. A request from another site changes nothing.
+    await db.query('DELETE FROM "rateLimit"');
+    expect((await ctx.post("/api/workspace", { headers: { origin: "https://evil.example" }, data: { action: "context", mandateId: "00000000-0000-4000-8000-000000000000" } })).status()).toBe(403);
+  } finally {
+    await db.query('DELETE FROM "rateLimit"');
+    await ctx.dispose();
+    await db.end();
+  }
+});
+let probeIndex = 0;

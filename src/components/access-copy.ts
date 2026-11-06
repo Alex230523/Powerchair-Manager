@@ -203,6 +203,7 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
   IDENTITY_UNKNOWN: { fr: "Ce code d'identité n'existe pas.", nl: "Deze identiteitscode bestaat niet.", en: "This identity code does not exist." },
   IDENTITY_SAME: { fr: "Cette fiche porte déjà ce code d'identité.", nl: "Deze fiche draagt al deze identiteitscode.", en: "This profile already carries this identity code." },
   IDENTITY_IN_USE: { fr: "Une autre fiche de votre club porte déjà ce code d'identité.", nl: "Een andere fiche van uw club draagt al deze identiteitscode.", en: "Another profile of your club already carries this identity code." },
+  TOO_MANY_ATTEMPTS: { fr: "Trop d'essais pour cette adresse. Réessayez dans un quart d'heure, ou réinitialisez votre mot de passe.", nl: "Te veel pogingen voor dit adres. Probeer opnieuw over een kwartier, of stel uw wachtwoord opnieuw in.", en: "Too many attempts for this address. Try again in a quarter of an hour, or reset your password." },
   TICKET_STATE: { fr: "Cette demande au support n'est plus dans l'état voulu.", nl: "Dit verzoek aan de ondersteuning is niet meer in de gewenste toestand.", en: "This support request is no longer in the wanted state." },
   REQUEST_STATE: { fr: "Cette demande RGPD est déjà traitée.", nl: "Dit AVG-verzoek is al afgehandeld.", en: "This GDPR request is already handled." },
   REMINDERS_DONE: { fr: "Les trois rappels ont déjà été envoyés.", nl: "De drie herinneringen zijn al verzonden.", en: "The three reminders have already been sent." },
