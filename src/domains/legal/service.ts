@@ -10,6 +10,7 @@ import { storageAdapter } from "../../lib/storage-adapter";
 import { brusselsToday } from "../people/service";
 import { DPA_VERSION, dpaPlain, subprocessors } from "./texts";
 import { careCommand, keptTables, retentionBounds, type CareCommand, type RetentionCategory } from "./schema";
+import { duplicatesSql } from "../console/service";
 export { careCommand };
 
 /**
@@ -404,7 +405,9 @@ export async function securityView(db: Pool, p: Principal) {
         [s.org],
       )
     ).rows as { id: string; kind: string; status: string; details: string; response: string; created_at: string; due_on: string; certificate_number: string | null; requester: string; person: string | null }[];
-    return { organization_id: s.org, can: { president: s.president }, dpa, hosting: { region: "UE", subprocessors }, access, health, retention, bounds: retentionBounds, purges, exports, closure, requests };
+    // Console, series D: the profiles that probably exist in another club under another identity (same name, same birth date).
+    const duplicates = (await s.c.query(duplicatesSql, [s.org])).rows as { id: string; full_name: string }[];
+    return { organization_id: s.org, can: { president: s.president }, dpa, hosting: { region: "UE", subprocessors }, access, health, retention, bounds: retentionBounds, purges, exports, closure, requests, duplicates };
   });
 }
 
@@ -451,6 +454,25 @@ export async function careExecute(db: Pool, p: Principal, command: CareCommand, 
           const r = await s.c.query("UPDATE club_termination SET cancelled_at=now(),cancelled_by=$2 WHERE organization_id=$1 AND cancelled_at IS NULL AND completed_at IS NULL RETURNING id", [s.org, s.userId]);
           if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
           await audit(s.c, s.org, s.userId, "club.closure_cancelled", r.rows[0].id);
+          return { ok: true as const };
+        }
+        case "linkIdentity": {
+          // Series D: the person gave their identity code (printed on their own profile); the club's profile joins that identity.
+          needPresident(s);
+          const profile = (await s.c.query("SELECT cp.id,cp.person_id,cp.full_name FROM club_person cp WHERE cp.id=$1 AND cp.organization_id=$2 FOR UPDATE", [command.profileId, s.org])).rows[0] as { id: string; person_id: string; full_name: string } | undefined;
+          if (!profile) throw new AccessError("NOT_FOUND", 404);
+          const target = (await s.c.query("SELECT id FROM person WHERE identity_code=$1", [command.identityCode])).rows[0] as { id: string } | undefined;
+          if (!target) throw new AccessError("IDENTITY_UNKNOWN", 404);
+          if (target.id === profile.person_id) throw new AccessError("IDENTITY_SAME", 409);
+          if ((await s.c.query("SELECT 1 FROM club_person WHERE organization_id=$1 AND person_id=$2", [s.org, target.id])).rowCount) throw new AccessError("IDENTITY_IN_USE", 409);
+          await s.c.query("UPDATE club_person SET person_id=$2 WHERE id=$1", [profile.id, target.id]);
+          // The old identity goes when nothing else holds it (no account, no other profile, no registry entry).
+          await s.c.query(
+            `DELETE FROM person p WHERE p.id=$1 AND p.user_id IS NULL AND NOT EXISTS(SELECT 1 FROM club_person cp WHERE cp.person_id=p.id)
+               AND NOT EXISTS(SELECT 1 FROM classification_record r WHERE r.person_id=p.id) AND NOT EXISTS(SELECT 1 FROM international_transfer t WHERE t.person_id=p.id)`,
+            [profile.person_id],
+          );
+          await audit(s.c, s.org, s.userId, "privacy.identity_link", profile.id, { identityCode: command.identityCode });
           return { ok: true as const };
         }
         case "retention": {

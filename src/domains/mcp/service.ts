@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AccessError, type Principal } from "../access/service";
 import { canBill, canWrite, consoleExecute, consoleHome, consoleOrganization, consoleOrganizations, consoleSupervision, operatorScope, type Operator } from "../console/service";
 import { billingCommand, billingExecute, billingView } from "../billing/service";
-import { consoleCommand } from "../console/schema";
+import { consoleCommand, keyReview } from "../console/schema";
 import { consoleSupport, consoleTicket, supportOperatorExecute } from "../support/service";
 import { supportOperatorCommand } from "../support/schema";
 import { PROTOCOL_VERSION, mcpScopes, rpcRequest, serverInfo, tools, type McpKeyCommand, type McpScope, type RpcRequest } from "./schema";
@@ -32,7 +32,8 @@ export type KeyRow = { id: string; name: string; prefix: string; scopes: McpScop
 export async function mcpKeys(db: Pool, p: Principal) {
   return operatorScope(db, p, async (c, o) => {
     const keys = (await c.query("SELECT id,name,prefix,scopes,calls,created_at,last_used_at,revoked_at FROM operator_api_key WHERE operator_id=$1 ORDER BY revoked_at NULLS FIRST,created_at DESC", [o.userId])).rows as KeyRow[];
-    return { keys, scopes: allowedScopes(o), endpoint: "/api/mcp" };
+    // Series D: a key never used, idle for 60 days or older than 180 days is flagged for review.
+    return { keys: keys.map((k) => ({ ...k, review: k.revoked_at ? null : keyReview(k) })), scopes: allowedScopes(o), endpoint: "/api/mcp" };
   });
 }
 /** The scopes an operator may give a key: never more than their own role. */
@@ -51,9 +52,10 @@ export async function mcpKeysExecute(db: Pool, p: Principal, command: McpKeyComm
       // The secret is shown once; only its hash stays.
       return { ok: true as const, id, key };
     }
-    const r = await c.query("UPDATE operator_api_key SET revoked_at=now() WHERE id=$1 AND operator_id=$2 AND revoked_at IS NULL RETURNING id", [command.id, o.userId]);
+    // Series D: the owner revokes anyone's key (the review of the keys); the others their own.
+    const r = await c.query(`UPDATE operator_api_key SET revoked_at=now() WHERE id=$1 AND ${o.role === "owner" ? "true" : "operator_id=$2"} AND revoked_at IS NULL RETURNING id,operator_id`, o.role === "owner" ? [command.id] : [command.id, o.userId]);
     if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
-    await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'mcp.key.revoke',$2)", [o.userId, JSON.stringify({ id: command.id })]);
+    await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'mcp.key.revoke',$2)", [o.userId, JSON.stringify({ id: command.id, owner: r.rows[0].operator_id })]);
     return { ok: true as const };
   });
 }

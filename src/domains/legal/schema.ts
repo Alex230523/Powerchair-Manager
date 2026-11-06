@@ -47,6 +47,8 @@ export const careCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("cancelClose") }),
   z.object({ action: z.literal("retention"), category: z.enum(retentionCategories), months: z.number().int().min(1).max(240) }),
   z.object({ action: z.literal("request"), id: z.uuid(), status: z.enum(["in_progress", "done", "refused"]), response: z.string().trim().max(2000).default("") }),
+  /** Console, series D: a profile linked to the person's identity code (the person gave it), so two clubs share one identity. */
+  z.object({ action: z.literal("linkIdentity"), profileId: z.uuid(), identityCode: z.string().trim().toUpperCase().regex(/^PFM-[A-Z0-9]{10}$/) }),
 ]);
 export type CareCommand = z.infer<typeof careCommand>;
 export const dataRequestCommand = z.object({ organizationId: z.uuid(), kind: z.enum(["access", "rectification", "erasure"]), details: z.string().trim().max(2000).default("") });
