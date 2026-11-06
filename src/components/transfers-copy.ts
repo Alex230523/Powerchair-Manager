@@ -75,6 +75,11 @@ type Copy = {
     intlRefuse: string;
     intlDecided: string;
     intlClassification: string;
+    arrivals: string;
+    arrivalsIntro: string;
+    arrivalCreate: string;
+    arrivalDone: string;
+    arrivalOpen: string;
   };
   search: string;
   club: string;
@@ -227,6 +232,11 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       intlRefuse: "Refuser le dossier",
       intlDecided: "Décidé le {day}",
       intlClassification: "Classification",
+      arrivals: "Arrivées de l'étranger",
+      arrivalsIntro: "Votre fédération a accepté ces dossiers pour votre club. Ouvrir la fiche crée le joueur chez vous, rattaché à la même personne : son code d'identité et sa classification au registre le suivent.",
+      arrivalCreate: "Ouvrir la fiche",
+      arrivalDone: "Fiche créée.",
+      arrivalOpen: "Voir la fiche",
     },
     search: "Rechercher un joueur",
     club: "Club",
@@ -392,6 +402,11 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       intlRefuse: "Dossier weigeren",
       intlDecided: "Beslist op {day}",
       intlClassification: "Classificatie",
+      arrivals: "Aankomsten uit het buitenland",
+      arrivalsIntro: "Uw federatie heeft deze dossiers voor uw club aanvaard. De fiche openen maakt de speler bij u aan, gekoppeld aan dezelfde persoon: zijn identiteitscode en zijn classificatie in het register volgen hem.",
+      arrivalCreate: "Fiche openen",
+      arrivalDone: "Fiche aangemaakt.",
+      arrivalOpen: "Fiche bekijken",
     },
     search: "Een speler zoeken",
     club: "Club",
@@ -570,6 +585,11 @@ export const transfersCopy: Record<"fr" | "nl" | "en", Copy> = {
       intlRefuse: "Refuse the dossier",
       intlDecided: "Decided on {day}",
       intlClassification: "Classification",
+      arrivals: "Arrivals from abroad",
+      arrivalsIntro: "Your federation accepted these dossiers for your club. Opening the sheet creates the player with you, linked to the same person: their identity code and their registry classification follow them.",
+      arrivalCreate: "Open the sheet",
+      arrivalDone: "Sheet created.",
+      arrivalOpen: "See the sheet",
     },
     search: "Search a player",
     club: "Club",

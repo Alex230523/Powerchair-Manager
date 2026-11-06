@@ -172,6 +172,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Console : serveur MCP et clés d'opérateur pour brancher son assistant](evolutions/2026-11-06-mcp-console.md) |
 | 06/11/2026 | [Console : accès de support, ouvrir une organisation comme son président pour un temps](evolutions/2026-11-06-zz-acces-support.md) |
 | 06/11/2026 | [Console : l'assistant dans la console, écritures sur confirmation](evolutions/2026-11-06-zzz-assistant-console.md) |
+| 06/11/2026 | [International : identité de la personne et registre des classifications](evolutions/2026-11-06-zzzz-identite-registre.md) |
 
 ## Convention
 

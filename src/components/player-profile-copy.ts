@@ -68,6 +68,12 @@ type Copy = {
   classificationHint: string;
   classifications: Record<"PF1" | "PF2" | "pending" | "not_classified", string>;
   validUntil: string;
+  identityCode: string;
+  identityHint: string;
+  registry: string;
+  registryNone: string;
+  registryLine: string;
+  registryInternational: string;
   control: string;
   controls: Record<string, string>;
   sportNotes: string;
@@ -180,6 +186,12 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       not_classified: "Non définie",
     },
     validUntil: "Valable jusqu’au",
+    identityCode: "Code d'identité",
+    identityHint: "Suit le joueur de club en club et de pays en pays.",
+    registry: "Registre des classifications",
+    registryNone: "Aucune inscription au registre.",
+    registryLine: "{classification} par {federation}, le {day}",
+    registryInternational: "reconnue de l'étranger",
     control: "Commande du fauteuil",
     controls: {
       "": "Non renseignée",
@@ -300,6 +312,12 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       not_classified: "Niet bepaald",
     },
     validUntil: "Geldig tot",
+    identityCode: "Identiteitscode",
+    identityHint: "Volgt de speler van club naar club en van land naar land.",
+    registry: "Register van classificaties",
+    registryNone: "Geen inschrijving in het register.",
+    registryLine: "{classification} door {federation}, op {day}",
+    registryInternational: "erkend uit het buitenland",
     control: "Besturing van de rolstoel",
     controls: {
       "": "Niet ingevuld",
@@ -421,6 +439,12 @@ export const playerProfileCopy: Record<Locale, Copy> = {
       not_classified: "Not defined",
     },
     validUntil: "Valid until",
+    identityCode: "Identity code",
+    identityHint: "Follows the player from club to club and from country to country.",
+    registry: "Registry of classifications",
+    registryNone: "No record in the registry.",
+    registryLine: "{classification} by {federation}, on {day}",
+    registryInternational: "recognised from abroad",
     control: "Chair control",
     controls: {
       "": "Not provided",

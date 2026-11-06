@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-06",
+  "roles": [
+    "federation",
+    "president"
+  ],
+  "link": "/federation/registry",
+  "image": null,
+  "fr": {
+    "title": "Code d'identité et registre des classifications",
+    "text": "Chaque joueur a un code d'identité qui le suit de club en club et de pays en pays. Les décisions PF1 et PF2 sont inscrites à son nom au registre de la fédération ; les fiches des clubs suivent. Un joueur arrivant de l'étranger retrouve son code et sa classification dans son nouveau club."
+  },
+  "nl": {
+    "title": "Identiteitscode en register van classificaties",
+    "text": "Elke speler heeft een identiteitscode die hem volgt van club naar club en van land naar land. PF1- en PF2-beslissingen worden op zijn naam in het register van de federatie ingeschreven; de fiches van de clubs volgen. Een speler uit het buitenland vindt zijn code en classificatie terug in zijn nieuwe club."
+  },
+  "en": {
+    "title": "Identity code and registry of classifications",
+    "text": "Every player has an identity code that follows them from club to club and from country to country. PF1 and PF2 decisions are written in their name in the federation's registry; the clubs' sheets follow. A player arriving from abroad finds their code and classification in their new club."
+  }
+}

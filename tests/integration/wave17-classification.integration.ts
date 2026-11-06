@@ -162,6 +162,8 @@ it("publishes: profiles, history, audit, and the people around each player told"
   expect(sport[a2]).toMatchObject({ classification: "PF1", classification_status: "refused", classification_note: "À revoir" });
   expect(sport[b1]).toBeUndefined();
   expect((await db.query("SELECT classification,status FROM classification_history WHERE profile_id=$1 AND valid_to IS NULL", [a1])).rows).toEqual([{ classification: "PF2", status: "validated" }]);
+  // International, step 3: the PF2 decision is in the person's registry, by this federation, from this day; the review (refused) is not.
+  expect((await db.query("SELECT r.classification,r.source,r.session_id FROM classification_record r JOIN club_person cp ON cp.person_id=r.person_id WHERE cp.id=ANY($1::uuid[]) ORDER BY r.classification", [[a1, a2]])).rows).toEqual([{ classification: "PF2", source: "session", session_id: session }]);
   expect((await db.query("SELECT count(*)::int AS n FROM audit_log WHERE action='classification.session.decision' AND organization_id=$1", [clubA])).rows[0].n).toBe(2);
   expect(await told(`${session}:${a1}`)).toEqual(expect.arrayContaining([presidentA.userId, coachA.userId, playerUser.userId]));
   expect(await told(`${session}:${a2}`)).toEqual(expect.arrayContaining([presidentA.userId, coachA.userId, parentUser.userId]));
