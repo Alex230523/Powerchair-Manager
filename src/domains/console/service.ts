@@ -13,7 +13,7 @@ import { jobStates, overdueMails } from "../jobs/health";
  * the organisation's own audit journal. Operators come from the table, or
  * from PFM_OPERATOR_EMAILS (owners) so the first one can get in.
  */
-import { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole } from "./schema";
+import { consoleCommand, keyReview, onboardingSteps, operatorRoles, operatorSessionHours, type ConsoleCommand, type OnboardingStep, type OperatorRole } from "./schema";
 export { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole };
 
 export type Operator = { userId: string; name: string; role: OperatorRole };
@@ -28,9 +28,47 @@ async function operatorOf(c: PoolClient, p: Principal): Promise<Operator> {
     | { id: string; name: string; email: string; role: OperatorRole | null }
     | undefined;
   if (!u) throw new AccessError("FORBIDDEN");
-  if (u.role) return { userId: u.id, name: u.name, role: u.role };
-  if (envOperators().includes(u.email)) return { userId: u.id, name: u.name, role: "owner" };
-  throw new AccessError("FORBIDDEN");
+  const role: OperatorRole | null = u.role ?? (envOperators().includes(u.email) ? "owner" : null);
+  if (!role) throw new AccessError("FORBIDDEN");
+  await consoleSession(c, p, u.id);
+  return { userId: u.id, name: u.name, role };
+}
+/**
+ * Series D: the console wants a session younger than PFM_OPERATOR_SESSION_HOURS (12): past that, the
+ * operator signs in again (the application itself stays open). A key of the MCP server and the
+ * assistant's inner calls have no session here and are not concerned.
+ */
+const sessionOf = async (c: PoolClient, p: Principal, userId: string) => {
+  if (p.sessionId.startsWith("mcp:") || p.sessionId.startsWith("assistant:")) return null;
+  return ((await c.query('SELECT "createdAt" AS created_at,COALESCE("ipAddress",\'\') AS ip,COALESCE("userAgent",\'\') AS ua FROM session WHERE id=$1 AND "userId"=$2', [p.sessionId, userId])).rows[0] as { created_at: Date; ip: string; ua: string } | undefined) ?? null;
+};
+async function consoleSession(c: PoolClient, p: Principal, userId: string) {
+  const s = await sessionOf(c, p, userId);
+  if (s && Date.now() - new Date(s.created_at).getTime() > operatorSessionHours() * 3600000) throw new AccessError("OPERATOR_SESSION_EXPIRED");
+}
+/**
+ * Every console session is journaled with the address and the browser the session carries. On its own
+ * connection, outside the caller's transaction, with a short lock wait: a nested call never waits on
+ * the row the outer one holds, and the journal never blocks the console.
+ */
+async function logConsoleSession(db: Pool, p: Principal, userId: string) {
+  const c = await db.connect();
+  try {
+    const s = await sessionOf(c, p, userId);
+    if (!s) return;
+    await c.query("BEGIN");
+    await c.query("SET LOCAL lock_timeout='300ms'");
+    await c.query(
+      `INSERT INTO operator_session_log(session_id,operator_id,started_at,ip,user_agent,calls) VALUES($1,$2,$3,left($4,64),left($5,300),1)
+         ON CONFLICT (session_id) DO UPDATE SET last_console_at=now(),calls=operator_session_log.calls+1`,
+      [p.sessionId, userId, s.created_at, s.ip, s.ua],
+    );
+    await c.query("COMMIT");
+  } catch {
+    await c.query("ROLLBACK").catch(() => undefined);
+  } finally {
+    c.release();
+  }
 }
 export const canWrite = (o: Operator) => o.role === "owner" || o.role === "support";
 /** Owner and finance keep the books of the platform. */
@@ -40,6 +78,7 @@ export async function operatorScope<T>(db: Pool, p: Principal, fn: (c: PoolClien
   try {
     await c.query("BEGIN");
     const o = await operatorOf(c, p);
+    await logConsoleSession(db, p, o.userId);
     const out = await fn(c, o);
     await c.query("COMMIT");
     return out;
@@ -224,6 +263,61 @@ export async function consoleOrganizations(db: Pool, p: Principal, raw: { q?: st
   });
 }
 
+/** Series D: what happened to the organisation on the platform, newest first (no personal data but the officers' names). */
+export type TimelineEvent = { at: string; kind: string; label: string };
+async function timeline(c: PoolClient, org: string): Promise<TimelineEvent[]> {
+  return (
+    await c.query(
+      `SELECT at,kind,label FROM (
+         SELECT created_at AS at,'created' AS kind,'' AS label FROM organization WHERE id=$1
+         UNION ALL SELECT r.valid_from,'president',u.name FROM role_assignment r JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=$1 AND r.role IN ('club_president','federation_president') AND r.revoked_at IS NULL
+         UNION ALL SELECT d.accepted_at,'dpa','' FROM club_dpa_acceptance d WHERE d.organization_id=$1
+         UNION ALL SELECT s.started_on::timestamptz,'subscription',p.name FROM billing_subscription s JOIN billing_plan p ON p.id=s.plan_id WHERE s.organization_id=$1
+         UNION ALL SELECT s.ended_on::timestamptz,'subscription.end',p.name FROM billing_subscription s JOIN billing_plan p ON p.id=s.plan_id WHERE s.organization_id=$1 AND s.ended_on IS NOT NULL
+         UNION ALL SELECT i.sent_at,'invoice.sent',i.number FROM billing_invoice i WHERE i.organization_id=$1 AND i.sent_at IS NOT NULL
+         UNION ALL SELECT i.paid_on::timestamptz,'invoice.paid',i.number FROM billing_invoice i WHERE i.organization_id=$1 AND i.paid_on IS NOT NULL
+         UNION ALL SELECT a.created_at,'action.'||a.kind,u.name FROM platform_action a JOIN "user" u ON u.id=a.operator_id WHERE a.organization_id=$1 AND a.kind<>'note'
+         UNION ALL SELECT d.created_at,'privacy.'||d.kind,'' FROM data_request d WHERE d.organization_id=$1
+         UNION ALL SELECT d.handled_at,'privacy.'||d.status,'' FROM data_request d WHERE d.organization_id=$1 AND d.handled_at IS NOT NULL AND d.status IN ('done','refused')
+         UNION ALL SELECT t.created_at,'ticket',t.category FROM support_ticket t WHERE t.organization_id=$1
+         UNION ALL SELECT t.requested_at,'termination',t.effective_on::text FROM club_termination t WHERE t.organization_id=$1
+         UNION ALL SELECT s.starts_on::timestamptz,'season',s.name FROM season s WHERE s.organization_id=$1
+       ) e WHERE at IS NOT NULL ORDER BY at DESC LIMIT 60`,
+      [org],
+    )
+  ).rows as TimelineEvent[];
+}
+/** Series D: the first steps, done or not, for the console to see where a newcomer stands. */
+async function onboarding(c: PoolClient, org: string, kind: "club" | "federation") {
+  const q = async (sql: string) => Boolean((await c.query(sql, [org])).rowCount);
+  const checks: Record<OnboardingStep, () => Promise<boolean>> = {
+    president: () => q(`SELECT 1 FROM role_assignment r WHERE r.organization_id=$1 AND ${presidentRole} LIMIT 1`),
+    dpa: () => q("SELECT 1 FROM club_dpa_acceptance WHERE organization_id=$1 LIMIT 1"),
+    identity: () => q("SELECT 1 FROM organization WHERE id=$1 AND company_number<>'' AND address<>''"),
+    season: () => q("SELECT 1 FROM season WHERE organization_id=$1 LIMIT 1"),
+    team: () => q("SELECT 1 FROM team WHERE organization_id=$1 AND NOT archived LIMIT 1"),
+    players: () => q("SELECT 1 FROM club_person WHERE organization_id=$1 AND status='active' AND 'player'=ANY(directory_roles) LIMIT 1"),
+    match: () => q("SELECT 1 FROM match WHERE organization_id=$1 LIMIT 1"),
+    subscription: () => q("SELECT 1 FROM billing_subscription WHERE organization_id=$1 AND ended_on IS NULL LIMIT 1"),
+    paid: () => q("SELECT 1 FROM billing_invoice WHERE organization_id=$1 AND state='paid' LIMIT 1"),
+    clubs: () => q("SELECT 1 FROM organization WHERE federation_id=$1 AND kind='club' LIMIT 1"),
+    policy: () => q("SELECT 1 FROM federation_policy WHERE federation_id=$1 LIMIT 1"),
+    competition: () => q("SELECT 1 FROM tournament WHERE organization_id=$1 LIMIT 1"),
+  };
+  const steps: { key: OnboardingStep; done: boolean }[] = [];
+  for (const key of onboardingSteps[kind]) steps.push({ key, done: await checks[key]() });
+  return { steps, done: steps.filter((s) => s.done).length, total: steps.length };
+}
+/** Series D: active profiles of the organisation that probably exist elsewhere under another identity (same name and birth date). */
+export const duplicatesSql = `SELECT cp.id,cp.full_name FROM club_person cp WHERE cp.organization_id=$1 AND cp.status='active' AND cp.birth_date IS NOT NULL
+  AND EXISTS(SELECT 1 FROM club_person x WHERE x.organization_id<>cp.organization_id AND x.status='active' AND x.person_id<>cp.person_id AND x.birth_date=cp.birth_date
+             AND lower(regexp_replace(x.full_name,'\\s+',' ','g'))=lower(regexp_replace(cp.full_name,'\\s+',' ','g'))) ORDER BY cp.full_name`;
+async function duplicatesOf(c: PoolClient, org: string) {
+  const count = (await c.query(`SELECT count(*)::int AS n FROM (${duplicatesSql}) d`, [org])).rows[0].n as number;
+  const last = (await c.query("SELECT max(created_at) AS at FROM platform_action WHERE organization_id=$1 AND kind='duplicates.notify'", [org])).rows[0].at as string | null;
+  return { count, notified_at: last };
+}
+
 export async function consoleOrganization(db: Pool, p: Principal, id: string) {
   return operatorScope(db, p, async (c, o) => {
     const org = (
@@ -286,6 +380,10 @@ export async function consoleOrganization(db: Pool, p: Principal, id: string) {
     const plans = (await c.query("SELECT id,name,amount_cents,period,basis FROM billing_plan WHERE active ORDER BY name")).rows as { id: string; name: string; amount_cents: number; period: "month" | "year"; basis: "organization" | "player" }[];
     return {
       organization: { ...org, storage_bytes: Number(org.storage_bytes) },
+      // Series D: the organisation's path on the platform, its first steps, its probable duplicates of identity.
+      timeline: await timeline(c, id),
+      onboarding: await onboarding(c, id, org.kind as "club" | "federation"),
+      duplicates: await duplicatesOf(c, id),
       officers,
       notes,
       actions,
@@ -322,6 +420,12 @@ export async function consoleSupervision(db: Pool, p: Principal) {
   });
 }
 
+/** The browser family and the system, nothing finer (series D: the sessions' journal). */
+export function browserOf(ua: string) {
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : ua ? "?" : "";
+  const os = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
+  return [browser, os].filter(Boolean).join(" · ");
+}
 export async function consoleOperators(db: Pool, p: Principal) {
   return operatorScope(db, p, async (c, o) => {
     const rows = (
@@ -329,7 +433,29 @@ export async function consoleOperators(db: Pool, p: Principal) {
         'SELECT o.user_id,u.name,u.email,o.role,o.created_at,o.revoked_at FROM platform_operator o JOIN "user" u ON u.id=o.user_id ORDER BY o.revoked_at NULLS FIRST,o.created_at',
       )
     ).rows as { user_id: string; name: string; email: string; role: OperatorRole; created_at: string; revoked_at: string | null }[];
-    return { me: { userId: o.userId, role: o.role }, operators: rows, fromEnvironment: envOperators().length };
+    // Series D: my console sessions (the owner reads everyone's), and the keys to review (the owner reads them all).
+    const sessions = (
+      await c.query(
+        `SELECT l.session_id,u.name AS operator,l.started_at,l.last_console_at,l.ip,l.user_agent,l.calls,EXISTS(SELECT 1 FROM session s WHERE s.id=l.session_id AND s."expiresAt">now()) AS alive
+           FROM operator_session_log l JOIN "user" u ON u.id=l.operator_id WHERE ${o.role === "owner" ? "true" : "l.operator_id=$1"} ORDER BY l.last_console_at DESC LIMIT 50`,
+        o.role === "owner" ? [] : [o.userId],
+      )
+    ).rows as { session_id: string; operator: string; started_at: string; last_console_at: string; ip: string; user_agent: string; calls: number; alive: boolean }[];
+    const keys = (
+      await c.query(
+        `SELECT k.id,k.name,k.prefix,k.scopes,k.calls,k.created_at,k.last_used_at,u.name AS operator FROM operator_api_key k JOIN "user" u ON u.id=k.operator_id
+           WHERE k.revoked_at IS NULL AND ${o.role === "owner" ? "true" : "k.operator_id=$1"} ORDER BY k.created_at`,
+        o.role === "owner" ? [] : [o.userId],
+      )
+    ).rows as { id: string; name: string; prefix: string; scopes: string[]; calls: number; created_at: string; last_used_at: string | null; operator: string }[];
+    return {
+      me: { userId: o.userId, role: o.role },
+      operators: rows,
+      fromEnvironment: envOperators().length,
+      sessions: sessions.map((x) => ({ ...x, session_id: x.session_id.slice(0, 8), user_agent: browserOf(x.user_agent) })),
+      sessionHours: operatorSessionHours(),
+      keys: keys.map((k) => ({ ...k, review: keyReview(k) })),
+    };
   });
 }
 
@@ -342,6 +468,23 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
       const id = (await c.query("INSERT INTO platform_note(organization_id,operator_id,text) VALUES($1,$2,$3) RETURNING id", [command.organizationId, o.userId, command.text])).rows[0].id as string;
       await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,payload) VALUES($1,$2,'note',$3)", [o.userId, command.organizationId, JSON.stringify({ id })]);
       return { ok: true as const, id };
+    }
+    if (command.action === "duplicatesNotify") {
+      // Series D: counted here, told to the presidency with no name; the club links the identities itself.
+      if (!canWrite(o)) throw new AccessError("FORBIDDEN");
+      const org = (await c.query("SELECT id,kind FROM organization WHERE id=$1", [command.organizationId])).rows[0] as { id: string; kind: string } | undefined;
+      if (!org) throw new AccessError("NOT_FOUND", 404);
+      const n = (await duplicatesOf(c, org.id)).count;
+      if (!n) throw new AccessError("NO_DUPLICATES", 409);
+      const text = {
+        fr: { title: "Doublons probables dans votre annuaire", message: `${n} personne(s) de votre club existent probablement dans un autre club sous une autre identité (même nom, même date de naissance). Dans Sécurité et données, rattachez chaque fiche au code d'identité de la personne.` },
+        nl: { title: "Waarschijnlijke dubbels in uw ledenlijst", message: `${n} persoon/personen van uw club bestaan waarschijnlijk in een andere club onder een andere identiteit (zelfde naam, zelfde geboortedatum). Koppel in Veiligheid en gegevens elke fiche aan de identiteitscode van de persoon.` },
+        en: { title: "Probable duplicates in your directory", message: `${n} person(s) of your club probably exist in another club under another identity (same name, same birth date). In Security and data, link each profile to the person's identity code.` },
+      };
+      const recipients = await notice(c, org.id, await presidencyOf(c, org.id), text, "/settings/club#security", `duplicates:${org.id}:${Date.now()}`, "administrative");
+      await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,payload) VALUES($1,$2,'duplicates.notify',$3)", [o.userId, org.id, JSON.stringify({ count: n, recipients })]);
+      await audit(c, org.id, o.userId, "platform.duplicates_notify", org.id, { count: n });
+      return { ok: true as const, recipients, count: n };
     }
     if (command.action === "suspend" || command.action === "reinstate") {
       // Step 3: read only for the organisation's members, with the reason; written in its own journal too.

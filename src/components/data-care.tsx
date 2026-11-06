@@ -268,6 +268,35 @@ export function ClubSecurity({ locale }: { locale: Locale }) {
         )}
       </Card>
 
+      {president && data.duplicates.length > 0 && (
+        <Card title={t.duplicates} subtitle={t.duplicatesIntro} labelledBy="security-duplicates" headingId="security-duplicates">
+          <ul className="progress-feedback">
+            {data.duplicates.map((d) => (
+              <li key={d.id}>
+                <form
+                  className="console-row-actions"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const f = new FormData(e.currentTarget);
+                    void send({ action: "linkIdentity", profileId: d.id, identityCode: String(f.get("code") ?? "") });
+                  }}
+                >
+                  <strong>{d.full_name}</strong>
+                  <label>
+                    {t.identityCode}
+                    <input name="code" required pattern="[Pp][Ff][Mm]-[A-Za-z0-9]{10}" maxLength={14} placeholder="PFM-XXXXXXXXXX" />
+                  </label>
+                  <Button type="submit" variant="secondary" size="sm" disabled={busy}>
+                    {t.identityLink}
+                    <span className="sr-only"> : {d.full_name}</span>
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {president && (
         <>
           <Card title={t.export} subtitle={t.exportIntro} labelledBy="security-export" headingId="security-export">

@@ -2,6 +2,8 @@ import type { Pool } from "pg";
 import { z } from "zod";
 import { AccessError, type Principal } from "../access/service";
 import { operatorScope, type Operator } from "../console/service";
+/** Series D: a tool run inside the assistant's own transaction carries no console session (no second journal entry, no lock to wait on). */
+const inner = (p: Principal): Principal => ({ ...p, sessionId: `assistant:${p.sessionId}` });
 import { allowedScopes, runTool } from "../mcp/service";
 import { tools, type ToolDef } from "../mcp/schema";
 
@@ -88,7 +90,7 @@ export async function assistantTurn(db: Pool, p: Principal, input: AssistantInpu
         else if (b.id === use.id && !input.decision.approve) results.push({ type: "tool_result", tool_use_id: b.id, content: "The person refused this action. Do not retry it; ask what they want instead." });
         else {
           try {
-            const out = await runTool(db, p, tool.name, b.input);
+            const out = await runTool(db, inner(p), tool.name, b.input);
             if (!tool.readOnly) await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,$2,$3)", [o.userId, `assistant.${tool.name}`, JSON.stringify({ arguments: b.input })]);
             results.push({ type: "tool_result", tool_use_id: b.id, content: cut(text(out)) });
           } catch (e) {
@@ -119,7 +121,7 @@ export async function assistantTurn(db: Pool, p: Principal, input: AssistantInpu
           break;
         }
         try {
-          results.push({ type: "tool_result", tool_use_id: b.id, content: cut(text(await runTool(db, p, b.name, b.input))) });
+          results.push({ type: "tool_result", tool_use_id: b.id, content: cut(text(await runTool(db, inner(p), b.name, b.input))) });
         } catch (e) {
           results.push({ type: "tool_result", tool_use_id: b.id, content: codeOf(e), is_error: true });
         }

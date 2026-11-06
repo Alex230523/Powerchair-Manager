@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-06",
+  "roles": [
+    "president"
+  ],
+  "link": "/settings/club",
+  "image": null,
+  "fr": {
+    "title": "Doublons probables : une seule identité par personne",
+    "text": "Quand une personne de votre club existe aussi dans un autre club sous une autre identité, Sécurité et données vous le dit. Demandez-lui le code d'identité imprimé sur sa fiche et rattachez-la : son historique la suit d'un club à l'autre."
+  },
+  "nl": {
+    "title": "Waarschijnlijke dubbels: één identiteit per persoon",
+    "text": "Als een persoon van uw club ook in een andere club bestaat onder een andere identiteit, zegt Veiligheid en gegevens het u. Vraag de identiteitscode op zijn fiche en koppel ze: de geschiedenis volgt de persoon van club naar club."
+  },
+  "en": {
+    "title": "Probable duplicates: one identity per person",
+    "text": "When a person of your club also exists in another club under another identity, Security and data tells you. Ask for the identity code printed on their profile and link it: their history follows them from club to club."
+  }
+}

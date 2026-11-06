@@ -145,6 +145,19 @@ type Copy = {
     borrowsNone: string;
     borrowLine: string;
     borrowActive: string;
+    onboarding: string;
+    onboardingDone: string;
+    onboardingSteps: Record<"president" | "dpa" | "identity" | "season" | "team" | "players" | "match" | "subscription" | "paid" | "clubs" | "policy" | "competition", string>;
+    timeline: string;
+    timelineNone: string;
+    timelineKinds: Record<string, string>;
+    duplicates: string;
+    duplicatesIntro: string;
+    duplicatesCount: string;
+    duplicatesNone: string;
+    duplicatesNotify: string;
+    duplicatesNotified: string;
+    duplicatesLast: string;
   };
   billing: {
     intro: string;
@@ -240,6 +253,19 @@ type Copy = {
     revoked: string;
     revokedBadge: string;
     ownerOnly: string;
+    sessions: string;
+    sessionsIntro: string;
+    sessionsAll: string;
+    sessionColumns: { operator: string; started: string; last: string; ip: string; browser: string; calls: string };
+    sessionAlive: string;
+    sessionGone: string;
+    sessionsNone: string;
+    keysReview: string;
+    keysReviewIntro: string;
+    keysReviewNone: string;
+    keyReasons: Record<"unused" | "idle" | "old", string>;
+    keyOk: string;
+    keyLine: string;
   };
   supportDesk: {
     intro: string;
@@ -317,7 +343,7 @@ type Copy = {
     email: string;
     hour: string;
     rules: string;
-    ruleNames: Record<"jobsLate" | "mailsOverdue" | "dataRequestsLate" | "invoicesFinalReminder" | "noPresident" | "suspended" | "feedbackNew" | "terminations" | "ticketsWaiting", string>;
+    ruleNames: Record<"jobsLate" | "mailsOverdue" | "dataRequestsLate" | "invoicesFinalReminder" | "noPresident" | "suspended" | "feedbackNew" | "terminations" | "ticketsWaiting" | "keysReview", string>;
     save: string;
     saved: string;
     now: string;
@@ -357,6 +383,7 @@ type Copy = {
     lastUsed: string;
     never: string;
     tools: string;
+    review: string;
   };
 };
 const fr: Copy = {
@@ -527,6 +554,19 @@ const fr: Copy = {
     borrowsNone: "Aucun accès de support.",
     borrowLine: "{operator} · {start} · {reason}",
     borrowActive: "En cours",
+    onboarding: "Premiers pas",
+    onboardingDone: "{done} sur {total}",
+    onboardingSteps: { president: "Une présidence active", dpa: "Accord de traitement signé", identity: "Numéro d'entreprise et adresse", season: "Une saison", team: "Une équipe", players: "Des joueurs", match: "Un match au calendrier", subscription: "Un abonnement", paid: "Une facture payée", clubs: "Des clubs affiliés", policy: "Un barème", competition: "Une compétition" },
+    timeline: "Frise",
+    timelineNone: "Rien encore.",
+    timelineKinds: { created: "Organisation créée", president: "Présidence : {label}", dpa: "Accord de traitement signé", subscription: "Abonnement : {label}", "subscription.end": "Fin d'abonnement : {label}", "invoice.sent": "Facture envoyée {label}", "invoice.paid": "Facture payée {label}", "action.billing.subscribe": "Abonné par {label}", "action.billing.unsubscribe": "Désabonné par {label}", "action.billing.invoice": "Facture préparée par {label}", "action.billing.send": "Facture envoyée par {label}", "action.billing.paid": "Paiement enregistré par {label}", "action.billing.cancel": "Facture annulée par {label}", "action.billing.remind": "Rappel de paiement par {label}", "action.ticket.reopen": "Ticket rouvert ({label})", "action.ticket.assign": "Ticket suivi ({label})", "action.ticket.priority": "Priorité du ticket ({label})", "action.suspend": "Suspendue par {label}", "action.reinstate": "Réactivée par {label}", "action.borrow": "Accès de support de {label}", "action.borrow.end": "Fin d'accès de support ({label})", "action.privacy.remind": "Rappel RGPD par {label}", "action.duplicates.notify": "Doublons signalés par {label}", "action.ticket.reply": "Réponse du support ({label})", "action.ticket.close": "Ticket clos ({label})", "privacy.access": "Demande d'accès reçue", "privacy.rectification": "Demande de rectification reçue", "privacy.erasure": "Demande d'effacement reçue", "privacy.done": "Demande RGPD traitée", "privacy.refused": "Demande RGPD refusée", ticket: "Ticket de support ({label})", termination: "Fermeture demandée pour le {label}", season: "Saison {label}" },
+    duplicates: "Doublons probables",
+    duplicatesIntro: "Fiches actives de cette organisation qui existent probablement dans un autre club sous une autre identité (même nom, même date de naissance). La plateforme ne fusionne jamais : la présidence rattache chaque fiche au code d'identité de la personne.",
+    duplicatesCount: "{n} fiche(s) concernée(s)",
+    duplicatesNone: "Aucun doublon probable.",
+    duplicatesNotify: "Signaler à la présidence",
+    duplicatesNotified: "La présidence est prévenue.",
+    duplicatesLast: "Dernier signalement le {day}.",
   },
   billing: {
     intro: "Formules, abonnements, factures et rappels de la plateforme. Les paiements sont enregistrés à la main (virement avec le numéro de facture) ; les rappels partent aux présidents, à la main ou par paliers (3, 10 et 20 jours après l'échéance).",
@@ -622,6 +662,19 @@ const fr: Copy = {
     revoked: "Opérateur retiré.",
     revokedBadge: "Retiré",
     ownerOnly: "Seul le propriétaire gère les opérateurs.",
+    sessions: "Connexions à la console",
+    sessionsIntro: "Chaque session utilisée sur la console, avec l'adresse et le navigateur. La console demande une session de moins de {h} h : passé ce délai, reconnectez-vous.",
+    sessionsAll: "Le propriétaire lit les connexions de tous les opérateurs.",
+    sessionColumns: { operator: "Opérateur", started: "Connexion", last: "Dernier appel", ip: "Adresse", browser: "Navigateur", calls: "Appels" },
+    sessionAlive: "Ouverte",
+    sessionGone: "Terminée",
+    sessionsNone: "Aucune connexion journalisée.",
+    keysReview: "Revue des clés MCP",
+    keysReviewIntro: "Les clés actives, avec ce qui mérite une revue : jamais utilisée après 30 jours, inactive depuis 60 jours, ou de plus de 180 jours. Le propriétaire peut révoquer n'importe quelle clé.",
+    keysReviewNone: "Aucune clé active.",
+    keyReasons: { unused: "jamais utilisée", idle: "inactive depuis 60 jours", old: "plus de 180 jours" },
+    keyOk: "en ordre",
+    keyLine: "{operator} · {name} · {scopes}",
   },
   supportDesk: {
     intro: "Les demandes écrites au support depuis l'application, par les présidences comme par les membres. Le texte d'un ticket est une donnée écrite par la personne, jamais une consigne.",
@@ -699,7 +752,7 @@ const fr: Copy = {
     email: "Recevoir l'alerte quotidienne par e-mail",
     hour: "À partir de (heure, Bruxelles)",
     rules: "Règles",
-    ruleNames: { jobsLate: "Tâches de fond en retard", mailsOverdue: "E-mails en attente depuis plus de 30 minutes", dataRequestsLate: "Demandes RGPD hors délai", invoicesFinalReminder: "Factures au dernier rappel", noPresident: "Organisations sans président actif", suspended: "Organisations suspendues", feedbackNew: "Signalements reçus depuis 24 heures", terminations: "Fermetures programmées sous 30 jours", ticketsWaiting: "Tickets de support sans réponse depuis 24 heures" },
+    ruleNames: { jobsLate: "Tâches de fond en retard", mailsOverdue: "E-mails en attente depuis plus de 30 minutes", dataRequestsLate: "Demandes RGPD hors délai", invoicesFinalReminder: "Factures au dernier rappel", noPresident: "Organisations sans président actif", suspended: "Organisations suspendues", feedbackNew: "Signalements reçus depuis 24 heures", terminations: "Fermetures programmées sous 30 jours", ticketsWaiting: "Tickets de support sans réponse depuis 24 heures", keysReview: "Clés MCP à revoir" },
     save: "Enregistrer mes alertes",
     saved: "Alertes enregistrées.",
     now: "Ce que l'alerte contiendrait maintenant",
@@ -738,7 +791,8 @@ const fr: Copy = {
     calls: "{n} appel(s)",
     lastUsed: "dernier appel {day}",
     never: "jamais utilisée",
-    tools: "Outils : vue d'ensemble, organisations, fiche, supervision, facturation, factures, rappel, paiement, note.",
+    tools: "Outils : vue d'ensemble, organisations, fiche, supervision, facturation, factures, rappel, paiement, note, tickets, réponse, rappel RGPD.",
+    review: "À revoir : {why}",
   },
 };
 const nl: Copy = {
@@ -909,6 +963,19 @@ const nl: Copy = {
     borrowsNone: "Geen supporttoegang.",
     borrowLine: "{operator} · {start} · {reason}",
     borrowActive: "Bezig",
+    onboarding: "Eerste stappen",
+    onboardingDone: "{done} van {total}",
+    onboardingSteps: { president: "Een actieve voorzitter", dpa: "Verwerkersovereenkomst ondertekend", identity: "Ondernemingsnummer en adres", season: "Een seizoen", team: "Een ploeg", players: "Spelers", match: "Een wedstrijd op de kalender", subscription: "Een abonnement", paid: "Een betaalde factuur", clubs: "Aangesloten clubs", policy: "Een barema", competition: "Een competitie" },
+    timeline: "Tijdlijn",
+    timelineNone: "Nog niets.",
+    timelineKinds: { created: "Organisatie aangemaakt", president: "Voorzitterschap: {label}", dpa: "Verwerkersovereenkomst ondertekend", subscription: "Abonnement: {label}", "subscription.end": "Einde abonnement: {label}", "invoice.sent": "Factuur verzonden {label}", "invoice.paid": "Factuur betaald {label}", "action.billing.subscribe": "Geabonneerd door {label}", "action.billing.unsubscribe": "Abonnement beëindigd door {label}", "action.billing.invoice": "Factuur voorbereid door {label}", "action.billing.send": "Factuur verzonden door {label}", "action.billing.paid": "Betaling geregistreerd door {label}", "action.billing.cancel": "Factuur geannuleerd door {label}", "action.billing.remind": "Betalingsherinnering door {label}", "action.ticket.reopen": "Ticket heropend ({label})", "action.ticket.assign": "Ticket opgevolgd ({label})", "action.ticket.priority": "Prioriteit van het ticket ({label})", "action.suspend": "Geschorst door {label}", "action.reinstate": "Heractiveerd door {label}", "action.borrow": "Supporttoegang van {label}", "action.borrow.end": "Einde supporttoegang ({label})", "action.privacy.remind": "AVG-herinnering door {label}", "action.duplicates.notify": "Dubbels gemeld door {label}", "action.ticket.reply": "Antwoord van de ondersteuning ({label})", "action.ticket.close": "Ticket gesloten ({label})", "privacy.access": "Inzageverzoek ontvangen", "privacy.rectification": "Verbeteringsverzoek ontvangen", "privacy.erasure": "Verwijderingsverzoek ontvangen", "privacy.done": "AVG-verzoek afgehandeld", "privacy.refused": "AVG-verzoek geweigerd", ticket: "Supportticket ({label})", termination: "Sluiting gevraagd voor {label}", season: "Seizoen {label}" },
+    duplicates: "Waarschijnlijke dubbels",
+    duplicatesIntro: "Actieve fiches van deze organisatie die waarschijnlijk in een andere club bestaan onder een andere identiteit (zelfde naam, zelfde geboortedatum). Het platform voegt nooit samen: de voorzitter koppelt elke fiche aan de identiteitscode van de persoon.",
+    duplicatesCount: "{n} fiche(s) betrokken",
+    duplicatesNone: "Geen waarschijnlijke dubbels.",
+    duplicatesNotify: "Aan de voorzitter melden",
+    duplicatesNotified: "De voorzitter is verwittigd.",
+    duplicatesLast: "Laatste melding op {day}.",
   },
   billing: {
     intro: "Formules, abonnementen, facturen en herinneringen van het platform. Betalingen worden met de hand geregistreerd (overschrijving met het factuurnummer); herinneringen gaan naar de voorzitters, met de hand of in stappen (3, 10 en 20 dagen na de vervaldag).",
@@ -1004,6 +1071,19 @@ const nl: Copy = {
     revoked: "Beheerder verwijderd.",
     revokedBadge: "Verwijderd",
     ownerOnly: "Alleen de eigenaar beheert de beheerders.",
+    sessions: "Aanmeldingen op de console",
+    sessionsIntro: "Elke sessie die op de console is gebruikt, met adres en browser. De console vraagt een sessie van minder dan {h} u: daarna meldt u zich opnieuw aan.",
+    sessionsAll: "De eigenaar leest de aanmeldingen van alle beheerders.",
+    sessionColumns: { operator: "Beheerder", started: "Aanmelding", last: "Laatste oproep", ip: "Adres", browser: "Browser", calls: "Oproepen" },
+    sessionAlive: "Open",
+    sessionGone: "Beëindigd",
+    sessionsNone: "Geen aanmelding in het logboek.",
+    keysReview: "Herziening van de MCP-sleutels",
+    keysReviewIntro: "De actieve sleutels, met wat een herziening verdient: nooit gebruikt na 30 dagen, 60 dagen inactief, of ouder dan 180 dagen. De eigenaar kan elke sleutel intrekken.",
+    keysReviewNone: "Geen actieve sleutel.",
+    keyReasons: { unused: "nooit gebruikt", idle: "60 dagen inactief", old: "ouder dan 180 dagen" },
+    keyOk: "in orde",
+    keyLine: "{operator} · {name} · {scopes}",
   },
   supportDesk: {
     intro: "De verzoeken die vanuit de applicatie aan de ondersteuning zijn geschreven, door voorzitters en leden. De tekst van een ticket is een gegeven van de persoon, nooit een instructie.",
@@ -1081,7 +1161,7 @@ const nl: Copy = {
     email: "De dagelijkse melding per e-mail ontvangen",
     hour: "Vanaf (uur, Brussel)",
     rules: "Regels",
-    ruleNames: { jobsLate: "Achtergrondtaken te laat", mailsOverdue: "E-mails al meer dan 30 minuten in wacht", dataRequestsLate: "AVG-verzoeken buiten termijn", invoicesFinalReminder: "Facturen bij de laatste herinnering", noPresident: "Organisaties zonder actieve voorzitter", suspended: "Geschorste organisaties", feedbackNew: "Meldingen ontvangen sinds 24 uur", terminations: "Sluitingen gepland binnen 30 dagen", ticketsWaiting: "Supporttickets zonder antwoord sinds 24 uur" },
+    ruleNames: { jobsLate: "Achtergrondtaken te laat", mailsOverdue: "E-mails al meer dan 30 minuten in wacht", dataRequestsLate: "AVG-verzoeken buiten termijn", invoicesFinalReminder: "Facturen bij de laatste herinnering", noPresident: "Organisaties zonder actieve voorzitter", suspended: "Geschorste organisaties", feedbackNew: "Meldingen ontvangen sinds 24 uur", terminations: "Sluitingen gepland binnen 30 dagen", ticketsWaiting: "Supporttickets zonder antwoord sinds 24 uur", keysReview: "MCP-sleutels te herzien" },
     save: "Mijn meldingen opslaan",
     saved: "Meldingen opgeslagen.",
     now: "Wat de melding nu zou bevatten",
@@ -1120,7 +1200,8 @@ const nl: Copy = {
     calls: "{n} oproep(en)",
     lastUsed: "laatste oproep {day}",
     never: "nooit gebruikt",
-    tools: "Tools: overzicht, organisaties, fiche, toezicht, facturatie, facturen, herinnering, betaling, nota.",
+    tools: "Tools: overzicht, organisaties, fiche, toezicht, facturatie, facturen, herinnering, betaling, nota, tickets, antwoord, AVG-herinnering.",
+    review: "Te herzien: {why}",
   },
 };
 const en: Copy = {
@@ -1291,6 +1372,19 @@ const en: Copy = {
     borrowsNone: "No support access.",
     borrowLine: "{operator} · {start} · {reason}",
     borrowActive: "Open",
+    onboarding: "First steps",
+    onboardingDone: "{done} of {total}",
+    onboardingSteps: { president: "An active presidency", dpa: "Processing agreement signed", identity: "Company number and address", season: "A season", team: "A team", players: "Players", match: "A match on the calendar", subscription: "A subscription", paid: "An invoice paid", clubs: "Affiliated clubs", policy: "A scale", competition: "A competition" },
+    timeline: "Timeline",
+    timelineNone: "Nothing yet.",
+    timelineKinds: { created: "Organisation created", president: "Presidency: {label}", dpa: "Processing agreement signed", subscription: "Subscription: {label}", "subscription.end": "Subscription ended: {label}", "invoice.sent": "Invoice sent {label}", "invoice.paid": "Invoice paid {label}", "action.billing.subscribe": "Subscribed by {label}", "action.billing.unsubscribe": "Unsubscribed by {label}", "action.billing.invoice": "Invoice prepared by {label}", "action.billing.send": "Invoice sent by {label}", "action.billing.paid": "Payment recorded by {label}", "action.billing.cancel": "Invoice cancelled by {label}", "action.billing.remind": "Payment reminder by {label}", "action.ticket.reopen": "Ticket reopened ({label})", "action.ticket.assign": "Ticket followed ({label})", "action.ticket.priority": "Ticket priority ({label})", "action.suspend": "Suspended by {label}", "action.reinstate": "Reinstated by {label}", "action.borrow": "Support access by {label}", "action.borrow.end": "Support access ended ({label})", "action.privacy.remind": "GDPR reminder by {label}", "action.duplicates.notify": "Duplicates reported by {label}", "action.ticket.reply": "Support answer ({label})", "action.ticket.close": "Ticket closed ({label})", "privacy.access": "Access request received", "privacy.rectification": "Rectification request received", "privacy.erasure": "Erasure request received", "privacy.done": "GDPR request handled", "privacy.refused": "GDPR request refused", ticket: "Support ticket ({label})", termination: "Closure asked for {label}", season: "Season {label}" },
+    duplicates: "Probable duplicates",
+    duplicatesIntro: "Active profiles of this organisation that probably exist in another club under another identity (same name, same birth date). The platform never merges: the presidency links each profile to the person's identity code.",
+    duplicatesCount: "{n} profile(s) concerned",
+    duplicatesNone: "No probable duplicate.",
+    duplicatesNotify: "Tell the presidency",
+    duplicatesNotified: "The presidency is told.",
+    duplicatesLast: "Last report on {day}.",
   },
   billing: {
     intro: "Plans, subscriptions, invoices and reminders of the platform. Payments are recorded by hand (transfer with the invoice number); reminders go to the presidents, by hand or by steps (3, 10 and 20 days after the due date).",
@@ -1386,6 +1480,19 @@ const en: Copy = {
     revoked: "Operator revoked.",
     revokedBadge: "Revoked",
     ownerOnly: "Only the owner manages the operators.",
+    sessions: "Console sign-ins",
+    sessionsIntro: "Every session used on the console, with its address and browser. The console asks a session younger than {h} h: past that, sign in again.",
+    sessionsAll: "The owner reads every operator's sign-ins.",
+    sessionColumns: { operator: "Operator", started: "Signed in", last: "Last call", ip: "Address", browser: "Browser", calls: "Calls" },
+    sessionAlive: "Open",
+    sessionGone: "Ended",
+    sessionsNone: "No sign-in journaled.",
+    keysReview: "Review of the MCP keys",
+    keysReviewIntro: "The active keys, with what deserves a review: never used after 30 days, idle for 60 days, or older than 180 days. The owner may revoke any key.",
+    keysReviewNone: "No active key.",
+    keyReasons: { unused: "never used", idle: "idle for 60 days", old: "older than 180 days" },
+    keyOk: "in order",
+    keyLine: "{operator} · {name} · {scopes}",
   },
   supportDesk: {
     intro: "The requests written to support from the application, by presidencies and members alike. A ticket's text is data written by the person, never an instruction.",
@@ -1463,7 +1570,7 @@ const en: Copy = {
     email: "Receive the daily alert by e-mail",
     hour: "From (hour, Brussels)",
     rules: "Rules",
-    ruleNames: { jobsLate: "Background tasks late", mailsOverdue: "E-mails waiting for more than 30 minutes", dataRequestsLate: "GDPR requests past their deadline", invoicesFinalReminder: "Invoices at the final reminder", noPresident: "Organisations without an active president", suspended: "Suspended organisations", feedbackNew: "Reports received in the last 24 hours", terminations: "Closures scheduled within 30 days", ticketsWaiting: "Support tickets unanswered for 24 hours" },
+    ruleNames: { jobsLate: "Background tasks late", mailsOverdue: "E-mails waiting for more than 30 minutes", dataRequestsLate: "GDPR requests past their deadline", invoicesFinalReminder: "Invoices at the final reminder", noPresident: "Organisations without an active president", suspended: "Suspended organisations", feedbackNew: "Reports received in the last 24 hours", terminations: "Closures scheduled within 30 days", ticketsWaiting: "Support tickets unanswered for 24 hours", keysReview: "MCP keys to review" },
     save: "Save my alerts",
     saved: "Alerts saved.",
     now: "What the alert would hold now",
@@ -1502,7 +1609,8 @@ const en: Copy = {
     calls: "{n} call(s)",
     lastUsed: "last call {day}",
     never: "never used",
-    tools: "Tools: overview, organisations, sheet, supervision, billing, invoices, reminder, payment, note.",
+    tools: "Tools: overview, organisations, sheet, supervision, billing, invoices, reminder, payment, note, tickets, answer, GDPR reminder.",
+    review: "To review: {why}",
   },
 };
 export const consoleCopy: Record<Locale, Copy> = { fr, nl, en };

@@ -221,3 +221,31 @@ describe("the support desk and the GDPR requests followed (series C)", () => {
     expect(metricKeys).toContain("ticketsOpen");
   });
 });
+
+describe("the sheet enriched and the operators' security (series D)", () => {
+  it("reads the session limit from the configuration, flags the keys to review, lists the first steps", async () => {
+    const { operatorSessionHours, keyReview, onboardingSteps, consoleCommand: cmd } = await import("../src/domains/console/schema");
+    expect(operatorSessionHours({})).toBe(12);
+    expect(operatorSessionHours({ PFM_OPERATOR_SESSION_HOURS: "4" })).toBe(4);
+    expect(operatorSessionHours({ PFM_OPERATOR_SESSION_HOURS: "900" })).toBe(12);
+    const now = new Date("2026-11-06T12:00:00Z");
+    expect(keyReview({ created_at: "2026-11-01T00:00:00Z", last_used_at: null }, now)).toBeNull();
+    expect(keyReview({ created_at: "2026-09-01T00:00:00Z", last_used_at: null }, now)).toBe("unused");
+    expect(keyReview({ created_at: "2026-09-01T00:00:00Z", last_used_at: "2026-11-05T00:00:00Z" }, now)).toBeNull();
+    expect(keyReview({ created_at: "2026-06-01T00:00:00Z", last_used_at: "2026-08-01T00:00:00Z" }, now)).toBe("idle");
+    expect(keyReview({ created_at: "2026-01-01T00:00:00Z", last_used_at: "2026-11-05T00:00:00Z" }, now)).toBe("old");
+    expect(onboardingSteps.club).toContain("dpa");
+    expect(onboardingSteps.federation).toContain("policy");
+    expect(cmd.safeParse({ action: "duplicatesNotify", organizationId: "00000000-0000-4000-8000-000000000000" }).success).toBe(true);
+    const { careCommand } = await import("../src/domains/legal/schema");
+    expect(careCommand.safeParse({ action: "linkIdentity", profileId: "00000000-0000-4000-8000-000000000000", identityCode: " pfm-abcdef1234 " }).success).toBe(true);
+    expect(careCommand.safeParse({ action: "linkIdentity", profileId: "00000000-0000-4000-8000-000000000000", identityCode: "PFM-ABC" }).success).toBe(false);
+    const { browserOf } = await import("../src/domains/console/service");
+    expect(browserOf("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 Edg/130.0")).toBe("Edge · Windows");
+    expect(browserOf("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")).toBe("Safari · iOS");
+    expect(browserOf("")).toBe("");
+    for (const key of ["president", "dpa", "identity", "season", "team", "players", "match", "subscription", "paid", "clubs", "policy", "competition"] as const) expect(consoleCopy.fr.organization.onboardingSteps[key]).toBeTruthy();
+    expect(consoleCopy.fr.alerts.ruleNames.keysReview).toBeTruthy();
+    expect(readFileSync("src/domains/console/service.ts", "utf8")).toContain("OPERATOR_SESSION_EXPIRED");
+  });
+});

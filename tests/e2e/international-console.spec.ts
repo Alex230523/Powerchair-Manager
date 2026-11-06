@@ -97,7 +97,7 @@ test("an operator reads the console; a club president is refused", async ({ page
     await expect(page.getByText("Premier contact.")).toBeVisible();
     await axe(page, "console organisation");
     await page.getByRole("tab", { name: "Opérateurs" }).click();
-    await expect(page.getByRole("rowheader", { name: "Alex Exploitant" })).toBeVisible();
+    await expect(page.getByRole("rowheader", { name: "Alex Exploitant" }).first()).toBeVisible();
     // A key for the MCP server: the secret shown once, then listed by its prefix only.
     await page.getByLabel("Nom de la clé (par exemple : Claude sur mon portable)").fill("Claude portable");
     await page.getByRole("button", { name: "Créer la clé" }).click();
@@ -306,6 +306,58 @@ test("a president writes to the support, the operator answers from the console a
     }, request);
     expect(mine).toEqual({ status: 200, type: "application/pdf", head: "%PDF-" });
     expect(await page.evaluate(async (id) => (await fetch(`/api/privacy/requests?certificate=${id}`)).status, request)).toBe(404);
+    await other.close();
+  } finally {
+    await db.end();
+  }
+});
+
+test("the sheet shows the first steps, the timeline and the duplicates; the club links the identity; the operator's sessions and keys are reviewed", async ({ page, browser }) => {
+  test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use test:e2e:db");
+  test.setTimeout(120000);
+  const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
+  const stamp = Date.now();
+  try {
+    const clubA = (await db.query("INSERT INTO organization(name,kind,company_number,address) VALUES('Club Jumeau A','club','0123.456.789','Rue 1') RETURNING id")).rows[0].id as string;
+    const clubB = (await db.query("INSERT INTO organization(name,kind) VALUES('Club Jumeau B','club') RETURNING id")).rows[0].id as string;
+    const personA = (await db.query("INSERT INTO person DEFAULT VALUES RETURNING id")).rows[0].id as string;
+    const personB = (await db.query("INSERT INTO person DEFAULT VALUES RETURNING id, identity_code")).rows[0] as { id: string; identity_code: string };
+    await db.query("INSERT INTO club_person(organization_id,person_id,full_name,birth_date,directory_roles,status) VALUES($1,$2,'Dan Jumeau','1999-05-05','{player}','active'),($3,$4,'dan jumeau','1999-05-05','{player}','active')", [clubA, personA, clubB, personB.id]);
+    // The operator: the sheet of club A.
+    const user = await signIn(page, db, "Alex Propriétaire", `owner-d-${stamp}@example.test`);
+    await db.query("INSERT INTO platform_operator(user_id,role) VALUES($1,'owner')", [user]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/fr/console");
+    await page.getByRole("tab", { name: "Organisations" }).click();
+    await page.getByRole("searchbox").fill("Club Jumeau A");
+    await page.getByRole("button", { name: "Club Jumeau A" }).click();
+    await expect(page.getByRole("heading", { name: "Premiers pas" })).toBeVisible();
+    await expect(page.getByText("2 sur 9")).toBeVisible();
+    await expect(page.getByText("1 fiche(s) concernée(s)")).toBeVisible();
+    await expect(page.getByText("Organisation créée")).toBeVisible();
+    await axe(page, "organisation sheet (series D)");
+    await page.getByRole("button", { name: "Signaler à la présidence" }).click();
+    await expect(page.getByText(/Dernier signalement le/)).toBeVisible();
+    await expect(page.getByText(/Doublons signalés par Alex Propriétaire/)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    // The operators' tab: my session journaled, the keys in order.
+    await page.getByRole("tab", { name: "Opérateurs" }).click();
+    await expect(page.getByRole("heading", { name: "Connexions à la console" })).toBeVisible();
+    await expect(page.getByRole("row", { name: /Alex Propriétaire/ }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Revue des clés MCP" })).toBeVisible();
+    await axe(page, "operators (series D)");
+    // The president of A links the profile to Dan's identity code from club B.
+    const other = await browser.newContext({ baseURL: "http://127.0.0.1:3100", viewport: { width: 390, height: 844 } });
+    const presidentPage = await other.newPage();
+    const president = await signIn(presidentPage, db, "Présidente Jumeau", `twin-${stamp}@example.test`);
+    await mandate(presidentPage, db, president, clubA, "club_president");
+    await presidentPage.goto("/fr/settings/club");
+    await expect(presidentPage.getByRole("heading", { name: "Doublons probables" })).toBeVisible();
+    await presidentPage.getByLabel("Code d'identité de la personne").fill(personB.identity_code);
+    await axe(presidentPage, "duplicates");
+    await presidentPage.getByRole("button", { name: "Rattacher : Dan Jumeau" }).click();
+    await expect(presidentPage.getByRole("heading", { name: "Doublons probables" })).toHaveCount(0);
+    expect((await db.query("SELECT person_id FROM club_person WHERE organization_id=$1", [clubA])).rows[0].person_id).toBe(personB.id);
     await other.close();
   } finally {
     await db.end();

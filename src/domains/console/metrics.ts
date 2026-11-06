@@ -5,6 +5,7 @@ import { createTransport } from "../notifications/transport";
 import { jobStates, overdueMails } from "../jobs/health";
 import { pdfDocument, type PdfLine } from "../../lib/pdf";
 import { firstReplyMedianHours } from "../support/stats";
+import { keyReview } from "./schema";
 import { operatorScope } from "./service";
 
 /**
@@ -15,7 +16,7 @@ import { operatorScope } from "./service";
  * choose, once a day, straight through the transport like the watchdog),
  * and the monthly report archived as a PDF.
  */
-export const metricKeys = ["clubs", "federations", "accounts", "players", "coaches", "licences", "active7", "active30", "matches30", "storageBytes", "mrr", "open", "late", "lateCount", "subscriptions", "feedbackOpen", "dataRequestsOpen", "dataRequestsLate", "noPresident", "suspended", "jobsLate", "ticketsOpen", "ticketsFirstReplyHours"] as const;
+export const metricKeys = ["clubs", "federations", "accounts", "players", "coaches", "licences", "active7", "active30", "matches30", "storageBytes", "mrr", "open", "late", "lateCount", "subscriptions", "feedbackOpen", "dataRequestsOpen", "dataRequestsLate", "noPresident", "suspended", "jobsLate", "ticketsOpen", "ticketsFirstReplyHours", "duplicates"] as const;
 export type MetricKey = (typeof metricKeys)[number];
 const presidentRole = "r.role IN ('club_president','federation_president') AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())";
 
@@ -46,6 +47,8 @@ export async function computeMetrics(db: Pool): Promise<Record<string, number>> 
       ticketsFirstReplyHours: (await firstReplyMedianHours(c)) ?? 0,
       dataRequestsOpen: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress')"),
       dataRequestsLate: await n(c, "SELECT count(*)::int AS n FROM data_request WHERE status IN ('received','in_progress') AND due_on<CURRENT_DATE"),
+      // Series D: probable duplicates of identity across clubs (profiles that have a twin elsewhere).
+      duplicates: await n(c, `SELECT count(*)::int AS n FROM club_person cp WHERE cp.status='active' AND cp.birth_date IS NOT NULL AND EXISTS(SELECT 1 FROM club_person x WHERE x.organization_id<>cp.organization_id AND x.status='active' AND x.person_id<>cp.person_id AND x.birth_date=cp.birth_date AND lower(regexp_replace(x.full_name,'\\s+',' ','g'))=lower(regexp_replace(cp.full_name,'\\s+',' ','g')))`),
       noPresident: await n(c, `SELECT count(*)::int AS n FROM organization o WHERE NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=o.id AND ${presidentRole})`),
       suspended: await n(c, "SELECT count(*)::int AS n FROM organization WHERE suspended_at IS NOT NULL"),
     };
@@ -84,7 +87,7 @@ export async function trends(c: PoolClient, keys: readonly string[]): Promise<Re
 }
 
 /* Alerts. */
-export const alertRules = ["jobsLate", "mailsOverdue", "dataRequestsLate", "invoicesFinalReminder", "noPresident", "suspended", "feedbackNew", "terminations", "ticketsWaiting"] as const;
+export const alertRules = ["jobsLate", "mailsOverdue", "dataRequestsLate", "invoicesFinalReminder", "noPresident", "suspended", "feedbackNew", "terminations", "ticketsWaiting", "keysReview"] as const;
 export type AlertRule = (typeof alertRules)[number];
 export const alertPrefCommand = z.object({ action: z.literal("alertPref"), email: z.boolean(), hour: z.number().int().min(0).max(23), rules: z.array(z.enum(alertRules)) });
 export type AlertItem = { rule: AlertRule; count: number; detail: string };
@@ -107,6 +110,13 @@ export async function alertItems(db: Pool): Promise<AlertItem[]> {
     await rule("suspended", "SELECT name FROM organization WHERE suspended_at IS NOT NULL ORDER BY suspended_at DESC");
     await rule("feedbackNew", "SELECT COALESCE(o.name,'?')||' · '||f.kind AS name FROM app_feedback f LEFT JOIN organization o ON o.id=f.organization_id WHERE f.created_at>now()-interval '24 hours' ORDER BY f.created_at DESC");
     await rule("ticketsWaiting", "SELECT COALESCE(o.name,u.name)||' · '||t.subject AS name FROM support_ticket t JOIN \"user\" u ON u.id=t.user_id LEFT JOIN organization o ON o.id=t.organization_id WHERE t.state='open' AND t.last_message_at<now()-interval '24 hours' ORDER BY t.last_message_at");
+    for (const k of (await c.query('SELECT k.name,k.created_at,k.last_used_at,u.name AS operator FROM operator_api_key k JOIN "user" u ON u.id=k.operator_id WHERE k.revoked_at IS NULL ORDER BY k.created_at')).rows as { name: string; created_at: string; last_used_at: string | null; operator: string }[]) {
+      const why = keyReview(k);
+      if (!why) continue;
+      const item = items.find((i) => i.rule === "keysReview") ?? items[items.push({ rule: "keysReview", count: 0, detail: "" }) - 1];
+      item.count++;
+      item.detail = [item.detail, `${k.operator} · ${k.name} (${why})`].filter(Boolean).join(", ");
+    }
     await rule("terminations", "SELECT o.name||' ('||t.effective_on||')' AS name FROM club_termination t JOIN organization o ON o.id=t.organization_id WHERE t.cancelled_at IS NULL AND t.completed_at IS NULL AND t.effective_on<=CURRENT_DATE+30 ORDER BY t.effective_on");
   } finally {
     c.release();
@@ -124,6 +134,7 @@ const ruleLabels: Record<AlertRule, string> = {
   feedbackNew: "Signalements reçus depuis 24 heures",
   terminations: "Fermetures programmées sous 30 jours",
   ticketsWaiting: "Tickets de support sans réponse depuis 24 heures",
+  keysReview: "Clés MCP à revoir (jamais utilisées, inactives 60 jours ou de plus de 180 jours)",
 };
 /** Hourly: every operator who wants the alert, from their hour, once a day, when something is there. */
 export async function alertTick(db: Pool, env: Record<string, string | undefined> = process.env) {

@@ -431,6 +431,48 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
           <p className="muted">{o.borrowsNone}</p>
         )}
       </Card>
+      {/* Series D: the first steps, the probable duplicates, the timeline. */}
+      <Card title={o.onboarding} id="console-onboarding">
+        <p className="muted small">{fill(o.onboardingDone, { done: data.onboarding.done, total: data.onboarding.total })}</p>
+        <ul className="plain-list">
+          {data.onboarding.steps.map((st) => (
+            <li key={st.key}>
+              <Badge tone={st.done ? "success" : "neutral"}>{st.done ? "✓" : "·"}</Badge> {o.onboardingSteps[st.key]}
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card title={o.duplicates} id="console-duplicates">
+        <p className="muted small">{o.duplicatesIntro}</p>
+        {data.duplicates.count ? (
+          <div className="console-plan">
+            <span>
+              <strong>{fill(o.duplicatesCount, { n: data.duplicates.count })}</strong>
+              {data.duplicates.notified_at && <span className="muted small"> · {fill(o.duplicatesLast, { day: day(data.duplicates.notified_at) })}</span>}
+            </span>
+            {data.canWrite && (
+              <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "duplicatesNotify", organizationId: id }, o.duplicatesNotified)}>
+                {o.duplicatesNotify}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <p className="muted">{o.duplicatesNone}</p>
+        )}
+      </Card>
+      <Card title={o.timeline} id="console-timeline">
+        {data.timeline.length ? (
+          <ol className="plain-list">
+            {data.timeline.map((e, i) => (
+              <li key={i}>
+                <span className="muted small">{when(e.at)}</span> · {fill(o.timelineKinds[e.kind] ?? e.kind, { label: e.label })}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="muted">{o.timelineNone}</p>
+        )}
+      </Card>
       {borrowing && (
         <Modal title={o.borrow} close={() => setBorrowing(false)}>
           <form
@@ -826,6 +868,8 @@ function OperatorsView({ locale, day }: { locale: Locale; day: (iso: string) => 
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
   const { data, error, setError, reload } = useData<Operators>("/api/console?view=operators", failure);
   const { busy, message, post } = usePost("/api/console", reload, setError, failure);
+  const keys = usePost("/api/console/mcp-keys", reload, setError, failure);
+  const when = (iso: string) => new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" }).format(new Date(iso));
   if (!data) return error ? <p role="alert">{error}</p> : null;
   const owner = data.me.role === "owner";
   return (
@@ -912,6 +956,69 @@ function OperatorsView({ locale, day }: { locale: Locale; day: (iso: string) => 
       )}
       <AlertPrefs locale={locale} day={day} />
       <McpKeys locale={locale} day={day} />
+      {/* Series D: the sessions' journal and the review of the keys. */}
+      <Card title={o.sessions} id="console-sessions">
+        <p className="muted small">
+          {fill(o.sessionsIntro, { h: data.sessionHours })}
+          {owner ? ` ${o.sessionsAll}` : ""}
+        </p>
+        {data.sessions.length ? (
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {owner && <th scope="col">{o.sessionColumns.operator}</th>}
+                  <th scope="col">{o.sessionColumns.started}</th>
+                  <th scope="col">{o.sessionColumns.last}</th>
+                  <th scope="col">{o.sessionColumns.ip}</th>
+                  <th scope="col">{o.sessionColumns.browser}</th>
+                  <th scope="col" className="num">{o.sessionColumns.calls}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.sessions.map((x) => (
+                  <tr key={x.session_id}>
+                    {owner && <th scope="row">{x.operator}</th>}
+                    <td>
+                      {when(x.started_at)} <Badge tone={x.alive ? "success" : "neutral"}>{x.alive ? o.sessionAlive : o.sessionGone}</Badge>
+                    </td>
+                    <td>{when(x.last_console_at)}</td>
+                    <td>{x.ip || "·"}</td>
+                    <td>{x.user_agent || "·"}</td>
+                    <td className="num">{x.calls}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">{o.sessionsNone}</p>
+        )}
+      </Card>
+      <Card title={o.keysReview} id="console-keys-review">
+        <p className="muted small">{o.keysReviewIntro}</p>
+        {data.keys.length ? (
+          <ul className="plain-list">
+            {data.keys.map((k) => (
+              <li key={k.id} className="console-plan">
+                <span>
+                  {fill(o.keyLine, { operator: k.operator, name: k.name, scopes: k.scopes.map((sc) => t.mcp.scopeNames[sc as keyof typeof t.mcp.scopeNames] ?? sc).join(", ") })} · {fill(t.mcp.calls, { n: k.calls })} ·{" "}
+                  {k.last_used_at ? fill(t.mcp.lastUsed, { day: day(k.last_used_at) }) : t.mcp.never}{" "}
+                  <Badge tone={k.review ? "warning" : "success"}>{k.review ? fill(t.mcp.review, { why: o.keyReasons[k.review] }) : o.keyOk}</Badge>
+                </span>
+                {owner && (
+                  <Button variant="secondary" size="sm" disabled={keys.busy} onClick={() => void keys.post({ action: "revokeKey", id: k.id }, t.mcp.revoked)}>
+                    {t.mcp.revoke}
+                    <span className="sr-only"> : {k.operator}, {k.name}</span>
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{o.keysReviewNone}</p>
+        )}
+      </Card>
       <p>
         <Link href={`/${locale}`}>{t.backToApp}</Link>
       </p>
@@ -972,6 +1079,7 @@ function McpKeys({ locale, day }: { locale: Locale; day: (iso: string) => string
               <span>
                 <strong>{k.name}</strong> <code>pfmop_{k.prefix}_…</code> · {k.scopes.map((sc) => m.scopeNames[sc] ?? sc).join(", ")} · {fill(m.calls, { n: k.calls })} · {k.last_used_at ? fill(m.lastUsed, { day: day(k.last_used_at) }) : m.never}{" "}
                 {k.revoked_at && <Badge tone="neutral">{m.revokedBadge}</Badge>}
+                {k.review && <Badge tone="warning">{fill(m.review, { why: t.operators.keyReasons[k.review] })}</Badge>}
               </span>
               {!k.revoked_at && (
                 <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void post({ action: "revokeKey", id: k.id }, m.revoked)}>

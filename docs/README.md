@@ -177,6 +177,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Console, série A : relevés quotidiens, tendances, alerte des opérateurs, rapport mensuel](evolutions/2026-11-06-zzzzzz-console-serie-a.md) |
 | 06/11/2026 | [Console, série B : paiement en ligne par Mollie, factures électroniques UBL](evolutions/2026-11-06-zzzzzzz-console-serie-b.md) |
 | 06/11/2026 | [Console, série C : support et demandes RGPD de bout en bout](evolutions/2026-11-06-zzzzzzzz-console-serie-c.md) |
+| 06/11/2026 | [Console, série D : fiche enrichie et sécurité des opérateurs](evolutions/2026-11-06-zzzzzzzzz-console-serie-d.md) |
 
 ## Convention
 
