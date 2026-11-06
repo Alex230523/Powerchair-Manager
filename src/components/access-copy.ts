@@ -187,6 +187,11 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
   },
   /* 05/11/2026 (revue): codes that reached the screen as they were. */
   ORG_SUSPENDED: { fr: "Votre organisation est en lecture seule, suspendue par la plateforme. Le bandeau en haut de page en donne la raison.", nl: "Uw organisatie is alleen-lezen, geschorst door het platform. De banner bovenaan geeft de reden.", en: "Your organisation is read only, suspended by the platform. The banner at the top gives the reason." },
+  ASSISTANT_OFF: { fr: "L'assistant n'est pas configuré sur ce serveur (clé ANTHROPIC_API_KEY absente).", nl: "De assistent is niet geconfigureerd op deze server (ANTHROPIC_API_KEY ontbreekt).", en: "The assistant is not configured on this server (ANTHROPIC_API_KEY missing)." },
+  ASSISTANT_DOWN: { fr: "L'assistant ne répond pas pour l'instant. Réessayez dans un moment.", nl: "De assistent antwoordt momenteel niet. Probeer straks opnieuw.", en: "The assistant is not answering right now. Try again in a moment." },
+  ASSISTANT_BUSY: { fr: "L'assistant est saturé. Réessayez dans une minute.", nl: "De assistent is overbelast. Probeer over een minuut opnieuw.", en: "The assistant is busy. Try again in a minute." },
+  ASSISTANT_PENDING: { fr: "Aucune action en attente ne correspond à cette décision.", nl: "Geen wachtende actie komt overeen met deze beslissing.", en: "No pending action matches this decision." },
+  ASSISTANT_TURN: { fr: "Écrivez un message avant d'envoyer.", nl: "Schrijf een bericht voor u verzendt.", en: "Write a message before sending." },
   BORROW_OPEN: { fr: "Vous avez déjà un accès de support ouvert sur cette organisation.", nl: "U hebt al een supporttoegang open op deze organisatie.", en: "You already have a support access open on this organisation." },
   ALREADY_SUSPENDED: { fr: "Cette organisation est déjà suspendue.", nl: "Deze organisatie is al geschorst.", en: "This organisation is already suspended." },
   NOT_SUSPENDED: { fr: "Cette organisation n'est pas suspendue.", nl: "Deze organisatie is niet geschorst.", en: "This organisation is not suspended." },

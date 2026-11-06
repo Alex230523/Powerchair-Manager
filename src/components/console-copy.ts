@@ -8,7 +8,7 @@ type Copy = {
   backToApp: string;
   denied: string;
   cancel: string;
-  tabs: Record<"home" | "organizations" | "billing" | "supervision" | "operators", string>;
+  tabs: Record<"home" | "organizations" | "billing" | "supervision" | "operators" | "assistant", string>;
   roles: Record<"owner" | "support" | "finance" | "readonly", string>;
   signedAs: string;
   generated: string;
@@ -228,6 +228,26 @@ type Copy = {
     revokedBadge: string;
     ownerOnly: string;
   };
+  assistant: {
+    intro: string;
+    off: string;
+    model: string;
+    usage: string;
+    toolsRead: string;
+    toolsWrite: string;
+    placeholder: string;
+    send: string;
+    thinking: string;
+    you: string;
+    assistant: string;
+    pending: string;
+    pendingIntro: string;
+    approve: string;
+    refuse: string;
+    clear: string;
+    examples: string;
+    exampleList: string[];
+  };
   mcp: {
     title: string;
     intro: string;
@@ -259,7 +279,7 @@ const fr: Copy = {
   backToApp: "Retour à l'application",
   denied: "Cette console est réservée aux exploitants de la plateforme.",
   cancel: "Annuler",
-  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", supervision: "Supervision", operators: "Opérateurs" },
+  tabs: { home: "Tableau de bord", organizations: "Organisations", billing: "Facturation", supervision: "Supervision", operators: "Opérateurs", assistant: "Assistant" },
   roles: { owner: "Propriétaire", support: "Support", finance: "Finance", readonly: "Lecture seule" },
   signedAs: "{name} · {role}",
   generated: "Chiffres au {time}",
@@ -503,6 +523,26 @@ const fr: Copy = {
     revokedBadge: "Retiré",
     ownerOnly: "Seul le propriétaire gère les opérateurs.",
   },
+  assistant: {
+    intro: "Posez une question à l'assistant : il lit les chiffres de la console avec les mêmes outils que votre clé MCP, en votre nom. Une action d'écriture (rappel, paiement, note) vous est proposée et attend votre confirmation. La conversation reste dans votre navigateur.",
+    off: "L'assistant n'est pas configuré sur ce serveur : ajoutez ANTHROPIC_API_KEY (et au besoin PFM_ASSISTANT_MODEL) dans la configuration.",
+    model: "Modèle : {model}",
+    usage: "Aujourd'hui : {calls} échange(s), {tokens} jetons · ce mois : {month} jetons",
+    toolsRead: "Lecture : {tools}",
+    toolsWrite: "Écriture, sur confirmation : {tools}",
+    placeholder: "Par exemple : quelles factures sont en retard de plus de dix jours ?",
+    send: "Envoyer",
+    thinking: "L'assistant lit les chiffres…",
+    you: "Vous",
+    assistant: "Assistant",
+    pending: "Action proposée",
+    pendingIntro: "L'assistant veut lancer {name} avec ces paramètres. Rien n'est fait tant que vous ne confirmez pas.",
+    approve: "Confirmer l'action",
+    refuse: "Refuser",
+    clear: "Nouvelle conversation",
+    examples: "Exemples",
+    exampleList: ["Quelles organisations n'ont pas de président actif ?", "Quelles factures sont en retard, et depuis combien de jours ?", "Résume la santé du service aujourd'hui.", "Prépare un rappel pour la facture la plus en retard."],
+  },
   mcp: {
     title: "Brancher votre assistant (MCP)",
     intro: "La console expose un serveur MCP : votre Claude (bureau ou Claude Code) lit les chiffres, liste les factures en retard, prépare les rappels, et vous confirmez chaque action. Une clé par usage, avec les seules portées utiles ; chaque écriture est journalisée à votre nom.",
@@ -534,7 +574,7 @@ const nl: Copy = {
   backToApp: "Terug naar de toepassing",
   denied: "Deze console is voorbehouden aan de beheerders van het platform.",
   cancel: "Annuleren",
-  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", supervision: "Toezicht", operators: "Beheerders" },
+  tabs: { home: "Dashboard", organizations: "Organisaties", billing: "Facturatie", supervision: "Toezicht", operators: "Beheerders", assistant: "Assistent" },
   roles: { owner: "Eigenaar", support: "Support", finance: "Financiën", readonly: "Alleen lezen" },
   signedAs: "{name} · {role}",
   generated: "Cijfers om {time}",
@@ -778,6 +818,26 @@ const nl: Copy = {
     revokedBadge: "Verwijderd",
     ownerOnly: "Alleen de eigenaar beheert de beheerders.",
   },
+  assistant: {
+    intro: "Stel de assistent een vraag: hij leest de cijfers van de console met dezelfde tools als uw MCP-sleutel, in uw naam. Een schrijfactie (herinnering, betaling, nota) wordt voorgesteld en wacht op uw bevestiging. Het gesprek blijft in uw browser.",
+    off: "De assistent is niet geconfigureerd op deze server: voeg ANTHROPIC_API_KEY (en zo nodig PFM_ASSISTANT_MODEL) toe aan de configuratie.",
+    model: "Model: {model}",
+    usage: "Vandaag: {calls} uitwisseling(en), {tokens} tokens · deze maand: {month} tokens",
+    toolsRead: "Lezen: {tools}",
+    toolsWrite: "Schrijven, na bevestiging: {tools}",
+    placeholder: "Bijvoorbeeld: welke facturen zijn meer dan tien dagen te laat?",
+    send: "Verzenden",
+    thinking: "De assistent leest de cijfers…",
+    you: "U",
+    assistant: "Assistent",
+    pending: "Voorgestelde actie",
+    pendingIntro: "De assistent wil {name} uitvoeren met deze parameters. Er gebeurt niets zolang u niet bevestigt.",
+    approve: "Actie bevestigen",
+    refuse: "Weigeren",
+    clear: "Nieuw gesprek",
+    examples: "Voorbeelden",
+    exampleList: ["Welke organisaties hebben geen actieve voorzitter?", "Welke facturen zijn te laat, en sinds hoeveel dagen?", "Vat de gezondheid van de dienst vandaag samen.", "Bereid een herinnering voor de meest achterstallige factuur voor."],
+  },
   mcp: {
     title: "Uw assistent koppelen (MCP)",
     intro: "De console biedt een MCP-server: uw Claude (desktop of Claude Code) leest de cijfers, lijst de te late facturen op, bereidt de herinneringen voor, en u bevestigt elke actie. Eén sleutel per gebruik, met enkel de nuttige rechten; elke schrijfactie wordt op uw naam gelogd.",
@@ -809,7 +869,7 @@ const en: Copy = {
   backToApp: "Back to the application",
   denied: "This console is for the platform's operators.",
   cancel: "Cancel",
-  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", supervision: "Supervision", operators: "Operators" },
+  tabs: { home: "Dashboard", organizations: "Organisations", billing: "Billing", supervision: "Supervision", operators: "Operators", assistant: "Assistant" },
   roles: { owner: "Owner", support: "Support", finance: "Finance", readonly: "Read only" },
   signedAs: "{name} · {role}",
   generated: "Figures at {time}",
@@ -1052,6 +1112,26 @@ const en: Copy = {
     revoked: "Operator revoked.",
     revokedBadge: "Revoked",
     ownerOnly: "Only the owner manages the operators.",
+  },
+  assistant: {
+    intro: "Ask the assistant: it reads the console's figures with the same tools as your MCP key, in your name. A write action (reminder, payment, note) is proposed and waits for your confirmation. The conversation stays in your browser.",
+    off: "The assistant is not configured on this server: add ANTHROPIC_API_KEY (and PFM_ASSISTANT_MODEL if needed) to the configuration.",
+    model: "Model: {model}",
+    usage: "Today: {calls} exchange(s), {tokens} tokens · this month: {month} tokens",
+    toolsRead: "Read: {tools}",
+    toolsWrite: "Write, on confirmation: {tools}",
+    placeholder: "For example: which invoices are more than ten days late?",
+    send: "Send",
+    thinking: "The assistant reads the figures…",
+    you: "You",
+    assistant: "Assistant",
+    pending: "Proposed action",
+    pendingIntro: "The assistant wants to run {name} with these parameters. Nothing happens until you confirm.",
+    approve: "Confirm the action",
+    refuse: "Refuse",
+    clear: "New conversation",
+    examples: "Examples",
+    exampleList: ["Which organisations have no active president?", "Which invoices are late, and for how many days?", "Summarise the health of the service today.", "Prepare a reminder for the most overdue invoice."],
   },
   mcp: {
     title: "Connect your assistant (MCP)",

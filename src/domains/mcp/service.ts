@@ -78,6 +78,45 @@ export async function mcpAuth(db: Pool, header: string | null) {
   return { keyId: k.id, principal: { userId: k.operator_id, sessionId: `mcp:${k.id}` } as Principal, scopes: k.scopes };
 }
 
+/** One tool of the console, run as the operator; shared by the MCP server and the assistant (step 7). */
+export async function runTool(db: Pool, p: Principal, name: string, a: Record<string, unknown>): Promise<unknown> {
+  let out: unknown;
+  switch (name) {
+    case "platform_overview":
+      out = await consoleHome(db, p);
+      break;
+    case "list_organizations":
+      out = await consoleOrganizations(db, p, { q: arg(a, "q"), kind: arg(a, "kind"), country: arg(a, "country") });
+      break;
+    case "organization":
+      out = await consoleOrganization(db, p, z.uuid().parse(arg(a, "id")));
+      break;
+    case "supervision":
+      out = await consoleSupervision(db, p);
+      break;
+    case "billing_overview": {
+      const v = await billingView(db, p);
+      out = { figures: v.figures, plans: v.plans, subscriptions: v.subscriptions };
+      break;
+    }
+    case "invoices": {
+      const v = await billingView(db, p, { state: arg(a, "state"), organization: arg(a, "organization") });
+      out = { invoices: a.late === true ? v.invoices.filter((i) => i.late) : v.invoices };
+      break;
+    }
+    case "send_reminder":
+      out = await billingExecute(db, p, billingCommand.parse({ action: "remind", id: arg(a, "invoiceId") }));
+      break;
+    case "mark_invoice_paid":
+      out = await billingExecute(db, p, billingCommand.parse({ action: "paid", id: arg(a, "invoiceId"), paidOn: arg(a, "paidOn") }));
+      break;
+    case "add_note":
+      out = await consoleExecute(db, p, consoleCommand.parse({ action: "note", organizationId: arg(a, "organizationId"), text: arg(a, "text") }));
+      break;
+  }
+  return out;
+}
+
 type Rpc = { jsonrpc: "2.0"; id: string | number | null; result?: unknown; error?: { code: number; message: string; data?: unknown } };
 const reply = (id: string | number | null, result: unknown): Rpc => ({ jsonrpc: "2.0", id, result });
 const fail = (id: string | number | null, code: number, message: string, data?: unknown): Rpc => ({ jsonrpc: "2.0", id, error: { code, message, data } });
@@ -105,40 +144,7 @@ export async function mcpHandle(db: Pool, auth: { principal: Principal; scopes: 
   const a = (req.params?.arguments && typeof req.params.arguments === "object" ? req.params.arguments : {}) as Record<string, unknown>;
   const p = auth.principal;
   try {
-    let out: unknown;
-    switch (tool.name) {
-      case "platform_overview":
-        out = await consoleHome(db, p);
-        break;
-      case "list_organizations":
-        out = await consoleOrganizations(db, p, { q: arg(a, "q"), kind: arg(a, "kind"), country: arg(a, "country") });
-        break;
-      case "organization":
-        out = await consoleOrganization(db, p, z.uuid().parse(arg(a, "id")));
-        break;
-      case "supervision":
-        out = await consoleSupervision(db, p);
-        break;
-      case "billing_overview": {
-        const v = await billingView(db, p);
-        out = { figures: v.figures, plans: v.plans, subscriptions: v.subscriptions };
-        break;
-      }
-      case "invoices": {
-        const v = await billingView(db, p, { state: arg(a, "state"), organization: arg(a, "organization") });
-        out = { invoices: a.late === true ? v.invoices.filter((i) => i.late) : v.invoices };
-        break;
-      }
-      case "send_reminder":
-        out = await billingExecute(db, p, billingCommand.parse({ action: "remind", id: arg(a, "invoiceId") }));
-        break;
-      case "mark_invoice_paid":
-        out = await billingExecute(db, p, billingCommand.parse({ action: "paid", id: arg(a, "invoiceId"), paidOn: arg(a, "paidOn") }));
-        break;
-      case "add_note":
-        out = await consoleExecute(db, p, consoleCommand.parse({ action: "note", organizationId: arg(a, "organizationId"), text: arg(a, "text") }));
-        break;
-    }
+    const out = await runTool(db, p, tool.name, a);
     if (!tool.readOnly) await db.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,$2,$3)", [p.userId, `mcp.${tool.name}`, JSON.stringify({ keyId: auth.keyId, arguments: a })]);
     return reply(id, text(out));
   } catch (e) {

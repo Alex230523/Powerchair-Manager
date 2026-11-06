@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { consoleHome, consoleOperators, consoleOrganization, consoleOrganizations, consoleSupervision } from "@/domains/console/service";
 import type { billingView } from "@/domains/billing/service";
 import type { mcpKeys } from "@/domains/mcp/service";
+import type { assistantView, AssistantTurn } from "@/domains/assistant/service";
 import { operatorRoles } from "@/domains/console/schema";
 import { planBases, planPeriods } from "@/domains/billing/schema";
 import { formatCents } from "@/domains/dashboard/summary";
@@ -22,7 +23,9 @@ type Supervision = Awaited<ReturnType<typeof consoleSupervision>>;
 type Operators = Awaited<ReturnType<typeof consoleOperators>>;
 type Billing = Awaited<ReturnType<typeof billingView>>;
 type Keys = Awaited<ReturnType<typeof mcpKeys>>;
-type Tab = "home" | "organizations" | "billing" | "supervision" | "operators";
+type Tab = "home" | "organizations" | "billing" | "supervision" | "operators" | "assistant";
+type AssistantState = Awaited<ReturnType<typeof assistantView>>;
+type Turn = AssistantTurn;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] === undefined ? m : String(v[k])));
 
@@ -46,7 +49,7 @@ export function Console({ locale }: { locale: Locale }) {
       {error && <p role="alert">{error}</p>}
       <Tabs
         label={t.title}
-        items={(["home", "organizations", "billing", "supervision", "operators"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
+        items={(["home", "organizations", "billing", "supervision", "operators", "assistant"] as Tab[]).map((id) => ({ id, label: t.tabs[id] }))}
         value={tab}
         onChange={(id) => {
           setTab(id as Tab);
@@ -61,6 +64,7 @@ export function Console({ locale }: { locale: Locale }) {
         {tab === "billing" && <BillingView locale={locale} day={day} open={open} />}
         {tab === "supervision" && <SupervisionView locale={locale} when={when} day={day} />}
         {tab === "operators" && <OperatorsView locale={locale} day={day} />}
+        {tab === "assistant" && <AssistantView locale={locale} />}
       </div>
     </main>
   );
@@ -1137,3 +1141,127 @@ const nextDay = (iso: string) => {
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 };
+
+/** Console, step 7 (06/11/2026): the assistant in the console; a write waits for the person's confirmation. */
+function AssistantView({ locale }: { locale: Locale }) {
+  const t = consoleCopy[locale],
+    a = t.assistant;
+  const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
+  const { data, error, setError, reload } = useData<AssistantState>("/api/console/assistant", failure);
+  const [messages, setMessages] = useState<Turn["messages"]>([]);
+  const [pending, setPending] = useState<Turn["pending"]>(null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const send = async (body: Record<string, unknown>) => {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/console/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale, ...body }) });
+      const v = await r.json();
+      if (!r.ok) throw new Error(v.error);
+      const turn = v as Turn;
+      setMessages(turn.messages);
+      setPending(turn.pending);
+      await reload();
+    } catch (e) {
+      setError(failure(e instanceof Error ? e.message : ""));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const ask = (q: string) => {
+    if (!q.trim() || pending) return;
+    const next = [...messages, { role: "user" as const, content: q.trim() }];
+    setMessages(next);
+    setDraft("");
+    void send({ messages: next });
+  };
+  if (!data) return error ? <p role="alert">{error}</p> : null;
+  const textOf = (m: Turn["messages"][number]) => (typeof m.content === "string" ? m.content : m.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n"));
+  const shown = messages.filter((m) => textOf(m).trim());
+  const reads = data.tools.filter((x) => x.readOnly).map((x) => x.name),
+    writes = data.tools.filter((x) => !x.readOnly).map((x) => x.name);
+  return (
+    <div className="stack">
+      <p className="muted">{a.intro}</p>
+      {!data.configured && <p role="alert">{a.off}</p>}
+      <p className="muted small">
+        {fill(a.model, { model: data.model })} · {fill(a.usage, { calls: data.today.calls, tokens: data.today.input_tokens + data.today.output_tokens, month: data.month.n })}
+      </p>
+      <p className="muted small">
+        {fill(a.toolsRead, { tools: reads.join(", ") })}
+        {writes.length ? ` · ${fill(a.toolsWrite, { tools: writes.join(", ") })}` : ""}
+      </p>
+      {error && <p role="alert">{error}</p>}
+      <div className="assistant-log" role="log" aria-live="polite" aria-label={t.tabs.assistant}>
+        {shown.length === 0 && (
+          <div className="assistant-examples">
+            <p className="muted small">{a.examples}</p>
+            <ul className="plain-list">
+              {a.exampleList.map((q) => (
+                <li key={q}>
+                  <button type="button" className="text-button" disabled={busy || !data.configured} onClick={() => ask(q)}>
+                    {q}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {shown.map((m, i) => (
+          <div key={i} className={`assistant-message ${m.role}`}>
+            <p className="assistant-who">{m.role === "user" ? a.you : a.assistant}</p>
+            <p className="assistant-text">{textOf(m)}</p>
+          </div>
+        ))}
+        {busy && <p className="muted small">{a.thinking}</p>}
+      </div>
+      {pending && (
+        <div className="panel assistant-pending" role="group" aria-label={a.pending}>
+          <p>
+            <strong>{a.pending}</strong>
+          </p>
+          <p>{fill(a.pendingIntro, { name: pending.name })}</p>
+          <p className="muted small">{pending.description}</p>
+          <pre className="assistant-args">{JSON.stringify(pending.input, null, 1)}</pre>
+          <p className="actions">
+            <Button type="button" disabled={busy} onClick={() => void send({ messages, decision: { toolUseId: pending.toolUseId, approve: true } })}>
+              {a.approve}
+            </Button>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => void send({ messages, decision: { toolUseId: pending.toolUseId, approve: false } })}>
+              {a.refuse}
+            </Button>
+          </p>
+        </div>
+      )}
+      <form
+        className="assistant-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(draft);
+        }}
+      >
+        <label className="sr-only" htmlFor="assistant-draft">
+          {a.send}
+        </label>
+        <textarea id="assistant-draft" value={draft} onChange={(e) => setDraft(e.target.value)} rows={2} maxLength={8000} placeholder={a.placeholder} disabled={busy || !data.configured || !!pending} />
+        <p className="actions">
+          <Button disabled={busy || !data.configured || !!pending || !draft.trim()}>{a.send}</Button>
+          {messages.length > 0 && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => {
+                setMessages([]);
+                setPending(null);
+              }}
+            >
+              {a.clear}
+            </Button>
+          )}
+        </p>
+      </form>
+    </div>
+  );
+}
