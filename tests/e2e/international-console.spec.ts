@@ -199,7 +199,7 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     const ublMine = await presidentPage.evaluate(async (href) => {
       const r = await fetch(href);
       return { status: r.status, body: await r.text() };
-    }, await ublLink.getAttribute("href"));
+    }, (await ublLink.getAttribute("href")) ?? "");
     expect(ublMine.status).toBe(200);
     expect(ublMine.body).toContain("<cbc:RegistrationName>Club facturé</cbc:RegistrationName>");
     await axe(presidentPage, "organisation billing");
