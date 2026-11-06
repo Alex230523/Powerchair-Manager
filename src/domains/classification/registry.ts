@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { escapeLike } from "../../lib/sql";
 import { z } from "zod";
 import { fedCan } from "../access/policy";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
@@ -118,7 +119,7 @@ export async function registryView(db: Pool, p: Principal, q = ""): Promise<Regi
           WHERE o.federation_id=$1 AND o.kind='club' AND cp.status='active' AND 'player'=ANY(cp.directory_roles)
             AND ($2='' OR cp.full_name ILIKE '%'||$2||'%' OR pe.identity_code ILIKE '%'||$2||'%' OR o.name ILIKE '%'||$2||'%')
           ORDER BY lower(o.name),lower(cp.full_name) LIMIT 500`,
-        [s.fed, search],
+        [s.fed, escapeLike(search)],
       )
     ).rows as { profile_id: string; person_id: string; identity_code: string; full_name: string; club: string; club_id: string; classification: string }[];
     const ids = [...new Set(players.map((x) => x.person_id))];
