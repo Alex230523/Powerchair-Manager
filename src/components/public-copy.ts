@@ -52,6 +52,15 @@ type Copy = {
   lastUsed: string;
   never: string;
   docs: string;
+  mcp: string;
+  mcpHint: string;
+  mcpScopes: Record<"club:read" | "calendar:read" | "dues:read", string>;
+  mcpCreate: string;
+  mcpKeyName: string;
+  mcpNone: string;
+  mcpHowTo: string;
+  mcpTools: string;
+  mcpBy: string;
   hooks: string;
   hooksHint: string;
   url: string;
@@ -140,6 +149,15 @@ export const publicCopy: Record<Locale, Copy> = {
     lastUsed: "Dernier usage : {date}",
     never: "jamais utilisée",
     docs: "Documentation (OpenAPI)",
+    mcp: "Connecteur pour votre assistant (MCP)",
+    mcpHint: "Branchez votre propre Claude (ou un autre assistant MCP) sur votre club, en lecture seule : équipes, matchs, calendrier et, si vous le choisissez, les cotisations nommément. La clé vaut tant que vous présidez ; elle est montrée une fois ; dix clés actives au plus.",
+    mcpScopes: { "club:read": "Le club : équipes, matchs, tournois, chiffres", "calendar:read": "Le calendrier (sans les participants)", "dues:read": "Les cotisations, membre par membre" },
+    mcpCreate: "Créer la clé du connecteur",
+    mcpKeyName: "Nom du connecteur",
+    mcpNone: "Aucun connecteur.",
+    mcpHowTo: "Dans Claude (Réglages, Connecteurs, Ajouter un connecteur distant), donnez l'adresse ci-dessous et la clé comme jeton d'accès (Bearer).",
+    mcpTools: "Outils : vue du club, équipes, matchs, tournois, calendrier, cotisations.",
+    mcpBy: "créée par {name}",
     hooks: "Webhooks",
     hooksHint: "Chaque envoi est signé (en-tête X-PFM-Signature, HMAC SHA-256 de « horodatage.corps »), répété en cas d'échec, et garde son identifiant s'il est rejoué.",
     url: "Adresse HTTPS",
@@ -226,6 +244,15 @@ export const publicCopy: Record<Locale, Copy> = {
     lastUsed: "Laatst gebruikt: {date}",
     never: "nooit gebruikt",
     docs: "Documentatie (OpenAPI)",
+    mcp: "Connector voor uw assistent (MCP)",
+    mcpHint: "Koppel uw eigen Claude (of een andere MCP-assistent) aan uw club, alleen-lezen: ploegen, wedstrijden, kalender en, als u dat kiest, de lidgelden op naam. De sleutel geldt zolang u voorzitter bent; ze wordt één keer getoond; hoogstens tien actieve sleutels.",
+    mcpScopes: { "club:read": "De club: ploegen, wedstrijden, tornooien, cijfers", "calendar:read": "De kalender (zonder deelnemers)", "dues:read": "De lidgelden, lid per lid" },
+    mcpCreate: "De sleutel van de connector aanmaken",
+    mcpKeyName: "Naam van de connector",
+    mcpNone: "Geen connector.",
+    mcpHowTo: "In Claude (Instellingen, Connectors, Externe connector toevoegen) geeft u het adres hieronder en de sleutel als toegangstoken (Bearer).",
+    mcpTools: "Tools: cluboverzicht, ploegen, wedstrijden, tornooien, kalender, lidgelden.",
+    mcpBy: "aangemaakt door {name}",
     hooks: "Webhooks",
     hooksHint: "Elke verzending is ondertekend (header X-PFM-Signature, HMAC SHA-256 van « tijdstempel.inhoud »), wordt herhaald bij mislukking en behoudt haar id als ze opnieuw wordt verstuurd.",
     url: "HTTPS-adres",
@@ -312,6 +339,15 @@ export const publicCopy: Record<Locale, Copy> = {
     lastUsed: "Last used: {date}",
     never: "never used",
     docs: "Documentation (OpenAPI)",
+    mcp: "Connector for your assistant (MCP)",
+    mcpHint: "Plug your own Claude (or another MCP assistant) on your club, read only: teams, matches, calendar and, if you choose so, the dues by name. The key lasts while you preside; it is shown once; ten active keys at most.",
+    mcpScopes: { "club:read": "The club: teams, matches, tournaments, figures", "calendar:read": "The calendar (without participants)", "dues:read": "The dues, member by member" },
+    mcpCreate: "Create the connector's key",
+    mcpKeyName: "Connector name",
+    mcpNone: "No connector.",
+    mcpHowTo: "In Claude (Settings, Connectors, Add remote connector), give the address below and the key as the access token (Bearer).",
+    mcpTools: "Tools: club overview, teams, matches, tournaments, calendar, dues.",
+    mcpBy: "created by {name}",
     hooks: "Webhooks",
     hooksHint: "Each delivery is signed (header X-PFM-Signature, HMAC SHA-256 of « timestamp.body »), retried on failure, and keeps its id when replayed.",
     url: "HTTPS address",

@@ -1,4 +1,6 @@
 import type { Pool, PoolClient } from "pg";
+import { orgKeyCommand } from "../mcp/organization-schema";
+import { orgMcpKeyExecute, orgMcpKeys } from "../mcp/organization";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { account, active, audit, AccessError, type Principal } from "../access/service";
@@ -55,6 +57,8 @@ export const integrationCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("createHook"), url: z.url().max(500), events: z.array(z.enum(webhookEvents)).min(1) }),
   z.object({ action: z.literal("removeHook"), id: z.uuid() }),
   z.object({ action: z.literal("replay"), id: z.uuid() }),
+  // Console, series E: the club's own MCP connector.
+  ...orgKeyCommand.options,
 ]);
 export type IntegrationCommand = z.infer<typeof integrationCommand>;
 
@@ -110,6 +114,8 @@ export async function integrationsView(db: Pool, p: Principal) {
         last_used_at: string | null;
         revoked_at: string | null;
       }[],
+      mcpKeys: await orgMcpKeys(s.c, s.org),
+      mcpEndpoint: "/api/mcp/org",
       hooks: (await s.c.query("SELECT id,url,events,active,created_at FROM webhook WHERE organization_id=$1 ORDER BY created_at", [s.org])).rows as { id: string; url: string; events: string[]; active: boolean; created_at: string }[],
       deliveries: (
         await s.c.query(
@@ -151,6 +157,9 @@ export async function integrationsExecute(db: Pool, p: Principal, cmd: Integrati
           await audit(s.c, org, s.p.userId, cmd.consent ? "public.consent.given" : "public.consent.withdrawn", cmd.profileId);
           return { id: cmd.profileId };
         }
+        case "createMcpKey":
+        case "revokeMcpKey":
+          return orgMcpKeyExecute(s.c, org, s.p.userId, cmd);
         case "createKey": {
           const prefix = randomBytes(8).toString("hex").slice(0, 8);
           const secret = randomBytes(32).toString("base64url");

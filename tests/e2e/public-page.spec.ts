@@ -65,7 +65,7 @@ test("the club's public page, a widget and an API key", async ({ page, browser }
     await page.getByRole("tab", { name: "API", exact: true }).click();
     await page.getByLabel("Nom de la clé").fill("Site du club");
     await page.getByRole("button", { name: "Créer une clé" }).click();
-    const key = (await page.locator(".secret-value").innerText()).trim();
+    const key = (await page.locator(".secret-value:not(.endpoint-value)").innerText()).trim();
     expect(key).toMatch(/^pfm_[a-z0-9]{8}_/);
     const api = await page.request.get("/api/v1/teams", { headers: { Authorization: `Bearer ${key}` } });
     expect(api.status()).toBe(200);

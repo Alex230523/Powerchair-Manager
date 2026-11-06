@@ -334,7 +334,8 @@ export async function consoleOrganization(db: Pool, p: Principal, id: string) {
                 (SELECT max(d.accepted_at) FROM club_dpa_acceptance d WHERE d.organization_id=o.id) AS dpa_accepted_at,
                 (SELECT count(*)::int FROM data_request d WHERE d.organization_id=o.id AND d.status IN ('received','in_progress')) AS data_requests_open,
                 (SELECT t.effective_on::text FROM club_termination t WHERE t.organization_id=o.id AND t.cancelled_at IS NULL AND t.completed_at IS NULL LIMIT 1) AS termination_on,
-                (SELECT count(*)::int FROM api_key k WHERE k.organization_id=o.id AND k.revoked_at IS NULL) AS api_keys
+                (SELECT count(*)::int FROM api_key k WHERE k.organization_id=o.id AND k.revoked_at IS NULL) AS api_keys,
+                (SELECT count(*)::int FROM organization_mcp_key k WHERE k.organization_id=o.id AND k.revoked_at IS NULL) AS mcp_keys
            FROM organization o LEFT JOIN organization f ON f.id=o.federation_id WHERE o.id=$1`,
         [id],
       )
@@ -587,4 +588,41 @@ export async function borrowTick(db: Pool) {
     c.release();
   }
   return closed;
+}
+
+/* ------------------------------------------------------------ Series E: the countries */
+/** Every country the platform knows, with what lives there; the owner adds or renames one. */
+export async function consoleCountries(db: Pool, p: Principal) {
+  return operatorScope(db, p, async (c, o) => {
+    const countries = (
+      await c.query(
+        `SELECT k.code,k.name_fr,k.name_nl,k.name_en,k.currency,k.sort,
+           (SELECT count(*)::int FROM organization x WHERE x.country_code=k.code AND x.kind='federation') AS federations,
+           (SELECT count(*)::int FROM organization x WHERE x.country_code=k.code AND x.kind='club') AS clubs,
+           (SELECT count(*)::int FROM organization x WHERE x.country_code=k.code AND x.suspended_at IS NOT NULL) AS suspended,
+           (SELECT count(*)::int FROM club_person cp JOIN organization x ON x.id=cp.organization_id WHERE x.country_code=k.code AND cp.status='active' AND 'player'=ANY(cp.directory_roles)) AS players,
+           (SELECT count(*)::int FROM federation_policy fp JOIN organization x ON x.id=fp.federation_id WHERE x.country_code=k.code) AS policies,
+           (SELECT COALESCE(sum(CASE p.period WHEN 'year' THEN p.amount_cents/12 ELSE p.amount_cents END),0)::int FROM billing_subscription s JOIN billing_plan p ON p.id=s.plan_id JOIN organization x ON x.id=s.organization_id WHERE x.country_code=k.code AND s.ended_on IS NULL) AS mrr,
+           (SELECT COALESCE(sum(i.amount_cents),0)::int FROM billing_invoice i JOIN organization x ON x.id=i.organization_id WHERE x.country_code=k.code AND i.state='sent') AS open,
+           (SELECT COALESCE(sum(i.amount_cents),0)::int FROM billing_invoice i JOIN organization x ON x.id=i.organization_id WHERE x.country_code=k.code AND i.state='sent' AND i.due_on<CURRENT_DATE) AS late,
+           (SELECT count(*)::int FROM international_transfer t JOIN organization x ON x.id=t.to_federation_id WHERE x.country_code=k.code AND t.status IN ('sent','accepted')) AS transfers_in,
+           (SELECT count(*)::int FROM international_transfer t JOIN organization x ON x.id=t.federation_id WHERE x.country_code=k.code AND t.to_federation_id IS NOT NULL AND t.status IN ('sent','accepted')) AS transfers_out,
+           (SELECT max(a.created_at) FROM audit_log a JOIN organization x ON x.id=a.organization_id WHERE x.country_code=k.code) AS last_activity
+           FROM country k ORDER BY k.sort,k.code`,
+      )
+    ).rows as { code: string; name_fr: string; name_nl: string; name_en: string; currency: string; sort: number; federations: number; clubs: number; suspended: number; players: number; policies: number; mrr: number; open: number; late: number; transfers_in: number; transfers_out: number; last_activity: string | null }[];
+    return { countries, canEdit: o.role === "owner" };
+  });
+}
+export async function consoleCountryExecute(db: Pool, p: Principal, command: { code: string; name_fr: string; name_nl: string; name_en: string; currency: string; sort: number }) {
+  return operatorScope(db, p, async (c, o) => {
+    if (o.role !== "owner") throw new AccessError("FORBIDDEN");
+    const r = await c.query(
+      `INSERT INTO country(code,name_fr,name_nl,name_en,currency,sort) VALUES($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (code) DO UPDATE SET name_fr=EXCLUDED.name_fr,name_nl=EXCLUDED.name_nl,name_en=EXCLUDED.name_en,currency=EXCLUDED.currency,sort=EXCLUDED.sort RETURNING (xmax=0) AS created`,
+      [command.code, command.name_fr, command.name_nl, command.name_en, command.currency, command.sort],
+    );
+    await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,$2,$3)", [o.userId, r.rows[0].created ? "country.add" : "country.edit", JSON.stringify(command)]);
+    return { ok: true as const, created: r.rows[0].created as boolean };
+  });
 }

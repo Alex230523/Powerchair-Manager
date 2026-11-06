@@ -363,3 +363,67 @@ test("the sheet shows the first steps, the timeline and the duplicates; the club
     await db.end();
   }
 });
+
+test("a president creates the club's MCP connector and asks it the teams; the owner sees the countries and adds one", async ({ page, browser }) => {
+  test.skip(!process.env.PFM_E2E_DATABASE_URL, "Use test:e2e:db");
+  test.setTimeout(120000);
+  const db = new Pool({ connectionString: process.env.PFM_E2E_DATABASE_URL });
+  const stamp = Date.now();
+  try {
+    const club = (await db.query("INSERT INTO organization(name,kind,country_code) VALUES('Club connecté','club','NL') RETURNING id")).rows[0].id as string;
+    const season = (await db.query("INSERT INTO season(organization_id,name,starts_on,ends_on) VALUES($1,'2026-27',CURRENT_DATE-60,CURRENT_DATE+240) RETURNING id", [club])).rows[0].id as string;
+    await db.query("INSERT INTO team(organization_id,season_id,name) VALUES($1,$2,'Aigles')", [club, season]);
+    // The president, at phone width, on the integrations page.
+    const other = await browser.newContext({ baseURL: "http://127.0.0.1:3100", viewport: { width: 390, height: 844 } });
+    const presidentPage = await other.newPage();
+    const president = await signIn(presidentPage, db, "Présidente Connectée", `mcp-${stamp}@example.test`);
+    await mandate(presidentPage, db, president, club, "club_president");
+    await presidentPage.goto("/fr/club/public");
+    await presidentPage.getByRole("tab", { name: "API", exact: true }).click();
+    await expect(presidentPage.getByRole("heading", { name: "Connecteur pour votre assistant (MCP)" })).toBeVisible();
+    await presidentPage.getByLabel("Nom du connecteur").fill("Mon Claude");
+    await axe(presidentPage, "mcp connector");
+    await presidentPage.getByRole("button", { name: "Créer la clé du connecteur" }).click();
+    const shown = presidentPage.locator(".secret-value:not(.endpoint-value)");
+    await expect(shown).toBeVisible();
+    const secret = (await shown.textContent()) ?? "";
+    expect(secret).toMatch(/^pfmorg_[a-z0-9]{8}_/);
+    await expect(presidentPage.getByText("Mon Claude", { exact: true })).toBeVisible();
+    expect(await presidentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    // The connector answers with the key, never with the cookie.
+    const asked = await presidentPage.evaluate(async (key) => {
+      const r = await fetch("/api/mcp/org", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}` }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "teams", arguments: {} } }) });
+      const noKey = await fetch("/api/mcp/org", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+      return { status: r.status, body: (await r.json()) as { result: { structuredContent: { teams: { name: string }[] } } }, noKey: noKey.status };
+    }, secret.trim());
+    expect(asked.status).toBe(200);
+    expect(asked.body.result.structuredContent.teams.map((t) => t.name)).toEqual(["Aigles"]);
+    expect(asked.noKey).toBe(401);
+    await presidentPage.getByRole("button", { name: "Révoquer : Mon Claude" }).click();
+    await expect(presidentPage.getByText("Révoquée").first()).toBeVisible();
+    await other.close();
+    // The owner: the countries, with the Dutch club counted, and Norway added.
+    const user = await signIn(page, db, "Alex Pays", `owner-e-${stamp}@example.test`);
+    await db.query("INSERT INTO platform_operator(user_id,role) VALUES($1,'owner')", [user]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/fr/console");
+    await page.getByRole("tab", { name: "Pays" }).click();
+    await expect(page.getByRole("rowheader", { name: /Pays-Bas/ })).toBeVisible();
+    await axe(page, "countries");
+    await page.getByRole("button", { name: "Ajouter un pays" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Code (ISO, deux lettres)").fill("no");
+    await dialog.getByLabel("Nom en français").fill("Norvège");
+    await dialog.getByLabel("Nom en néerlandais").fill("Noorwegen");
+    await dialog.getByLabel("Nom en anglais").fill("Norway");
+    await dialog.getByLabel("Monnaie (ISO, trois lettres)").fill("nok");
+    await axe(page, "country window");
+    await dialog.getByRole("button", { name: "Enregistrer le pays" }).click();
+    await expect(page.getByRole("rowheader", { name: /Norvège/ })).toBeVisible();
+    await expect(page.getByText("(NO · NOK)")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await db.query("DELETE FROM country WHERE code='NO'");
+  } finally {
+    await db.end();
+  }
+});

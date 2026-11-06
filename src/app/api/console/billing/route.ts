@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       const r = await ublForOperator(getDb(), p, z.uuid().parse(ubl));
       return new Response(r.xml, { headers: { ...noStore, "Content-Type": "application/xml; charset=utf-8", "Content-Disposition": `attachment; filename="${r.number}.xml"` } });
     }
-    return Response.json(await billingView(getDb(), p, { state: url.searchParams.get("state") ?? "", organization: url.searchParams.get("organization") ?? "" }), { headers: noStore });
+    return Response.json(await billingView(getDb(), p, { state: url.searchParams.get("state") ?? "", organization: url.searchParams.get("organization") ?? "", country: url.searchParams.get("country") ?? "" }), { headers: noStore });
   } catch (e) {
     return failure(e);
   }
