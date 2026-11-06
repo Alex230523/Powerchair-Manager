@@ -71,6 +71,7 @@ export type JourneyCopy = {
   theirScore: string;
   validate: string;
   validated: string;
+  fromTournament: string;
   validatedOn: string;
   sheet: string;
   announcement: string;
@@ -155,6 +156,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     theirScore: "Score adverse",
     validate: "Valider le résultat",
     validated: "Résultat validé.",
+    fromTournament: "Ce match vient d'un tournoi : la date, le lieu et le résultat se tiennent dans le tournoi et reviennent ici une fois validés.",
     validatedOn: "Résultat validé le {date}.",
     sheet: "Feuille de match (PDF)",
     announcement: "Ouvrir le brouillon d'annonce",
@@ -247,6 +249,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     theirScore: "Score tegenstander",
     validate: "Uitslag bevestigen",
     validated: "Uitslag bevestigd.",
+    fromTournament: "Deze wedstrijd komt uit een tornooi: datum, plaats en uitslag staan in het tornooi en komen hier terug zodra ze gevalideerd zijn.",
     validatedOn: "Uitslag bevestigd op {date}.",
     sheet: "Wedstrijdblad (PDF)",
     announcement: "Het ontwerp van aankondiging openen",
@@ -339,6 +342,7 @@ export const journeyCopy: Record<Locale, JourneyCopy> = {
     theirScore: "Their score",
     validate: "Confirm the result",
     validated: "Result confirmed.",
+    fromTournament: "This match comes from a tournament: the date, venue and result live in the tournament and come back here once validated.",
     validatedOn: "Result confirmed on {date}.",
     sheet: "Match sheet (PDF)",
     announcement: "Open the draft announcement",

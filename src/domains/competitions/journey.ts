@@ -116,12 +116,14 @@ type Row = {
   validated_at: string | null;
   version: number;
   place_id: string | null;
+  /** International, step 4: mirrored from a tournament; the fixture and the result come from there. */
+  tournament_match_id: string | null;
 };
 async function matchOf(c: PoolClient, org: string, matchId: string, lock = false) {
   const m = (
     await c.query(
       `SELECT m.id,m.team_id,t.name AS team,m.opponent,m.home,m.kind,m.competition,m.starts_at,to_char(m.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS local_start,
-              m.venue,m.status,m.our_score,m.their_score,m.calendar_event_id,m.lineup_published_at,m.validated_at,m.version,m.place_id,m.lineup_reveal_minutes,m.live_token,m.live_public_at,
+              m.venue,m.status,m.our_score,m.their_score,m.calendar_event_id,m.lineup_published_at,m.validated_at,m.version,m.place_id,m.lineup_reveal_minutes,m.live_token,m.live_public_at,m.tournament_match_id,
               (m.lineup_published_at IS NOT NULL OR (m.lineup_reveal_minutes IS NOT NULL AND now() >= m.starts_at - make_interval(mins => m.lineup_reveal_minutes))) AS lineup_revealed
          FROM match m JOIN team t ON t.id=m.team_id WHERE m.id=$1 AND m.organization_id=$2${lock ? " FOR UPDATE OF m" : ""}`,
       [matchId, org],
@@ -429,6 +431,7 @@ export async function journeyExecute(db: Pool, p: Principal, cmd: JourneyCommand
         break;
       }
       case "validate": {
+        if (m.tournament_match_id) throw new AccessError("TOURNAMENT_MATCH", 409);
         if (m.version !== cmd.version) throw new AccessError("STALE_VERSION", 409);
         const live = await liveOf(c, org, m.id);
         const t = tally(live);

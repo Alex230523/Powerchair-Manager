@@ -66,11 +66,11 @@ const visible = `(t.organization_id=$1
   OR EXISTS(SELECT 1 FROM tournament_match rm WHERE rm.tournament_id=t.id AND rm.referee_user_id=$3))`;
 const args = (s: Scope) => [s.a.organization_id, s.federation, s.p.userId];
 
-type TournamentRow = { id: string; organization_id: string; name: string; year: number; format: Format; rules: unknown; description: string; status: "open" | "finished"; version: number; owner_name: string; owner_kind: "club" | "federation" };
+type TournamentRow = { id: string; organization_id: string; name: string; year: number; format: Format; rules: unknown; description: string; status: "open" | "finished"; version: number; owner_name: string; owner_kind: "club" | "federation"; tier: number };
 async function tournament(s: Scope, id: string, lock = false) {
   const t = (
     await s.c.query(
-      `SELECT t.id,t.organization_id,t.name,t.year,t.format,t.rules,t.description,t.status,t.version,o.name AS owner_name,o.kind AS owner_kind
+      `SELECT t.id,t.organization_id,t.name,t.year,t.format,t.rules,t.description,t.status,t.version,o.name AS owner_name,o.kind AS owner_kind,t.tier
          FROM tournament t JOIN organization o ON o.id=t.organization_id WHERE t.id=$4 AND ${visible}${lock ? " FOR UPDATE OF t" : ""}`,
       [...args(s), id],
     )
@@ -115,11 +115,11 @@ export async function matchRows(c: PoolClient | Pool, tournamentIds: string[]) {
 export async function clubRows(c: PoolClient | Pool, tournamentIds: string[]) {
   return (
     await c.query(
-      `SELECT tc.tournament_id,tc.organization_id AS id,COALESCE(NULLIF(tc.team_name,''),o.name) AS name,o.name AS club_name,tc.status,tc.group_label AS "group"
+      `SELECT tc.tournament_id,tc.organization_id AS id,COALESCE(NULLIF(tc.team_name,''),o.name) AS name,o.name AS club_name,tc.status,tc.group_label AS "group",o.country_code AS country,tc.team_id
          FROM tournament_club tc JOIN organization o ON o.id=tc.organization_id WHERE tc.tournament_id=ANY($1::uuid[]) ORDER BY o.name`,
       [tournamentIds],
     )
-  ).rows as { tournament_id: string; id: string; name: string; club_name: string; status: "invited" | "accepted" | "declined"; group: string }[];
+  ).rows as { tournament_id: string; id: string; name: string; club_name: string; status: "invited" | "accepted" | "declined"; group: string; country: string; team_id: string | null }[];
 }
 /** B6: a validated tournament result goes to the webhooks of the organiser and of both clubs. */
 async function announce(c: PoolClient, matchId: string) {
@@ -151,7 +151,7 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
     const now = new Date().getFullYear();
     const list = (
       await s.c.query(
-        `SELECT t.id,t.organization_id,t.name,t.year,t.format,t.rules,t.status,o.name AS owner_name,o.kind AS owner_kind,
+        `SELECT t.id,t.organization_id,t.name,t.year,t.format,t.rules,t.status,o.name AS owner_name,o.kind AS owner_kind,t.tier,
                 (SELECT min(d.day)::text FROM tournament_day d WHERE d.tournament_id=t.id) AS first_day,
                 (SELECT max(d.day)::text FROM tournament_day d WHERE d.tournament_id=t.id) AS last_day,
                 (SELECT count(*)::int FROM tournament_day d WHERE d.tournament_id=t.id) AS days,
@@ -176,6 +176,7 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
         status: t.status as "open" | "finished",
         owner: t.owner_name as string,
         ownerKind: t.owner_kind as "club" | "federation",
+        tier: t.tier as number,
         firstDay: t.first_day as string | null,
         lastDay: t.last_day as string | null,
         nextDay: t.next_day as string | null,
@@ -204,6 +205,8 @@ export async function tournamentsView(db: Pool, p: Principal, year: number) {
       years: [...new Set([now, year, ...years])].sort((x, y) => y - x),
       tournaments,
       invitations: s.a.kind === "club" && s.a.role === "club_president" ? invitations : [],
+      // International, step 4: the club's teams, to name the one that plays when accepting.
+      myTeams: s.a.kind === "club" ? ((await s.c.query("SELECT id,name FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [s.a.organization_id])).rows as { id: string; name: string }[]) : [],
       canCreate,
       clubOptions: canCreate ? await clubOptions(s) : [],
     };
@@ -360,11 +363,29 @@ export async function tournamentView(db: Pool, p: Principal, id: string) {
           : [{ group: "", rows: standings(accepted, results, rules) }];
     return {
       organization_id: s.a.organization_id,
-      tournament: { id: t.id, name: t.name, year: t.year, format: t.format, rules, description: t.description, status: t.status, version: t.version, owner: t.owner_name, ownerKind: t.owner_kind },
+      tournament: {
+        id: t.id,
+        name: t.name,
+        year: t.year,
+        format: t.format,
+        rules,
+        description: t.description,
+        status: t.status,
+        version: t.version,
+        owner: t.owner_name,
+        ownerKind: t.owner_kind,
+        tier: t.tier,
+        // International, step 4: clubs of more than one country play it.
+        international: new Set(accepted.map((c) => (c as { country?: string }).country)).size > 1,
+        countries: [...new Set(clubs.map((c) => c.country))].sort(),
+      },
       manage,
       myClub: s.a.kind === "club" ? s.a.organization_id : null,
       canRespond: s.a.kind === "club" && s.a.role === "club_president" && clubs.some((c) => c.id === s.a.organization_id) && open,
-      clubs: clubs.map(({ id, name, club_name, status, group }) => ({ id, name, clubName: club_name, status, group })),
+      // The club's own teams, to name the one it plays with; and the one named.
+      myTeams: s.a.kind === "club" ? ((await s.c.query("SELECT id,name FROM team WHERE organization_id=$1 AND NOT archived ORDER BY name", [s.a.organization_id])).rows as { id: string; name: string }[]) : [],
+      myTeam: clubs.find((c) => c.id === s.a.organization_id)?.team_id ?? null,
+      clubs: clubs.map(({ id, name, club_name, status, group, country, team_id }) => ({ id, name, clubName: club_name, status, group, country, hasTeam: !!team_id })),
       tables,
       podium: podium(t.format, accepted, results, rules).map((x) => ({ rank: x.rank, club: x.club, name: names.get(x.club) ?? "" })),
       pending: matches.filter((m) => m.status === "reported").length,
@@ -528,8 +549,8 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
         if (!isPresident(s.a)) throw new AccessError("FORBIDDEN");
         const id = (
           await s.c.query(
-            "INSERT INTO tournament(organization_id,name,year,format,rules,description,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id",
-            [org, input.name, input.year, input.format, JSON.stringify(input.rules), input.description, s.p.userId],
+            "INSERT INTO tournament(organization_id,name,year,format,rules,description,created_by,tier) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+            [org, input.name, input.year, input.format, JSON.stringify(input.rules), input.description, s.p.userId, input.tier],
           )
         ).rows[0].id as string;
         // A club organiser plays in its own tournament.
@@ -543,12 +564,24 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
       if (input.action === "respond") {
         if (!(s.a.kind === "club" && s.a.role === "club_president")) throw new AccessError("FORBIDDEN");
         if (t.status !== "open") throw new AccessError("TOURNAMENT_FINISHED", 409);
+        const teamId = input.accept ? await ownTeam(s, input.teamId) : null;
         const r = await s.c.query(
-          "UPDATE tournament_club SET status=$3,team_name=$4,responded_at=now(),responded_by=$5 WHERE tournament_id=$1 AND organization_id=$2 RETURNING 1",
-          [t.id, org, input.accept ? "accepted" : "declined", input.teamName, s.p.userId],
+          "UPDATE tournament_club SET status=$3,team_name=$4,responded_at=now(),responded_by=$5,team_id=$6 WHERE tournament_id=$1 AND organization_id=$2 RETURNING 1",
+          [t.id, org, input.accept ? "accepted" : "declined", input.teamName, s.p.userId, teamId],
         );
         if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
         await audit(s.c, org, s.p.userId, input.accept ? "tournament.accept" : "tournament.decline", t.id);
+        await mirrorTournament(s.c, t.id);
+        return { id: t.id };
+      }
+      if (input.action === "team") {
+        // International, step 4: the club names the team it plays with; its calendar follows.
+        if (!(s.a.kind === "club" && s.a.role === "club_president")) throw new AccessError("FORBIDDEN");
+        const teamId = await ownTeam(s, input.teamId);
+        const r = await s.c.query("UPDATE tournament_club SET team_id=$3 WHERE tournament_id=$1 AND organization_id=$2 AND status='accepted' RETURNING 1", [t.id, org, teamId]);
+        if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
+        await audit(s.c, org, s.p.userId, "tournament.team", t.id, { team: teamId });
+        await mirrorTournament(s.c, t.id);
         return { id: t.id };
       }
       if (input.action === "result" || input.action === "validate") return report(s, t, input);
@@ -557,10 +590,11 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
       switch (input.action) {
         case "update": {
           const r = await s.c.query(
-            "UPDATE tournament SET name=$3,year=$4,format=$5,rules=$6,description=$7,version=version+1 WHERE id=$1 AND version=$2 RETURNING id",
-            [t.id, input.version, input.name, input.year, input.format, JSON.stringify(input.rules), input.description],
+            "UPDATE tournament SET name=$3,year=$4,format=$5,rules=$6,description=$7,tier=$8,version=version+1 WHERE id=$1 AND version=$2 RETURNING id",
+            [t.id, input.version, input.name, input.year, input.format, JSON.stringify(input.rules), input.description, input.tier],
           );
           if (!r.rowCount) throw new AccessError("STALE_VERSION", 409);
+          await mirrorTournament(s.c, t.id);
           break;
         }
         case "invite":
@@ -635,11 +669,14 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
             ).rows[0].id as string;
             if (input.refereeId) await designateFromTournament(s.c, id, input.refereeId, s.p.userId);
             await audit(s.c, org, s.p.userId, "tournament.match", id);
+            await mirrorTournament(s.c, t.id);
             return { id };
           }
           break;
         }
         case "removeMatch":
+          // The clubs' mirrors are cancelled (never deleted: a line-up or a sheet may hang on them), then unlinked.
+          await s.c.query("UPDATE match SET status='cancelled',version=version+1 WHERE tournament_match_id=$1 AND status='scheduled'", [input.matchId]);
           await s.c.query("DELETE FROM tournament_match WHERE id=$1 AND tournament_id=$2", [input.matchId, t.id]);
           break;
         case "finish": {
@@ -653,10 +690,80 @@ export async function tournamentExecute(db: Pool, p: Principal, input: Tournamen
         }
       }
       await audit(s.c, org, s.p.userId, "tournament." + input.action, t.id);
+      await mirrorTournament(s.c, t.id);
       return { id: t.id };
     },
     expected,
   );
+}
+
+/** A team of the club, or nothing. */
+async function ownTeam(s: Scope, teamId: string | null) {
+  if (!teamId) return null;
+  const ok = (await s.c.query("SELECT 1 FROM team WHERE id=$1 AND organization_id=$2 AND NOT archived", [teamId, s.a.organization_id])).rowCount;
+  if (!ok) throw new AccessError("NOT_FOUND", 404);
+  return teamId;
+}
+
+/**
+ * International, step 4 (06/11/2026): the tournament's matches mirrored in
+ * the two clubs' calendars. Each club that named its team gets one match
+ * row per tournament match (linked by tournament_match_id): opponent,
+ * home or away, kind, competition, time, venue, status, and the score once
+ * the result is validated. A club without a team gets nothing yet; a match
+ * removed from the tournament leaves the club's row unlinked (deleted if
+ * not played). The organiser's object stays the tournament match.
+ */
+export async function mirrorTournament(c: PoolClient, tournamentId: string) {
+  const t = (await c.query("SELECT id,name,format FROM tournament WHERE id=$1", [tournamentId])).rows[0] as { id: string; name: string; format: Format } | undefined;
+  if (!t) return 0;
+  const clubs = (await c.query("SELECT tc.organization_id,tc.team_id,COALESCE(NULLIF(tc.team_name,''),o.name) AS label FROM tournament_club tc JOIN organization o ON o.id=tc.organization_id WHERE tc.tournament_id=$1 AND tc.status='accepted'", [t.id])).rows as {
+    organization_id: string;
+    team_id: string | null;
+    label: string;
+  }[];
+  const byClub = new Map(clubs.map((x) => [x.organization_id, x]));
+  const matches = (
+    await c.query(
+      `SELECT m.id,m.home_organization_id,m.away_organization_id,m.status,m.home_score,m.away_score,m.stage,d.venue,((d.day+m.kickoff) AT TIME ZONE 'Europe/Brussels') AS starts_at
+         FROM tournament_match m JOIN tournament_day d ON d.id=m.day_id WHERE m.tournament_id=$1`,
+      [t.id],
+    )
+  ).rows as { id: string; home_organization_id: string; away_organization_id: string; status: string; home_score: number | null; away_score: number | null; stage: string; venue: string; starts_at: Date }[];
+  const kind = t.format === "league" ? "league" : "tournament";
+  let written = 0;
+  for (const m of matches) {
+    for (const side of ["home", "away"] as const) {
+      const me = byClub.get(side === "home" ? m.home_organization_id : m.away_organization_id);
+      const other = byClub.get(side === "home" ? m.away_organization_id : m.home_organization_id);
+      if (!me || !other) continue;
+      if (!me.team_id) {
+        // No team named: an earlier mirror (another team) is cancelled unless played.
+        await c.query("UPDATE match SET status='cancelled',version=version+1 WHERE tournament_match_id=$1 AND organization_id=$2 AND status='scheduled'", [m.id, me.organization_id]);
+        continue;
+      }
+      const status = m.status === "validated" ? "played" : m.status === "cancelled" ? "cancelled" : "scheduled";
+      const ours = m.status === "validated" ? (side === "home" ? m.home_score : m.away_score) : null;
+      const theirs = m.status === "validated" ? (side === "home" ? m.away_score : m.home_score) : null;
+      const opponent = other.label.slice(0, 120);
+      const r = await c.query(
+        `UPDATE match SET team_id=$3,opponent=$4,home=$5,kind=$6,competition=$7,starts_at=$8,venue=$9,status=$10,our_score=$11,their_score=$12,version=version+1
+          WHERE tournament_match_id=$1 AND organization_id=$2 AND (status<>'played' OR $10='played') RETURNING id`,
+        [m.id, me.organization_id, me.team_id, opponent, side === "home", kind, t.name.slice(0, 120), m.starts_at, m.venue.slice(0, 200), status, ours, theirs],
+      );
+      if (!r.rowCount && !(await c.query("SELECT 1 FROM match WHERE tournament_match_id=$1 AND organization_id=$2", [m.id, me.organization_id])).rowCount) {
+        const by = (await c.query("SELECT created_by FROM tournament WHERE id=$1", [t.id])).rows[0]?.created_by as string | null;
+        const creator = by ?? ((await c.query("SELECT user_id FROM role_assignment WHERE organization_id=$1 AND role='club_president' AND revoked_at IS NULL LIMIT 1", [me.organization_id])).rows[0]?.user_id as string | undefined);
+        if (!creator) continue;
+        await c.query(
+          "INSERT INTO match(organization_id,team_id,opponent,home,kind,competition,starts_at,venue,status,our_score,their_score,created_by,tournament_match_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
+          [me.organization_id, me.team_id, opponent, side === "home", kind, t.name.slice(0, 120), m.starts_at, m.venue.slice(0, 200), status, ours, theirs, creator, m.id],
+        );
+      }
+      written++;
+    }
+  }
+  return written;
 }
 
 async function invite(s: Scope, tournamentId: string, clubs: string[]) {
@@ -707,6 +814,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
     await announce(s.c, m.id);
     await tournamentCards(s.c, m.id);
     await audit(s.c, s.a.organization_id, s.p.userId, "tournament.validate", m.id);
+    await mirrorTournament(s.c, t.id);
     return { id: m.id };
   }
   // The first one enters the result; after that only the organiser or the referee corrects it.
@@ -752,6 +860,7 @@ async function report(s: Scope, t: TournamentRow, input: ResultInput) {
     await tournamentCards(s.c, m.id);
   }
   await audit(s.c, s.a.organization_id, s.p.userId, input.validate ? "tournament.validate" : "tournament.result", m.id);
+  await mirrorTournament(s.c, t.id);
   return { id: m.id };
 }
 

@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-06",
+  "roles": [
+    "president",
+    "coach",
+    "federation"
+  ],
+  "link": "/tournaments",
+  "image": null,
+  "fr": {
+    "title": "Les matchs de tournoi dans votre calendrier",
+    "text": "En acceptant une invitation à un tournoi, nommez l'équipe qui joue : chaque match du tournoi apparaît dans son calendrier avec l'adversaire, le lieu et l'heure, puis le résultat une fois validé. Les tournois portent leur niveau, et se disent internationaux quand des clubs de plusieurs pays y jouent."
+  },
+  "nl": {
+    "title": "Tornooiwedstrijden in uw kalender",
+    "text": "Noem bij het aanvaarden van een tornooi-uitnodiging de ploeg die speelt: elke wedstrijd van het tornooi verschijnt in haar kalender met tegenstander, plaats en uur, en daarna de uitslag zodra gevalideerd. Tornooien dragen hun niveau en heten internationaal als clubs uit meerdere landen meespelen."
+  },
+  "en": {
+    "title": "Tournament matches in your calendar",
+    "text": "When accepting a tournament invitation, name the team that plays: every match of the tournament appears in its calendar with the opponent, venue and time, then the result once validated. Tournaments carry their level, and are international when clubs from several countries play."
+  }
+}

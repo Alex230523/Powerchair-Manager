@@ -559,7 +559,17 @@ function AfterStep({ ctx }: { ctx: Ctx }) {
   return (
     <div className="journey-step">
       <Card title={t.result} subtitle={t.afterIntro} id="journey-result">
-        {m.validated_at ? (
+        {m.tournament_match_id ? (
+          <p>
+            {m.status === "played" && m.our_score !== null && (
+              <strong className="journey-score">
+                {m.team} {m.our_score} - {m.their_score} {m.opponent}
+              </strong>
+            )}
+            {m.status === "played" && m.our_score !== null && <br />}
+            <span className="muted">{t.fromTournament}</span>
+          </p>
+        ) : m.validated_at ? (
           <p>
             <strong className="journey-score">
               {m.team} {m.our_score} - {m.their_score} {m.opponent}

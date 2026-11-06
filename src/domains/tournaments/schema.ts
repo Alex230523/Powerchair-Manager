@@ -47,6 +47,8 @@ const tournamentFields = {
   format: z.enum(formats),
   rules: rulesSchema,
   description: text(2000),
+  /** International, step 4 (06/11/2026): the layer of the competition (0 none, 1 top, 2 second, 3 regional...). */
+  tier: z.number().int().min(0).max(9).default(0),
 };
 const statLine = z.object({
   profileId: id,
@@ -63,7 +65,9 @@ export const tournamentCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("invite"), id, clubs: z.array(id).min(1).max(64) }),
   z.object({ action: z.literal("uninvite"), id, club: id }),
   z.object({ action: z.literal("group"), id, club: id, group: text(20) }),
-  z.object({ action: z.literal("respond"), id, accept: z.boolean(), teamName: text(120) }),
+  z.object({ action: z.literal("respond"), id, accept: z.boolean(), teamName: text(120), teamId: id.nullable().default(null) }),
+  /** International, step 4: the club names (or changes) the team it plays with; its calendar follows. */
+  z.object({ action: z.literal("team"), id, teamId: id.nullable() }),
   z.object({
     action: z.literal("day"),
     id,

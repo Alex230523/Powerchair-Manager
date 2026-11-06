@@ -139,7 +139,7 @@ export async function matchesView(db: Pool, p: Principal) {
         `SELECT m.id,m.team_id,t.name AS team,t.color AS team_color,m.opponent,m.home,m.kind,m.competition,m.starts_at,
                 to_char(m.starts_at AT TIME ZONE 'Europe/Brussels','YYYY-MM-DD"T"HH24:MI') AS local_start,
                 m.venue,m.calendar_event_id,m.status,m.our_score,m.their_score,m.notes,m.version,
-                m.place_id,m.linked_match_id,m.score_status,(m.score_proposed_by=$1) AS score_ours,
+                m.place_id,m.linked_match_id,m.score_status,(m.score_proposed_by=$1) AS score_ours,m.tournament_match_id,
                 (SELECT json_build_object('id',i.id,'status',i.status,'answer',i.answer) FROM match_invitation i WHERE i.match_id=m.id ORDER BY i.created_at DESC LIMIT 1) AS invitation,
                 (SELECT count(*)::int FROM match_player mp WHERE mp.match_id=m.id) AS lineup,
                 (SELECT json_build_object('home_score',r.home_score,'away_score',r.away_score,'incidents',r.incidents,'submitted_at',r.submitted_at) FROM match_report r WHERE r.match_id=m.id) AS report,
@@ -268,13 +268,17 @@ export async function matchExecute(
     const teamOf = async (matchId: string) => {
       const row = (
         await c.query(
-          "SELECT team_id,version,status FROM match WHERE id=$1 AND organization_id=$2 FOR UPDATE",
+          "SELECT team_id,version,status,tournament_match_id FROM match WHERE id=$1 AND organization_id=$2 FOR UPDATE",
           [matchId, org],
         )
       ).rows[0];
       if (!row) throw new AccessError("NOT_FOUND", 404);
       if (!can.has(row.team_id)) throw new AccessError("FORBIDDEN");
-      return row as { team_id: string; version: number; status: string };
+      return row as { team_id: string; version: number; status: string; tournament_match_id: string | null };
+    };
+    // International, step 4: a match mirrored from a tournament keeps its fixture and its result from the tournament.
+    const notMirrored = (row: { tournament_match_id: string | null }) => {
+      if (row.tournament_match_id) throw new AccessError("TOURNAMENT_MATCH", 409);
     };
     const checkEvent = async (teamId: string, eventId: string | null) => {
       if (!eventId) return;
@@ -316,6 +320,7 @@ export async function matchExecute(
         ).rows[0].id;
       } else {
         const current = await teamOf(command.id);
+        notMirrored(current);
         if (current.version !== command.version)
           throw new AccessError("STALE_VERSION", 409);
         await c.query(
@@ -362,6 +367,7 @@ export async function matchExecute(
       target = command.id;
     } else {
       const m = await teamOf(command.id);
+      notMirrored(m);
       if (m.version !== command.version)
         throw new AccessError("STALE_VERSION", 409);
       const inLineup = new Set(
