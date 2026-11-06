@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-06",
+  "roles": [
+    "president",
+    "federation"
+  ],
+  "link": "/club/billing",
+  "image": null,
+  "fr": {
+    "title": "Payer la plateforme en ligne, facture électronique",
+    "text": "Quand le paiement en ligne est branché, chaque facture de la plateforme porte un bouton Payer en ligne et se marque payée toute seule. Chaque facture se télécharge aussi en facture électronique (UBL) pour votre comptabilité."
+  },
+  "nl": {
+    "title": "Het platform online betalen, elektronische factuur",
+    "text": "Als de onlinebetaling gekoppeld is, draagt elke factuur van het platform een knop Online betalen en wordt ze vanzelf als betaald gemarkeerd. Elke factuur kan ook als elektronische factuur (UBL) worden gedownload voor uw boekhouding."
+  },
+  "en": {
+    "title": "Paying the platform online, electronic invoice",
+    "text": "When online payment is connected, every invoice of the platform carries a Pay online button and marks itself paid. Every invoice also downloads as an electronic invoice (UBL) for your accounts."
+  }
+}

@@ -4,6 +4,7 @@ import { brusselsToday } from "../people/service";
 import { notice } from "../notifications/notice";
 import { canBill, operatorScope } from "../console/service";
 import { billingCommand, invoiceNumber, monthlyCents, reminderDue, type BillingCommand, type InvoiceState } from "./schema";
+import { createPaymentLink, mollieMode } from "./mollie";
 export { billingCommand };
 
 /**
@@ -15,10 +16,10 @@ export { billingCommand };
  * read their own invoices on /club/billing.
  */
 const texts = {
-  invoice: (org: string, number: string, amount: string, due: string) => ({
-    fr: { title: `Facture ${number} de la plateforme`, message: `${org} : ${amount}, à payer pour le ${due}. Le détail est dans Abonnement à la plateforme.` },
-    nl: { title: `Factuur ${number} van het platform`, message: `${org}: ${amount}, te betalen tegen ${due}. Het detail staat in Abonnement op het platform.` },
-    en: { title: `Invoice ${number} from the platform`, message: `${org}: ${amount}, due by ${due}. The detail is in Platform subscription.` },
+  invoice: (org: string, number: string, amount: string, due: string, pay = "") => ({
+    fr: { title: `Facture ${number} de la plateforme`, message: `${org} : ${amount}, à payer pour le ${due}. Le détail est dans Abonnement à la plateforme.${pay ? ` Payer en ligne : ${pay}` : ""}` },
+    nl: { title: `Factuur ${number} van het platform`, message: `${org}: ${amount}, te betalen tegen ${due}. Het detail staat in Abonnement op het platform.${pay ? ` Online betalen: ${pay}` : ""}` },
+    en: { title: `Invoice ${number} from the platform`, message: `${org}: ${amount}, due by ${due}. The detail is in Platform subscription.${pay ? ` Pay online: ${pay}` : ""}` },
   }),
   reminder: (level: number, org: string, number: string, amount: string, due: string) =>
     level === 1
@@ -73,8 +74,11 @@ export type Invoice = {
   reminders: number;
   last_reminder_at: string | null;
   late: boolean;
+  /** Series B: the Mollie link to pay online, and how it got paid. */
+  pay_url: string;
+  paid_via: "" | "manual" | "mollie";
 };
-const invoiceSql = `SELECT i.id,i.organization_id,o.name AS organization,i.number,i.label,i.period_from::text AS period_from,i.period_to::text AS period_to,i.quantity,i.unit_cents,i.amount_cents,i.issued_on::text AS issued_on,i.due_on::text AS due_on,i.state,i.sent_at,i.paid_on::text AS paid_on,i.reminders,i.last_reminder_at,(i.state='sent' AND i.due_on<CURRENT_DATE) AS late
+const invoiceSql = `SELECT i.id,i.organization_id,o.name AS organization,i.number,i.label,i.period_from::text AS period_from,i.period_to::text AS period_to,i.quantity,i.unit_cents,i.amount_cents,i.issued_on::text AS issued_on,i.due_on::text AS due_on,i.state,i.sent_at,i.paid_on::text AS paid_on,i.reminders,i.last_reminder_at,(i.state='sent' AND i.due_on<CURRENT_DATE) AS late,i.pay_url,i.paid_via
   FROM billing_invoice i JOIN organization o ON o.id=i.organization_id`;
 
 export async function billingView(db: Pool, p: Principal, raw: { state?: string; organization?: string } = {}) {
@@ -98,6 +102,8 @@ export async function billingView(db: Pool, p: Principal, raw: { state?: string;
     return {
       canBill: canBill(o),
       today: brusselsToday(),
+      // Series B: Mollie plugged (test or live) or payments by hand.
+      mollie: mollieMode(),
       plans,
       subscriptions,
       invoices,
@@ -205,14 +211,23 @@ export async function billingExecute(db: Pool, p: Principal, command: BillingCom
     if (command.action === "send") {
       if (inv.state !== "draft") throw new AccessError("INVOICE_STATE", 409);
       await c.query("UPDATE billing_invoice SET state='sent',sent_at=now() WHERE id=$1", [inv.id]);
-      const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.invoice(inv.organization, inv.number, euros(inv.amount_cents), frDay(inv.due_on)), "/club/billing", `billing:${inv.id}:sent`, "administrative");
-      await log(inv.organization_id, "billing.send", { id: inv.id, number: inv.number, recipients });
+      // Series B: a Mollie payment link when configured; the notice carries it. Mollie down: the invoice leaves anyway, by transfer.
+      let link: { id: string; url: string } | null = null,
+        mollie = "";
+      try {
+        link = await createPaymentLink(c, inv);
+        mollie = link ? "link" : "off";
+      } catch (e) {
+        mollie = "error: " + (e instanceof Error ? e.message : String(e)).slice(0, 200);
+      }
+      const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.invoice(inv.organization, inv.number, euros(inv.amount_cents), frDay(inv.due_on), link?.url ?? ""), "/club/billing", `billing:${inv.id}:sent`, "administrative");
+      await log(inv.organization_id, "billing.send", { id: inv.id, number: inv.number, recipients, mollie });
       await audit(c, inv.organization_id, o.userId, "platform.invoice", inv.id, { number: inv.number });
       return { ok: true as const, recipients };
     }
     if (command.action === "paid") {
       if (inv.state !== "sent") throw new AccessError("INVOICE_STATE", 409);
-      await c.query("UPDATE billing_invoice SET state='paid',paid_on=$2 WHERE id=$1", [inv.id, command.paidOn]);
+      await c.query("UPDATE billing_invoice SET state='paid',paid_on=$2,paid_via='manual' WHERE id=$1", [inv.id, command.paidOn]);
       await log(inv.organization_id, "billing.paid", { id: inv.id, number: inv.number, paidOn: command.paidOn });
       return { ok: true as const };
     }

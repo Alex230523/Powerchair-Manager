@@ -1037,6 +1037,7 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
   return (
     <div className="stack">
       <p className="muted">{b.intro}</p>
+      <p className="muted small">{data.mollie === "live" ? b.mollieOn : data.mollie === "test" ? b.mollieTest : b.mollieOff}</p>
       {!data.canBill && <p className="muted small">{b.readOnly}</p>}
       {error && <p role="alert">{error}</p>}
       <p role="status" className="sr-only">
@@ -1165,7 +1166,16 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
                     <td>{day(i.due_on)}</td>
                     <td>
                       <Badge tone={i.late ? "danger" : tone[i.state]}>{i.late ? b.late : b.states[i.state]}</Badge>
-                      {i.paid_on && <span className="muted small"> {b.paid.toLowerCase()} {day(i.paid_on)}</span>}
+                      {i.paid_on && <span className="muted small"> {b.paid.toLowerCase()} {day(i.paid_on)}{i.paid_via ? ` (${b.paidVia[i.paid_via]})` : ""}</span>}
+                      {i.state !== "draft" && (
+                        <>
+                          {" "}
+                          <a className="text-button" href={`/api/console/billing?ubl=${i.id}`}>
+                            {b.ubl}
+                            <span className="sr-only"> : {i.number}</span>
+                          </a>
+                        </>
+                      )}
                     </td>
                     <td className="num">{i.reminders}</td>
                     {data.canBill && (

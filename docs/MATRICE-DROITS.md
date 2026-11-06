@@ -46,6 +46,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/courses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/courses/proof` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
+| `/api/billing/mollie` (+ écriture) | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 | 405 |
 | `/api/cron/[job]` | · | · | · | · | · | · | · | · | · | · |
 | `/api/dashboard` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/designations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
@@ -211,6 +212,7 @@ Notes :
 - `/api/console/reports` : Rapports mensuels de la console (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/assistant` : Assistant de la console (06/11/2026) : opérateurs seulement, écritures sur confirmation ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/billing` : Facturation de la plateforme (05/11/2026) : formules, abonnements, factures, rappels ; opérateurs owner et finance ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
+- `/api/billing/mollie` : Retour de Mollie (06/11/2026) : sans session, l'identifiant du lien seulement ; 503 tant que MOLLIE_API_KEY manque, GET n'a rien à dire
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
 - `/api/discipline` : Discipline (point 34) : bureau de la fédération (compétence discipline : règles par saison, sanctions proposées, décisions, recours, amendes) ; page du club (présidence et coachs ; recours et paiement des amendes par la présidence) ; ?player= historique d'un joueur (son club et sa fédération) ; ?file= pièce d'un recours
 - `/api/dues/attestations/form` : Formulaire propre à une mutuelle, vierge ou complété (point 9)

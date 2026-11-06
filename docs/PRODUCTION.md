@@ -52,6 +52,8 @@ Quotas vérifiés le 22 octobre 2026 sur les pages officielles (liens en fin de 
 | `PFM_LOCAL_MAIL` | **jamais** en production | Capture locale des emails |
 | `PFM_VAPID_PUBLIC_KEY`, `PFM_VAPID_PRIVATE_KEY` | pour les notifications sur téléphone (B4) | Paire de clés VAPID, générée une fois avec `node scripts/vapid-keys.mjs` ; la clé privée reste secrète, la changer désabonne tous les appareils |
 | `PFM_VAPID_SUBJECT` | avec les clés | `mailto:` ou `https://` de contact pour les services de notification |
+| `MOLLIE_API_KEY` | non | Paiement en ligne des factures de la plateforme (console, série B) : clé `live_…` en production, `test_…` pour essayer ; vide, les paiements sont enregistrés à la main. Le retour de Mollie arrive sur `/api/billing/mollie` |
+| `PFM_SELLER_NAME`, `PFM_SELLER_VAT`, `PFM_SELLER_ADDRESS`, `PFM_SELLER_POSTAL`, `PFM_SELLER_CITY`, `PFM_SELLER_COUNTRY`, `PFM_SELLER_IBAN`, `PFM_SELLER_EMAIL`, `PFM_VAT_RATE` | conseillé | Le vendeur sur les factures électroniques (UBL, Peppol BIS 3.0) et le taux de TVA (21 ; 0 si non assujetti) |
 | `PUSH_TRANSPORT` | non | `web` par défaut en production avec les clés ; `local` écrit les notifications dans `PFM_PUSH_DIR` |
 
 Secrets de GitHub (modèles de workflow) : `PFM_URL`, `CRON_SECRET`, `PROD_DATABASE_URL`, `BACKUP_PASSPHRASE`.
