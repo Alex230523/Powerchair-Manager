@@ -97,7 +97,7 @@ test("an operator reads the console; a club president is refused", async ({ page
     await expect(page.getByText("Premier contact.")).toBeVisible();
     await axe(page, "console organisation");
     await page.getByRole("tab", { name: "Opérateurs" }).click();
-    await expect(page.getByRole("rowheader", { name: "Alex Exploitant" })).toBeVisible();
+    await expect(page.getByRole("rowheader", { name: "Alex Exploitant" }).first()).toBeVisible();
     // A key for the MCP server: the secret shown once, then listed by its prefix only.
     await page.getByLabel("Nom de la clé (par exemple : Claude sur mon portable)").fill("Claude portable");
     await page.getByRole("button", { name: "Créer la clé" }).click();

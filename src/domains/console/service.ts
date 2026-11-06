@@ -35,19 +35,40 @@ async function operatorOf(c: PoolClient, p: Principal): Promise<Operator> {
 }
 /**
  * Series D: the console wants a session younger than PFM_OPERATOR_SESSION_HOURS (12): past that, the
- * operator signs in again (the application itself stays open). Every console session is journaled with
- * the address and the browser the session carries; a key of the MCP server has no session and no journal here.
+ * operator signs in again (the application itself stays open). A key of the MCP server and the
+ * assistant's inner calls have no session here and are not concerned.
  */
+const sessionOf = async (c: PoolClient, p: Principal, userId: string) => {
+  if (p.sessionId.startsWith("mcp:") || p.sessionId.startsWith("assistant:")) return null;
+  return ((await c.query('SELECT "createdAt" AS created_at,COALESCE("ipAddress",\'\') AS ip,COALESCE("userAgent",\'\') AS ua FROM session WHERE id=$1 AND "userId"=$2', [p.sessionId, userId])).rows[0] as { created_at: Date; ip: string; ua: string } | undefined) ?? null;
+};
 async function consoleSession(c: PoolClient, p: Principal, userId: string) {
-  if (p.sessionId.startsWith("mcp:")) return;
-  const s = (await c.query('SELECT "createdAt" AS created_at,COALESCE("ipAddress",\'\') AS ip,COALESCE("userAgent",\'\') AS ua FROM session WHERE id=$1 AND "userId"=$2', [p.sessionId, userId])).rows[0] as { created_at: Date; ip: string; ua: string } | undefined;
-  if (!s) return;
-  if (Date.now() - new Date(s.created_at).getTime() > operatorSessionHours() * 3600000) throw new AccessError("OPERATOR_SESSION_EXPIRED");
-  await c.query(
-    `INSERT INTO operator_session_log(session_id,operator_id,started_at,ip,user_agent,calls) VALUES($1,$2,$3,left($4,64),left($5,300),1)
-       ON CONFLICT (session_id) DO UPDATE SET last_console_at=now(),calls=operator_session_log.calls+1`,
-    [p.sessionId, userId, s.created_at, s.ip, s.ua],
-  );
+  const s = await sessionOf(c, p, userId);
+  if (s && Date.now() - new Date(s.created_at).getTime() > operatorSessionHours() * 3600000) throw new AccessError("OPERATOR_SESSION_EXPIRED");
+}
+/**
+ * Every console session is journaled with the address and the browser the session carries. On its own
+ * connection, outside the caller's transaction, with a short lock wait: a nested call never waits on
+ * the row the outer one holds, and the journal never blocks the console.
+ */
+async function logConsoleSession(db: Pool, p: Principal, userId: string) {
+  const c = await db.connect();
+  try {
+    const s = await sessionOf(c, p, userId);
+    if (!s) return;
+    await c.query("BEGIN");
+    await c.query("SET LOCAL lock_timeout='300ms'");
+    await c.query(
+      `INSERT INTO operator_session_log(session_id,operator_id,started_at,ip,user_agent,calls) VALUES($1,$2,$3,left($4,64),left($5,300),1)
+         ON CONFLICT (session_id) DO UPDATE SET last_console_at=now(),calls=operator_session_log.calls+1`,
+      [p.sessionId, userId, s.created_at, s.ip, s.ua],
+    );
+    await c.query("COMMIT");
+  } catch {
+    await c.query("ROLLBACK").catch(() => undefined);
+  } finally {
+    c.release();
+  }
 }
 export const canWrite = (o: Operator) => o.role === "owner" || o.role === "support";
 /** Owner and finance keep the books of the platform. */
@@ -57,6 +78,7 @@ export async function operatorScope<T>(db: Pool, p: Principal, fn: (c: PoolClien
   try {
     await c.query("BEGIN");
     const o = await operatorOf(c, p);
+    await logConsoleSession(db, p, o.userId);
     const out = await fn(c, o);
     await c.query("COMMIT");
     return out;

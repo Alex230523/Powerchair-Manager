@@ -470,8 +470,9 @@ try {
         eventId,
         expectedVersion: null,
         profiles: players,
+        // Never in the past: on a Friday evening the match of Saturday is less than a day away.
         deadline: new Date(
-          starts.getTime() - hoursBefore * 3600_000,
+          Math.max(starts.getTime() - hoursBefore * 3600_000, Date.now() + 3600_000),
         ).toISOString(),
         minimum: 4,
       },
