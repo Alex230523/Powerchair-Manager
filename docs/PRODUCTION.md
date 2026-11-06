@@ -21,7 +21,7 @@ Quotas vérifiés le 22 octobre 2026 sur les pages officielles (liens en fin de 
 
 ## 2. Checklist de mise en ligne
 
-1. **Base** : créer un projet Neon en région Francfort ; noter l'adresse de connexion `DATABASE_URL` (avec `sslmode=require`). Créer aussi un rôle en lecture seule pour les sauvegardes.
+1. **Base** : créer un projet Neon en région Francfort ; noter l'adresse de connexion `DATABASE_URL` (avec `sslmode=require`, sans quoi le site refuse de démarrer). Les fonctions de Vercel tournent déjà à Francfort (`vercel.json`). Créer aussi un rôle en lecture seule pour les sauvegardes.
 2. **Migrations** : `DATABASE_URL=… npm run db:migrate` depuis ton poste (elles sont additives et idempotentes).
 3. **Premier président** : `npm run admin:bootstrap` (création) puis `npm run admin:account` (vérification), comme décrit dans `docs/GUIDE-LOCAL.md`. Jamais de comptes de démonstration en production.
 4. **Hébergeur** : dans Vercel, ajouter les variables du § 3 en environnement *Production* uniquement, puis retirer la ligne `ignoreCommand` de `vercel.json` (c'est elle qui saute la production aujourd'hui).
@@ -126,6 +126,16 @@ Les anciens processus permanents (`scripts/mail-worker.ts`, `documents-worker.ts
 - Cookies de session : `Secure`, `HttpOnly` et `SameSite=Lax` dès que `BETTER_AUTH_URL` est en `https://`. Ne jamais mettre une adresse `http://` en production.
 - Domaine : une seule adresse canonique (rediriger `www` vers le domaine nu ou l'inverse dans l'hébergeur), sinon les cookies et les liens des emails divergent.
 - Secrets uniquement dans l'hébergeur et dans GitHub ; `CRON_SECRET` et `BACKUP_PASSPHRASE` changés si une personne quitte le comité.
+- **Réglages du cloud** (audit du 06/11/2026, `tests/cloud-safety.test.ts`) :
+  - Les fonctions tournent à Francfort (`"regions": ["fra1"]` dans `vercel.json`), à côté de la base. Sans ce réglage, Vercel les place aux États-Unis (`iad1`) : les données de santé de mineurs y transiteraient, et la page de confidentialité annonce un hébergement dans l'UE.
+  - Une base hors de la machine n'est jointe qu'en chiffré : l'application et le build des aperçus refusent une `DATABASE_URL` sans `sslmode=require` (ou `verify-full`).
+  - Chaque connexion demande à la base de couper une requête de plus de 5 secondes et une transaction oubliée depuis 2 minutes. En production, poser aussi ces limites sur le rôle de l'application, pour qu'elles valent même hors du site : `ALTER ROLE <rôle> SET statement_timeout = '5s'; ALTER ROLE <rôle> SET idle_in_transaction_session_timeout = '2min';` (le rôle de sauvegarde garde ses propres réglages, un `pg_dump` dure plus longtemps).
+  - Les réponses de l'API ne sont jamais indexées (`X-Robots-Tag`), un aperçu ne l'est nulle part. Aucune route de l'API n'ouvre le CORS, aucune réponse qui lit une session n'est mise en cache partagé, les pages envoient `Cross-Origin-Opener-Policy: same-origin`, les fichiers de correspondance des sources (source maps) ne partent jamais vers le navigateur.
+  - Les workflows (et les modèles de `docs/production/`) utilisent chaque action à une version figée par son empreinte, avec un jeton en lecture seule.
+- **À régler à la main, une fois** (ce sont des réglages de compte, que le code ne peut pas poser) :
+  - GitHub, dépôt public : activer *Secret scanning* et *Push protection* (gratuits sur un dépôt public), les alertes et mises à jour de sécurité *Dependabot*, et protéger `main` (pull request obligatoire, contrôles de la CI requis, pas de force-push). Aujourd'hui, tout est désactivé et `main` n'est pas protégée.
+  - Vercel : garder *Deployment Protection* sur les aperçus (Vercel Authentication), garder *Git Fork Protection* (un fork ne déploie pas sans accord), et ne mettre aucun secret de production dans l'environnement *Preview*.
+  - Neon : rôle de l'application sans droit de création de base ni de rôle, rôle de sauvegarde en lecture seule, et *IP Allow* si l'offre le permet un jour.
 
 ## 11. En cas d'incident
 

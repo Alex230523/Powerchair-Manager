@@ -12,6 +12,9 @@ on:
     - cron: "17 2 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -28,7 +31,7 @@ jobs:
           --health-cmd "pg_isready -U restore -d pfm_restore"
           --health-interval 3s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: PostgreSQL 18 client
         run: |
           sudo apt-get install -y -qq postgresql-common >/dev/null
@@ -46,7 +49,7 @@ jobs:
           RESTORE_URL: postgresql://restore:restore_only@localhost:5432/pfm_restore
           SOURCE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: scripts/restore-check.sh pfm-*.dump.enc
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pfm-backup-${{ github.run_id }}
           path: pfm-*.dump.enc*

@@ -18,6 +18,9 @@ concurrency:
   group: scheduler
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   run:
     runs-on: ubuntu-latest

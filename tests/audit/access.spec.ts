@@ -280,4 +280,32 @@ test("the sign-in resists the classic attacks", async () => {
     await db.end();
   }
 });
+test("the site answers with the headers of a well set-up host", async () => {
+  const ctx = await http.newContext({ baseURL: origin });
+  try {
+    // A page: framing, opener and the browser's devices closed; no server name.
+    const page = await ctx.get("/fr/access");
+    expect(page.status()).toBe(200);
+    const h = page.headers();
+    expect(h["cross-origin-opener-policy"]).toBe("same-origin");
+    expect(h["permissions-policy"]).toContain("payment=()");
+    expect(h["x-frame-options"]).toBe("DENY");
+    expect(h["x-powered-by"]).toBeUndefined();
+    // The browser gets the scripts, never their source maps.
+    const chunk = (await page.text()).match(/\/_next\/static\/chunks\/[^"'?]+\.js/)?.[0];
+    expect(chunk).toBeTruthy();
+    expect((await ctx.get(chunk!)).status()).toBe(200);
+    expect((await ctx.get(chunk + ".map")).status()).toBe(404);
+    // The API: never indexed, never opened to another site, no version given away.
+    const health = await ctx.get("/api/health", { headers: { origin: "https://evil.example" } });
+    expect(health.headers()["x-robots-tag"]).toBe("noindex, nofollow");
+    expect(health.headers()["access-control-allow-origin"]).toBeUndefined();
+    expect(Object.keys(await health.json()).sort()).toEqual(["database", "jobs", "mail", "status"]);
+    const preflight = await ctx.fetch("/api/workspace", { method: "OPTIONS", headers: { origin: "https://evil.example", "access-control-request-method": "POST" } });
+    expect(preflight.headers()["access-control-allow-origin"]).toBeUndefined();
+    expect(preflight.headers()["access-control-allow-credentials"]).toBeUndefined();
+  } finally {
+    await ctx.dispose();
+  }
+});
 let probeIndex = 0;

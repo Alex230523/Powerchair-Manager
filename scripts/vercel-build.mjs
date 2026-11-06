@@ -28,6 +28,20 @@ for (const name of ["DATABASE_URL", "BETTER_AUTH_SECRET", "PFM_DEMO_PASSWORD"])
     console.error(`vercel-build: ${name} is missing in the Preview variables of the Vercel project.`);
     process.exit(1);
   }
+// Security (06/11/2026), cloud: a database outside this machine is only ever
+// reached encrypted (the same rule as src/lib/env.ts, which the site applies
+// at run time). Stopping here gives a clear message instead of a broken site.
+for (const name of ["DATABASE_URL", "DATABASE_URL_UNPOOLED"]) {
+  const value = process.env[name];
+  if (!value) continue;
+  const url = new URL(value),
+    mode = url.searchParams.get("sslmode")?.toLowerCase(),
+    local = ["", "localhost", "127.0.0.1", "[::1]"].includes(url.hostname) || !url.hostname.includes(".");
+  if (!local && !["require", "verify-ca", "verify-full"].includes(mode ?? "")) {
+    console.error(`vercel-build: ${name} must end with sslmode=require (or verify-full): the database is reached over the internet.`);
+    process.exit(1);
+  }
+}
 const host = process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
 const childEnv = {
   ...process.env,
