@@ -169,6 +169,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 05/11/2026 | [Retours : échéances dans la carte argent, cartes d'équipes, questions repliables](evolutions/2026-11-05-zzzb-retours.md) |
 | 05/11/2026 | [International (pays, règlement, dossier entre fédérations) et console du gestionnaire](evolutions/2026-11-05-zzzc-international-console.md) |
 | 05/11/2026 | [Console : suspension d'une organisation, facturation des abonnements, rappels](evolutions/2026-11-05-zzzd-console-facturation.md) |
+| 06/11/2026 | [Console : serveur MCP et clés d'opérateur pour brancher son assistant](evolutions/2026-11-06-mcp-console.md) |
 
 ## Convention
 
