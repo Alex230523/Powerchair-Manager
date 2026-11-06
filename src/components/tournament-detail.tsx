@@ -31,6 +31,10 @@ export function TournamentDetail({ locale, id }: { locale: Locale; id: string })
   const { busy, post } = usePost("/api/tournaments", reload, setError, failure);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [teamName, setTeamName] = useState("");
+  // The team the person picks here; until then, the one named earlier.
+  const [pickedTeam, setPickedTeam] = useState<string | null>(null);
+  const teamId = pickedTeam ?? data?.myTeam ?? "";
+  const setTeamId = setPickedTeam;
   const [inviteFilter, setInviteFilter] = useState("");
   const [inviteChosen, setInviteChosen] = useState<string[]>([]);
   const [confirming, setConfirming] = useState("");
@@ -104,6 +108,9 @@ export function TournamentDetail({ locale, id }: { locale: Locale; id: string })
         <p className="tournament-badges">
           <Badge tone={open ? "success" : "neutral"}>{open ? t.open : t.finished}</Badge>
           {mine && <Badge tone={mine.status === "invited" ? "warning" : mine.status === "accepted" ? "primary" : "neutral"}>{t[mine.status]}</Badge>}
+          {tr.tier > 0 && <Badge tone="neutral">{t.tiers[tr.tier] ?? String(tr.tier)}</Badge>}
+          {tr.international && <Badge tone="info">{t.international}</Badge>}
+          {tr.countries.length > 1 && <span className="muted small">{fill(t.countries, { list: tr.countries.join(", ") })}</span>}
         </p>
       </PageHeader>
       {confirming === "finish" && (
@@ -119,14 +126,47 @@ export function TournamentDetail({ locale, id }: { locale: Locale; id: string })
           <Field id="respond-team" label={t.teamName} help={t.teamNameHelp}>
             <input id="respond-team" maxLength={120} aria-describedby="respond-team-help" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
           </Field>
+          {data.myTeams.length > 0 && (
+            <Field id="respond-squad" label={t.team} help={t.teamHelp}>
+              <select id="respond-squad" value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-describedby="respond-squad-help">
+                <option value="">{t.teamNone}</option>
+                {data.myTeams.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <div className="actions">
-            <Button disabled={busy} onClick={() => void send({ action: "respond", accept: true, teamName }, t.acceptedDone)}>
+            <Button disabled={busy} onClick={() => void send({ action: "respond", accept: true, teamName, teamId: teamId || null }, t.acceptedDone)}>
               {t.accept}
             </Button>
             <Button variant="secondary" disabled={busy} onClick={() => void send({ action: "respond", accept: false, teamName: "" }, t.declinedDone)}>
               {t.decline}
             </Button>
           </div>
+        </Card>
+      )}
+
+      {data.canRespond && mine && mine.status === "accepted" && data.myTeams.length > 0 && (
+        <Card title={t.team} subtitle={t.teamHelp}>
+          <div className="actions">
+            <Field id="my-squad" label={t.teamPick}>
+              <select id="my-squad" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <option value="">{t.teamNone}</option>
+                {data.myTeams.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Button variant="secondary" disabled={busy || teamId === (data.myTeam ?? "")} onClick={() => void send({ action: "team", teamId: teamId || null }, t.teamSaved)}>
+              {t.save}
+            </Button>
+          </div>
+          {data.myTeam && <p className="muted small">{t.mirrored}</p>}
         </Card>
       )}
 
@@ -430,7 +470,7 @@ export function TournamentDetail({ locale, id }: { locale: Locale; id: string })
           busy={busy}
           year={tr.year}
           clubOptions={[]}
-          initial={{ name: tr.name, year: tr.year, format: tr.format, rules: tr.rules, description: tr.description }}
+          initial={{ name: tr.name, year: tr.year, format: tr.format, rules: tr.rules, description: tr.description, tier: tr.tier }}
           close={() => setDialog(null)}
           submit={async (body) => {
             const { clubs: _clubs, ...fields } = body;

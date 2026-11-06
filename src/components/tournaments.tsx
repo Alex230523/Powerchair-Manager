@@ -29,6 +29,7 @@ export function Tournaments({ locale, initialYear }: { locale: Locale; initialYe
   const { busy, post, postFor } = usePost("/api/tournaments", reload, setError, failure);
   const [creating, setCreating] = useState(false);
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
+  const [teamIds, setTeamIds] = useState<Record<string, string>>({});
   const changeYear = (y: number) => {
     setYear(y);
     const url = new URL(window.location.href);
@@ -88,10 +89,22 @@ export function Tournaments({ locale, initialYear }: { locale: Locale; initialYe
                     onChange={(e) => setTeamNames({ ...teamNames, [i.id]: e.target.value })}
                   />
                 </Field>
+                {data.myTeams.length > 0 && (
+                  <Field id={"squad-" + i.id} label={t.team} help={t.teamHelp}>
+                    <select id={"squad-" + i.id} value={teamIds[i.id] ?? ""} onChange={(e) => setTeamIds({ ...teamIds, [i.id]: e.target.value })} aria-describedby={"squad-" + i.id + "-help"}>
+                      <option value="">{t.teamNone}</option>
+                      {data.myTeams.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
                 <div className="actions">
                   <Button
                     disabled={busy}
-                    onClick={() => void post({ action: "respond", id: i.id, accept: true, teamName: teamNames[i.id] ?? "", organizationId: data.organization_id }, t.acceptedDone).then((ok) => ok && showToast({ message: t.acceptedDone, icon: "check" }))}
+                    onClick={() => void post({ action: "respond", id: i.id, accept: true, teamName: teamNames[i.id] ?? "", teamId: teamIds[i.id] || null, organizationId: data.organization_id }, t.acceptedDone).then((ok) => ok && showToast({ message: t.acceptedDone, icon: "check" }))}
                   >
                     {t.accept}
                   </Button>
@@ -183,7 +196,7 @@ export function Tournaments({ locale, initialYear }: { locale: Locale; initialYe
   );
 }
 
-export type TournamentFields = { name: string; year: number; format: Format; rules: Rules; description: string; clubs: string[] };
+export type TournamentFields = { name: string; year: number; format: Format; rules: Rules; description: string; clubs: string[]; tier: number };
 
 /** Create or edit: name, year, type, rules that follow the type, description, clubs to invite. */
 export function TournamentForm({
@@ -216,6 +229,7 @@ export function TournamentForm({
       name: String(f.get("name") ?? ""),
       year: Number(f.get("year")),
       format,
+      tier: Number(f.get("tier") ?? 0),
       description: String(f.get("description") ?? ""),
       rules: {
         legs: n("legs") === 2 ? 2 : 1,
@@ -255,6 +269,15 @@ export function TournamentForm({
             </select>
           </Field>
         </div>
+        <Field id="t-tier" label={t.tier} help={t.tierHelp}>
+          <select id="t-tier" name="tier" defaultValue={String(initial?.tier ?? 0)} aria-describedby="t-tier-help">
+            {[0, 1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>
+                {t.tiers[n] ?? String(n)}
+              </option>
+            ))}
+          </select>
+        </Field>
         <fieldset>
           <legend>{t.rules}</legend>
           <div className="form-pair">
