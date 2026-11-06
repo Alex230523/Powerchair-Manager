@@ -70,6 +70,8 @@ export async function mcpAuth(db: Pool, header: string | null) {
   const given = Buffer.from(keyHash(m[1])),
     stored = Buffer.from(k?.key_hash ?? "".padEnd(64, "0"));
   if (!k || k.revoked_at || given.length !== stored.length || !timingSafeEqual(given, stored)) throw new McpAuthError(401, "API_KEY_INVALID");
+  // Security (06/11/2026): the key of an operator who was removed stops at the door, not tool by tool.
+  if (k.operator_revoked) throw new McpAuthError(401, "API_KEY_INVALID");
   const count = (
     await db.query(
       "INSERT INTO operator_api_rate(key_id,window_start,count) VALUES($1,date_trunc('minute',now()),1) ON CONFLICT (key_id,window_start) DO UPDATE SET count=operator_api_rate.count+1 RETURNING count",

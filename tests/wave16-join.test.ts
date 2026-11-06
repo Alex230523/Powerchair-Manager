@@ -7,8 +7,9 @@ import { accessCopy, errors } from "../src/components/access-copy";
 describe("visitor and sign-up on invitation", () => {
   it("guards the public sign-up route with the invitation of the same email", () => {
     const route = readFileSync("src/app/api/auth/[...all]/route.ts", "utf8");
-    expect(route).toContain('pathname.endsWith("/sign-up/email")');
-    expect(route).toContain("signupAllowed(getDb(), request.headers.get(invitationHeader), email)");
+    // Security (06/11/2026): the path is read the way the auth router reads it (tests/auth-safety.test.ts).
+    expect(route).toContain("isSignUp(path)");
+    expect(route).toContain("signupAllowed(getDb(), request.headers.get(invitationHeader), await bodyEmail(request))");
     expect(route).toContain("status: 403");
     expect(readFileSync("src/domains/access/signup.ts", "utf8")).toContain("lower(email)=lower($2) AND expires_at>now() AND accepted_at IS NULL AND revoked_at IS NULL");
   });

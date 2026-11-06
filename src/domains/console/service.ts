@@ -562,7 +562,16 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
     if (command.userId === o.userId) throw new AccessError("SELF_REVOKE", 409);
     const r = await c.query("UPDATE platform_operator SET revoked_at=now(),revoked_by=$2 WHERE user_id=$1 AND revoked_at IS NULL RETURNING user_id", [command.userId, o.userId]);
     if (!r.rowCount) throw new AccessError("NOT_FOUND", 404);
-    await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'operator.revoke',$2)", [o.userId, JSON.stringify({ userId: command.userId })]);
+    // Security (06/11/2026): what the operator held goes with the role: the MCP keys, the support accesses still open.
+    const keys = (await c.query("UPDATE operator_api_key SET revoked_at=now() WHERE operator_id=$1 AND revoked_at IS NULL RETURNING id", [command.userId])).rowCount ?? 0;
+    const borrows = (await c.query("UPDATE platform_borrow SET ended_at=now() WHERE operator_id=$1 AND ended_at IS NULL RETURNING mandate_id,organization_id", [command.userId])).rows as { mandate_id: string; organization_id: string }[];
+    for (const b of borrows) {
+      await c.query("UPDATE role_assignment SET revoked_at=now() WHERE id=$1 AND revoked_at IS NULL", [b.mandate_id]);
+      await c.query("UPDATE organization_membership SET active=false WHERE organization_id=$1 AND user_id=$2 AND NOT EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=$1 AND r.user_id=$2 AND r.revoked_at IS NULL)", [b.organization_id, command.userId]);
+      await c.query("DELETE FROM active_context WHERE user_id=$1 AND organization_id=$2", [command.userId, b.organization_id]);
+      await audit(c, b.organization_id, o.userId, "platform.borrow.end", b.organization_id);
+    }
+    await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'operator.revoke',$2)", [o.userId, JSON.stringify({ userId: command.userId, keys, borrows: borrows.length })]);
     return { ok: true as const };
   });
 }

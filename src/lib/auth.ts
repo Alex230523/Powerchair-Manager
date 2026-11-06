@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
+import { createAuthMiddleware, APIError } from "better-auth/api";
 import { publishAuth } from "../domains/notifications/queue";
+import { invitationHeader, signupAllowed } from "../domains/access/signup";
 export function createAuth(pool: Pool, mailPool: Pool = pool) {
   const secret = process.env.BETTER_AUTH_SECRET;
   if (!secret || secret.length < 32)
@@ -31,7 +33,30 @@ export function createAuth(pool: Pool, mailPool: Pool = pool) {
         active: { type: "boolean", defaultValue: true, input: false },
       },
     },
-    rateLimit: { enabled: true, storage: "database", window: 60, max: 30 },
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+      window: 60,
+      max: 30,
+      // Security (06/11/2026): a reset e-mail at most three times in five minutes per network
+      // address (no mailbox flooded), a reset link tried at most five times.
+      customRules: {
+        "/request-password-reset": { window: 300, max: 3 },
+        "/forget-password": { window: 300, max: 3 },
+        "/reset-password": { window: 300, max: 5 },
+      },
+    },
+    // Security (06/11/2026): the invitation is checked again inside the library, after its own
+    // routing, whatever the form of the address that reached it. Accounts made on the server
+    // (welcome page, scripts, tests) carry no request and are not concerned.
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-up/email" || !ctx.request) return;
+        const email = (ctx.body as { email?: unknown } | undefined)?.email;
+        const token = ctx.headers?.get(invitationHeader) ?? ctx.request.headers.get(invitationHeader);
+        if (!(await signupAllowed(pool, token, email))) throw new APIError("FORBIDDEN", { code: "INVITATION_REQUIRED", message: "An invitation is required to create an account." });
+      }),
+    },
     databaseHooks: {
       user: {
         create: {
