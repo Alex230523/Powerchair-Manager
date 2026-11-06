@@ -88,7 +88,7 @@ test("an operator reads the console; a club president is refused", async ({ page
     await expect(page.getByText("Copiez cette clé maintenant : elle ne sera plus affichée.")).toBeVisible();
     const secret = (await page.locator(".mcp-secret code").textContent()) ?? "";
     expect(secret).toMatch(/^pfmop_[a-z0-9]{8}_/);
-    await expect(page.locator("#console-mcp").getByText("Claude portable")).toBeVisible();
+    await expect(page.locator("#console-mcp .console-plan strong", { hasText: "Claude portable" })).toBeVisible();
     // The server answers the protocol with that key, and refuses without it.
     const probe = await page.evaluate(async (key) => {
       const post = (headers: Record<string, string>, body: unknown) => fetch("/api/mcp", { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
