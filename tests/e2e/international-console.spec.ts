@@ -388,7 +388,7 @@ test("a president creates the club's MCP connector and asks it the teams; the ow
     await expect(shown).toBeVisible();
     const secret = (await shown.textContent()) ?? "";
     expect(secret).toMatch(/^pfmorg_[a-z0-9]{8}_/);
-    await expect(presidentPage.getByText("Mon Claude")).toBeVisible();
+    await expect(presidentPage.getByText("Mon Claude", { exact: true })).toBeVisible();
     expect(await presidentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     // The connector answers with the key, never with the cookie.
     const asked = await presidentPage.evaluate(async (key) => {
