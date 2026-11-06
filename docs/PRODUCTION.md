@@ -82,6 +82,7 @@ Les anciens processus permanents (`scripts/mail-worker.ts`, `documents-worker.ts
 | `reminders` | `/api/cron/reminders` | 60 min | Tâches automatiques (A1), relances de cotisations, subsides et sponsors, affiliations, permis, prêts de fauteuils |
 | `documents` | `/api/cron/documents` | 60 min | Documents expirés |
 | `watchdog` | `/api/cron/watchdog` | 60 min | Alerte si une tâche n'a pas tourné depuis deux cycles |
+| `platform` | `/api/cron/platform` | 60 min | Console : relevé des chiffres du jour, alerte quotidienne des opérateurs, rapport mensuel |
 
 - Appel : `POST` (ou `GET`, ce que fait Vercel Cron) avec l'en-tête `Authorization: Bearer <CRON_SECRET>`. Sans `CRON_SECRET`, les routes répondent 503.
 - Un verrou PostgreSQL (`pg_try_advisory_lock`) empêche deux exécutions simultanées ; la seconde répond `locked`. Chaque exécution est écrite dans `job_run` (nom, durée, compteurs, code d'erreur), sans donnée personnelle.

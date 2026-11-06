@@ -55,6 +55,10 @@ type Copy = {
     subscriptions: string;
   };
   byCountry: string;
+  delta30: string;
+  trends: string;
+  trendsNone: string;
+  month: string;
   todo: string;
   todoNone: string;
   todoKeys: Record<"noPresident" | "inactive60" | "seasonEnding" | "dataRequestsLate" | "terminations" | "apiKeysIdle" | "noDpa" | "suspended" | "invoicesLate", string>;
@@ -248,6 +252,30 @@ type Copy = {
     examples: string;
     exampleList: string[];
   };
+  alerts: {
+    title: string;
+    intro: string;
+    email: string;
+    hour: string;
+    rules: string;
+    ruleNames: Record<"jobsLate" | "mailsOverdue" | "dataRequestsLate" | "invoicesFinalReminder" | "noPresident" | "suspended" | "feedbackNew" | "terminations", string>;
+    save: string;
+    saved: string;
+    now: string;
+    nowNone: string;
+    last: string;
+    lastNone: string;
+  };
+  reports: {
+    title: string;
+    intro: string;
+    none: string;
+    download: string;
+    generate: string;
+    generated: string;
+    monthOf: string;
+    line: string;
+  };
   mcp: {
     title: string;
     intro: string;
@@ -326,6 +354,10 @@ const fr: Copy = {
     subscriptions: "abonnements en cours",
   },
   byCountry: "Par pays",
+  delta30: "sur 30 jours",
+  trends: "Tendances sur douze mois",
+  trendsNone: "Les relevés quotidiens commencent aujourd'hui : les tendances apparaîtront au fil des jours.",
+  month: "Mois",
   todo: "À faire aujourd'hui",
   todoNone: "Rien à signaler.",
   todoKeys: {
@@ -543,6 +575,30 @@ const fr: Copy = {
     examples: "Exemples",
     exampleList: ["Quelles organisations n'ont pas de président actif ?", "Quelles factures sont en retard, et depuis combien de jours ?", "Résume la santé du service aujourd'hui.", "Prépare un rappel pour la facture la plus en retard."],
   },
+  alerts: {
+    title: "Mes alertes",
+    intro: "Un e-mail par jour, au plus, quand quelque chose demande votre attention : vous choisissez les règles et l'heure à partir de laquelle il peut partir.",
+    email: "Recevoir l'alerte quotidienne par e-mail",
+    hour: "À partir de (heure, Bruxelles)",
+    rules: "Règles",
+    ruleNames: { jobsLate: "Tâches de fond en retard", mailsOverdue: "E-mails en attente depuis plus de 30 minutes", dataRequestsLate: "Demandes RGPD hors délai", invoicesFinalReminder: "Factures au dernier rappel", noPresident: "Organisations sans président actif", suspended: "Organisations suspendues", feedbackNew: "Signalements reçus depuis 24 heures", terminations: "Fermetures programmées sous 30 jours" },
+    save: "Enregistrer mes alertes",
+    saved: "Alertes enregistrées.",
+    now: "Ce que l'alerte contiendrait maintenant",
+    nowNone: "Rien à signaler pour l'instant.",
+    last: "Dernière alerte envoyée le {day}",
+    lastNone: "Aucune alerte envoyée pour l'instant.",
+  },
+  reports: {
+    title: "Rapports mensuels",
+    intro: "Le premier du mois, un rapport d'exploitation du mois écoulé est généré en PDF (clients, personnes, revenus, support, conformité, exploitation) et archivé ici. Le propriétaire ou la finance peuvent en régénérer un.",
+    none: "Aucun rapport pour l'instant : il faut un mois de relevés.",
+    download: "Télécharger le PDF",
+    generate: "Générer le rapport de {month}",
+    generated: "Rapport généré.",
+    monthOf: "Rapport de {month}",
+    line: "{clubs} clubs · {players} joueurs · facturé {invoiced} · encaissé {collected} · {interventions} intervention(s)",
+  },
   mcp: {
     title: "Brancher votre assistant (MCP)",
     intro: "La console expose un serveur MCP : votre Claude (bureau ou Claude Code) lit les chiffres, liste les factures en retard, prépare les rappels, et vous confirmez chaque action. Une clé par usage, avec les seules portées utiles ; chaque écriture est journalisée à votre nom.",
@@ -621,6 +677,10 @@ const nl: Copy = {
     subscriptions: "lopende abonnementen",
   },
   byCountry: "Per land",
+  delta30: "over 30 dagen",
+  trends: "Trends over twaalf maanden",
+  trendsNone: "De dagelijkse metingen beginnen vandaag: de trends verschijnen in de loop van de dagen.",
+  month: "Maand",
   todo: "Vandaag te doen",
   todoNone: "Niets te melden.",
   todoKeys: {
@@ -838,6 +898,30 @@ const nl: Copy = {
     examples: "Voorbeelden",
     exampleList: ["Welke organisaties hebben geen actieve voorzitter?", "Welke facturen zijn te laat, en sinds hoeveel dagen?", "Vat de gezondheid van de dienst vandaag samen.", "Bereid een herinnering voor de meest achterstallige factuur voor."],
   },
+  alerts: {
+    title: "Mijn meldingen",
+    intro: "Hoogstens één e-mail per dag, wanneer iets uw aandacht vraagt: u kiest de regels en het uur vanaf wanneer hij mag vertrekken.",
+    email: "De dagelijkse melding per e-mail ontvangen",
+    hour: "Vanaf (uur, Brussel)",
+    rules: "Regels",
+    ruleNames: { jobsLate: "Achtergrondtaken te laat", mailsOverdue: "E-mails al meer dan 30 minuten in wacht", dataRequestsLate: "AVG-verzoeken buiten termijn", invoicesFinalReminder: "Facturen bij de laatste herinnering", noPresident: "Organisaties zonder actieve voorzitter", suspended: "Geschorste organisaties", feedbackNew: "Meldingen ontvangen sinds 24 uur", terminations: "Sluitingen gepland binnen 30 dagen" },
+    save: "Mijn meldingen opslaan",
+    saved: "Meldingen opgeslagen.",
+    now: "Wat de melding nu zou bevatten",
+    nowNone: "Momenteel niets te melden.",
+    last: "Laatste melding verzonden op {day}",
+    lastNone: "Nog geen melding verzonden.",
+  },
+  reports: {
+    title: "Maandrapporten",
+    intro: "Op de eerste van de maand wordt een exploitatierapport van de voorbije maand als PDF aangemaakt (klanten, personen, inkomsten, support, conformiteit, exploitatie) en hier bewaard. De eigenaar of financiën kunnen er een opnieuw aanmaken.",
+    none: "Nog geen rapport: er is een maand metingen nodig.",
+    download: "PDF downloaden",
+    generate: "Rapport van {month} aanmaken",
+    generated: "Rapport aangemaakt.",
+    monthOf: "Rapport van {month}",
+    line: "{clubs} clubs · {players} spelers · gefactureerd {invoiced} · geïnd {collected} · {interventions} tussenkomst(en)",
+  },
   mcp: {
     title: "Uw assistent koppelen (MCP)",
     intro: "De console biedt een MCP-server: uw Claude (desktop of Claude Code) leest de cijfers, lijst de te late facturen op, bereidt de herinneringen voor, en u bevestigt elke actie. Eén sleutel per gebruik, met enkel de nuttige rechten; elke schrijfactie wordt op uw naam gelogd.",
@@ -916,6 +1000,10 @@ const en: Copy = {
     subscriptions: "running subscriptions",
   },
   byCountry: "By country",
+  delta30: "over 30 days",
+  trends: "Trends over twelve months",
+  trendsNone: "The daily readings start today: the trends will appear as days go by.",
+  month: "Month",
   todo: "To do today",
   todoNone: "Nothing to report.",
   todoKeys: {
@@ -1132,6 +1220,30 @@ const en: Copy = {
     clear: "New conversation",
     examples: "Examples",
     exampleList: ["Which organisations have no active president?", "Which invoices are late, and for how many days?", "Summarise the health of the service today.", "Prepare a reminder for the most overdue invoice."],
+  },
+  alerts: {
+    title: "My alerts",
+    intro: "One e-mail a day at most, when something needs your attention: you choose the rules and the hour from which it may leave.",
+    email: "Receive the daily alert by e-mail",
+    hour: "From (hour, Brussels)",
+    rules: "Rules",
+    ruleNames: { jobsLate: "Background tasks late", mailsOverdue: "E-mails waiting for more than 30 minutes", dataRequestsLate: "GDPR requests past their deadline", invoicesFinalReminder: "Invoices at the final reminder", noPresident: "Organisations without an active president", suspended: "Suspended organisations", feedbackNew: "Reports received in the last 24 hours", terminations: "Closures scheduled within 30 days" },
+    save: "Save my alerts",
+    saved: "Alerts saved.",
+    now: "What the alert would hold now",
+    nowNone: "Nothing to report for now.",
+    last: "Last alert sent on {day}",
+    lastNone: "No alert sent yet.",
+  },
+  reports: {
+    title: "Monthly reports",
+    intro: "On the first of the month, an operations report of the past month is generated as a PDF (clients, people, revenue, support, compliance, operations) and archived here. The owner or finance can generate one again.",
+    none: "No report yet: a month of readings is needed.",
+    download: "Download the PDF",
+    generate: "Generate the report of {month}",
+    generated: "Report generated.",
+    monthOf: "Report of {month}",
+    line: "{clubs} clubs · {players} players · invoiced {invoiced} · collected {collected} · {interventions} intervention(s)",
   },
   mcp: {
     title: "Connect your assistant (MCP)",

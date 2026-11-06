@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { AccessError, audit, type Principal } from "../access/service";
 import { notice } from "../notifications/notice";
+import { trends } from "./metrics";
 import { jobStates, overdueMails } from "../jobs/health";
 
 /**
@@ -170,6 +171,8 @@ export async function consoleHome(db: Pool, p: Principal) {
         ),
         terminationsPending: await n(c, "SELECT count(*)::int AS n FROM club_termination WHERE cancelled_at IS NULL AND completed_at IS NULL"),
       },
+      // Series A: the value 30 days ago and a year of months, from the daily snapshots.
+      trends: await trends(c, ["clubs", "players", "accounts", "active30", "matches30", "mrr", "open", "late", "subscriptions", "feedbackOpen", "dataRequestsOpen"]),
       todos: await todos(c),
       recentActions: (
         await c.query(

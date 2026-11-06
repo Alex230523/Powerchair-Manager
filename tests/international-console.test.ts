@@ -126,3 +126,31 @@ describe("the support access (console, step 3b)", () => {
     expect(readFileSync("src/domains/console/service.ts", "utf8")).toContain("make_interval(mins => $4)");
   });
 });
+
+describe("the console's figures, alerts and reports (series A)", () => {
+  it("builds a readable report from a summary, in euros, without dashes", async () => {
+    const { reportLines, alertRules, metricKeys } = await import("../src/domains/console/metrics");
+    const lines = reportLines({
+      month: "2026-10-01",
+      end: { clubs: 12, federations: 1, players: 90, mrr: 240000, open: 50000, late: 10000, lateCount: 1, subscriptions: 11, accounts: 300, active30: 120, storageBytes: 5 * 1048576 },
+      start: { clubs: 10, mrr: 200000 },
+      billing: { invoiced: 300000, collected: 250000, invoices: 11, reminders: 3 },
+      interventions: 7,
+      borrows: 1,
+      dataRequests: { received: 2, done: 1 },
+      feedback: 4,
+      jobsFailed: 0,
+      countries: [{ country: "BE", clubs: 10 }, { country: "NL", clubs: 2 }],
+    });
+    const text = lines.map((l) => l.text).join("\n");
+    expect(text).toContain("Clubs : 12 (+2 sur le mois)");
+    expect(text).toContain("2400,00 €");
+    expect(text).toContain("NL : 2 club(s)");
+    expect(text).toContain("Stockage : 5.0 Mo");
+    expect(text).not.toMatch(/[—–]/);
+    expect(alertRules).toContain("invoicesFinalReminder");
+    expect(metricKeys).toContain("mrr");
+    expect(apiRoutes["console/alerts"].expect!.GET!.president).toBe(403);
+    expect(apiRoutes["console/reports"].expect!.POST!.federation).toBe(400);
+  });
+});

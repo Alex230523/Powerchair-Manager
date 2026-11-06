@@ -2763,6 +2763,16 @@ caption {
   font-size: var(--text-sm);
   color: var(--muted);
 }
+.console-delta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.console-delta.up {
+  color: var(--success);
+}
+.console-delta.down {
+  color: var(--danger);
+}
 .console-todos {
   list-style: none;
   margin: 0;
