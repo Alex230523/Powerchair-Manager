@@ -50,7 +50,8 @@ function cookies(response: Response) {
 async function actor(name: string): Promise<Actor> {
   await db.query('DELETE FROM "rateLimit"');
   const email = name.toLowerCase() + "." + schema + "@example.test";
-  const response = await request("/sign-up/email", { name, email, password });
+  // Created on the server, as the welcome page and the scripts do: the public sign-up asks an invitation (security, 06/11/2026).
+  const response = (await auth.api.signUpEmail({ body: { name, email, password }, asResponse: true })) as Response;
   const data = await response.json();
   expect(response.status, JSON.stringify(data)).toBe(200);
   await db.query('UPDATE "user" SET "emailVerified"=true WHERE id=$1', [
