@@ -104,6 +104,11 @@ test("an operator reads the console; a club president is refused", async ({ page
     await page.getByRole("tab", { name: "Supervision" }).click();
     await expect(page.getByRole("heading", { name: "Tâches planifiées" })).toBeVisible();
     await axe(page, "console supervision");
+    // The assistant without a key: says so, sends nothing.
+    await page.getByRole("tab", { name: "Assistant" }).click();
+    await expect(page.getByRole("alert")).toContainText("ANTHROPIC_API_KEY");
+    await expect(page.getByRole("button", { name: "Envoyer" })).toBeDisabled();
+    await axe(page, "console assistant");
   } finally {
     await db.end();
   }
