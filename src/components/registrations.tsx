@@ -602,21 +602,23 @@ function FormEditor({
               onDragEnd={() => setDragging(null)}
             >
               <legend>
-                {fill(q.question, { n: i + 1 })}
-                <span className="question-title"> · {fillDues(label(f), null) || q.untitled}</span>
-              </legend>
-              <div className="question-tools">
+                {/* 05/11/2026: the whole title folds and unfolds the question, with a chevron that says so. */}
                 <button
                   type="button"
-                  className="icon-button sm"
+                  className="question-toggle"
                   aria-expanded={!folded.has(f.key)}
                   aria-controls={"question-body-" + f.key}
-                  aria-label={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: fillDues(label(f), null) || q.untitled })}
                   title={fill(folded.has(f.key) ? q.unfold : q.fold, { n: i + 1, label: fillDues(label(f), null) || q.untitled })}
                   onClick={() => toggle(f.key)}
                 >
-                  <Icon name={folded.has(f.key) ? "chevronDown" : "chevronUp"} size={16} />
+                  <Icon name={folded.has(f.key) ? "chevronRight" : "chevronDown"} size={16} />
+                  <span>
+                    {fill(q.question, { n: i + 1 })}
+                    <span className="question-title"> · {fillDues(label(f), null) || q.untitled}</span>
+                  </span>
                 </button>
+              </legend>
+              <div className="question-tools">
                 <button
                   type="button"
                   className="icon-button sm question-grip"

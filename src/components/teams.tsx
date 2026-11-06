@@ -191,7 +191,6 @@ export function Teams({ locale }: { locale: Locale }) {
                   <span className="team-card-name">{team.name}</span>
                   {team.archived && <Badge tone="neutral">{t.archived}</Badge>}
                 </span>
-                <span className="team-card-sub">{[team.category, team.level].filter(Boolean).join(" · ") || " "}</span>
               </Link>
               <TeamPlaces locale={locale} players={team.players} capacity={team.capacity} />
               <dl className="team-stats">

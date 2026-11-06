@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-05",
+  "roles": [
+    "all"
+  ],
+  "link": "/",
+  "image": null,
+  "fr": {
+    "title": "Accueil, équipes et formulaires plus lisibles",
+    "text": "Les échéances à 30 jours se lisent dans la situation financière de l'accueil. Les cartes de « Mes équipes » ne gardent que le nom de l'équipe. Dans un formulaire d'inscription, chaque question se replie et se déplie en touchant son titre."
+  },
+  "nl": {
+    "title": "Startpagina, ploegen en formulieren leesbaarder",
+    "text": "De vervaldagen binnen 30 dagen staan in de financiële toestand op de startpagina. De kaarten van « Mijn ploegen » tonen enkel de naam van de ploeg. In een inschrijvingsformulier klapt elke vraag in en uit door op haar titel te tikken."
+  },
+  "en": {
+    "title": "Home, teams and forms easier to read",
+    "text": "The instalments due within 30 days read in the financial situation on the home. The cards of \"My teams\" keep only the team name. In a registration form, each question folds and unfolds by tapping its title."
+  }
+}
