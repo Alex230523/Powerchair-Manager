@@ -18,6 +18,9 @@ type Copy = {
   late: string;
   reminders: string;
   howToPay: string;
+  payOnline: string;
+  ubl: string;
+  paidVia: Record<"manual" | "mollie", string>;
 };
 const fr: Copy = {
   title: "Abonnement à la plateforme",
@@ -35,7 +38,10 @@ const fr: Copy = {
   states: { draft: "Brouillon", sent: "À payer", paid: "Payée", cancelled: "Annulée" },
   late: "En retard",
   reminders: "{n} rappel(s)",
-  howToPay: "Le virement se fait avec le numéro de la facture en communication ; l'exploitant confirme la réception.",
+  howToPay: "Le virement se fait avec le numéro de la facture en communication ; l'exploitant confirme la réception. Quand un bouton « Payer en ligne » est proposé, le paiement est confirmé tout seul.",
+  payOnline: "Payer en ligne",
+  ubl: "Facture électronique (UBL)",
+  paidVia: { manual: "virement", mollie: "en ligne" },
 };
 const nl: Copy = {
   title: "Abonnement op het platform",
@@ -53,7 +59,10 @@ const nl: Copy = {
   states: { draft: "Ontwerp", sent: "Te betalen", paid: "Betaald", cancelled: "Geannuleerd" },
   late: "Te laat",
   reminders: "{n} herinnering(en)",
-  howToPay: "De overschrijving gebeurt met het factuurnummer als mededeling; de beheerder bevestigt de ontvangst.",
+  howToPay: "De overschrijving gebeurt met het factuurnummer als mededeling; de beheerder bevestigt de ontvangst. Als een knop « Online betalen » wordt aangeboden, wordt de betaling vanzelf bevestigd.",
+  payOnline: "Online betalen",
+  ubl: "Elektronische factuur (UBL)",
+  paidVia: { manual: "overschrijving", mollie: "online" },
 };
 const en: Copy = {
   title: "Platform subscription",
@@ -71,6 +80,9 @@ const en: Copy = {
   states: { draft: "Draft", sent: "To pay", paid: "Paid", cancelled: "Cancelled" },
   late: "Late",
   reminders: "{n} reminder(s)",
-  howToPay: "The transfer carries the invoice number as reference; the operator confirms its receipt.",
+  howToPay: "The transfer carries the invoice number as reference; the operator confirms its receipt. When a \"Pay online\" button is offered, the payment is confirmed by itself.",
+  payOnline: "Pay online",
+  ubl: "Electronic invoice (UBL)",
+  paidVia: { manual: "transfer", mollie: "online" },
 };
 export const organizationBillingCopy: Record<Locale, Copy> = { fr, nl, en };

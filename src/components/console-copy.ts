@@ -191,6 +191,11 @@ type Copy = {
     remind: string;
     reminded: string;
     reminderSteps: string;
+    mollieOn: string;
+    mollieTest: string;
+    mollieOff: string;
+    ubl: string;
+    paidVia: Record<"manual" | "mollie", string>;
   };
   supervision: {
     jobs: string;
@@ -389,7 +394,7 @@ const fr: Copy = {
     "billing.cancel": "Facture annulée",
     "billing.remind": "Rappel envoyé",
   },
-  billingSoon: "Les paiements sont enregistrés à la main depuis l'onglet Facturation ; aucun prestataire de paiement n'est branché.",
+  billingSoon: "Les paiements se suivent dans l'onglet Facturation ; en ligne par Mollie quand il est branché, à la main sinon.",
   organizations: {
     search: "Rechercher une organisation",
     kind: "Type",
@@ -514,6 +519,11 @@ const fr: Copy = {
     remind: "Envoyer un rappel",
     reminded: "Rappel envoyé.",
     reminderSteps: "Rappels automatiques : courtois à J+3, ferme à J+10, préavis de lecture seule à J+20.",
+    mollieOn: "Mollie branché : chaque facture envoyée porte un lien de paiement, le paiement en ligne est confirmé tout seul.",
+    mollieTest: "Mollie en mode test (clé test_) : les paiements ne sont pas réels.",
+    mollieOff: "Mollie n'est pas branché (MOLLIE_API_KEY absente) : les paiements sont enregistrés à la main.",
+    ubl: "UBL",
+    paidVia: { manual: "virement", mollie: "en ligne" },
   },
   supervision: {
     jobs: "Tâches planifiées",
@@ -712,7 +722,7 @@ const nl: Copy = {
     "billing.cancel": "Factuur geannuleerd",
     "billing.remind": "Herinnering verzonden",
   },
-  billingSoon: "Betalingen worden met de hand geregistreerd in het tabblad Facturatie; er is geen betaaldienst gekoppeld.",
+  billingSoon: "Betalingen volgt u in het tabblad Facturatie; online via Mollie als het gekoppeld is, anders met de hand.",
   organizations: {
     search: "Een organisatie zoeken",
     kind: "Type",
@@ -837,6 +847,11 @@ const nl: Copy = {
     remind: "Een herinnering sturen",
     reminded: "Herinnering verzonden.",
     reminderSteps: "Automatische herinneringen: vriendelijk op D+3, kordaat op D+10, vooraankondiging alleen-lezen op D+20.",
+    mollieOn: "Mollie gekoppeld: elke verzonden factuur draagt een betaallink, de onlinebetaling wordt vanzelf bevestigd.",
+    mollieTest: "Mollie in testmodus (sleutel test_): de betalingen zijn niet echt.",
+    mollieOff: "Mollie is niet gekoppeld (MOLLIE_API_KEY ontbreekt): betalingen worden met de hand geregistreerd.",
+    ubl: "UBL",
+    paidVia: { manual: "overschrijving", mollie: "online" },
   },
   supervision: {
     jobs: "Geplande taken",
@@ -1035,7 +1050,7 @@ const en: Copy = {
     "billing.cancel": "Invoice cancelled",
     "billing.remind": "Reminder sent",
   },
-  billingSoon: "Payments are recorded by hand in the Billing tab; no payment provider is connected.",
+  billingSoon: "Payments are followed in the Billing tab; online through Mollie when connected, by hand otherwise.",
   organizations: {
     search: "Search an organisation",
     kind: "Kind",
@@ -1160,6 +1175,11 @@ const en: Copy = {
     remind: "Send a reminder",
     reminded: "Reminder sent.",
     reminderSteps: "Automatic reminders: courteous at D+3, firm at D+10, read-only notice at D+20.",
+    mollieOn: "Mollie connected: every invoice sent carries a payment link, the online payment is confirmed by itself.",
+    mollieTest: "Mollie in test mode (test_ key): payments are not real.",
+    mollieOff: "Mollie is not connected (MOLLIE_API_KEY missing): payments are recorded by hand.",
+    ubl: "UBL",
+    paidVia: { manual: "transfer", mollie: "online" },
   },
   supervision: {
     jobs: "Scheduled tasks",

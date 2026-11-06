@@ -1,5 +1,7 @@
 import { getDb } from "@/lib/db";
 import { billingCommand, billingExecute, billingView } from "@/domains/billing/service";
+import { ublForOperator } from "@/domains/billing/ubl";
+import { z } from "zod";
 import { principal, origin, bounded, noStore, failure } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
@@ -7,7 +9,13 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    return Response.json(await billingView(getDb(), await principal(request), { state: url.searchParams.get("state") ?? "", organization: url.searchParams.get("organization") ?? "" }), { headers: noStore });
+    const p = await principal(request);
+    const ubl = url.searchParams.get("ubl");
+    if (ubl) {
+      const r = await ublForOperator(getDb(), p, z.uuid().parse(ubl));
+      return new Response(r.xml, { headers: { ...noStore, "Content-Type": "application/xml; charset=utf-8", "Content-Disposition": `attachment; filename="${r.number}.xml"` } });
+    }
+    return Response.json(await billingView(getDb(), p, { state: url.searchParams.get("state") ?? "", organization: url.searchParams.get("organization") ?? "" }), { headers: noStore });
   } catch (e) {
     return failure(e);
   }

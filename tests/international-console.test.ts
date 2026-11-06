@@ -154,3 +154,40 @@ describe("the console's figures, alerts and reports (series A)", () => {
     expect(apiRoutes["console/reports"].expect!.POST!.federation).toBe(400);
   });
 });
+
+describe("the platform's electronic invoices and the Mollie webhook (series B)", () => {
+  it("builds a Peppol BIS 3.0 invoice, VAT included in the amount, escaped, and a VAT-free one", async () => {
+    const { ublXml, beVat, vatRate, seller } = await import("../src/domains/billing/ubl");
+    const inv = { number: "F-2026-0007", issued_on: "2026-11-06", due_on: "2026-12-06", label: "Club, annuel · 1 nov. 2026 au 31 oct. 2027", quantity: 1, unit_cents: 24200, amount_cents: 24200, period_from: "2026-11-01", period_to: "2027-10-31", paid_on: null, customer: { name: "Club <A> & co", company_number: "0123.456.789", address: "Rue du Stade 1", country: "BE" } };
+    const env = { PFM_SELLER_NAME: "PFM SRL", PFM_SELLER_VAT: "BE0999999999", PFM_SELLER_IBAN: "BE68 5390 0754 7034", PFM_SELLER_EMAIL: "factures@pfm.test", PFM_VAT_RATE: "21" };
+    const xml = ublXml(inv, env);
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+    expect(xml).toContain("urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0");
+    expect(xml).toContain("<cbc:RegistrationName>Club &lt;A&gt; &amp; co</cbc:RegistrationName>");
+    expect(xml).toContain('<cbc:TaxExclusiveAmount currencyID="EUR">200.00</cbc:TaxExclusiveAmount>');
+    expect(xml).toContain('<cbc:TaxInclusiveAmount currencyID="EUR">242.00</cbc:TaxInclusiveAmount>');
+    expect(xml).toContain("<cbc:Percent>21</cbc:Percent>");
+    expect(xml).toContain("<cbc:PaymentID>F-2026-0007</cbc:PaymentID>");
+    expect(xml).toContain("<cbc:ID>BE68 5390 0754 7034</cbc:ID>");
+    expect(xml).toContain("<cbc:Note>Due on 2026-12-06</cbc:Note>");
+    expect(xml).not.toMatch(/[—–]/);
+    const free = ublXml(inv, { ...env, PFM_VAT_RATE: "0" });
+    expect(free).toContain("<cbc:ID>O</cbc:ID>");
+    expect(free).toContain('<cbc:TaxAmount currencyID="EUR">0.00</cbc:TaxAmount>');
+    expect(free).toContain('<cbc:TaxExclusiveAmount currencyID="EUR">242.00</cbc:TaxExclusiveAmount>');
+    expect(beVat("0123.456.789")).toBe("BE0123456789");
+    expect(beVat("")).toBe("");
+    expect(vatRate({ PFM_VAT_RATE: "abc" })).toBe(21);
+    expect(vatRate({ PFM_VAT_RATE: "6" })).toBe(6);
+    expect(seller({}).country).toBe("BE");
+  });
+  it("answers Mollie without a session: 503 unconfigured, 405 on GET; the presidency downloads its own UBL only", () => {
+    expect(apiRoutes["billing/mollie"].skip).toContain("503");
+    const route = readFileSync("src/app/api/billing/mollie/route.ts", "utf8");
+    expect(route).not.toContain("principal(");
+    expect(route).toContain("status: 503");
+    expect(route).toContain("status: 405");
+    expect(readFileSync("src/domains/billing/ubl.ts", "utf8")).toContain("i.organization_id=$2");
+    expect(consoleCopy.fr.billing.paidVia.mollie).toBe("en ligne");
+  });
+});

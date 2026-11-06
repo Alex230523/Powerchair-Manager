@@ -51,6 +51,7 @@ export function OrganizationBilling({ locale }: { locale: Locale }) {
                       <th scope="col">{t.columns.issued}</th>
                       <th scope="col">{t.columns.due}</th>
                       <th scope="col">{t.columns.state}</th>
+                      <th scope="col"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -64,6 +65,21 @@ export function OrganizationBilling({ locale }: { locale: Locale }) {
                         <td>
                           <Badge tone={i.late ? "danger" : tone[i.state]}>{i.late ? t.late : t.states[i.state]}</Badge>
                           {i.reminders > 0 && <span className="muted small"> {fill(t.reminders, { n: i.reminders })}</span>}
+                          {i.state === "paid" && i.paid_via && <span className="muted small"> · {t.paidVia[i.paid_via]}</span>}
+                        </td>
+                        <td>
+                          <span className="console-row-actions">
+                            {i.state === "sent" && i.pay_url && (
+                              <a className="button sm" href={i.pay_url} rel="noopener">
+                                {t.payOnline}
+                                <span className="sr-only"> : {i.number}</span>
+                              </a>
+                            )}
+                            <a className="button secondary sm" href={`/api/club/billing?ubl=${i.id}`}>
+                              {t.ubl}
+                              <span className="sr-only"> : {i.number}</span>
+                            </a>
+                          </span>
                         </td>
                       </tr>
                     ))}

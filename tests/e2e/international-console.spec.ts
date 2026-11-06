@@ -180,9 +180,28 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     await axe(page, "billing");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     const number = (await db.query("SELECT number FROM billing_invoice WHERE organization_id=$1", [club])).rows[0].number as string;
+    // Series B: Mollie not configured here, so no online button; the electronic invoice (UBL) downloads for both sides.
+    await expect(page.getByText(/Mollie n'est pas branché/)).toBeVisible();
+    const ublOps = await page.evaluate(async (n) => {
+      const r = await fetch(`/api/console/billing?ubl=${n}`);
+      return { status: r.status, type: r.headers.get("content-type") ?? "", disposition: r.headers.get("content-disposition") ?? "", body: await r.text() };
+    }, (await db.query("SELECT id FROM billing_invoice WHERE number=$1", [number])).rows[0].id as string);
+    expect(ublOps.status).toBe(200);
+    expect(ublOps.type).toContain("xml");
+    expect(ublOps.disposition).toContain(`${number}.xml`);
+    expect(ublOps.body).toContain(`<cbc:ID>${number}</cbc:ID>`);
     await presidentPage.goto("/fr/club/billing");
     await expect(presidentPage.getByRole("rowheader", { name: number })).toBeVisible();
     await expect(presidentPage.getByText("À payer", { exact: true })).toBeVisible();
+    await expect(presidentPage.getByRole("link", { name: /^Payer en ligne/ })).toHaveCount(0);
+    const ublLink = presidentPage.getByRole("link", { name: `Facture électronique (UBL) : ${number}` });
+    await expect(ublLink).toBeVisible();
+    const ublMine = await presidentPage.evaluate(async (href) => {
+      const r = await fetch(href);
+      return { status: r.status, body: await r.text() };
+    }, (await ublLink.getAttribute("href")) ?? "");
+    expect(ublMine.status).toBe(200);
+    expect(ublMine.body).toContain("<cbc:RegistrationName>Club facturé</cbc:RegistrationName>");
     await axe(presidentPage, "organisation billing");
     // Suspended: the president reads the reason and cannot write.
     await page.getByRole("tab", { name: "Organisations" }).click();
