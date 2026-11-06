@@ -344,7 +344,7 @@ test("the sheet shows the first steps, the timeline and the duplicates; the club
     await page.getByRole("tab", { name: "Opérateurs" }).click();
     await expect(page.getByRole("heading", { name: "Connexions à la console" })).toBeVisible();
     await expect(page.getByRole("row", { name: /Alex Propriétaire/ }).first()).toBeVisible();
-    await expect(page.getByText("Aucune clé active.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Revue des clés MCP" })).toBeVisible();
     await axe(page, "operators (series D)");
     // The president of A links the profile to Dan's identity code from club B.
     const other = await browser.newContext({ baseURL: "http://127.0.0.1:3100", viewport: { width: 390, height: 844 } });
