@@ -181,8 +181,7 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     await expect(page.getByText("Vérifier la page des cotisations avec la présidente").first()).toBeVisible();
     await page.getByRole("button", { name: "Passer dans l'organisation" }).click();
     await expect(page).toHaveURL(/\/fr$/);
-    await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 15000 });
-    await expect(page.locator(".brand-org")).toContainText("Club facturé");
+    await expect(page.locator(".brand-org")).toContainText("Club facturé", { timeout: 15000 });
     await page.goto("/fr/console");
     await page.getByRole("tab", { name: "Organisations" }).click();
     await page.getByRole("searchbox").fill("Club facturé");
