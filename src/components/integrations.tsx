@@ -210,7 +210,7 @@ export function Integrations({ locale }: { locale: Locale }) {
                   </p>
                 </form>
                 <p className="muted small">{t.mcpHowTo}</p>
-                <code className="secret-value">{`${origin}${view.mcpEndpoint}`}</code>
+                <code className="secret-value endpoint-value">{`${origin}${view.mcpEndpoint}`}</code>
                 <p className="muted small">{t.mcpTools}</p>
                 {view.mcpKeys.length ? (
                   <ul className="records">

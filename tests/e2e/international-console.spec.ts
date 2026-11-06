@@ -384,7 +384,7 @@ test("a president creates the club's MCP connector and asks it the teams; the ow
     await presidentPage.getByLabel("Nom du connecteur").fill("Mon Claude");
     await axe(presidentPage, "mcp connector");
     await presidentPage.getByRole("button", { name: "Créer la clé du connecteur" }).click();
-    const shown = presidentPage.locator(".secret-value", { hasText: /^pfmorg_/ });
+    const shown = presidentPage.locator(".secret-value:not(.endpoint-value)");
     await expect(shown).toBeVisible();
     const secret = (await shown.textContent()) ?? "";
     expect(secret).toMatch(/^pfmorg_[a-z0-9]{8}_/);
