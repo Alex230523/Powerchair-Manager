@@ -291,6 +291,9 @@ test("the site answers with the headers of a well set-up host", async () => {
     expect(h["permissions-policy"]).toContain("payment=()");
     expect(h["x-frame-options"]).toBe("DENY");
     expect(h["x-powered-by"]).toBeUndefined();
+    // XSS (07/11/2026): scripts from the site or with this page's nonce, nothing inline otherwise.
+    expect(h["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/]{22}=='/);
+    expect(h["content-security-policy"]).not.toMatch(/unsafe-inline|unsafe-eval/);
     // The browser gets the scripts, never their source maps.
     const chunk = (await page.text()).match(/\/_next\/static\/chunks\/[^"'?]+\.js/)?.[0];
     expect(chunk).toBeTruthy();

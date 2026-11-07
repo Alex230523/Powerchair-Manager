@@ -7,6 +7,7 @@ import { obligationsCopy } from "./club-obligations-copy";
 import { Badge, Button, Card } from "./ui";
 import { Modal } from "./modal";
 import { cssVars } from "./css-vars";
+import { externalHref } from "@/lib/html";
 
 type View = Awaited<ReturnType<typeof obligationsView>>;
 type Row = View["rows"][number];
@@ -176,7 +177,7 @@ export function ClubObligations({ locale }: { locale: Locale }) {
                       <td>{r.responsible ?? ""}</td>
                       <td>
                         {r.proof_url && (
-                          <a href={r.proof_url} target="_blank" rel="noopener noreferrer">
+                          <a href={externalHref(r.proof_url)} target="_blank" rel="noopener noreferrer">
                             {t.openProof}
                           </a>
                         )}

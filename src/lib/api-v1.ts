@@ -1,8 +1,12 @@
 import { getDb } from "@/lib/db";
+import { gate } from "@/lib/http";
 import { ApiError, apiAuth } from "@/domains/integrations/api";
 
 /** B6: one v1 endpoint: the key and its scope, the rate limit, JSON without cache. */
 export async function apiV1(request: Request, scope: string, fn: (org: string, q: URLSearchParams) => Promise<unknown>) {
+  // Security (07/11/2026): counted by network address before the key is read (a key guessed, a key revoked).
+  const flood = await gate(request, "api-ip");
+  if (flood) return flood;
   try {
     const auth = await apiAuth(getDb(), request.headers.get("authorization"), scope);
     const data = await fn(auth.organization, new URL(request.url).searchParams);

@@ -134,6 +134,8 @@ Les anciens processus permanents (`scripts/mail-worker.ts`, `documents-worker.ts
   - Les workflows (et les modèles de `docs/production/`) utilisent chaque action à une version figée par son empreinte, avec un jeton en lecture seule.
 - **À régler à la main, une fois** (ce sont des réglages de compte, que le code ne peut pas poser) :
   - GitHub, dépôt public : activer *Secret scanning* et *Push protection* (gratuits sur un dépôt public), les alertes et mises à jour de sécurité *Dependabot*, et protéger `main` (pull request obligatoire, contrôles de la CI requis, pas de force-push). Aujourd'hui, tout est désactivé et `main` n'est pas protégée.
+  - Limitation des requêtes (audit du 07/11/2026) : l'API compte chaque compte et chaque adresse réseau (`src/lib/rate-limit.ts`). `PFM_RATE_LIMIT_SCALE` reste vide en production. Pour une attaque en volume sur les pages, activer une règle de limitation dans le pare-feu de Vercel (*Firewall*, *Rate limiting*), ou l'*Attack Challenge Mode* pendant l'attaque.
+  - Dépendances (audit du 07/11/2026) : la CI vérifie chaque paquet contre les failles connues et les versions malveillantes (`scripts/check-deps.mjs`) et contre les signatures du registre (`npm audit signatures`). Une faille jugée sans danger se consigne dans `security/reviewed-advisories.json`, avec une date d'expiration.
   - Vercel : garder *Deployment Protection* sur les aperçus (Vercel Authentication), garder *Git Fork Protection* (un fork ne déploie pas sans accord), et ne mettre aucun secret de production dans l'environnement *Preview*.
   - Neon : rôle de l'application sans droit de création de base ni de rôle, rôle de sauvegarde en lecture seule, et *IP Allow* si l'offre le permet un jour.
 

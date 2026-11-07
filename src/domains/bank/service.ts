@@ -1,7 +1,7 @@
 import { emitWebhook } from "../integrations/webhooks";
 import type { Pool, PoolClient } from "pg";
 import { createHash } from "node:crypto";
-import { AccessError, account, active, audit, type Principal } from "../access/service";
+import { AccessError, account, active, audit, refuseSupport, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { validIban } from "../../lib/iban";
@@ -18,7 +18,7 @@ import type { BankCommand, StatementLineInput } from "./schema";
  * suggestion. Each part of a line becomes one ledger line, linked once.
  * Import and reconciliation need dues.manage; dues.read sees.
  */
-type Scope = { c: PoolClient; org: string; orgName: string; userId: string; manage: boolean; read: boolean };
+type Scope = { c: PoolClient; org: string; orgName: string; userId: string; mandateId: string; manage: boolean; read: boolean };
 
 async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) => Promise<T>, expected?: string) {
   const c = await db.connect();
@@ -37,6 +37,7 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
       org: a.organization_id,
       orgName: a.organization_name,
       userId: p.userId,
+      mandateId: a.id,
       manage: mfa && rights.includes("dues.manage"),
       read: mfa && (rights.includes("dues.manage") || rights.includes("dues.read")),
     };
@@ -317,6 +318,8 @@ export async function bankExecute(db: Pool, p: Principal, cmd: BankCommand, expe
       switch (cmd.action) {
         case "account": {
           if (!s.manage) throw new AccessError("FORBIDDEN");
+          // Security (07/11/2026): a support access never changes where the members' money goes.
+          await refuseSupport(s.c, s.mandateId);
           const iban = cmd.iban.replace(/\s+/g, "").toUpperCase();
           if (!validIban(iban)) throw new AccessError("INVALID_IBAN", 400);
           if (cmd.forDues) await s.c.query("UPDATE bank_account SET for_dues=false WHERE organization_id=$1 AND ($2::uuid IS NULL OR id<>$2)", [s.org, cmd.id ?? null]);

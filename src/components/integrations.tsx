@@ -7,6 +7,7 @@ import { apiScopes, publicBlocks, publicCopy } from "./public-copy";
 import { fill } from "./fleet-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, PageHeader, Panel, Tabs } from "./ui";
+import { escapeHtml } from "@/lib/html";
 
 /**
  * B6: Club › Page publique. The page and its blocks, the public calendar,
@@ -343,7 +344,7 @@ function PageTab({ locale, view, origin, busy, send }: { locale: Locale; view: V
 function WidgetsTab({ locale, view, origin }: { locale: Locale; view: View; origin: string }) {
   const t = publicCopy[locale];
   const live = view.page.enabled && view.page.saved;
-  const frame = (src: string, title: string, height: number) => `<iframe src="${src}" title="${title}" width="100%" height="${height}" style="border:0" loading="lazy"></iframe>`;
+  const frame = (src: string, title: string, height: number) => `<iframe src="${escapeHtml(src)}" title="${escapeHtml(title)}" width="100%" height="${height}" style="border:0" loading="lazy"></iframe>`;
   const items = live
     ? (["next", "results", "standings"] as const).map((k) => ({ id: k, label: t.widgetKinds[k], code: frame(`${origin}/${locale}/c/${view.page.slug}/widget/${k}`, t.widgetKinds[k], k === "next" ? 220 : 420) }))
     : [];

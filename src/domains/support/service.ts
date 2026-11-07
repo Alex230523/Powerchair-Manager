@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { escapeLike } from "../../lib/sql";
+import { limit } from "../../lib/rate-limit";
 import { AccessError, account, active, audit, type Principal } from "../access/service";
 import { pdfDocument, type PdfLine } from "../../lib/pdf";
 import { publish } from "../notifications/queue";
@@ -78,6 +79,8 @@ export async function supportView(db: Pool, p: Principal) {
   }
 }
 export async function supportExecute(db: Pool, p: Principal, command: SupportCommand) {
+  // Security (07/11/2026): a ticket or a message reaches the operators by e-mail; counted per account.
+  if (command.action === "open" || command.action === "reply") await limit(db, "user-support", p.userId);
   const c = await db.connect();
   try {
     await c.query("BEGIN");

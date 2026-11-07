@@ -18,6 +18,7 @@ import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { HistoryList, TaskList, dayLabel, euro } from "./sponsors";
 import { Nav, cents, dateOrNull, grantTone, useFunding } from "./funding-pages";
+import { externalHref } from "@/lib/html";
 
 type View = Awaited<ReturnType<typeof fundingView>>;
 type Grant = View["grants"][number];
@@ -242,7 +243,7 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                 header: gs.colCall,
                 cell: (x) =>
                   x.program_url ? (
-                    <a href={x.program_url} target="_blank" rel="noopener noreferrer" aria-label={fill(gs.seeCallOf, { grant: label(x) })}>
+                    <a href={externalHref(x.program_url)} target="_blank" rel="noopener noreferrer" aria-label={fill(gs.seeCallOf, { grant: label(x) })}>
                       {gs.seeCall}
                     </a>
                   ) : (
@@ -562,7 +563,7 @@ function GrantSheet({
               </dl>
               {grant.program_url && (
                 <p>
-                  <a href={grant.program_url} target="_blank" rel="noopener noreferrer">
+                  <a href={externalHref(grant.program_url)} target="_blank" rel="noopener noreferrer">
                     {c.programUrl}<span className="sr-only"> ({grant.program_url})</span>
                   </a>
                 </p>
@@ -682,7 +683,7 @@ function FunderFacts({
       <dl className="sheet-facts">
         <div>
           <dt>{c.website}</dt>
-          <dd>{funder.website ? <a href={funder.website} target="_blank" rel="noopener noreferrer">{funder.website}</a> : c.notSet}</dd>
+          <dd>{funder.website ? <a href={externalHref(funder.website)} target="_blank" rel="noopener noreferrer">{funder.website}</a> : c.notSet}</dd>
         </div>
         <div>
           <dt>{c.funderEmail}</dt>

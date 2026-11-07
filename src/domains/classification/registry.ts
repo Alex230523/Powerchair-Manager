@@ -85,7 +85,11 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (s: Scope) =
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "federation") throw new AccessError("FEDERATION_ONLY");
     const manage = fedCan(a.role, a.grants, "federation.licences");
-    if (!manage && !fedCan(a.role, a.grants)) throw new AccessError("FORBIDDEN");
+    // Security (07/11/2026): the registry names every player of the federation with his
+    // classification; read by the competences that work with it, not by every delegate
+    // (communication, finance, courses, referees have no use for it).
+    const reads = (["federation.licences", "federation.classification", "federation.competitions", "federation.discipline"] as const).some((g) => fedCan(a.role, a.grants, g));
+    if (!reads) throw new AccessError("FORBIDDEN");
     if (write && !manage) throw new AccessError("FORBIDDEN");
     await account(c, p);
     const out = await fn({ c, fed: a.organization_id, userId: p.userId, manage });

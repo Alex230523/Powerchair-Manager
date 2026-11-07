@@ -1,4 +1,5 @@
 import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
+import { limit } from "../../lib/rate-limit";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { acceptInvitation, liveInvitation, resendInvitation } from "./invite";
@@ -152,6 +153,19 @@ async function audit(
   );
   const { publishAuditEvent } = await import("../notifications/events");
   await publishAuditEvent(db, org, action, target, event.rows[0].id);
+}
+/**
+ * Security (07/11/2026), badly defined permissions: a platform operator's
+ * support access (console « Ouvrir comme président ») is a presidency for a
+ * few minutes, to look and to fix. It never changes who holds the club (an
+ * invitation, rights, a mandate, a membership, the presidency), never leaves
+ * a key or a webhook behind, never changes where the money goes (an IBAN).
+ */
+export async function supportAccess(db: Db, mandateId: string) {
+  return !!(await db.query("SELECT 1 FROM platform_borrow WHERE mandate_id=$1 AND ended_at IS NULL", [mandateId])).rowCount;
+}
+export async function refuseSupport(db: Db, mandateId: string) {
+  if (await supportAccess(db, mandateId)) throw new AccessError("SUPPORT_LIMITED");
 }
 async function protectLastAdmin(db: Db, org: string) {
   const result = await db.query(
@@ -321,6 +335,8 @@ export async function execute(
   command: Command,
   onlyIfMissing = false,
 ): Promise<{ ok: true } | { token: string }> {
+  // Security (07/11/2026): an invitation is an e-mail to an address typed by someone; counted per account.
+  if (command.action === "invite" || command.action === "resendInvitation") await limit(db, "user-invite", p.userId);
   const client = await db.connect();
   try {
     await client.query("BEGIN");
@@ -415,6 +431,8 @@ export async function execute(
         permission,
         mfaSatisfied(!!user.twoFactorEnabled),
       );
+      // Security (07/11/2026): a support access opens the club, never its mandates.
+      await refuseSupport(client, context.id);
       if (command.action === "invite") {
         if (!roleAllowed(command.role, context.kind))
           throw new AccessError("INVALID_ROLE", 400);
@@ -444,8 +462,11 @@ export async function execute(
         const staffRoleIds = [...new Set(command.staffRoleIds ?? [])];
         if (staffRoleIds.length) {
           if (command.role !== (context.kind === "federation" ? "federation_worker" : "coach")) throw new AccessError("INVALID_ROLE", 400);
-          const found = await client.query("SELECT id FROM staff_role WHERE organization_id=$1 AND id=ANY($2::uuid[]) AND NOT archived", [context.organization_id, staffRoleIds]);
+          const found = await client.query("SELECT id,grants FROM staff_role WHERE organization_id=$1 AND id=ANY($2::uuid[]) AND NOT archived", [context.organization_id, staffRoleIds]);
           if (found.rowCount !== staffRoleIds.length) throw new AccessError("NOT_FOUND", 404);
+          // Security (07/11/2026): a staff role hands out its rights on acceptance; never more than the inviter holds.
+          const mine = permissions(context.role, context.grants) as string[];
+          if (found.rows.some((r) => (r.grants as string[]).some((g) => !mine.includes(g)))) throw new AccessError("FORBIDDEN");
         }
         const created = await client.query(
           "INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,valid_until,created_by,valid_from,staff_role_ids) VALUES($1,lower($2),$3,$4,$5,now()+interval '7 days',$6,$7,$8,$9) RETURNING id",

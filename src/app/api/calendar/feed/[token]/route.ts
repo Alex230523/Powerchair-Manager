@@ -1,11 +1,14 @@
+import { gate } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { calendarFeed } from "@/domains/calendar/service";
 import { AccessError } from "@/domains/access/service";
 export const dynamic = "force-dynamic";
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const flood = await gate(request, "public-read");
+  if (flood) return flood;
   const headers = {
     "Cache-Control": "private, no-store",
     "Referrer-Policy": "no-referrer",

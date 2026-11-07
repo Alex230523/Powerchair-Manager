@@ -6,6 +6,7 @@ import { copy, isLocale } from "@/lib/locale";
 import { fontClass } from "../fonts";
 import "../globals.css";
 import { paletteColor, sessionAppearance, sessionShell } from "@/lib/appearance";
+import { scriptNonce } from "@/lib/nonce";
 export const metadata: Metadata = {
   title: "Powerchair Football Manager",
   applicationName: "Powerchair Football Manager",
@@ -42,11 +43,12 @@ export default async function Layout({
     appearance: { palette, tint },
     signedIn,
   } = await sessionShell();
+  const nonce = await scriptNonce();
   return (
     // The theme script may set data-theme before hydration.
     <html lang={locale} className={fontClass} data-palette={palette === "night" ? undefined : palette} data-tint={tint === "light" ? undefined : tint} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
         <a className="skip" href="#main">

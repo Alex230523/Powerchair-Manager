@@ -1,3 +1,4 @@
+import { throttle } from "@/lib/rate-limit";
 import { getDb } from "@/lib/db";
 import {
   unsubscribeInfo,
@@ -25,6 +26,7 @@ async function execute(id: string, stop: boolean) {
 }
 export async function GET(request: Request) {
   try {
+    await throttle(getDb(), request, "public-read");
     const id = z.uuid().parse(new URL(request.url).searchParams.get("id"));
     return Response.json(await info(id), {
       headers: noStore,
@@ -35,6 +37,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
+    await throttle(getDb(), request, "public-write");
     origin(request);
     const body = z
       .object({ id: z.uuid(), stop: z.boolean() })

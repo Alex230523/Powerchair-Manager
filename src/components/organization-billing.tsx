@@ -7,6 +7,7 @@ import { errors } from "./access-copy";
 import { Badge, Card, EmptyState, PageHeader } from "./ui";
 import { useData } from "./use-api";
 import { formatCents } from "@/domains/dashboard/summary";
+import { externalHref } from "@/lib/html";
 
 type View = Awaited<ReturnType<typeof organizationBilling>>;
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
@@ -70,7 +71,7 @@ export function OrganizationBilling({ locale }: { locale: Locale }) {
                         <td>
                           <span className="console-row-actions">
                             {i.state === "sent" && i.pay_url && (
-                              <a className="button sm" href={i.pay_url} rel="noopener">
+                              <a className="button sm" href={externalHref(i.pay_url)} rel="noopener">
                                 {t.payOnline}
                                 <span className="sr-only"> : {i.number}</span>
                               </a>

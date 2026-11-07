@@ -1,3 +1,4 @@
+import { limit } from "@/lib/rate-limit";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { accountsLedger, accountsView } from "@/domains/accounts/service";
@@ -13,6 +14,8 @@ export async function GET(request: Request) {
     const year = z.iso.date().parse(params.get("year"));
     const locale = z.enum(["fr", "nl", "en"]).catch("fr").parse(params.get("locale"));
     const p = await principalIn(request, "finance");
+    // Security (07/11/2026): a whole file built on demand counts.
+    await limit(getDb(), "user-export", p.userId);
     const view = await accountsView(getDb(), p, year);
     const ledger = await accountsLedger(getDb(), p, view.year.from);
     return new Response(xlsx(accountsSheet(view, ledger, accountsCopy[locale]), accountsCopy[locale].title) as BodyInit, {

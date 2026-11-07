@@ -1,7 +1,8 @@
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
-import { account, active, audit, AccessError, type Principal } from "./service";
+import { account, active, audit, AccessError, refuseSupport, type Principal } from "./service";
+import { limit } from "../../lib/rate-limit";
 import { inviteProfile } from "./invite";
 
 /**
@@ -37,6 +38,8 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (c: PoolClie
     const user = await account(c, p);
     const president = a.kind === "club" && a.role === "club_president" && mfaSatisfied(!!user.twoFactorEnabled);
     if (write && !president) throw new AccessError("FORBIDDEN");
+    // Security (07/11/2026): a support access never hands the presidency over.
+    if (write) await refuseSupport(c, a.id);
     const out = await fn(c, a.organization_id, president);
     await c.query("COMMIT");
     return out;
@@ -67,6 +70,8 @@ export async function presidencyView(db: Pool, p: Principal) {
 }
 
 export async function presidencyExecute(db: Pool, p: Principal, command: PresidencyCommand, expected: string) {
+  // Security (07/11/2026): a handover sends an e-mail to an address typed by someone; counted per account.
+  if (command.action === "handOver") await limit(db, "user-invite", p.userId);
   return scope(
     db,
     p,

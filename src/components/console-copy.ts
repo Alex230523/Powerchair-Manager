@@ -350,6 +350,10 @@ type Copy = {
     assistant: string;
     pending: string;
     pendingIntro: string;
+    /** Security (07/11/2026), prompt injection: what the write really touches, and the warning after users' text. */
+    pendingTarget: string;
+    pendingUserText: string;
+    pendingEffect: { message: string; money: string; note: string };
     approve: string;
     refuse: string;
     clear: string;
@@ -561,7 +565,7 @@ const fr: Copy = {
     unsubscribed: "Abonnement terminé.",
     invoicesOf: "Voir ses factures",
     borrow: "Ouvrir comme président (support)",
-    borrowIntro: "Vous entrez dans l'organisation avec un mandat de président limité dans le temps. La présidence est prévenue par notification avec votre nom et la raison ; tout ce que vous faites est dans son journal. Vous terminez l'accès dès que possible.",
+    borrowIntro: "Vous entrez dans l'organisation avec un mandat de président limité dans le temps. La présidence est prévenue par notification avec votre nom et la raison ; tout ce que vous faites est dans son journal. Vous terminez l'accès dès que possible. Vous ne changez ni les mandats, ni les droits, ni la présidence, ni les clés, ni le compte bancaire.",
     borrowReason: "Raison, lue par la présidence",
     borrowMinutes: "Durée (minutes)",
     borrowConfirm: "Ouvrir l'accès",
@@ -778,6 +782,9 @@ const fr: Copy = {
     assistant: "Assistant",
     pending: "Action proposée",
     pendingIntro: "L'assistant veut lancer {name} avec ces paramètres. Rien n'est fait tant que vous ne confirmez pas.",
+    pendingTarget: "Concerne : ",
+    pendingUserText: "Proposé après la lecture de textes écrits par des utilisateurs (ticket, notes, signalement). Un texte peut contenir des consignes cachées : vérifiez que cette action est bien celle que vous avez demandée.",
+    pendingEffect: { message: "Envoie un message, qui ne pourra pas être repris.", money: "Enregistre un paiement.", note: "Ajoute une note interne." },
     approve: "Confirmer l'action",
     refuse: "Refuser",
     clear: "Nouvelle conversation",
@@ -989,7 +996,7 @@ const nl: Copy = {
     unsubscribed: "Abonnement beëindigd.",
     invoicesOf: "Haar facturen bekijken",
     borrow: "Openen als voorzitter (support)",
-    borrowIntro: "U gaat de organisatie binnen met een in de tijd beperkt mandaat van voorzitter. Het voorzitterschap wordt per melding verwittigd met uw naam en de reden; alles wat u doet staat in zijn logboek. U beëindigt de toegang zodra mogelijk.",
+    borrowIntro: "U gaat de organisatie binnen met een in de tijd beperkt mandaat van voorzitter. Het voorzitterschap wordt per melding verwittigd met uw naam en de reden; alles wat u doet staat in zijn logboek. U beëindigt de toegang zodra mogelijk. U wijzigt geen mandaten, rechten, voorzitterschap, sleutels of bankrekening.",
     borrowReason: "Reden, gelezen door het voorzitterschap",
     borrowMinutes: "Duur (minuten)",
     borrowConfirm: "Toegang openen",
@@ -1206,6 +1213,9 @@ const nl: Copy = {
     assistant: "Assistent",
     pending: "Voorgestelde actie",
     pendingIntro: "De assistent wil {name} uitvoeren met deze parameters. Er gebeurt niets zolang u niet bevestigt.",
+    pendingTarget: "Betreft: ",
+    pendingUserText: "Voorgesteld na het lezen van teksten die gebruikers schreven (ticket, notities, melding). Een tekst kan verborgen instructies bevatten: controleer dat deze actie wel degelijk is wat u vroeg.",
+    pendingEffect: { message: "Verstuurt een bericht, dat niet kan worden teruggenomen.", money: "Registreert een betaling.", note: "Voegt een interne notitie toe." },
     approve: "Actie bevestigen",
     refuse: "Weigeren",
     clear: "Nieuw gesprek",
@@ -1417,7 +1427,7 @@ const en: Copy = {
     unsubscribed: "Subscription ended.",
     invoicesOf: "See its invoices",
     borrow: "Open as president (support)",
-    borrowIntro: "You enter the organisation with a time-limited president mandate. The presidency is told by notification with your name and the reason; everything you do is in its journal. You end the access as soon as possible.",
+    borrowIntro: "You enter the organisation with a time-limited president mandate. The presidency is told by notification with your name and the reason; everything you do is in its journal. You end the access as soon as possible. You change no mandates, rights, presidency, keys or bank account.",
     borrowReason: "Reason, read by the presidency",
     borrowMinutes: "Duration (minutes)",
     borrowConfirm: "Open the access",
@@ -1634,6 +1644,9 @@ const en: Copy = {
     assistant: "Assistant",
     pending: "Proposed action",
     pendingIntro: "The assistant wants to run {name} with these parameters. Nothing happens until you confirm.",
+    pendingTarget: "Concerns: ",
+    pendingUserText: "Proposed after reading text written by users (ticket, notes, report). A text can hide instructions: check that this action is really the one you asked for.",
+    pendingEffect: { message: "Sends a message, which cannot be taken back.", money: "Records a payment.", note: "Adds an internal note." },
     approve: "Confirm the action",
     refuse: "Refuse",
     clear: "New conversation",

@@ -1,3 +1,4 @@
+import { throttle } from "@/lib/rate-limit";
 import { getDb } from "@/lib/db";
 import {
   guestRequestSchema,
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 /** Public: emails a personal registration link (same answer whatever the address). */
 export async function POST(request: Request) {
   try {
+    await throttle(getDb(), request, "public-write", "public-write-day");
     origin(request);
     const body = JSON.parse(
       new TextDecoder().decode(await bounded(request, 4000)),
