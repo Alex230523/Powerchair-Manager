@@ -65,7 +65,12 @@ describe("missing logging and alerting", () => {
     const m = read("db/migrations/0142_security_event.sql");
     expect(m).toContain("FOREACH t IN ARRAY ARRAY['audit_log', 'platform_action', 'security_event'] LOOP");
     expect(m).toContain("BEFORE UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION journal_append_only()");
-    expect(m).toContain("IF OLD.created_at > now() - interval '12 months' THEN");
+    expect(m).toContain("IF OLD.created_at > now() - interval '12 months' AND coalesce(current_setting('pfm.journal_purge', true), '') <> 'club' THEN");
+    // The one exception: the closure of a club, in its own transaction.
+    const legal = read("src/domains/legal/service.ts");
+    expect(legal.match(/SET LOCAL pfm\.journal_purge = 'club'/g)).toHaveLength(1);
+    expect(legal.indexOf("SET LOCAL pfm.journal_purge")).toBeGreaterThan(legal.indexOf("export async function closeClub("));
+    expect(read("src/lib/sql.ts") + read("src/lib/http.ts")).not.toContain("journal_purge");
     expect(m).not.toMatch(/security_event \([^;]*REFERENCES/);
     // No code rewrites a journal; the club's retention never goes under twelve months.
     for (const f of ["src/domains/legal/service.ts", "src/domains/console/service.ts", "src/domains/security/alerts.ts"]) expect(read(f), f).not.toMatch(/UPDATE (audit_log|platform_action|security_event)\b/);

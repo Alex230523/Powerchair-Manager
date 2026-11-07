@@ -17,7 +17,7 @@ Audit du 07/11/2026 : si quelqu'un attaque la plateforme, est-ce que ça laisse 
   - 3 adresses bloquées en 15 minutes (attaque par identifiants) ;
   - 10 inondations refusées, 20 clés refusées, 20 requêtes d'un autre site en 15 minutes ;
   - tout accès de support ouvert.
-- **Les journaux pouvaient être réécrits.** Rien n'empêchait de modifier ou d'effacer une ligne du journal d'un club ou des opérateurs. La base refuse désormais toute modification des trois journaux, et tout effacement avant douze mois (la plus courte durée de conservation qu'un club peut choisir), qui que ce soit qui le demande.
+- **Les journaux pouvaient être réécrits.** Rien n'empêchait de modifier ou d'effacer une ligne du journal d'un club ou des opérateurs. La base refuse désormais toute modification des trois journaux, et tout effacement avant douze mois (la plus courte durée de conservation qu'un club peut choisir). Seule exception : la fermeture d'un club, 30 jours après sa demande, qui efface ses données comme la loi le veut ; sa transaction, et elle seule, le déclare à la base.
 - **Rien à lire.** La console (onglet Supervision) montre le journal de sécurité : les comptes du jour par gravité, les alertes envoyées, chaque événement avec son compte ou son organisation et le début de l'empreinte de sa source.
 
 ## Choix
