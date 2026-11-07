@@ -350,6 +350,10 @@ type Copy = {
     assistant: string;
     pending: string;
     pendingIntro: string;
+    /** Security (07/11/2026), prompt injection: what the write really touches, and the warning after users' text. */
+    pendingTarget: string;
+    pendingUserText: string;
+    pendingEffect: { message: string; money: string; note: string };
     approve: string;
     refuse: string;
     clear: string;
@@ -778,6 +782,9 @@ const fr: Copy = {
     assistant: "Assistant",
     pending: "Action proposée",
     pendingIntro: "L'assistant veut lancer {name} avec ces paramètres. Rien n'est fait tant que vous ne confirmez pas.",
+    pendingTarget: "Concerne : ",
+    pendingUserText: "Proposé après la lecture de textes écrits par des utilisateurs (ticket, notes, signalement). Un texte peut contenir des consignes cachées : vérifiez que cette action est bien celle que vous avez demandée.",
+    pendingEffect: { message: "Envoie un message, qui ne pourra pas être repris.", money: "Enregistre un paiement.", note: "Ajoute une note interne." },
     approve: "Confirmer l'action",
     refuse: "Refuser",
     clear: "Nouvelle conversation",
@@ -1206,6 +1213,9 @@ const nl: Copy = {
     assistant: "Assistent",
     pending: "Voorgestelde actie",
     pendingIntro: "De assistent wil {name} uitvoeren met deze parameters. Er gebeurt niets zolang u niet bevestigt.",
+    pendingTarget: "Betreft: ",
+    pendingUserText: "Voorgesteld na het lezen van teksten die gebruikers schreven (ticket, notities, melding). Een tekst kan verborgen instructies bevatten: controleer dat deze actie wel degelijk is wat u vroeg.",
+    pendingEffect: { message: "Verstuurt een bericht, dat niet kan worden teruggenomen.", money: "Registreert een betaling.", note: "Voegt een interne notitie toe." },
     approve: "Actie bevestigen",
     refuse: "Weigeren",
     clear: "Nieuw gesprek",
@@ -1634,6 +1644,9 @@ const en: Copy = {
     assistant: "Assistant",
     pending: "Proposed action",
     pendingIntro: "The assistant wants to run {name} with these parameters. Nothing happens until you confirm.",
+    pendingTarget: "Concerns: ",
+    pendingUserText: "Proposed after reading text written by users (ticket, notes, report). A text can hide instructions: check that this action is really the one you asked for.",
+    pendingEffect: { message: "Sends a message, which cannot be taken back.", money: "Records a payment.", note: "Adds an internal note." },
     approve: "Confirm the action",
     refuse: "Refuse",
     clear: "New conversation",

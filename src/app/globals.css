@@ -2841,6 +2841,15 @@ caption {
   border-radius: var(--radius-md);
   background: var(--surface-soft);
 }
+/* Security (07/11/2026), prompt injection: the write proposed after reading users' text. */
+.assistant-warning {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning-ink);
+}
 .assistant-args {
   margin: 0;
   padding: var(--space-2);

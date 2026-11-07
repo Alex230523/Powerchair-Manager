@@ -1524,6 +1524,18 @@ function AssistantView({ locale }: { locale: Locale }) {
             <strong>{a.pending}</strong>
           </p>
           <p>{fill(a.pendingIntro, { name: pending.name })}</p>
+          {pending.afterUserText && (
+            <p className="assistant-warning" role="note">
+              <strong>{a.pendingUserText}</strong>
+            </p>
+          )}
+          {pending.effect && <p>{a.pendingEffect[pending.effect]}</p>}
+          {pending.details.length > 0 && (
+            <p>
+              {a.pendingTarget}
+              {pending.details.join(" · ")}
+            </p>
+          )}
           <p className="muted small">{pending.description}</p>
           <pre className="assistant-args">{JSON.stringify(pending.input, null, 1)}</pre>
           <p className="actions">
