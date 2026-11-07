@@ -1,3 +1,4 @@
+import { redactForModel } from "../../lib/redact";
 import type { Pool, PoolClient } from "pg";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
@@ -84,7 +85,11 @@ export async function orgMcpAuth(db: Pool, header: string | null) {
 
 const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
 /** One tool, read only, scoped to the organisation by the key. */
+/** Security (07/11/2026), data leaking to an AI: the club's tools, as the club's model receives them. */
 export async function runOrgTool(db: Pool, org: string, name: string, a: Record<string, unknown>): Promise<unknown> {
+  return redactForModel(await orgToolRaw(db, org, name, a));
+}
+async function orgToolRaw(db: Pool, org: string, name: string, a: Record<string, unknown>): Promise<unknown> {
   switch (name) {
     case "club_overview": {
       const o = (await db.query("SELECT o.name,o.country_code AS country,f.name AS federation FROM organization o LEFT JOIN organization f ON f.id=o.federation_id WHERE o.id=$1", [org])).rows[0];

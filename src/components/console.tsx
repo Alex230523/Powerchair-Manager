@@ -1486,6 +1486,7 @@ function AssistantView({ locale }: { locale: Locale }) {
   return (
     <div className="stack">
       <p className="muted">{a.intro}</p>
+      <p className="muted small">{a.leaves}</p>
       {!data.configured && <p role="alert">{a.off}</p>}
       <p className="muted small">
         {fill(a.model, { model: data.model })} · {fill(a.usage, { calls: data.today.calls, tokens: data.today.input_tokens + data.today.output_tokens, month: data.month.n })}
