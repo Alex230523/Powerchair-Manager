@@ -1,18 +1,19 @@
 import "server-only";
 import { Pool } from "pg";
-import { databaseUrl } from "./env";
+import { databaseUrl, guardPool, poolSettings } from "./env";
 const globalDb = globalThis as unknown as {
   pfmPool?: Pool;
   pfmMailPool?: Pool;
 };
 export function getDb() {
   if (!globalDb.pfmPool)
-    globalDb.pfmPool = new Pool({
-      connectionString: databaseUrl(process.env),
-      max: 5,
-      connectionTimeoutMillis: 3000,
-      query_timeout: 3000,
-    });
+    globalDb.pfmPool = guardPool(
+      new Pool({
+        connectionString: databaseUrl(process.env),
+        max: 5,
+        ...poolSettings,
+      }),
+    );
   return globalDb.pfmPool;
 }
 
@@ -20,11 +21,12 @@ export function getDb() {
 // A separate bounded pool prevents callback starvation under concurrent sign-ups.
 export function getMailDb() {
   if (!globalDb.pfmMailPool)
-    globalDb.pfmMailPool = new Pool({
-      connectionString: databaseUrl(process.env),
-      max: 3,
-      connectionTimeoutMillis: 3000,
-      query_timeout: 3000,
-    });
+    globalDb.pfmMailPool = guardPool(
+      new Pool({
+        connectionString: databaseUrl(process.env),
+        max: 3,
+        ...poolSettings,
+      }),
+    );
   return globalDb.pfmMailPool;
 }

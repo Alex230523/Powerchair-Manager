@@ -183,6 +183,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Sécurité : audit d'injection SQL et garde-fou automatique](evolutions/2026-11-06-zzzzzzzzzzzz-securite-injection-sql.md) |
 | 06/11/2026 | [Sécurité : fuite de clés API et de secrets](evolutions/2026-11-06-zzzzzzzzzzzzz-securite-secrets.md) |
 | 06/11/2026 | [Sécurité : authentification défaillante](evolutions/2026-11-06-zzzzzzzzzzzzzz-securite-authentification.md) |
+| 06/11/2026 | [Sécurité : mauvaises configurations du cloud](evolutions/2026-11-06-zzzzzzzzzzzzzzz-securite-cloud.md) |
 
 ## Convention
 
