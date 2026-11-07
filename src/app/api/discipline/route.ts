@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { appealFile, disciplineExecute, disciplineHistory, disciplineView } from "@/domains/discipline/service";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principal, origin, bounded, noStore, failure, servedType } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     if (file) {
       const f = await appealFile(db, p, z.uuid().parse(file));
       return new Response(new Uint8Array(f.content), {
-        headers: { ...noStore, "Content-Type": f.media_type, "Content-Disposition": `attachment; filename="${f.filename.replace(/[^\w.\- ]/g, "_")}"`, "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" },
+        headers: { ...noStore, "Content-Type": servedType(f.media_type), "Content-Disposition": `attachment; filename="${f.filename.replace(/[^\w.\- ]/g, "_")}"`, "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" },
       });
     }
     return Response.json(await disciplineView(db, p), { headers: noStore });

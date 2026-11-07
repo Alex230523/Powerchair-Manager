@@ -4,7 +4,7 @@ import {
   financeReceiptUpload,
 } from "@/domains/finance/service";
 import { receiptMaxBytes } from "@/domains/finance/schema";
-import { principalIn, origin, bounded, noStore, failure } from "@/lib/http";
+import { principalIn, origin, bounded, noStore, failure, servedType } from "@/lib/http";
 import { AccessError } from "@/domains/access/service";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function GET(
     return new Response(new Uint8Array(f.content), {
       headers: {
         ...noStore,
-        "Content-Type": f.media_type,
+        "Content-Type": servedType(f.media_type),
         "Content-Disposition":
           "inline; filename*=UTF-8''" + encodeURIComponent(f.filename),
         "Content-Security-Policy": "sandbox; default-src 'none'",

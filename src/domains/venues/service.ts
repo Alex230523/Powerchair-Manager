@@ -41,7 +41,8 @@ export const venueCommand = z.discriminatedUnion("action", [
     address: text(500).min(2),
     city: text(120),
     phone: text(60),
-    website: z.union([z.literal(""), z.url().max(300)]),
+    // Security (07/11/2026), XSS: a web address only, never `javascript:` nor `data:`.
+    website: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(300)]),
     stepFree: tri,
     adaptedToilets: tri,
     changingRooms: tri,

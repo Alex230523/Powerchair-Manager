@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { guideImage } from "@/domains/guide/knowledge";
-import { principal, failure } from "@/lib/http";
+import { principal, failure, servedType } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const img = await guideImage(getDb(), p, id, kind);
     return new Response(new Uint8Array(img.content), {
       headers: {
-        "Content-Type": img.media_type,
+        "Content-Type": servedType(img.media_type),
         "Content-Disposition": "inline",
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, max-age=300",

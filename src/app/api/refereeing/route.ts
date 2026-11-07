@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { annualSummary, expensesCsv, refereeProof, refereeingExecute, refereeingView, reportForClub } from "@/domains/referees/service";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principal, origin, bounded, noStore, failure, servedType, disposition } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -21,13 +21,13 @@ export async function GET(request: Request) {
     const summary = q.get("summary");
     if (summary) {
       const f = await annualSummary(db, p, z.string().min(1).max(200).parse(summary), z.coerce.number().int().min(2000).max(2100).parse(q.get("year")));
-      return new Response(new Uint8Array(f.bytes), { headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${f.filename}"` } });
+      return new Response(new Uint8Array(f.bytes), { headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": disposition("attachment", f.filename) } });
     }
     const proof = q.get("proof");
     if (proof) {
       const [kind, id] = proof.split(":");
       const f = await refereeProof(db, p, z.enum(["training", "expense"]).parse(kind), z.uuid().parse(id));
-      return new Response(new Uint8Array(f.content), { headers: { ...noStore, "Content-Type": f.media_type, "Content-Disposition": `attachment; filename="${f.filename.replace(/[^\w.\- ]/g, "_")}"`, "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" } });
+      return new Response(new Uint8Array(f.content), { headers: { ...noStore, "Content-Type": servedType(f.media_type), "Content-Disposition": `attachment; filename="${f.filename.replace(/[^\w.\- ]/g, "_")}"`, "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" } });
     }
     return Response.json(await refereeingView(db, p), { headers: noStore });
   } catch (e) {
