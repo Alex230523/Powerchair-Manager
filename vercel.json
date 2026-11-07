@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "regions": ["fra1"],
+  "installCommand": "npm ci",
   "buildCommand": "node scripts/vercel-build.mjs",
   "ignoreCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then echo 'Production is not set up yet: skipped.'; exit 0; else exit 1; fi"
 }

@@ -40,6 +40,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Security (07/11/2026): every package at its exact version, against the known flaws
+      # and the malicious versions (OSV), and each one signed by the npm registry.
+      - name: "Dependencies: known flaws and malicious versions"
+        run: node scripts/check-deps.mjs
+      - name: "Dependencies: registry signatures"
+        run: npm audit signatures
       - name: Write .env.local
         run: |
           {
@@ -51,7 +57,7 @@ jobs:
           } > .env.local
       - name: Lint (errors also shown as annotations on the pull request)
         run: |
-          npx eslint . -f json -o eslint-report.json || {
+          npx --no-install eslint . -f json -o eslint-report.json || {
             node -e 'for (const f of require("./eslint-report.json")) for (const m of f.messages.filter((m) => m.severity === 2)) console.log(`::${m.severity === 2 ? "error" : "warning"} file=${f.filePath.replace(process.cwd() + "/", "")},line=${m.line ?? 1},col=${m.column ?? 1}::${(m.ruleId ?? "eslint") + ": " + m.message.replace(/\n/g, " ")}`)'
             exit 1
           }
@@ -99,7 +105,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx --no-install playwright install --with-deps chromium
       - name: Write .env.local
         run: |
           {
@@ -156,7 +162,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx --no-install playwright install --with-deps chromium
       - name: Write .env.local
         run: |
           {

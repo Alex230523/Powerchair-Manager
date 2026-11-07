@@ -14,3 +14,4 @@
 | `attendance-worker.ts` | `npm run attendance:worker`                           | Relances et alertes de présence                                                      |
 | `e2e-db.mjs`           | `npm run test:e2e:db`                                 | Crée une base temporaire, lance Playwright, la supprime                              |
 | `check-auth-schema.ts` | `npx tsx scripts/check-auth-schema.ts`                | Compare le schéma Better Auth attendu à la base                                      |
+| `check-deps.mjs`       | `node scripts/check-deps.mjs`                         | Chaque paquet contre les failles connues et les versions malveillantes (CI)          |
