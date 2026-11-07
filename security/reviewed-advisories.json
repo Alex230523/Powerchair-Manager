@@ -1,0 +1,29 @@
+{
+  "note": "Known flaws in a dependency, read one by one and judged harmless for this site (scripts/check-deps.mjs). Each entry expires: past its date, the check fails again and the flaw is read again. A malicious version (MAL-...) can never be listed here.",
+  "advisories": [
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "versions": ["1.2.1"],
+      "reason": "Pulled in by pptxgenjs 4.0.1, whose built code never loads image-size (the only call is commented out in dist/pptxgen.cjs.js); the slides are built from our own images, and the flaw needs a crafted JXL or HEIF file. Remove when pptxgenjs ships image-size 2.0.3 or later, or when an override can be installed.",
+      "reviewed": "2026-11-07",
+      "expires": "2027-02-07"
+    },
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "versions": ["1.2.1"],
+      "reason": "Same package, same reach as GHSA-5p2g-fcmc-qvqq: never loaded by pptxgenjs; needs a crafted ICNS file.",
+      "reviewed": "2026-11-07",
+      "expires": "2027-02-07"
+    },
+    {
+      "id": "GHSA-g3hv-75wg-m249",
+      "package": "minimatch",
+      "versions": ["10.2.6"],
+      "reason": "Development only (@typescript-eslint, during lint); the glob patterns are the repository's own, never typed by a visitor. Never shipped to the site.",
+      "reviewed": "2026-11-07",
+      "expires": "2027-02-07"
+    }
+  ]
+}

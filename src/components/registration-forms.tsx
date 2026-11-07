@@ -10,6 +10,7 @@ import { Modal } from "./modal";
 import { DataGrid } from "./data-grid";
 import { fill, formsCopy } from "./registration-forms-copy";
 import { MoreMenu } from "./more-menu";
+import { escapeHtml } from "@/lib/html";
 export { MoreMenu };
 
 /** Wave 17 (F1): one form of the club, as the list shows it. */
@@ -345,8 +346,8 @@ export function ShareDialog({
   const url = `${site}/${locale}/inscription/${form.id}`;
   const matrix = useMemo(() => qrMatrix(url), [url]);
   const qr = matrix ? qrPath(matrix) : null;
-  const iframe = `<iframe title="${form.title.replace(/"/g, "&quot;")}" src="${site}/${locale}/registration-widget/${form.id}" width="100%" height="260" style="border:0"></iframe>`;
-  const popup = `<button type="button" onclick="window.open('${url}','inscription','width=720,height=860')">${t.button}</button>`;
+  const iframe = `<iframe title="${escapeHtml(form.title)}" src="${escapeHtml(`${site}/${locale}/registration-widget/${form.id}`)}" width="100%" height="260" style="border:0"></iframe>`;
+  const popup = `<button type="button" onclick="window.open('${escapeHtml(url)}','inscription','width=720,height=860')">${escapeHtml(t.button)}</button>`;
   const announcement = fill(t.announcementText, { club, form: form.title, url });
   const panel = "share-panel";
   return (

@@ -12,6 +12,7 @@ import { FieldView } from "./field-editor";
 import { TagChip } from "./tag-picker";
 import { Modal } from "./modal";
 import type { Drawing } from "@/domains/exercises/drawing";
+import { externalHref } from "@/lib/html";
 
 type Detail = Awaited<ReturnType<typeof exerciseDetail>>;
 type Program = Awaited<ReturnType<typeof programPrint>>;
@@ -81,7 +82,7 @@ function SheetBody({ locale, x, planned, notes, drawing, exports = false }: { lo
       )}
       {x.video_url && (
         <p className="no-print">
-          <a href={x.video_url} target="_blank" rel="noopener noreferrer">
+          <a href={externalHref(x.video_url)} target="_blank" rel="noopener noreferrer">
             {x.video_url}
           </a>
         </p>

@@ -139,12 +139,16 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
     `SELECT r.role,r.grants FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=$1 AND r.user_id=$2 AND ${current}`,
     [invite.organization_id, invite.created_by],
   );
+  // Security (07/11/2026): the staff roles chosen with the invitation hand out their rights too.
+  const staffGrants = (
+    await c.query("SELECT COALESCE(array_agg(DISTINCT g),'{}') AS grants FROM invitation i JOIN staff_role s ON s.id=ANY(i.staff_role_ids) AND s.organization_id=i.organization_id, unnest(s.grants) g WHERE i.id=$1", [invite.id])
+  ).rows[0].grants as Permission[];
   if (
     !issuers.rows.some(
       (r) =>
         permissions(r.role, r.grants).includes("invitations.create") &&
         (!isAdmin(invite.role) || isAdmin(r.role)) &&
-        invite.grants.every((g: Permission) => permissions(r.role, r.grants).includes(g)),
+        [...invite.grants, ...staffGrants].every((g: Permission) => permissions(r.role, r.grants).includes(g)),
     )
   )
     throw new AccessError("INVITATION_INVALID", 404);
@@ -207,6 +211,13 @@ export async function applySuccession(c: PoolClient, invite: InvitationRow, mand
       [invite.organization_id, mandate, at.at],
     )
   ).rows.map((r) => r.user_id as string);
+  // Security (07/11/2026): the keys and the webhooks of the club speak for the presidency that
+  // created them; the outgoing one's stop now (shown as revoked), the new president creates his own.
+  if (at.now && outgoing.length) {
+    await c.query("UPDATE api_key SET revoked_at=now(),revoked_by=$3 WHERE organization_id=$1 AND created_by=ANY($2::text[]) AND revoked_at IS NULL", [invite.organization_id, outgoing, newUser]);
+    await c.query("UPDATE organization_mcp_key SET revoked_at=now(),revoked_by=$3 WHERE organization_id=$1 AND created_by=ANY($2::text[]) AND revoked_at IS NULL", [invite.organization_id, outgoing, newUser]);
+    await c.query("UPDATE webhook SET active=false WHERE organization_id=$1 AND created_by=ANY($2::text[]) AND active", [invite.organization_id, outgoing]);
+  }
   if (invite.outgoing_user_id && invite.outgoing_role && invite.outgoing_user_id !== newUser) {
     if (invite.outgoing_role === "coach")
       await c.query("INSERT INTO role_assignment(organization_id,user_id,role,grants,valid_from,created_by) VALUES($1,$2,'coach','{}',$3,$4)", [
