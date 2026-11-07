@@ -82,7 +82,7 @@ afterAll(async () => {
 it("takes the dangerous website off an older hall, and runs again without harm", async () => {
   expect((await db.query("SELECT website FROM shared_venue WHERE id=$1", [legacy])).rows[0].website).toBe("");
   await db.query(await readFile("db/migrations/0140_venue_website.sql", "utf8"));
-  expect((await db.query("SELECT count(*)::int AS n FROM pg_constraint WHERE conname='shared_venue_website_web'")).rows[0].n).toBe(1);
+  expect((await db.query("SELECT count(*)::int AS n FROM pg_constraint WHERE conname='shared_venue_website_web' AND conrelid='shared_venue'::regclass")).rows[0].n).toBe(1);
 });
 
 it("refuses a website that is not a web address, in the form and in the database", async () => {

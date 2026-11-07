@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { disposition, escapeHtml, externalHref, servedType } from "../src/lib/html";
 import { newNonce, scriptPolicy } from "../src/lib/csp";
+import { isWidgetPath, pageCsp, widgetCsp } from "../src/lib/security-headers";
 import { printablePage, printHandler } from "../src/domains/people/export";
 
 /**
@@ -20,14 +21,21 @@ const files = (dir: string, keep: (n: string) => boolean): string[] =>
 const source = files("src", (n) => /\.(ts|tsx)$/.test(n));
 describe("cross-site scripting", () => {
   it("lets only the site's scripts run: its own files, or the nonce of this very page", () => {
-    const prod = scriptPolicy("abc123", { NODE_ENV: "production" });
+    const prod = scriptPolicy("abc123", { NODE_ENV: "production" }, pageCsp);
     expect(prod).toContain("script-src 'self' 'nonce-abc123'");
     expect(prod).toContain("script-src-attr 'none'");
     expect(prod).toContain("object-src 'none'");
     expect(prod).not.toMatch(/unsafe-inline|unsafe-eval|\*|https:(?!\/\/vercel)|data:/);
-    expect(scriptPolicy("n", { NODE_ENV: "production", VERCEL_ENV: "preview" })).toContain("https://vercel.live");
-    expect(scriptPolicy("n", { NODE_ENV: "production", VERCEL_ENV: "production" })).not.toContain("vercel.live");
-    expect(scriptPolicy("n", { NODE_ENV: "development" })).toContain("'unsafe-eval'");
+    // The proxy's header replaces next.config's: it keeps framing closed, or open for a widget only.
+    expect(prod).toContain("frame-ancestors 'none'");
+    expect(prod).toContain("form-action 'self'");
+    expect(scriptPolicy("n", { NODE_ENV: "production" }, widgetCsp)).toMatch(/^frame-ancestors \*;.*script-src 'self' 'nonce-n'/);
+    for (const w of ["/fr/registration-widget/abc", "/nl/hall-of-fame-widget/abc", "/en/c/club-b6/widget/next"]) expect(isWidgetPath(w), w).toBe(true);
+    for (const p of ["/fr", "/fr/registration-widgets", "/fr/c/club/page", "/de/registration-widget/x", "/fr/inscription/x"]) expect(isWidgetPath(p), p).toBe(false);
+    expect(readFileSync("src/proxy.ts", "utf8")).toContain("isWidgetPath(request.nextUrl.pathname) ? widgetCsp : pageCsp");
+    expect(scriptPolicy("n", { NODE_ENV: "production", VERCEL_ENV: "preview" }, pageCsp)).toContain("https://vercel.live");
+    expect(scriptPolicy("n", { NODE_ENV: "production", VERCEL_ENV: "production" }, pageCsp)).not.toContain("vercel.live");
+    expect(scriptPolicy("n", { NODE_ENV: "development" }, pageCsp)).toContain("'unsafe-eval'");
     const nonces = new Set(Array.from({ length: 200 }, newNonce));
     expect(nonces.size).toBe(200);
     for (const n of nonces) expect(n).toMatch(/^[A-Za-z0-9+/]{22}==$/);

@@ -6,13 +6,15 @@
  * the request's policy; the two inline scripts of the site (theme, club
  * palette) take it from `x-nonce`.
  */
-export function scriptPolicy(nonce: string, env: Record<string, string | undefined>) {
+export function scriptPolicy(nonce: string, env: Record<string, string | undefined>, base: string) {
   const sources = ["'self'", `'nonce-${nonce}'`];
   // React and hot reload evaluate code during development only.
   if (env.NODE_ENV !== "production") sources.push("'unsafe-eval'");
   // Vercel's comment bar on previews.
   if (env.VERCEL_ENV === "preview") sources.push("https://vercel.live");
-  return [`script-src ${sources.join(" ")}`, "script-src-attr 'none'", "object-src 'none'", "base-uri 'self'"].join("; ");
+  // One header: the page's own directives (framing, forms, base) and the scripts', since
+  // the proxy's header replaces the one of next.config.ts.
+  return [base, `script-src ${sources.join(" ")}`, "script-src-attr 'none'"].join("; ");
 }
 /** 128 random bits, base64: never the same twice, never guessed. */
 export function newNonce() {

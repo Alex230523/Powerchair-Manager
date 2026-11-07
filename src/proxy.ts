@@ -1,15 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { newNonce, scriptPolicy } from "@/lib/csp";
+import { isWidgetPath, pageCsp, widgetCsp } from "@/lib/security-headers";
 
 /**
  * Security (07/11/2026), cross-site scripting: every page gets a nonce and a
- * policy that lets only the site's own scripts run (see src/lib/csp.ts). The
- * other headers of the pages stay in next.config.ts; the browser applies
- * both policies.
+ * policy that lets only the site's own scripts run (see src/lib/csp.ts). Its
+ * header replaces the policy of next.config.ts, so it carries the page's
+ * other directives too: framing closed, or open to any site for a widget.
  */
 export function proxy(request: NextRequest) {
   const nonce = newNonce(),
-    policy = scriptPolicy(nonce, process.env);
+    policy = scriptPolicy(nonce, process.env, isWidgetPath(request.nextUrl.pathname) ? widgetCsp : pageCsp);
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);
   headers.set("Content-Security-Policy", policy);
