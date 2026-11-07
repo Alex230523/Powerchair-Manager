@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { journeyTacticDiagram } from "@/domains/competitions/journey";
-import { principalIn, failure } from "@/lib/http";
+import { principalIn, failure, servedType } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const d = await journeyTacticDiagram(getDb(), await principalIn(request, "matches"), z.uuid().parse(url.searchParams.get("id")), z.uuid().parse(url.searchParams.get("exercise")));
     return new Response(new Uint8Array(d.content), {
       headers: {
-        "Content-Type": d.media_type,
+        "Content-Type": servedType(d.media_type),
         "Content-Disposition": "inline",
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",

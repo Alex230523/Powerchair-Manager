@@ -11,7 +11,7 @@ describe("reports", () => {
   it("keeps the page without its query, and no name unless agreed", () => {
     expect(pageOnly("/fr/join?token=secret#x")).toBe("/fr/join");
     const body = issueBody({ kind: "bug", description: "Rien ne bouge", context: { page: "/fr", role: "coach", browser: "A|B" }, contact: null, screenshot: null });
-    expect(body).toContain("| browser | A/B |");
+    expect(body).toContain("| browser | `A/B` |");
     expect(body).toContain("aucun nom transmis");
     expect(issueBody({ kind: "bug", description: "x", context: {}, contact: { name: "Léa", email: "lea@example.test" }, screenshot: "https://app/x" })).toContain("Léa <lea@example.test>");
     expect(issueTitle("idea", "Une   idée\nsur deux lignes")).toBe("[Idée] Une idée sur deux lignes");

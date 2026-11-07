@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
-import { AccessError, account, active, audit, type Principal } from "./service";
+import { AccessError, account, active, audit, refuseSupport, type Principal } from "./service";
 import { delegable, permissions, type Permission } from "./policy";
 
 /**
@@ -145,6 +145,8 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (x: Ctx) => 
     if (expected && expected !== a.organization_id) throw new AccessError("CONTEXT_CHANGED", 409);
     if (a.kind !== "club" && a.kind !== "federation") throw new AccessError("FORBIDDEN");
     await c.query(`SELECT id FROM organization WHERE id=$1 FOR ${write ? "UPDATE" : "SHARE"}`, [a.organization_id]);
+    // Security (07/11/2026): a support access never changes the rights of the club.
+    if (write) await refuseSupport(c, a.id);
     const mfa = mfaSatisfied(!!(await account(c, p)).twoFactorEnabled);
     const mine = permissions(a.role, a.grants);
     const out = await fn({ c, org: a.organization_id, kind: a.kind as "club" | "federation", userId: p.userId, manage: mfa && mine.includes("mandates.manage"), mine });

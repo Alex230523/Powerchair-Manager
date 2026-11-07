@@ -243,6 +243,11 @@ export const errors: Record<string, { fr: string; nl: string; en: string }> = {
     nl: "Deze module is uitgeschakeld voor uw club. De voorzitter kan ze opnieuw activeren in Instellingen, rubriek Modules: er werd niets verwijderd.",
     en: "This module is switched off for your club. The president can switch it back on in Settings, Modules: nothing was deleted.",
   },
+  SUPPORT_LIMITED: {
+    fr: "Un accès de support ne change ni les mandats, ni les droits, ni la présidence, ni les clés, ni le compte bancaire. Demandez-le à la présidence du club.",
+    nl: "Een supporttoegang wijzigt geen mandaten, rechten, voorzitterschap, sleutels of bankrekening. Vraag het aan het voorzitterschap van de club.",
+    en: "A support access changes no mandates, rights, presidency, keys or bank account. Ask the club's presidency.",
+  },
   LAST_ADMIN: {
     fr: "Impossible de supprimer ou limiter le dernier président actif sans date de fin. Ajoutez un successeur avant cette modification.",
     nl: "De laatste actieve voorzitter zonder einddatum kan niet worden verwijderd of beperkt. Voeg eerst een opvolger toe.",

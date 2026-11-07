@@ -104,8 +104,8 @@ it("sends a remark as an issue with its context, no name, and keeps the token on
   expect(post.auth).toBe("Bearer ghp_secret-test-token");
   expect(post.body!.labels).toEqual(["signalement", "bug"]);
   const body = String(post.body!.body);
-  expect(body).toContain("| page | /fr/calendar |");
-  expect(body).toContain("| role | guardian |");
+  expect(body).toContain("| page | `/fr/calendar` |");
+  expect(body).toContain("| role | `guardian` |");
   expect(body).not.toContain("abc123");
   expect(body).not.toContain("Parent d'Ana");
   expect(body).not.toContain("@example.test");

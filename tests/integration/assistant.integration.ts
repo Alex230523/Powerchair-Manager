@@ -87,7 +87,8 @@ it("runs the reads for the model, stops on a write, runs it once approved, and c
   expect(fed.role).toBe("user");
   expect(JSON.stringify(fed.content)).toContain(invoice);
   const first = (fed.content as { content: string }[])[0];
-  expect(JSON.parse(first.content).invoices[0].late).toBe(true);
+  // Wrapped as data since the prompt injection audit (07/11/2026).
+  expect(JSON.parse(first.content).data.invoices[0].late).toBe(true);
   expect(turn.pending).toMatchObject({ toolUseId: "t2", name: "send_reminder", input: { invoiceId: invoice } });
   expect(turn.usage).toEqual({ input: 40, output: 16, today: 56 });
   expect((await db.query("SELECT reminders FROM billing_invoice WHERE id=$1", [invoice])).rows[0].reminders).toBe(0);

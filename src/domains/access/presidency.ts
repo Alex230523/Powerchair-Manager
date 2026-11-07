@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
-import { account, active, audit, AccessError, type Principal } from "./service";
+import { account, active, audit, AccessError, refuseSupport, type Principal } from "./service";
 import { inviteProfile } from "./invite";
 
 /**
@@ -37,6 +37,8 @@ async function scope<T>(db: Pool, p: Principal, write: boolean, fn: (c: PoolClie
     const user = await account(c, p);
     const president = a.kind === "club" && a.role === "club_president" && mfaSatisfied(!!user.twoFactorEnabled);
     if (write && !president) throw new AccessError("FORBIDDEN");
+    // Security (07/11/2026): a support access never hands the presidency over.
+    if (write) await refuseSupport(c, a.id);
     const out = await fn(c, a.organization_id, president);
     await c.query("COMMIT");
     return out;

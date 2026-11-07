@@ -32,6 +32,7 @@ import { Badge, Button, Card, EmptyState, PageHeader, Segmented, Toolbar } from 
 import { Icon } from "./icons";
 import { Modal } from "./modal";
 import { useData, usePost } from "./use-api";
+import { externalHref } from "@/lib/html";
 
 /**
  * A1: the central to-do of the club or the federation. One collapsible
@@ -717,7 +718,7 @@ function TaskDetail({
         {x.detail && <p>{x.detail}</p>}
         {x.link_url && (
           <p>
-            <a href={x.link_url} target="_blank" rel="noopener noreferrer">
+            <a href={externalHref(x.link_url)} target="_blank" rel="noopener noreferrer">
               {todoMoreCopy[locale].linkOpen}
             </a>
           </p>

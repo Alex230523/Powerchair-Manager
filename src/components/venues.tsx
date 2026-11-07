@@ -10,6 +10,7 @@ import { Modal } from "./modal";
 import { PlaceDialog } from "./place-dialog";
 import { placesCopy } from "./places-copy";
 import { currentRates, type PlaceCategory, type PlaceRow } from "@/domains/venues/schema";
+import { externalHref } from "@/lib/html";
 
 const copy = {
   fr: {
@@ -506,7 +507,7 @@ export function Venues({ locale }: { locale: Locale }) {
                         {v.website && (
                           <>
                             {" · "}
-                            <a href={v.website} rel="noopener noreferrer" target="_blank">{t.website}</a>
+                            <a href={externalHref(v.website)} rel="noopener noreferrer" target="_blank">{t.website}</a>
                           </>
                         )}
                       </p>
