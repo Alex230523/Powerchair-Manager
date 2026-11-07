@@ -3,7 +3,7 @@ import { orgKeyCommand } from "../mcp/organization-schema";
 import { orgMcpKeyExecute, orgMcpKeys } from "../mcp/organization";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
-import { account, active, audit, AccessError, type Principal } from "../access/service";
+import { account, active, audit, AccessError, refuseSupport, type Principal } from "../access/service";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { seal } from "../notifications/crypto";
 import { ageOn } from "../people/schema";
@@ -159,8 +159,11 @@ export async function integrationsExecute(db: Pool, p: Principal, cmd: Integrati
         }
         case "createMcpKey":
         case "revokeMcpKey":
+          // Security (07/11/2026): a support access leaves no key behind.
+          if (cmd.action === "createMcpKey") await refuseSupport(s.c, s.a.id);
           return orgMcpKeyExecute(s.c, org, s.p.userId, cmd);
         case "createKey": {
+          await refuseSupport(s.c, s.a.id);
           const prefix = randomBytes(8).toString("hex").slice(0, 8);
           const secret = randomBytes(32).toString("base64url");
           const key = `pfm_${prefix}_${secret}`;
@@ -178,6 +181,7 @@ export async function integrationsExecute(db: Pool, p: Principal, cmd: Integrati
           return { id: cmd.id };
         }
         case "createHook": {
+          await refuseSupport(s.c, s.a.id);
           if (!acceptableUrl(cmd.url)) throw new AccessError("UNSAFE_URL", 400);
           const secret = "whsec_" + randomBytes(32).toString("base64url");
           const id = (await s.c.query("INSERT INTO webhook(organization_id,url,secret_sealed,events,created_by) VALUES($1,$2,'-',$3,$4) RETURNING id", [org, cmd.url, [...new Set(cmd.events)], s.p.userId])).rows[0].id as string;
