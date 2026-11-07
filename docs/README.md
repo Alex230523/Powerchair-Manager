@@ -189,6 +189,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 07/11/2026 | [Sécurité : autorisations mal définies](evolutions/2026-11-07-zzz-securite-autorisations.md) |
 | 07/11/2026 | [Sécurité : injection de consignes contre un agent IA](evolutions/2026-11-07-zzzz-securite-prompt-injection.md) |
 | 07/11/2026 | [Sécurité : absence de limitation des requêtes](evolutions/2026-11-07-zzzzz-securite-limitation-requetes.md) |
+| 07/11/2026 | [Sécurité : fuites de données vers l'IA](evolutions/2026-11-07-zzzzzz-securite-fuites-ia.md) |
 
 ## Convention
 

@@ -339,6 +339,8 @@ type Copy = {
   assistant: {
     intro: string;
     off: string;
+    /** Security (07/11/2026), data leaking to an AI: what leaves, said where the assistant is. */
+    leaves: string;
     model: string;
     usage: string;
     toolsRead: string;
@@ -771,6 +773,7 @@ const fr: Copy = {
   assistant: {
     intro: "Posez une question à l'assistant : il lit les chiffres de la console avec les mêmes outils que votre clé MCP, en votre nom. Une action d'écriture (rappel, paiement, note) vous est proposée et attend votre confirmation. La conversation reste dans votre navigateur.",
     off: "L'assistant n'est pas configuré sur ce serveur : ajoutez ANTHROPIC_API_KEY (et au besoin PFM_ASSISTANT_MODEL) dans la configuration.",
+    leaves: "Ce que l'assistant lit part chez Anthropic, aux États-Unis, pour la réponse. Les adresses e-mail, téléphones, IBAN, numéros nationaux et cartes sont masqués avant l'envoi ; les messages d'une demande RGPD ne partent pas.",
     model: "Modèle : {model}",
     usage: "Aujourd'hui : {calls} échange(s), {tokens} jetons · ce mois : {month} jetons",
     toolsRead: "Lecture : {tools}",
@@ -1202,6 +1205,7 @@ const nl: Copy = {
   assistant: {
     intro: "Stel de assistent een vraag: hij leest de cijfers van de console met dezelfde tools als uw MCP-sleutel, in uw naam. Een schrijfactie (herinnering, betaling, nota) wordt voorgesteld en wacht op uw bevestiging. Het gesprek blijft in uw browser.",
     off: "De assistent is niet geconfigureerd op deze server: voeg ANTHROPIC_API_KEY (en zo nodig PFM_ASSISTANT_MODEL) toe aan de configuratie.",
+    leaves: "Wat de assistent leest, gaat naar Anthropic in de Verenigde Staten voor het antwoord. E-mailadressen, telefoonnummers, IBAN, rijksregisternummers en kaartnummers worden vooraf gemaskeerd; de berichten van een AVG-verzoek gaan niet mee.",
     model: "Model: {model}",
     usage: "Vandaag: {calls} uitwisseling(en), {tokens} tokens · deze maand: {month} tokens",
     toolsRead: "Lezen: {tools}",
@@ -1633,6 +1637,7 @@ const en: Copy = {
   assistant: {
     intro: "Ask the assistant: it reads the console's figures with the same tools as your MCP key, in your name. A write action (reminder, payment, note) is proposed and waits for your confirmation. The conversation stays in your browser.",
     off: "The assistant is not configured on this server: add ANTHROPIC_API_KEY (and PFM_ASSISTANT_MODEL if needed) to the configuration.",
+    leaves: "What the assistant reads goes to Anthropic, in the United States, for the answer. E-mail addresses, phone numbers, IBANs, national numbers and card numbers are masked before it goes; the messages of a GDPR request are not sent.",
     model: "Model: {model}",
     usage: "Today: {calls} exchange(s), {tokens} tokens · this month: {month} tokens",
     toolsRead: "Read: {tools}",
