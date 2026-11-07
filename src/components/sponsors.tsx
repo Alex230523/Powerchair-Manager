@@ -12,6 +12,7 @@ import { fundingCopy } from "./funding-copy";
 import { Badge, Button, Card, EmptyState, PageHeader } from "./ui";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
+import { externalHref } from "@/lib/html";
 
 type View = Awaited<ReturnType<typeof fundingView>>;
 type Partner = View["partners"][number];
@@ -366,7 +367,7 @@ export function TaskList({
                   <p className="small task-proofs">
                     {s.proofs} :{" "}
                     {x.proof_url && (
-                      <a href={x.proof_url} target="_blank" rel="noopener noreferrer">
+                      <a href={externalHref(x.proof_url)} target="_blank" rel="noopener noreferrer">
                         {x.proof_url.replace(/^https?:\/\//, "").slice(0, 40)}
                       </a>
                     )}
@@ -671,7 +672,7 @@ export function PartnerReportPage({ locale, token }: { locale: Locale; token: st
                   {x.status === "done" && (x.proof_url || x.proofs.length > 0) && (
                     <p className="small">
                       {x.proof_url && (
-                        <a href={x.proof_url} target="_blank" rel="noopener noreferrer">{s.seeProof}</a>
+                        <a href={externalHref(x.proof_url)} target="_blank" rel="noopener noreferrer">{s.seeProof}</a>
                       )}
                       {x.proofs.map((p) => (
                         <span key={p.id}>

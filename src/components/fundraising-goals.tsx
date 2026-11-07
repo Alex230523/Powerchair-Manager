@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/locale";
 import { goalsCopy } from "./fundraising-goals-copy";
 import type { fundraisingView } from "@/domains/fundraising/service";
 import { cssVars } from "./css-vars";
+import { externalHref } from "@/lib/html";
 
 /**
  * 9, part 3: a fundraising action's outside link, its goals per person
@@ -40,7 +41,7 @@ export function PotExtras({ locale, pot, data, busy, send }: { locale: Locale; p
     <div className="pot-extras">
       {pot.link_url && (
         <p>
-          <a href={pot.link_url} target="_blank" rel="noopener noreferrer">
+          <a href={externalHref(pot.link_url)} target="_blank" rel="noopener noreferrer">
             {t.link}
             <span className="sr-only"> : {pot.name}</span>
           </a>

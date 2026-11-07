@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { publicAwardPhoto } from "@/domains/awards/service";
-import { failure } from "@/lib/http";
+import { failure, servedType } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 /** Wave 16 (S1): a published photo of the public Hall of fame (no account; only prizes ticked « Peut être publié »). */
@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ wid
     if (!r) return new Response(null, { status: 404 });
     return new Response(new Uint8Array(r.photo), {
       headers: {
-        "Content-Type": r.photo_type,
+        "Content-Type": servedType(r.photo_type),
         "Cache-Control": "public, max-age=300",
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "default-src 'none'",

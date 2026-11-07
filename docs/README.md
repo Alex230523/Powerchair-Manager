@@ -184,6 +184,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 06/11/2026 | [Sécurité : fuite de clés API et de secrets](evolutions/2026-11-06-zzzzzzzzzzzzz-securite-secrets.md) |
 | 06/11/2026 | [Sécurité : authentification défaillante](evolutions/2026-11-06-zzzzzzzzzzzzzz-securite-authentification.md) |
 | 06/11/2026 | [Sécurité : mauvaises configurations du cloud](evolutions/2026-11-06-zzzzzzzzzzzzzzz-securite-cloud.md) |
+| 07/11/2026 | [Sécurité : Cross-Site Scripting (XSS)](evolutions/2026-11-07-securite-xss.md) |
 
 ## Convention
 

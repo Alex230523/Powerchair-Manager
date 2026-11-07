@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { statementFile } from "@/domains/finance/service";
-import { principalIn, noStore, failure } from "@/lib/http";
+import { principalIn, noStore, failure, servedType } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response(new Uint8Array(f.content), {
       headers: {
         ...noStore,
-        "Content-Type": f.media_type === "text/csv" ? "text/csv; charset=utf-8" : f.media_type,
+        "Content-Type": servedType(f.media_type === "text/csv" ? "text/csv; charset=utf-8" : f.media_type),
         "Content-Disposition": (f.media_type === "text/csv" ? "attachment" : "inline") + "; filename*=UTF-8''" + encodeURIComponent(f.filename),
         "Content-Security-Policy": "sandbox; default-src 'none'",
         "X-Content-Type-Options": "nosniff",

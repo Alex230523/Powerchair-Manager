@@ -2,7 +2,7 @@ import { getDb } from "@/lib/db";
 import { associationExecute, associationView, registerPdf } from "@/domains/association/service";
 import { associationCommand } from "@/domains/association/schema";
 import { isLocale } from "@/lib/locale";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principal, origin, bounded, noStore, failure, disposition } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const p = await principal(request);
     if (q.get("pdf") === "1") {
       const f = await registerPdf(getDb(), p, locale);
-      return new Response(new Uint8Array(f.bytes), { headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${f.filename}"` } });
+      return new Response(new Uint8Array(f.bytes), { headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": disposition("attachment", f.filename) } });
     }
     return Response.json(await associationView(getDb(), p, locale), { headers: noStore });
   } catch (e) {

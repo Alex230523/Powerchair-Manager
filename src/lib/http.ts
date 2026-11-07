@@ -7,6 +7,8 @@ import { getDb } from "@/lib/db";
 import { assertModule } from "@/domains/club/governance";
 import type { OptionalModule } from "@/domains/access/rights";
 export const noStore = { "Cache-Control": "private, no-store" };
+// Security (07/11/2026), cross-site scripting: how a stored file is sent (src/lib/html.ts).
+export { disposition, servedType } from "./html";
 export async function principal(request: Request) {
   const s = await getAuth().api.getSession({ headers: request.headers });
   if (!s) throw new AccessError("UNAUTHENTICATED", 401);
