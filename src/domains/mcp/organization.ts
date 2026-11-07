@@ -64,7 +64,8 @@ export async function orgMcpAuth(db: Pool, header: string | null) {
   const k = (
     await db.query(
       `SELECT k.id,k.organization_id,k.key_hash,k.scopes,k.revoked_at,o.suspended_at,
-         EXISTS(SELECT 1 FROM role_assignment r WHERE r.organization_id=k.organization_id AND r.user_id=k.created_by AND r.role='club_president' AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now())) AS presides
+         -- Security (07/11/2026): a president still in office, still a member, whose account is still active.
+         EXISTS(SELECT 1 FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=k.organization_id AND r.user_id=k.created_by AND r.role='club_president' AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active AND u.active) AS presides
          FROM organization_mcp_key k JOIN organization o ON o.id=k.organization_id WHERE k.prefix=$1`,
       [m[2]],
     )

@@ -11,6 +11,7 @@ import {
   requirePermission,
   AccessError,
   type Principal,
+  refuseSupport,
 } from "../access/service";
 import { permissions } from "../access/policy";
 import { palettes, tints } from "./appearance";
@@ -137,6 +138,8 @@ export async function clubExecute(
       mfaSatisfied(!!user.twoFactorEnabled),
     );
     if (input.action === "identity") {
+      // Security (07/11/2026): a support access never changes where the money goes.
+      if (input.iban != null && (await c.query("SELECT 1 FROM organization WHERE id=$1 AND COALESCE(iban,'') IS DISTINCT FROM $2", [a.organization_id, input.iban])).rowCount) await refuseSupport(c, a.id);
       await c.query(
         "UPDATE organization SET name=$2,contact_email=$3,address=COALESCE($4,address),company_number=COALESCE($5,company_number),signatory=COALESCE($6,signatory),iban=COALESCE($7,iban) WHERE id=$1",
         [

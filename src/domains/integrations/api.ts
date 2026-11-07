@@ -22,10 +22,21 @@ export class ApiError extends Error {
 export async function apiAuth(db: Pool, header: string | null, scope: string) {
   const m = /^Bearer (pfm_([a-z0-9]{8})_[A-Za-z0-9_-]{40,50})$/.exec(header ?? "");
   if (!m) throw new ApiError(401, "API_KEY_INVALID");
-  const k = (await db.query("SELECT id,organization_id,key_hash,scopes,revoked_at FROM api_key WHERE prefix=$1", [m[2]])).rows[0];
+  // Security (07/11/2026): a key lives as long as the presidency that created it, like the club's
+  // Claude keys; a president who leaves takes his keys with him, the next one creates his own.
+  const k = (
+    await db.query(
+      `SELECT k.id,k.organization_id,k.key_hash,k.scopes,k.revoked_at,o.suspended_at,
+         EXISTS(SELECT 1 FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=k.organization_id AND r.user_id=k.created_by AND r.role='club_president' AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active AND u.active) AS presides
+         FROM api_key k JOIN organization o ON o.id=k.organization_id WHERE k.prefix=$1`,
+      [m[2]],
+    )
+  ).rows[0];
   const given = Buffer.from(keyHash(m[1])),
     stored = Buffer.from(k?.key_hash ?? "".padEnd(64, "0"));
   if (!k || k.revoked_at || given.length !== stored.length || !timingSafeEqual(given, stored)) throw new ApiError(401, "API_KEY_INVALID");
+  if (!k.presides) throw new ApiError(403, "KEY_ORPHANED");
+  if (k.suspended_at) throw new ApiError(403, "ORG_SUSPENDED");
   if (!(k.scopes as string[]).includes(scope)) throw new ApiError(403, "SCOPE_MISSING");
   const count = (
     await db.query(

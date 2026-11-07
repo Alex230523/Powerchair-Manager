@@ -18,7 +18,8 @@ type Db = Pool | PoolClient;
 
 /** Writes the event for each active hook of the club that listens to it (once per hook and key). */
 export async function emitWebhook(c: Db, org: string, event: WebhookEvent, key: string, data: Record<string, unknown>, delaySeconds = 0) {
-  const hooks = (await c.query("SELECT id FROM webhook WHERE organization_id=$1 AND active AND $2=ANY(events)", [org, event])).rows as { id: string }[];
+  // Security (07/11/2026): a hook speaks for the club as long as the presidency that created it.
+  const hooks = (await c.query(`SELECT w.id FROM webhook w WHERE w.organization_id=$1 AND w.active AND $2=ANY(w.events) AND EXISTS(SELECT 1 FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=w.organization_id AND r.user_id=w.created_by AND r.role='club_president' AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active AND u.active)`, [org, event])).rows as { id: string }[];
   for (const h of hooks)
     await c.query(
       "INSERT INTO webhook_delivery(webhook_id,organization_id,event,event_key,payload,next_at) VALUES($1,$2,$3,$4,$5,now()+make_interval(secs=>$6)) ON CONFLICT (webhook_id,event_key) DO NOTHING",
@@ -79,7 +80,8 @@ export async function webhookTick(db: Pool, post: Poster = httpPost, now = () =>
   let sent = 0;
   const due = (
     await db.query(
-      "SELECT d.id,d.event,d.payload,d.attempts,w.url,w.secret_sealed,w.id AS webhook_id FROM webhook_delivery d JOIN webhook w ON w.id=d.webhook_id AND w.organization_id=d.organization_id WHERE d.state='pending' AND d.next_at<=now() AND w.active ORDER BY d.next_at LIMIT 50",
+      `SELECT d.id,d.event,d.payload,d.attempts,w.url,w.secret_sealed,w.id AS webhook_id FROM webhook_delivery d JOIN webhook w ON w.id=d.webhook_id AND w.organization_id=d.organization_id
+        WHERE d.state='pending' AND d.next_at<=now() AND w.active AND EXISTS(SELECT 1 FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=w.organization_id AND r.user_id=w.created_by AND r.role='club_president' AND r.revoked_at IS NULL AND r.valid_from<=now() AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active AND u.active) ORDER BY d.next_at LIMIT 50`,
     )
   ).rows as { id: string; event: string; payload: unknown; attempts: number; url: string; secret_sealed: string; webhook_id: string }[];
   for (const d of due) {
