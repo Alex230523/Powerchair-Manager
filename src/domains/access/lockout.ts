@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { createHash } from "node:crypto";
+import { securityEvent } from "../security/events";
 
 /**
  * Security (06/11/2026), broken authentication: the auth library limits the
@@ -23,6 +24,14 @@ export async function recordSignIn(db: Pool, email: unknown, ok: boolean) {
     await db.query("DELETE FROM auth_failure WHERE email_hash=$1", [hash(email)]);
     return;
   }
-  await db.query("INSERT INTO auth_failure(email_hash) VALUES($1)", [hash(email)]);
+  const n = (
+    await db.query(
+      `WITH added AS (INSERT INTO auth_failure(email_hash) VALUES($1) RETURNING 1)
+       SELECT 1+(SELECT count(*)::int FROM auth_failure WHERE email_hash=$1 AND at>now()-make_interval(mins => $2)) AS n FROM added`,
+      [hash(email), WINDOW_MINUTES],
+    )
+  ).rows[0].n as number;
+  // Security (07/11/2026): the failure that locks the address is journaled (its hash, never the address).
+  if (n === MAX_FAILURES) await securityEvent(db, "auth.lockout", { source: hash(email).slice(0, 32), details: { failures: n, minutes: WINDOW_MINUTES } });
   if (Math.random() < 0.02) await db.query("DELETE FROM auth_failure WHERE at<now()-interval '1 day'");
 }

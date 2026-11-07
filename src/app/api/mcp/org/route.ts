@@ -1,5 +1,7 @@
 import { getDb } from "@/lib/db";
 import { gate } from "@/lib/http";
+import { clientKey } from "@/lib/rate-limit";
+import { securityEvent } from "@/domains/security/events";
 import { OrgMcpAuthError, orgMcpAuth, orgMcpHandle } from "@/domains/mcp/organization";
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,8 @@ export async function POST(request: Request) {
     const out = await orgMcpHandle(db, auth, body);
     return out ? Response.json(out, { headers }) : new Response(null, { status: 202 });
   } catch (e) {
+    // Security (07/11/2026): a key refused is journaled by address (a key guessed, revoked, orphaned).
+    if (e instanceof OrgMcpAuthError && e.status !== 429) await securityEvent(db, "key.invalid", { source: clientKey(request), details: { api: "mcp-org", code: e.code } });
     if (e instanceof OrgMcpAuthError) return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: e.code } }, { status: e.status, headers: e.status === 401 ? { ...headers, "WWW-Authenticate": 'Bearer realm="club"' } : headers });
     return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "Internal error" } }, { status: 500, headers });
   }

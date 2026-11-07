@@ -750,6 +750,59 @@ function SupervisionView({ locale, when, day }: { locale: Locale; when: (iso: st
           <p className="muted">{s.dataRequestsNone}</p>
         )}
       </Card>
+      <Card title={s.security} id="console-security">
+        <p className="muted small">{s.securityIntro}</p>
+        <p>
+          {(["critical", "warning", "info"] as const).map((sev) => (
+            <span key={sev}>
+              <Badge tone={sev === "critical" ? "danger" : sev === "warning" ? "warning" : "neutral"}>{fill(s.securityDay[sev], { n: data.security.day.find((d) => d.severity === sev)?.n ?? 0 })}</Badge>{" "}
+            </span>
+          ))}
+        </p>
+        {data.security.alerts.length > 0 && (
+          <>
+            <h3>{s.securityAlerts}</h3>
+            <ul className="plain-list">
+              {data.security.alerts.map((a) => (
+                <li key={a.rule + a.sent_at}>
+                  {when(a.sent_at)} · {s.securityRules[a.rule] ?? a.rule} · {fill(s.securityAlertLine, { n: a.events, r: a.recipients })}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {data.security.events.length ? (
+          <div className="table-scroll" tabIndex={0}>
+            <table className="data-table">
+              <caption className="sr-only">{s.security}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{s.securityColumns.when}</th>
+                  <th scope="col">{s.securityColumns.kind}</th>
+                  <th scope="col">{s.securityColumns.who}</th>
+                  <th scope="col">{s.securityColumns.source}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.security.events.map((e) => (
+                  <tr key={e.id}>
+                    <td>{when(e.created_at)}</td>
+                    <td>
+                      <Badge tone={e.severity === "critical" ? "danger" : e.severity === "warning" ? "warning" : "neutral"}>{s.securityKinds[e.kind] ?? e.kind}</Badge>
+                    </td>
+                    <td>{[e.actor, e.organization].filter(Boolean).join(" · ")}</td>
+                    <td>
+                      <code>{e.source ? e.source.slice(0, 8) : ""}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">{s.securityNone}</p>
+        )}
+      </Card>
       <ReportsCard locale={locale} day={day} />
     </div>
   );

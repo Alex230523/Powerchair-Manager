@@ -239,6 +239,16 @@ type Copy = {
     dataRequestKinds: Record<string, string>;
     dataRequestStates: Record<string, string>;
     dueOn: string;
+    /** Security (07/11/2026), logging and alerting: the security journal. */
+    security: string;
+    securityIntro: string;
+    securityDay: { critical: string; warning: string; info: string };
+    securityAlerts: string;
+    securityAlertLine: string;
+    securityRules: Record<string, string>;
+    securityColumns: { when: string; kind: string; who: string; source: string };
+    securityKinds: Record<string, string>;
+    securityNone: string;
   };
   operators: {
     intro: string;
@@ -673,6 +683,15 @@ const fr: Copy = {
     dataRequestKinds: { access: "Accès", rectification: "Rectification", erasure: "Effacement" },
     dataRequestStates: { received: "Reçue", in_progress: "En cours", done: "Traitée", refused: "Refusée" },
     dueOn: "échéance {day}",
+    security: "Journal de sécurité",
+    securityIntro: "Ce qu'un attaquant laisse derrière lui : adresses bloquées, inondations refusées, clés refusées, requêtes d'un autre site, mauvais secret du planificateur, opérateurs ajoutés, accès de support, exports. Gardé douze mois, jamais modifiable. Une source est l'empreinte d'une adresse réseau, jamais l'adresse. Les propriétaires reçoivent une alerte par e-mail en quelques minutes.",
+    securityDay: { critical: "{n} critique(s) en 24 h", warning: "{n} avertissement(s)", info: "{n} information(s)" },
+    securityAlerts: "Alertes envoyées",
+    securityAlertLine: "{n} événement(s), {r} destinataire(s)",
+    securityRules: { critical: "Événement critique", lockouts: "Adresses bloquées", flood: "Inondation refusée", keys: "Clés refusées", origin: "Requêtes d'un autre site", borrow: "Accès de support" },
+    securityColumns: { when: "Quand", kind: "Événement", who: "Compte · organisation", source: "Source" },
+    securityKinds: { "auth.lockout": "Adresse bloquée après 10 mots de passe faux", "auth.operator_signin": "Connexion d'un opérateur", "rate.limited": "Trop de demandes refusées", "key.invalid": "Clé refusée", "request.bad_origin": "Requête depuis un autre site", "cron.unauthorized": "Mauvais secret du planificateur", "operator.added": "Opérateur ajouté", "operator.revoked": "Opérateur retiré", "operator.key_created": "Clé MCP d'opérateur créée", "support.borrow": "Accès de support ouvert", "data.export": "Export de données" },
+    securityNone: "Aucun événement de sécurité.",
   },
   operators: {
     intro: "Les opérateurs n'ont aucun mandat dans un club. Le propriétaire ajoute un compte existant par son e-mail et choisit son rôle.",
@@ -1105,6 +1124,15 @@ const nl: Copy = {
     dataRequestKinds: { access: "Inzage", rectification: "Verbetering", erasure: "Wissing" },
     dataRequestStates: { received: "Ontvangen", in_progress: "Bezig", done: "Afgehandeld", refused: "Geweigerd" },
     dueOn: "termijn {day}",
+    security: "Beveiligingslogboek",
+    securityIntro: "Wat een aanvaller achterlaat: geblokkeerde adressen, geweigerde overspoelingen, geweigerde sleutels, verzoeken van een andere site, verkeerd geheim van de planner, toegevoegde operatoren, supporttoegangen, exports. Twaalf maanden bewaard, nooit wijzigbaar. Een bron is de vingerafdruk van een netwerkadres, nooit het adres. De eigenaars krijgen binnen enkele minuten een waarschuwing per e-mail.",
+    securityDay: { critical: "{n} kritiek(e) in 24 u", warning: "{n} waarschuwing(en)", info: "{n} informatie(s)" },
+    securityAlerts: "Verstuurde waarschuwingen",
+    securityAlertLine: "{n} gebeurtenis(sen), {r} ontvanger(s)",
+    securityRules: { critical: "Kritieke gebeurtenis", lockouts: "Geblokkeerde adressen", flood: "Geweigerde overspoeling", keys: "Geweigerde sleutels", origin: "Verzoeken van een andere site", borrow: "Supporttoegang" },
+    securityColumns: { when: "Wanneer", kind: "Gebeurtenis", who: "Account · organisatie", source: "Bron" },
+    securityKinds: { "auth.lockout": "Adres geblokkeerd na 10 foute wachtwoorden", "auth.operator_signin": "Aanmelding van een operator", "rate.limited": "Te veel verzoeken geweigerd", "key.invalid": "Sleutel geweigerd", "request.bad_origin": "Verzoek van een andere site", "cron.unauthorized": "Verkeerd geheim van de planner", "operator.added": "Operator toegevoegd", "operator.revoked": "Operator verwijderd", "operator.key_created": "MCP-sleutel van operator aangemaakt", "support.borrow": "Supporttoegang geopend", "data.export": "Export van gegevens" },
+    securityNone: "Geen beveiligingsgebeurtenissen.",
   },
   operators: {
     intro: "Beheerders hebben geen mandaat in een club. De eigenaar voegt een bestaand account toe via zijn e-mail en kiest zijn rol.",
@@ -1537,6 +1565,15 @@ const en: Copy = {
     dataRequestKinds: { access: "Access", rectification: "Rectification", erasure: "Erasure" },
     dataRequestStates: { received: "Received", in_progress: "In progress", done: "Done", refused: "Refused" },
     dueOn: "due {day}",
+    security: "Security journal",
+    securityIntro: "What an attacker leaves behind: locked addresses, refused floods, refused keys, requests from another site, wrong scheduler secret, operators added, support accesses, exports. Kept twelve months, never editable. A source is the fingerprint of a network address, never the address. The owners get an e-mail alert within minutes.",
+    securityDay: { critical: "{n} critical in 24 h", warning: "{n} warning(s)", info: "{n} information" },
+    securityAlerts: "Alerts sent",
+    securityAlertLine: "{n} event(s), {r} recipient(s)",
+    securityRules: { critical: "Critical event", lockouts: "Locked addresses", flood: "Refused flood", keys: "Refused keys", origin: "Requests from another site", borrow: "Support access" },
+    securityColumns: { when: "When", kind: "Event", who: "Account · organisation", source: "Source" },
+    securityKinds: { "auth.lockout": "Address locked after 10 wrong passwords", "auth.operator_signin": "An operator signed in", "rate.limited": "Too many requests refused", "key.invalid": "Key refused", "request.bad_origin": "Request from another site", "cron.unauthorized": "Wrong scheduler secret", "operator.added": "Operator added", "operator.revoked": "Operator removed", "operator.key_created": "Operator MCP key created", "support.borrow": "Support access opened", "data.export": "Data export" },
+    securityNone: "No security event.",
   },
   operators: {
     intro: "Operators hold no mandate in a club. The owner adds an existing account by its e-mail and chooses its role.",

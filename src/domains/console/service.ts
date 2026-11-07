@@ -15,6 +15,8 @@ import { jobStates, overdueMails } from "../jobs/health";
  * from PFM_OPERATOR_EMAILS (owners) so the first one can get in.
  */
 import { consoleCommand, keyReview, onboardingSteps, operatorRoles, operatorSessionHours, type ConsoleCommand, type OnboardingStep, type OperatorRole } from "./schema";
+import { securityEvent } from "../security/events";
+import { securityJournal } from "../security/alerts";
 export { consoleCommand, operatorRoles, type ConsoleCommand, type OperatorRole };
 
 export type Operator = { userId: string; name: string; role: OperatorRole };
@@ -418,7 +420,9 @@ export async function consoleSupervision(db: Pool, p: Principal) {
     const dataRequests = (
       await c.query("SELECT d.id,d.kind,d.status,d.due_on::text AS due_on,d.created_at,o.name AS organization FROM data_request d JOIN organization o ON o.id=d.organization_id WHERE d.status IN ('received','in_progress') ORDER BY d.due_on LIMIT 50")
     ).rows as { id: string; kind: string; status: string; due_on: string; created_at: string; organization: string }[];
-    return { jobs, mails, storage, migrations: applied, feedback, dataRequests };
+    // Security (07/11/2026): the security journal and the alerts sent.
+    const security = await securityJournal(c);
+    return { jobs, mails, storage, migrations: applied, feedback, dataRequests, security };
   });
 }
 
@@ -521,6 +525,7 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
       };
       await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,reason,payload) VALUES($1,$2,'borrow',$3,$4)", [o.userId, org.id, command.reason, JSON.stringify({ id: id.id, minutes: command.minutes })]);
       await audit(c, org.id, o.userId, "platform.borrow", org.id, { reason: command.reason, minutes: command.minutes });
+      await securityEvent(c, "support.borrow", { actorId: o.userId, organizationId: org.id, details: { minutes: command.minutes } });
       const notified = await notice(
         c,
         org.id,
@@ -557,6 +562,8 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
         [u.id, command.role, o.userId],
       );
       await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'operator.add',$2)", [o.userId, JSON.stringify({ userId: u.id, role: command.role })]);
+      // Security (07/11/2026): who can do the most changes: journaled, and the owners alerted.
+      await securityEvent(c, "operator.added", { actorId: o.userId, details: { userId: u.id, role: command.role } });
       return { ok: true as const };
     }
     if (command.userId === o.userId) throw new AccessError("SELF_REVOKE", 409);
@@ -572,6 +579,7 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
       await audit(c, b.organization_id, o.userId, "platform.borrow.end", b.organization_id);
     }
     await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'operator.revoke',$2)", [o.userId, JSON.stringify({ userId: command.userId, keys, borrows: borrows.length })]);
+    await securityEvent(c, "operator.revoked", { actorId: o.userId, details: { userId: command.userId, keys } });
     return { ok: true as const };
   });
 }
