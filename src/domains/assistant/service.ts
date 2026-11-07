@@ -18,6 +18,11 @@ import { tools, type ToolDef } from "../mcp/schema";
  */
 const MODEL = process.env.PFM_ASSISTANT_MODEL || "claude-sonnet-4-5";
 const MAX_STEPS = 8;
+/** Security (07/11/2026), missing rate limiting: what one operator may spend in a day (input and output tokens). */
+export const dailyTokens = (env: Record<string, string | undefined> = process.env) => {
+  const n = Number(env.PFM_ASSISTANT_DAILY_TOKENS);
+  return Number.isFinite(n) && n > 0 ? n : 1000000;
+};
 export const assistantConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY);
 
 /**
@@ -119,6 +124,8 @@ export async function pendingDetails(c: PoolClient, name: string, input: Record<
 export async function assistantTurn(db: Pool, p: Principal, input: AssistantInput, call: CallModel = anthropicCall): Promise<AssistantTurn> {
   if (!assistantConfigured() && call === anthropicCall) throw new AccessError("ASSISTANT_OFF", 503);
   return operatorScope(db, p, async (c, o) => {
+    const spent = ((await c.query("SELECT input_tokens+output_tokens AS n FROM operator_assistant_usage WHERE operator_id=$1 AND day=CURRENT_DATE", [o.userId])).rows[0]?.n ?? 0) as number;
+    if (spent >= dailyTokens()) throw new AccessError("ASSISTANT_QUOTA", 429);
     const available = toolsFor(o);
     const messages = input.messages.map((m) => ({ role: m.role, content: m.content as string | Block[] }));
     let used = { input: 0, output: 0 };

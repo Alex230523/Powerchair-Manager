@@ -16,6 +16,8 @@ export default defineConfig({
       PFM_MAIL_DIR: ".local/mail-e2e",
       // The internal design gallery is opened by the suite (hidden in production otherwise).
       PFM_DESIGN_PAGE: "true",
+      // Security (07/11/2026): the robots go far faster than a person; the limits are raised, never removed.
+      PFM_RATE_LIMIT_SCALE: process.env.PFM_RATE_LIMIT_SCALE ?? "1000",
       DATABASE_URL:
         process.env.PFM_E2E_DATABASE_URL ??
         "postgresql://127.0.0.1:1/unavailable",

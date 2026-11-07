@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { throttle } from "@/lib/rate-limit";
 import { getAuth } from "@/lib/auth-server";
 import { AccessError } from "@/domains/access/service";
 import { welcomeCommand, welcomeComplete, welcomeDispute, welcomeView } from "@/domains/access/invite";
@@ -6,8 +7,9 @@ import { origin, bounded, noStore, failure } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 /** Guided account creation (wave 16, I2): what the invitation says. No session needed: the link is the key. */
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
+    await throttle(getDb(), request, "public-read");
     return Response.json(await welcomeView(getDb(), (await params).token), { headers: noStore });
   } catch (e) {
     return failure(e);
@@ -17,6 +19,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 /** « Ce n'est pas mon rôle », or the creation itself: account, invitation accepted, then signed in. */
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
+    // Security (07/11/2026): an account created, a password hashed, a link disputed: counted by address.
+    await throttle(getDb(), request, "public-write", "public-write-day");
     origin(request);
     const token = (await params).token;
     const cmd = welcomeCommand.parse(JSON.parse(new TextDecoder().decode(await bounded(request, 8000))));

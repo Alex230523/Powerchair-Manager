@@ -1,3 +1,4 @@
+import { throttle } from "@/lib/rate-limit";
 import { getDb } from "@/lib/db";
 import { clubLogo, clubLogoForForm } from "@/domains/club/service";
 import { publicHallLogo } from "@/domains/awards/service";
@@ -5,6 +6,7 @@ import { failure, servedType } from "@/lib/http";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
+    await throttle(getDb(), request, "public-read");
     // ?org= for members, ?form= on public registration pages, ?hall= on the public Hall of fame (no club id exposed).
     const q = new URL(request.url).searchParams;
     const form = q.get("form"),

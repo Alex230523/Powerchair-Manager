@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { gate } from "@/lib/http";
 import { OrgMcpAuthError, orgMcpAuth, orgMcpHandle } from "@/domains/mcp/organization";
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" };
 export async function POST(request: Request) {
   const db = getDb();
+  // Security (07/11/2026): counted by address before the key is read (a key guessed, a key revoked).
+  const flood = await gate(request, "api-ip");
+  if (flood) return flood;
   try {
     const auth = await orgMcpAuth(db, request.headers.get("authorization"));
     let body: unknown;

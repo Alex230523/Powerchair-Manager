@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { account, active, audit, AccessError, refuseSupport, type Principal } from "./service";
+import { limit } from "../../lib/rate-limit";
 import { inviteProfile } from "./invite";
 
 /**
@@ -69,6 +70,8 @@ export async function presidencyView(db: Pool, p: Principal) {
 }
 
 export async function presidencyExecute(db: Pool, p: Principal, command: PresidencyCommand, expected: string) {
+  // Security (07/11/2026): a handover sends an e-mail to an address typed by someone; counted per account.
+  if (command.action === "handOver") await limit(db, "user-invite", p.userId);
   return scope(
     db,
     p,

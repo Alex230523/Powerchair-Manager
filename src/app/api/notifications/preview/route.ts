@@ -1,5 +1,6 @@
 import { getAuth } from "@/lib/auth-server";
 import { getDb } from "@/lib/db";
+import { countWrite, tooMany } from "@/lib/http";
 import { AccessError } from "@/domains/access/service";
 import { templatePreview } from "@/domains/notifications/service";
 import { editableKinds } from "@/domains/notifications/templates";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       headers: request.headers,
     });
     if (!session) throw new AccessError("UNAUTHENTICATED", 401);
+    await countWrite(request, session.user.id);
     return Response.json(
       await templatePreview(
         getDb(),
@@ -37,6 +39,8 @@ export async function POST(request: Request) {
       { headers },
     );
   } catch (e) {
+    const flood = tooMany(e);
+    if (flood) return flood;
     if (e instanceof AccessError)
       return Response.json({ error: e.code }, { status: e.status, headers });
     if (e instanceof ZodError)

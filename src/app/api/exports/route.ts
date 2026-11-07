@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import { exportFile } from "@/domains/exports/service";
 import { exportInput } from "@/domains/exports/schema";
-import { principal, origin, bounded, noStore, failure, servedType } from "@/lib/http";
+import { origin, bounded, noStore, failure, servedType, principalCounted } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     origin(request);
-    const p = await principal(request);
+    const p = await principalCounted(request, "user-export");
     const body = JSON.parse(new TextDecoder().decode(await bounded(request, 4_000_000)));
     const f = await exportFile(getDb(), p, exportInput.parse(body), z.uuid().parse(body.organizationId));
     return new Response(f.body as BodyInit, {
