@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { attestationFile } from "@/domains/dues/attestation-send";
-import { principalIn, noStore, failure } from "@/lib/http";
+import { principalIn, noStore, failure, disposition } from "@/lib/http";
 import { isLocale } from "@/lib/locale";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const l = q.get("locale") ?? "fr";
     const f = await attestationFile(getDb(), await principalIn(request, "dues"), z.uuid().parse(q.get("profile")), z.uuid().parse(q.get("season")), isLocale(l) ? l : "fr");
     return new Response(Buffer.from(f.bytes), {
-      headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": `${q.get("download") === "1" ? "attachment" : "inline"}; filename="${f.filename}"`, "X-Content-Type-Options": "nosniff" },
+      headers: { ...noStore, "Content-Type": "application/pdf", "Content-Disposition": disposition(q.get("download") === "1" ? "attachment" : "inline", f.filename), "X-Content-Type-Options": "nosniff" },
     });
   } catch (e) {
     return failure(e);

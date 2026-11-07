@@ -16,6 +16,7 @@ import { Badge, Button, Card, EmptyState, ExportButton, PageHeader, Tabs, Toolba
 import { DataGrid } from "./data-grid";
 import { Icon } from "./icons";
 import { Modal } from "./modal";
+import { externalHref } from "@/lib/html";
 
 type View = Awaited<ReturnType<typeof contactsView>>;
 type Contact = View["contacts"][number];
@@ -227,7 +228,7 @@ export function Contacts({ locale, start }: { locale: Locale; start?: string }) 
                         {o.website && (
                           <>
                             {" · "}
-                            <a href={o.website} target="_blank" rel="noopener noreferrer">
+                            <a href={externalHref(o.website)} target="_blank" rel="noopener noreferrer">
                               {o.website.replace(/^https?:\/\//, "")}
                             </a>
                           </>

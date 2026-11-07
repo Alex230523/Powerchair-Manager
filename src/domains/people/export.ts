@@ -182,6 +182,8 @@ const printCopy = {
   nl: { title: "Ledenlijst", print: "Afdrukken of opslaan als pdf", count: "{n} personen", on: "Export van {d}" },
   en: { title: "People list", print: "Print or save as PDF", count: "{n} people", on: "Exported on {d}" },
 };
+/** The only script of the printable page; its policy allows it by its hash. */
+export const printHandler = "window.print()";
 /** A printable page (the browser saves it as PDF). Every value is escaped. */
 export function printablePage(
   grid: string[][],
@@ -198,7 +200,7 @@ export function printablePage(
     "th{background:#fff1e8;border-bottom:2px solid #fa6f1d}tr:nth-child(even) td{background:#fafafa}button{margin:0 0 16px;padding:8px 14px;border:0;border-radius:6px;background:#fa6f1d;color:#fff;font-weight:600;cursor:pointer}" +
     "@media print{button{display:none}body{margin:0}}</style></head><body>" +
     `<h1>${escape(organization)} · ${escape(t.title)}</h1><p>${escape(t.on.replace("{d}", today))} · ${escape(t.count.replace("{n}", String(rows.length)))}</p>` +
-    `<button type="button" onclick="window.print()">${escape(t.print)}</button>` +
+    `<button type="button" onclick="${printHandler}">${escape(t.print)}</button>` +
     `<table><thead><tr>${head.map((h) => `<th>${escape(h)}</th>`).join("")}</tr></thead><tbody>` +
     rows.map((r) => `<tr>${r.map((v) => `<td>${escape(v)}</td>`).join("")}</tr>`).join("") +
     "</tbody></table></body></html>"
