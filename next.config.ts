@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 import { previewRedirects, previewSettings } from "./src/lib/preview";
-import { pageHeaders, widgetHeaders } from "./src/lib/security-headers";
+import { pageHeaders, robotsHeaders, widgetHeaders } from "./src/lib/security-headers";
 const config: NextConfig = {
   poweredByHeader: false,
+  // The browser never gets the source maps of the server or of the pages.
+  productionBrowserSourceMaps: false,
   // Vercel previews: the branch address, inlined at build time (src/lib/preview.ts).
   env: previewSettings(process.env),
   async redirects() {
@@ -32,6 +34,7 @@ const config: NextConfig = {
         // B2: HSTS and a CSP that closes framing, plugins and foreign form targets.
         headers: [...pageHeaders],
       },
+      ...robotsHeaders(process.env),
     ];
   },
 };

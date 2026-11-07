@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import { exportFile } from "@/domains/exports/service";
 import { exportInput } from "@/domains/exports/schema";
-import { principal, origin, bounded, noStore, failure } from "@/lib/http";
+import { principal, origin, bounded, noStore, failure, servedType } from "@/lib/http";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return new Response(f.body as BodyInit, {
       headers: {
         ...noStore,
-        "Content-Type": f.type,
+        "Content-Type": servedType(f.type),
         "Content-Disposition": `attachment; filename="${f.name}"`,
         "X-Content-Type-Options": "nosniff",
       },
