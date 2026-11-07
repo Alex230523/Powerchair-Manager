@@ -1,3 +1,4 @@
+import { throttle } from "@/lib/rate-limit";
 import { getDb } from "@/lib/db";
 import { identityRequestInfo, identityRequestSubmit } from "@/domains/tax/service";
 import { origin, bounded, noStore, failure } from "@/lib/http";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 const token = z.string().regex(/^[A-Za-z0-9_-]{40,60}$/);
 export async function GET(request: Request) {
   try {
+    await throttle(getDb(), request, "public-read");
     return Response.json(await identityRequestInfo(getDb(), token.parse(new URL(request.url).searchParams.get("token"))), { headers: { ...noStore, "Referrer-Policy": "no-referrer" } });
   } catch (e) {
     return failure(e);
@@ -14,6 +16,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
+    await throttle(getDb(), request, "public-write", "public-write-day");
     origin(request);
     const body = z.object({ token, value: z.string().max(20) }).parse(JSON.parse(new TextDecoder().decode(await bounded(request, 2000))));
     return Response.json(await identityRequestSubmit(getDb(), body.token, body.value), { headers: noStore });

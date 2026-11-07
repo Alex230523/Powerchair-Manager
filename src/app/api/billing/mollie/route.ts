@@ -1,3 +1,4 @@
+import { gate } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { mollieConfigured, mollieWebhook } from "@/domains/billing/mollie";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
  * Always 200 once handled, so Mollie stops retrying; 503 when not configured.
  */
 export async function POST(request: Request) {
+  const flood = await gate(request, "webhook-ip");
+  if (flood) return flood;
   if (!mollieConfigured()) return new Response(null, { status: 503 });
   let id = "";
   try {

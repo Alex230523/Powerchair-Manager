@@ -1,5 +1,6 @@
 import { getAuth } from "@/lib/auth-server";
 import { getDb } from "@/lib/db";
+import { countWrite, tooMany } from "@/lib/http";
 import {
   workspace,
   execute,
@@ -12,9 +13,12 @@ const headers = { "Cache-Control": "no-store" };
 async function principal(request: Request) {
   const session = await getAuth().api.getSession({ headers: request.headers });
   if (!session) throw new AccessError("UNAUTHENTICATED", 401);
+  await countWrite(request, session.user.id);
   return { userId: session.user.id, sessionId: session.session.id };
 }
 function failure(e: unknown) {
+  const flood = tooMany(e);
+  if (flood) return flood;
   if (e instanceof AccessError)
     return Response.json({ error: e.code }, { status: e.status, headers });
   if (e instanceof ZodError)

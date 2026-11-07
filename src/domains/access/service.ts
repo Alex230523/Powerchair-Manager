@@ -1,4 +1,5 @@
 import { seasonOptions, teamOptions, type SeasonOption, type TeamOption } from "../scope/service";
+import { limit } from "../../lib/rate-limit";
 import { mfaSatisfied } from "../../lib/security-policy";
 import { createHash, randomBytes } from "node:crypto";
 import { acceptInvitation, liveInvitation, resendInvitation } from "./invite";
@@ -334,6 +335,8 @@ export async function execute(
   command: Command,
   onlyIfMissing = false,
 ): Promise<{ ok: true } | { token: string }> {
+  // Security (07/11/2026): an invitation is an e-mail to an address typed by someone; counted per account.
+  if (command.action === "invite" || command.action === "resendInvitation") await limit(db, "user-invite", p.userId);
   const client = await db.connect();
   try {
     await client.query("BEGIN");
