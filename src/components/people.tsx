@@ -242,7 +242,7 @@ export function People({
         {children}
         {!data && !loading && (
           <p>
-            <Link href={`/${locale}/access`}>{t.missing}</Link>
+            <Link className="button secondary" href={`/${locale}/access`}>{t.missing}</Link>
           </p>
         )}
         {data && (
@@ -261,6 +261,7 @@ export function People({
                 {data.capabilities.canExport && (
                   <p>
                     <a
+                      className="button secondary"
                       href={`/api/people/export?organizationId=${data.context.id}&${query}`}
                     >
                       {t.exportCsv}

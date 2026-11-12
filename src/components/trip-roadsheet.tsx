@@ -20,7 +20,7 @@ export function TripRoadSheet({ locale, id }: { locale: Locale; id: string }) {
   return (
     <main id="main" className="access trips road-sheet">
       <p className="back-link no-print">
-        <Link href={`/${locale}/trips/${id}`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/trips/${id}`}>{t.back}</Link>
       </p>
       {!data ? (
         <>

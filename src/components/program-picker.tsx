@@ -91,7 +91,7 @@ export function ProgramPicker({ locale, options, initial }: { locale: Locale; op
         </div>
       ) : (
         <p>
-          <Link href={`/${locale}/exercises`}>{t.library}</Link>
+          <Link className="button secondary" href={`/${locale}/exercises`}>{t.library}</Link>
         </p>
       )}
     </fieldset>

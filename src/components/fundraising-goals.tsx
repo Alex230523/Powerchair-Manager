@@ -41,7 +41,7 @@ export function PotExtras({ locale, pot, data, busy, send }: { locale: Locale; p
     <div className="pot-extras">
       {pot.link_url && (
         <p>
-          <a href={externalHref(pot.link_url)} target="_blank" rel="noopener noreferrer">
+          <a className="button secondary" href={externalHref(pot.link_url)} target="_blank" rel="noopener noreferrer">
             {t.link}
             <span className="sr-only"> : {pot.name}</span>
           </a>

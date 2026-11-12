@@ -392,7 +392,7 @@ export function Welcome({ locale, token, signedIn }: { locale: Locale; token: st
               {t.privacy}
             </label>
             <p>
-              <Link href={`/${locale}/privacy`} target="_blank">
+              <Link className="button secondary" href={`/${locale}/privacy`} target="_blank">
                 {t.privacyLink}
               </Link>
             </p>

@@ -332,7 +332,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
               <EmptyState icon="calendar" title={t.agendaEmpty} />
             )}
             <p className="card-link-row">
-              <Link href={href("/calendar")}>{t.openCalendar}</Link>
+              <Link className="button secondary" href={href("/calendar")}>{t.openCalendar}</Link>
             </p>
           </Card>
           <div className="dash-side">

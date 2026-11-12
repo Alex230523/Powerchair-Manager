@@ -79,7 +79,7 @@ export function MatchTactics({
                 {x.has_diagram &&
                   (x.diagram_type === "application/pdf" ? (
                     <p>
-                      <a href={`/api/matches/journey/tactic?id=${matchId}&exercise=${x.id}`} target="_blank" rel="noopener noreferrer">
+                      <a className="button secondary" href={`/api/matches/journey/tactic?id=${matchId}&exercise=${x.id}`} target="_blank" rel="noopener noreferrer">
                         {t.diagramPdf}
                       </a>
                     </p>
@@ -143,7 +143,7 @@ export function MatchTactics({
           <Button type="submit" disabled={busy || !choice}>
             {x4.tactics.add}
           </Button>
-          <Link href={`/${locale}/exercises?genre=tactic`}>{x4.tactics.library}</Link>
+          <Link className="button secondary" href={`/${locale}/exercises?genre=tactic`}>{x4.tactics.library}</Link>
         </form>
       )}
     </Card>

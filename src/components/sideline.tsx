@@ -127,7 +127,7 @@ export function Sideline({ locale, id }: { locale: Locale; id: string }) {
     <main id="main" className="sideline">
       <header className="sideline-head">
         <p>
-          <Link href={`/${locale}/matches/${id}`}>{t.back}</Link>
+          <Link className="button secondary" href={`/${locale}/matches/${id}`}>{t.back}</Link>
         </p>
         <h1>
           {data.match.team} <span className="sideline-score" aria-live="polite">{ours} - {theirs}</span> {data.match.opponent}

@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-12",
+  "roles": [
+    "all"
+  ],
+  "link": "/teams",
+  "image": null,
+  "fr": {
+    "title": "Des boutons pour aller plus loin",
+    "text": "« Ouvrir le calendrier », « Voir tout », « Retour » et les liens des cartes d'équipe (Effectif, Calendrier, Présences) sont devenus des boutons, plus faciles à voir et à toucher."
+  },
+  "nl": {
+    "title": "Knoppen om verder te gaan",
+    "text": "« De kalender openen », « Alles bekijken », « Terug » en de links op de teamkaarten (Selectie, Kalender, Aanwezigheden) zijn knoppen geworden, beter zichtbaar en makkelijker aan te raken."
+  },
+  "en": {
+    "title": "Buttons to go further",
+    "text": "« Open the calendar », « See all », « Back » and the links of the team cards (Roster, Calendar, Attendance) became buttons, easier to see and to tap."
+  }
+}

@@ -592,7 +592,7 @@ export function Calendar({
             {error}
           </p>
         )}
-        {!data && !loading && <Link href={"/" + locale + "/access"}>{t.access}</Link>}
+        {!data && !loading && <Link className="button secondary" href={"/" + locale + "/access"}>{t.access}</Link>}
         {data && (
           <>
             <Card
@@ -1050,7 +1050,7 @@ export function Calendar({
                         );
                       })}
                     </div>
-                    <Link href={"/" + locale + "/attendance"}>{extra.attendance}</Link>
+                    <Link className="button secondary" href={"/" + locale + "/attendance"}>{extra.attendance}</Link>
                     {sheetEvent.participants.length > 0 && (
                       <ul className="plain-list">
                         {sheetEvent.participants.map((x) => (

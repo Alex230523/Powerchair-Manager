@@ -139,7 +139,7 @@ export function JoinClub({ locale, confirm }: { locale: Locale; confirm: string 
         </Card>
       )}
       <p>
-        <Link href={`/${locale}/join`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/join`}>{t.back}</Link>
       </p>
     </main>
   );

@@ -128,7 +128,7 @@ function StepLine({ locale, runId, s, today, busy, send }: { locale: Locale; run
       {s.body && <p className="small pre-line">{s.body}</p>}
       {kind === "read" && /^(guide|quiz):/.test(s.link) && (
         <p className="small">
-          <Link href={`/${locale}/guide/${s.link.replace(/^(guide|quiz):/, "")}`}>
+          <Link className="button secondary" href={`/${locale}/guide/${s.link.replace(/^(guide|quiz):/, "")}`}>
             {t.openGuide}
             <span className="sr-only"> : {s.title}</span>
           </Link>

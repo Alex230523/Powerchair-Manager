@@ -118,7 +118,7 @@ function GuestLink({ locale, formId }: { locale: Locale; formId: string }) {
   return (
     <div className="guest-link">
       <p>
-        <Link href={"/" + locale + "/access"}>{x.haveAccount}</Link>
+        <Link className="button secondary" href={"/" + locale + "/access"}>{x.haveAccount}</Link>
       </p>
       <h3>{x.guestTitle}</h3>
       <p className="muted">{x.guestIntro}</p>
@@ -1055,7 +1055,7 @@ export function Registrations({
           </p>
         )}
         {!loading && !data && mode !== "public" && (
-          <Link href={"/" + locale + "/access"}>{t.access}</Link>
+          <Link className="button secondary" href={"/" + locale + "/access"}>{t.access}</Link>
         )}
         {mode === "public" && publicData && (
           <Panel title={publicData.title}>

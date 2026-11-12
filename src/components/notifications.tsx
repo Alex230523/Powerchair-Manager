@@ -203,7 +203,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
         )}
         {!data && !loading && (
           <p>
-            <Link href={`/${locale}/access`}>{t.missing}</Link>
+            <Link className="button secondary" href={`/${locale}/access`}>{t.missing}</Link>
           </p>
         )}
         {data && (
@@ -244,7 +244,7 @@ export function Notifications({ locale, embedded = false }: { locale: Locale; em
                       </p>
                       <p className="message-text">{n.body}</p>
                       <div className="actions">
-                        <Link href={n.href}>{t.open}</Link>
+                        <Link className="button secondary" href={n.href}>{t.open}</Link>
                         {!n.read_at && (
                           <Button
                             disabled={busy}

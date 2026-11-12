@@ -118,7 +118,7 @@ export function TeamMatches({ locale, teamIds, limit = 3 }: { locale: Locale; te
         <p className="muted">{t.noneRecent}</p>
       )}
       <p>
-        <Link href={`/${locale}/matches`}>{t.allMatches}</Link>
+        <Link className="button secondary" href={`/${locale}/matches`}>{t.allMatches}</Link>
       </p>
     </section>
   );

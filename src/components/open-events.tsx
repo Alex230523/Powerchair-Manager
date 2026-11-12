@@ -472,7 +472,7 @@ export function OpenEventCheckin({ locale, code }: { locale: Locale; code: strin
       {!result && <p role="status">…</p>}
       {result && <p role={result.ok ? "status" : "alert"}>{result.text}</p>}
       <p>
-        <Link href={`/${locale}/events`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/events`}>{t.back}</Link>
       </p>
     </main>
   );

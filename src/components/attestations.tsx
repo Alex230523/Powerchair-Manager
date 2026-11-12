@@ -135,7 +135,7 @@ export function Attestations({
   return (
     <main id="main" className="access attestations">
       <p className="back-link no-print">
-        <Link href={`/${locale}/dues`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/dues`}>{t.back}</Link>
       </p>
       <div className="no-print">
         <h1>{t.title}</h1>

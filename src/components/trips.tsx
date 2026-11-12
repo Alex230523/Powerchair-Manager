@@ -753,7 +753,7 @@ export function TripPage({ locale, id }: { locale: Locale; id: string }) {
     return (
       <main id="main" className="access trips">
         <p className="back-link">
-          <Link href={`/${locale}/trips`}>{t.back}</Link>
+          <Link className="button secondary" href={`/${locale}/trips`}>{t.back}</Link>
         </p>
         <h1>{t.title}</h1>
         {detail.error || detail.denied ? (
@@ -766,7 +766,7 @@ export function TripPage({ locale, id }: { locale: Locale; id: string }) {
   return (
     <main id="main" className="access trips">
       <p className="back-link">
-        <Link href={`/${locale}/trips`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/trips`}>{t.back}</Link>
       </p>
       <PageHeader title={d.trip.title} subtitle={<>{t.kinds[d.trip.kind]} · {dayLabel(locale, d.trip.starts_on)}
             {d.trip.ends_on !== d.trip.starts_on && ` → ${dayLabel(locale, d.trip.ends_on)}`}{" "}

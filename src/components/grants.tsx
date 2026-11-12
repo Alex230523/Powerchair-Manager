@@ -563,7 +563,7 @@ function GrantSheet({
               </dl>
               {grant.program_url && (
                 <p>
-                  <a href={externalHref(grant.program_url)} target="_blank" rel="noopener noreferrer">
+                  <a className="button secondary" href={externalHref(grant.program_url)} target="_blank" rel="noopener noreferrer">
                     {c.programUrl}<span className="sr-only"> ({grant.program_url})</span>
                   </a>
                 </p>

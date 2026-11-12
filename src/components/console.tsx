@@ -1080,7 +1080,7 @@ function OperatorsView({ locale, day }: { locale: Locale; day: (iso: string) => 
         )}
       </Card>
       <p>
-        <Link href={`/${locale}`}>{t.backToApp}</Link>
+        <Link className="button secondary" href={`/${locale}`}>{t.backToApp}</Link>
       </p>
     </div>
   );

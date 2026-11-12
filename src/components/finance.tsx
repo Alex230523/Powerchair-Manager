@@ -668,7 +668,7 @@ export function Finance({ locale, create = false, section = "overview" }: { loca
           </Card>
           )}
           {section === "overview" && (
-            <Card title={n.last} labelledBy="finance-last" headingId="finance-last" actions={<Link href={`/${locale}/funding/operations`}>{n.seeAll} →</Link>}>
+            <Card title={n.last} labelledBy="finance-last" headingId="finance-last" actions={<Link className="button secondary" href={`/${locale}/funding/operations`}>{n.seeAll} →</Link>}>
               {view.entries.filter((e) => !e.cancelled_at).length ? (
                 <ul className="last-operations">
                   {view.entries
