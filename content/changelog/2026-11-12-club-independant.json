@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-12",
+  "roles": [
+    "all"
+  ],
+  "link": "/club/billing",
+  "image": null,
+  "fr": {
+    "title": "Un club peut ouvrir sans fédération",
+    "text": "Votre club n'est affilié à aucune fédération ? Son président demande son ouverture depuis « Rejoindre la plateforme » : 30 jours d'essai gratuit, puis 99 € par an. Un code de réduction donné par l'équipe de la plateforme se saisit dans la demande ou sur la page Abonnement à la plateforme."
+  },
+  "nl": {
+    "title": "Een club kan openen zonder federatie",
+    "text": "Is uw club bij geen enkele federatie aangesloten? De voorzitter vraagt de opening aan via « Lid worden van het platform »: 30 dagen gratis proefperiode, daarna 99 € per jaar. Een kortingscode van het team van het platform vult u in bij de aanvraag of op de pagina Abonnement op het platform."
+  },
+  "en": {
+    "title": "A club can open without a federation",
+    "text": "Is your club affiliated with no federation? Its president asks for it to be opened from « Join the platform »: 30 days of free trial, then 99 € a year. A discount code given by the platform's team is typed in the request or on the Platform subscription page."
+  }
+}

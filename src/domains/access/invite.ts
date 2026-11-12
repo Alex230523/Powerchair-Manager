@@ -38,6 +38,8 @@ export type InvitationRow = {
   greeting: string;
   disputed_at: string | null;
   issued_by_federation: string | null;
+  /** 12/11/2026: sent by the platform's team, to the first president of a club without a federation. */
+  issued_by_platform: boolean;
   succession: boolean;
   kind: "club" | "federation";
   /** Wave 17 (G1): what the outgoing president keeps, and the message of the handover. */
@@ -62,6 +64,8 @@ export async function inviteProfile(
     resentFrom?: string | null;
     /** Wave 16 (I3): sent by the club's federation (a president). */
     issuedByFederation?: string | null;
+    /** 12/11/2026: sent by the platform's team (a club it accepted, without a federation). */
+    issuedByPlatform?: boolean;
     succession?: boolean;
     /** Wave 17 (G1): the date the new president takes office (default: on acceptance). */
     effectiveFrom?: string | null;
@@ -74,8 +78,8 @@ export async function inviteProfile(
   const token = randomBytes(32).toString("hex");
   const id = (
     await c.query(
-      `INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,created_by,valid_from,profile_id,team_id,guardian_of,greeting,resent_from,issued_by_federation,succession,outgoing_user_id,outgoing_role,message)
-       VALUES($1,lower($2),$3,$11,$4,now()+interval '7 days',$5,GREATEST(now(),COALESCE($14::timestamptz,now())),$6,$7,$8,$9,$10,$12,$13,$15,$16,$17) RETURNING id`,
+      `INSERT INTO invitation(organization_id,email,role,grants,token_hash,expires_at,created_by,valid_from,profile_id,team_id,guardian_of,greeting,resent_from,issued_by_federation,succession,outgoing_user_id,outgoing_role,message,issued_by_platform)
+       VALUES($1,lower($2),$3,$11,$4,now()+interval '7 days',$5,GREATEST(now(),COALESCE($14::timestamptz,now())),$6,$7,$8,$9,$10,$12,$13,$15,$16,$17,$18) RETURNING id`,
       [
         org,
         i.email,
@@ -94,6 +98,7 @@ export async function inviteProfile(
         i.outgoing?.userId ?? null,
         i.outgoing?.role ?? null,
         (i.message ?? "").slice(0, 1000),
+        i.issuedByPlatform ?? false,
       ],
     )
   ).rows[0].id as string;
@@ -135,7 +140,16 @@ export async function acceptInvitation(c: PoolClient, invite: InvitationRow, use
     );
     if (!fromFederation.rowCount || invite.role !== "club_president" || invite.grants.length) throw new AccessError("INVITATION_INVALID", 404);
   }
-  const issuers = invite.issued_by_federation ? { rows: [{ role: "club_president" as Role, grants: [] as Permission[] }] } : await c.query(
+  if (invite.issued_by_platform) {
+    // Sent by the platform's team: an owner or support operator still in office, for the first president of a club without a federation.
+    const fromPlatform = await c.query(
+      `SELECT 1 FROM platform_operator po JOIN organization club ON club.id=$2 AND club.kind='club' AND club.federation_id IS NULL
+        WHERE po.user_id=$1 AND po.revoked_at IS NULL AND po.role IN ('owner','support')`,
+      [invite.created_by, invite.organization_id],
+    );
+    if (!fromPlatform.rowCount || invite.role !== "club_president" || invite.grants.length || invite.issued_by_federation) throw new AccessError("INVITATION_INVALID", 404);
+  }
+  const issuers = invite.issued_by_federation || invite.issued_by_platform ? { rows: [{ role: "club_president" as Role, grants: [] as Permission[] }] } : await c.query(
     `SELECT r.role,r.grants FROM role_assignment r JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.organization_id=$1 AND r.user_id=$2 AND ${current}`,
     [invite.organization_id, invite.created_by],
   );
@@ -427,6 +441,7 @@ export async function resendInvitation(c: PoolClient, org: string, actor: string
     greeting: old.greeting,
     resentFrom: old.id,
     issuedByFederation: old.issued_by_federation,
+    issuedByPlatform: old.issued_by_platform,
     succession: old.succession,
     effectiveFrom: old.valid_from,
     outgoing: old.outgoing_user_id && old.outgoing_role ? { userId: old.outgoing_user_id, role: old.outgoing_role } : null,

@@ -17,6 +17,14 @@ export function Join({ locale, contact }: { locale: Locale; contact: string | nu
         <Card title={t.presidentTitle} icon="whistle">
           <p>{t.presidentText}</p>
         </Card>
+        <Card title={t.independentTitle} icon="home">
+          <p>{t.independentText}</p>
+          <p>
+            <Link className="button" href={`/${locale}/join/club`}>
+              {t.independentAction}
+            </Link>
+          </p>
+        </Card>
         <Card title={t.federationTitle} icon="landmark">
           {contact ? (
             <p>

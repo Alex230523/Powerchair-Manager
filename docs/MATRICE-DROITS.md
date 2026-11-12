@@ -30,7 +30,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/classification` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/classification/texts` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/club` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
-| `/api/club/billing` | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
+| `/api/club/billing` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
 | `/api/club/export/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/club/logo` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/club/obligations` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -43,6 +43,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/console/reports` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/assistant` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/support` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
+| `/api/console/club-requests` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/console/billing` (+ écriture) | connexion | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé | refusé |
 | `/api/contacts` (+ écriture) | connexion | oui | oui | refusé | refusé | refusé | refusé | refusé | oui | refusé |
 | `/api/courses` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
@@ -155,6 +156,8 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/refereeing` (+ écriture) | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
 | `/api/registrations` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/registrations/file/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
+| `/api/join/club` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
+| `/api/join/club/confirm` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/registrations/guest` (+ écriture) | · | · | · | · | · | · | · | · | · | · |
 | `/api/registrations/public/[id]` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/reminders` (+ écriture) | connexion | oui | refusé | refusé | refusé | refusé | refusé | refusé | oui | refusé |
@@ -208,13 +211,14 @@ Notes :
 - `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
 - `/api/circulars` : Circulaires : reçues par les membres et arbitres ; rédaction, envoi, suivi et export par la compétence communication de la fédération
 - `/api/circulars/file` : Pièce jointe d'une circulaire : destinataires et communication de la fédération
-- `/api/club/billing` : Abonnement à la plateforme (05/11/2026) : la présidence lit sa formule et ses factures
+- `/api/club/billing` : Abonnement à la plateforme (05/11/2026) : la présidence lit sa formule et ses factures ; 12/11/2026 : la présidence d'un club sans fédération ajoute un code de réduction (POST, compteur user-code)
 - `/api/console` : Console de l'exploitant de la plateforme (05/11/2026) : comptages et états, organisations, supervision, opérateurs ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/mcp-keys` : Clés MCP d'un opérateur (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/alerts` : Alerte quotidienne d'un opérateur (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/reports` : Rapports mensuels de la console (06/11/2026) ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/assistant` : Assistant de la console (06/11/2026) : opérateurs seulement, écritures sur confirmation ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/console/support` : Support et demandes RGPD de la console (06/11/2026) : tickets, réponses types, rappels aux présidences ; opérateurs owner et support pour écrire ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
+- `/api/console/club-requests` : Demandes de club sans fédération (12/11/2026) : acceptées ou refusées à la main par les opérateurs owner et support, jamais par un mandat de club ou de fédération
 - `/api/console/billing` : Facturation de la plateforme (05/11/2026) : formules, abonnements, factures, rappels ; opérateurs owner et finance ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club
 - `/api/billing/mollie` : Retour de Mollie, sans session : l'identifiant du lien seulement, relu par l'API ; 503 tant que MOLLIE_API_KEY manque (comme les tâches sans CRON_SECRET), GET 405 (tests/international-console.test.ts, tests/integration/billing-mollie.integration.ts)
 - `/api/cron/[job]` : Appelé par le planificateur avec CRON_SECRET seulement : 401 sans le secret, 503 tant qu'aucun secret n'est configuré (tests/b2-production.test.ts)
@@ -244,6 +248,8 @@ Notes :
 - `/api/player-profile/overview` : Vue d'ensemble d'une fiche (point 40) : chaque bloc selon le droit du lecteur ; jamais d'argent ni de santé pour un coach ; un parent voit celle de son enfant sans les notes du club ; 404 hors de l'organisation
 - `/api/privacy/mine` : « Mes données » : ce que la plateforme garde sur la personne connectée (point 12)
 - `/api/refereeing` : Arbitrage (points 25 et 36 à 39) : bureau de la fédération (compétence arbitrage : désignations, niveaux, barème, formations, notes de frais, export CSV, récapitulatif PDF) ; bureau de l'arbitre (réponses, itinéraires, rapport, notes de frais, formations) ; ?report= relecture du rapport par le club dans les 48 heures
+- `/api/join/club` : Club sans fédération (12/11/2026) : la demande publique, confirmée par e-mail ; même réponse quelle que soit l'adresse
+- `/api/join/club/confirm` : Club sans fédération (12/11/2026) : le lien de confirmation de la demande
 - `/api/season-check` : Vérification de début de saison : ce que la personne connectée doit relire ; ?view=club pour le suivi du club (point 8)
 - `/api/seasons/plan` : Préparer la saison suivante : l'assistant annuel, réservé à la présidence du club (point 16)
 - `/api/staff-roles` : Rôles de staff : lecture par les membres du club, modification et attribution avec mandates.manage
@@ -337,6 +343,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/inscription/[id]` |  |  |  |  |  |  |  |  |  |   |
 | `/live/[token]` |  |  |  |  |  |  |  |  |  |   |
 | `/join` |  |  |  |  |  |  |  |  |  |   |
+| `/join/club` |  |  |  |  |  |  |  |  |  |   |
 | `/legal/[doc]` |  |  |  |  |  |  |  |  |  |   |
 | `/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/matches` |  |  |  |  |  |  |  |  |  |   |

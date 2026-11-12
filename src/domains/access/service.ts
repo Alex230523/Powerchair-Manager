@@ -105,13 +105,15 @@ async function account(db: Db, p: Principal) {
 }
 async function active(db: Db, p: Principal) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules,o.tax_approved,o.suspended_at,o.suspended_reason FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.federation_id,o.disabled_modules,o.tax_approved,o.suspended_at,o.suspended_reason FROM active_context c JOIN role_assignment r ON r.id=c.mandate_id AND r.user_id=c.user_id AND r.organization_id=c.organization_id JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE c.session_id=$1 AND c.user_id=$2 AND ${current}`,
     [p.sessionId, p.userId],
   );
   if (!result.rowCount) throw new AccessError("CONTEXT_REQUIRED");
   return result.rows[0] as Mandate & {
     organization_name: string;
     kind: "club" | "federation";
+    /** 12/11/2026: null for a club without a federation (its federal modules stay out of the menu). */
+    federation_id: string | null;
     disabled_modules: string[];
     /** B8: the club is approved for tax receipts (the module shows only then). */
     tax_approved: boolean;
@@ -123,7 +125,7 @@ async function active(db: Db, p: Principal) {
 /** A mandate's context without a session (wave 15, C7: the weekly digest), with the same validity checks as active(). */
 async function mandateContext(db: Db, mandateId: string) {
   const result = await db.query(
-    `SELECT r.*,o.name AS organization_name,o.kind,o.disabled_modules,o.tax_approved,o.suspended_at,o.suspended_reason FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
+    `SELECT r.*,o.name AS organization_name,o.kind,o.federation_id,o.disabled_modules,o.tax_approved,o.suspended_at,o.suspended_reason FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.id=$1 AND ${current}`,
     [mandateId],
   );
   return (result.rows[0] ?? null) as Awaited<ReturnType<typeof active>> | null;

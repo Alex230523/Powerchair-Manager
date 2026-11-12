@@ -62,6 +62,7 @@ import e59 from "../../../content/changelog/2026-11-06-doublons.json";
 import e60 from "../../../content/changelog/2026-11-06-paiement.json";
 import e61 from "../../../content/changelog/2026-11-06-registre.json";
 import e62 from "../../../content/changelog/2026-11-06-support.json";
+import e63 from "../../../content/changelog/2026-11-12-club-independant.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -127,4 +128,5 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-06-paiement", data: e60 },
   { id: "2026-11-06-registre", data: e61 },
   { id: "2026-11-06-support", data: e62 },
+  { id: "2026-11-12-club-independant", data: e63 },
 ];

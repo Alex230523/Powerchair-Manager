@@ -18,6 +18,8 @@ import { consoleCopy } from "./console-copy";
 import { errors } from "./access-copy";
 import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { useData, usePost } from "./use-api";
+import { ClubRequestsCard, DiscountsCard } from "./console-independent";
+import { independentCopy } from "./independent-copy";
 
 type Home = Awaited<ReturnType<typeof consoleHome>>;
 type Organizations = Awaited<ReturnType<typeof consoleOrganizations>>;
@@ -247,6 +249,7 @@ function OrganizationsView({ locale, open, day }: { locale: Locale; open: (id: s
   const { data, error } = useData<Organizations>(url, failure);
   return (
     <div className="stack">
+      <ClubRequestsCard locale={locale} day={day} open={open} />
       {error && <p role="alert">{error}</p>}
       <div className="toolbar-filters" role="search">
         <label>
@@ -1199,6 +1202,8 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
   const [editing, setEditing] = useState<Billing["plans"][number] | "new" | null>(null);
   const [invoicing, setInvoicing] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
+  const x = independentCopy[locale].discounts;
   const money = (c: number) => formatCents(c, locale);
   if (!data) return error ? <p role="alert">{error}</p> : null;
   const f = data.figures;
@@ -1248,7 +1253,34 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
                     {su.organization}
                   </button>{" "}
                   · {su.plan} · {money(su.amount_cents)} {b.periods[su.period].toLowerCase()} · {su.ended_on ? fill(b.ended, { day: day(su.ended_on) }) : su.last_invoiced_to ? fill(b.lastInvoiced, { day: day(su.last_invoiced_to) }) : b.neverInvoiced}
+                  {su.trial_ends_on && !su.last_invoiced_to ? ` · ${fill(x.trialUntil, { day: day(su.trial_ends_on) })}` : ""}
+                  {su.auto_invoice ? ` · ${x.auto}` : ""}
+                  {su.discount_code ? ` · ${fill(x.withCode, { code: su.discount_code })}` : ""}
                 </span>
+                {data.canBill && !su.ended_on && !su.discount_code && (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setApplying(applying === su.id ? null : su.id)} aria-expanded={applying === su.id}>
+                    {x.apply}
+                    <span className="sr-only"> : {su.organization}</span>
+                  </Button>
+                )}
+                {applying === su.id && (
+                  <form
+                    className="console-invoice-form"
+                    aria-label={fill(x.applyFor, { org: su.organization })}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void post({ action: "applyDiscount", subscriptionId: su.id, code: String(new FormData(e.currentTarget).get("code") ?? "").trim().toUpperCase() }, x.applied).then((ok) => ok && setApplying(null));
+                    }}
+                  >
+                    <label>
+                      {x.code}
+                      <input name="code" required pattern="[A-Za-z0-9\-]{4,30}" maxLength={30} autoCapitalize="characters" spellCheck={false} />
+                    </label>
+                    <Button size="sm" disabled={busy}>
+                      {x.apply}
+                    </Button>
+                  </form>
+                )}
                 {data.canBill && !su.ended_on && (
                   <Button type="button" variant="secondary" size="sm" onClick={() => setInvoicing(invoicing === su.id ? null : su.id)} aria-expanded={invoicing === su.id}>
                     {b.invoiceFor}
@@ -1291,6 +1323,7 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
           <p className="muted">{b.subscriptionsNone}</p>
         )}
       </Card>
+      <DiscountsCard locale={locale} discounts={data.discounts} canBill={data.canBill} busy={busy} post={post} day={day} />
       <Card title={b.invoices}>
         <div className="toolbar-filters">
           <label>

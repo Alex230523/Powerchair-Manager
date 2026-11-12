@@ -19,6 +19,8 @@ export type Workspace = {
     organization_id: string;
     organization_name: string;
     kind: "club" | "federation";
+    /** 12/11/2026: null for a club without a federation. */
+    federation_id?: string | null;
     logo_version: string | null;
     disabled_modules?: string[];
     /** B8: approved for tax receipts. */
@@ -67,6 +69,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
   const item = (route: string, label: keyof Copy, icon: IconName, allowed = true): NavItem[] =>
     allowed ? [{ route, label, icon }] : [];
   const off = new Set(state?.selected?.disabled_modules ?? []);
+  // 12/11/2026: a club without a federation has no transfers, classification, discipline nor circulars to show.
+  const affiliated = kind !== "club" || state?.selected?.federation_id !== null;
   const president = kind === "club" && role === "club_president";
   const club: NavGroup[] =
     kind === "club" && member
@@ -86,11 +90,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/fundraising", "fundraising", "piggyBank", !!state?.fundraisingOpen),
               registrations,
               // Wave 17 (J3): « Visible par les autres clubs », the player's or the parent's choice.
-              ...item("/transfers", "transfers", "handshake"),
+              ...item("/transfers", "transfers", "handshake", affiliated),
               // 22: the tasks given to them (A1 sends reminders that lead here).
               ...item("/tasks", "tasks", "clipboardList"),
               // 33: the federation's circulars, for every member of an affiliated club.
-              ...item("/circulars", "circulars", "megaphone"),
+              ...item("/circulars", "circulars", "megaphone", affiliated),
             ],
           },
         ]
@@ -108,9 +112,9 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                 // Wave 16 (E2): the coaches' exercise sheets.
                 ...item("/exercises", "exercises", "clipboardList", true),
-                ...item("/classification", "classification", "badgeCheck", has("people.read")),
+                ...item("/classification", "classification", "badgeCheck", affiliated && has("people.read")),
                 // Wave 17 (J3): the transfer market between the federation's clubs.
-                ...item("/transfers", "transfers", "handshake", has("people.read")),
+                ...item("/transfers", "transfers", "handshake", affiliated && has("people.read")),
                 ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage")),
               ],
             },
@@ -164,12 +168,12 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 ...item("/club/billing", "platformBilling", "landmark", president),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                 // 34: the federation's sanctions, the club's appeals and fines.
-                ...item("/discipline", "discipline", "shield"),
+                ...item("/discipline", "discipline", "shield", affiliated),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
                 // 33: the federation's circulars, for every member of an affiliated club.
-                ...item("/circulars", "circulars", "megaphone"),
+                ...item("/circulars", "circulars", "megaphone", affiliated),
               ],
             },
           ]
@@ -185,8 +189,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...(manager ? [registrations] : []),
                   ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
                   ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
-                  ...item("/classification", "classification", "badgeCheck", has("people.read")),
-                  ...item("/transfers", "transfers", "handshake", has("people.read")),
+                  ...item("/classification", "classification", "badgeCheck", affiliated && has("people.read")),
+                  ...item("/transfers", "transfers", "handshake", affiliated && has("people.read")),
                   ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
                 ],
               },
@@ -214,11 +218,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
                   // 34: the sanctions of the club's players (the coaches see them).
-                  ...item("/discipline", "discipline", "shield", role === "coach"),
+                  ...item("/discipline", "discipline", "shield", affiliated && role === "coach"),
                   // A1: everyone has a to-do (only one's own tasks unless one plans).
                   ...item("/tasks", "tasks", "clipboardList"),
                   // 33: the federation's circulars, for every member of an affiliated club.
-                  ...item("/circulars", "circulars", "megaphone"),
+                  ...item("/circulars", "circulars", "megaphone", affiliated),
                 ],
               },
               {
@@ -271,7 +275,7 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                           ...item("/federation/team", "federationTeam", "userPlus", role === "federation_president"),
                         ]) satisfies NavItem[]),
                     // 33: the circulars (written by communication, read by the referees).
-                    ...item("/circulars", "circulars", "megaphone"),
+                    ...item("/circulars", "circulars", "megaphone", affiliated),
                     ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
                     { route: "/venues", label: "venues", icon: "pin" },
