@@ -95,7 +95,7 @@ test("a club asks to open without a federation, the owner makes a code and accep
 
     await owner.getByRole("tab", { name: "Organisations" }).click();
     const card = owner.locator(".club-requests");
-    await expect(card.getByText(club)).toBeVisible();
+    await expect(card.getByText(club, { exact: true })).toBeVisible();
     await expect(card.getByText(`Code de réduction : ${code}`)).toBeVisible();
     await expect(card.getByText("valable", { exact: true })).toBeVisible();
     await axe(owner, "club requests");
