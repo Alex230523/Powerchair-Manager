@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import type { Locale } from "@/lib/locale";
 import type { organizationBilling } from "@/domains/billing/service";
 import { organizationBillingCopy } from "./organization-billing-copy";
@@ -16,7 +16,7 @@ const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] === undefined ? m : String(v[k])));
 
 /** Console, step 4 (05/11/2026): the organisation reads its subscription and its invoices. */
-export function OrganizationBilling({ locale }: { locale: Locale }) {
+export function OrganizationBilling({ locale, embedded = false }: { locale: Locale; /** 12/11/2026: inside Réglages, Abonnement à la plateforme. */ embedded?: boolean }) {
   const t = organizationBillingCopy[locale];
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
   const { data, error, denied, setError, reload } = useData<View>("/api/club/billing", failure);
@@ -25,11 +25,11 @@ export function OrganizationBilling({ locale }: { locale: Locale }) {
   const [code, setCode] = useState("");
   const day = (iso: string) => new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(iso.slice(0, 10) + "T12:00:00Z"));
   const money = (c: number) => formatCents(c, locale);
-  if (denied) return <main id="main" className="access"><EmptyState title={errors.FORBIDDEN?.[locale] ?? t.title} /></main>;
+  if (denied) return embedded ? <EmptyState title={errors.FORBIDDEN?.[locale] ?? t.title} /> : <main id="main" className="access"><EmptyState title={errors.FORBIDDEN?.[locale] ?? t.title} /></main>;
   const tone = { draft: "neutral", sent: "warning", paid: "success", cancelled: "neutral" } as const;
   return (
-    <main id="main" className="access organization-billing">
-      <PageHeader title={t.title} subtitle={t.intro} />
+    <Shell embedded={embedded}>
+      {embedded ? <p className="muted" id="settings-subscription">{t.intro}</p> : <PageHeader title={t.title} subtitle={t.intro} />}
       {error && <p role="alert">{error}</p>}
       {data && (
         <>
@@ -130,6 +130,10 @@ export function OrganizationBilling({ locale }: { locale: Locale }) {
           </Card>
         </>
       )}
-    </main>
+    </Shell>
   );
+}
+/** The page of its own, or a part of the settings page. */
+function Shell({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  return embedded ? <div className="organization-billing stack">{children}</div> : <main id="main" className="access organization-billing">{children}</main>;
 }

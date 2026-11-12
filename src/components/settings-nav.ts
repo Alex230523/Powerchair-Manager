@@ -5,7 +5,7 @@ import type { IconName } from "./icons";
  * pages, the command palette and the tests share it. Visibility follows the
  * same rules as the panels it groups; the services still check every right.
  */
-export const settingsCategories = ["account", "notifications", "data", "club", "members", "seasons", "activities", "documents", "money", "journals"] as const;
+export const settingsCategories = ["account", "notifications", "data", "club", "subscription", "members", "seasons", "activities", "documents", "money", "journals"] as const;
 export type SettingsCategory = (typeof settingsCategories)[number];
 export const isSettingsCategory = (x: string): x is SettingsCategory => (settingsCategories as readonly string[]).includes(x);
 
@@ -14,6 +14,7 @@ export const categoryIcons: Record<SettingsCategory, IconName> = {
   notifications: "bell",
   data: "shield",
   club: "club",
+  subscription: "dues",
   members: "players",
   seasons: "calendar",
   activities: "calendar",
@@ -41,6 +42,8 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
     // 12: « Mes données » for everyone; the club's personal data for audit.read or mandates.manage.
     data: true,
     club: club && (admin || has("mandates.manage")),
+    // 12/11/2026: the platform's subscription, invoices, trial and discount code, for the presidency (out of the menu).
+    subscription: admin,
     // The federation's presidency finds its welcome journeys (referees, staff) here too.
     members: (club && has("mandates.manage")) || (a.kind === "federation" && admin),
     // 12: seasons and teams, and the season's passage (former « Gestion du club »).
@@ -59,6 +62,8 @@ export const settingsEntries = [
   { id: "photo", category: "account", anchor: "settings-photo" },
   { id: "language", category: "account", anchor: "settings-language" },
   { id: "theme", category: "account", anchor: "settings-theme" },
+  { id: "deleteAccount", category: "account", anchor: "settings-delete-account" },
+  { id: "subscription", category: "subscription", anchor: "settings-subscription" },
   { id: "display", category: "account", anchor: "settings-display" },
   { id: "selfCoach", category: "account", anchor: "settings-self" },
   { id: "inbox", category: "notifications", anchor: "notif-inbox" },

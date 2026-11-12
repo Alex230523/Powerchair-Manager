@@ -93,7 +93,7 @@ it("sends the invoice (by transfer when Mollie is off), then carries the payment
     c.release();
   }
   expect(calls).toHaveLength(1);
-  expect(calls[0]).toMatchObject({ method: "POST", url: "https://api.mollie.com/v2/payment-links", body: { amount: { currency: "EUR", value: "242.00" }, redirectUrl: "https://pfm.test/fr/club/billing", webhookUrl: "https://pfm.test/api/billing/mollie", reusable: false } });
+  expect(calls[0]).toMatchObject({ method: "POST", url: "https://api.mollie.com/v2/payment-links", body: { amount: { currency: "EUR", value: "242.00" }, redirectUrl: "https://pfm.test/fr/settings/subscription", webhookUrl: "https://pfm.test/api/billing/mollie", reusable: false } });
   expect((calls[0].body as { description: string }).description).toContain("F-2026-0001");
   const mine = await organizationBilling(db, presidentA);
   expect(mine.invoices[0].pay_url).toBe("https://pay.test/pl_test1");

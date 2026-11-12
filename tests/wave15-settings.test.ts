@@ -25,7 +25,10 @@ describe("settings categories", () => {
   });
   it("hides Money when the dues module is off, and the club categories outside a club", () => {
     expect(visibleCategories({ kind: "club", role: "club_president", permissions: all, disabled: ["dues"] })).not.toContain("money");
-    expect(visibleCategories({ kind: "federation", role: "federation_president", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "members", "journals"]);
+    expect(visibleCategories({ kind: "federation", role: "federation_president", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "subscription", "members", "journals"]);
+    // 12/11/2026: the subscription for the presidency only.
+    expect(visibleCategories({ kind: "club", role: "club_president", permissions: all })).toContain("subscription");
+    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["mandates.manage"] })).not.toContain("subscription");
   });
   it("recognises its own names only", () => {
     expect(isSettingsCategory("money")).toBe(true);

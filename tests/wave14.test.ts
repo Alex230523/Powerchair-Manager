@@ -32,7 +32,7 @@ describe("president menu (wave 14)", () => {
     expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors", "/fundraising"]);
     // 12: « Gestion du club » went to Réglages; Réglages is the menu's last entry, apart.
     // 12/11/2026: « Fédération » replaces « Circulaires » and « Discipline ».
-    expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/club/billing", "/equipment", "/contacts", "/tasks", "/club/federation"]);
+    expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/equipment", "/contacts", "/tasks", "/club/federation"]);
   });
   it("respects switched-off modules and missing rights", () => {
     const off = menuGroups(base("club_president", all, { disabled_modules: ["trips", "equipment", "fundraising"] }));

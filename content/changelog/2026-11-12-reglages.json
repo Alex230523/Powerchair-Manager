@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-12",
+  "roles": [
+    "all"
+  ],
+  "link": "/settings/account",
+  "image": null,
+  "fr": {
+    "title": "Supprimer son compte, et l'abonnement dans les réglages",
+    "text": "Dans Réglages, Mon compte, vous pouvez supprimer votre compte : il part 30 jours plus tard et vous pouvez annuler jusque-là. La présidence trouve l'abonnement à la plateforme dans Réglages, Abonnement à la plateforme."
+  },
+  "nl": {
+    "title": "Uw account verwijderen, en het abonnement in de instellingen",
+    "text": "In Instellingen, Mijn account kunt u uw account verwijderen: het verdwijnt 30 dagen later en u kunt tot dan annuleren. Het voorzitterschap vindt het abonnement op het platform in Instellingen, Abonnement op het platform."
+  },
+  "en": {
+    "title": "Delete your account, and the subscription in the settings",
+    "text": "In Settings, My account, you can delete your account: it goes 30 days later and you can cancel until then. The presidency finds the platform subscription in Settings, Platform subscription."
+  }
+}

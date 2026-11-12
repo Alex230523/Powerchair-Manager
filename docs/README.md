@@ -194,6 +194,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 12/11/2026 | [Un club sans fédération](evolutions/2026-11-12-club-independant.md) |
 | 12/11/2026 | [Des boutons plutôt que des textes soulignés](evolutions/2026-11-12-z-boutons-actions.md) |
 | 12/11/2026 | [Navigation : plus de sélecteur d'équipe en haut, une page Fédération](evolutions/2026-11-12-zz-navigation-federation.md) |
+| 12/11/2026 | [Réglages : l'abonnement, et supprimer son compte](evolutions/2026-11-12-zzz-reglages-abonnement-compte.md) |
 
 ## Convention
 
