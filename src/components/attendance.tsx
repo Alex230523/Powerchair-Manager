@@ -6,7 +6,7 @@ import { callCopy } from "./attendance-call-copy";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { useScopedTeam, ApplyScope } from "./use-scope";
+import { useScopedTeam } from "./use-scope";
 import { Button, ExportButton, Panel, PageHeader, Tabs } from "./ui";
 import { attendanceCopy } from "./attendance-copy";
 import { AttendanceGrid, gridCopy } from "./attendance-grid";
@@ -45,7 +45,7 @@ const offlineCopy = {
 function SeasonView({ locale }: { locale: Locale }) {
   const t = attendanceCopy[locale],
     today = localAt(new Date(), "Europe/Brussels");
-  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const { team, setTeam } = useScopedTeam();
   const [from, setFrom] = useState(shiftLocal(today, -30).slice(0, 10)),
     [to, setTo] = useState(shiftLocal(today, 60).slice(0, 10)),
     [data, setData] = useState<View | null>(null),
@@ -251,7 +251,6 @@ function SeasonView({ locale }: { locale: Locale }) {
                   </option>
                 ))}
               </select>
-              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
             </label>
             <label>
               {t.season}

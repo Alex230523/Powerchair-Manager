@@ -60,10 +60,12 @@ describe("club without a federation", () => {
       permissions: ["people.read", "teams.manage", "calendar.manage", "attendance.manage", "members.read", "mandates.manage"],
     });
     const routes = (w: Workspace) => menuGroups(w).flatMap((g) => g.items.map((i) => i.route));
-    for (const r of ["/transfers", "/classification", "/discipline", "/circulars"]) {
+    for (const r of ["/transfers", "/classification", "/club/federation"]) {
       expect(routes(ws(null))).not.toContain(r);
       expect(routes(ws("f"))).toContain(r);
     }
+    // 12/11/2026: circulars and discipline live on the federation's page, never in a club's menu.
+    for (const r of ["/discipline", "/circulars"]) expect(routes(ws("f"))).not.toContain(r);
     expect(routes(ws(null))).toContain("/teams");
   });
 

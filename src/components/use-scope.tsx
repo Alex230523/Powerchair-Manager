@@ -120,14 +120,16 @@ export function ScopeProvider({
     path = usePathname();
   const [url, setUrl] = useState<Raw>({});
   const stored = useStored(organizationId);
+  // 12/11/2026: no team capsule any more in the top bar. A team comes only from the address
+  // (a team card's links), never from the browser's memory: nothing filters a page unseen.
   const { seasonId, teamId } = resolve(seasons, teams, {
     season: url.season ?? stored.season,
-    team: url.team ?? stored.team,
+    team: url.team ?? undefined,
   });
   const navigate = useCallback(
     (season: string | null, team: string | null) => {
       if (!organizationId) return;
-      store(organizationId, { season, team });
+      store(organizationId, { season, team: null });
       const next = new URLSearchParams(window.location.search);
       const seasonDefault = defaultSeasonId(seasons);
       if (season && season !== seasonDefault) next.set("season", season);
@@ -143,7 +145,7 @@ export function ScopeProvider({
   useEffect(() => {
     // A shared link's choice is remembered too.
     if (organizationId && (url.season || url.team)) {
-      store(organizationId, { season: seasonId, team: teamId });
+      store(organizationId, { season: seasonId, team: null });
       window.dispatchEvent(new Event(scopeEvent));
     }
   }, [organizationId, url.season, url.team, seasonId, teamId]);
@@ -187,13 +189,8 @@ export function scopedHref(base: string, scope: { seasonId: string | null; teamI
 }
 
 /**
- * A page's own team filter, seeded by the top bar choice. When the member
- * changes it locally, `differs` is true and `apply` pushes the local choice
- * to the whole platform.
- */
-/**
  * Local state re-seeded whenever `seed` changes, derived during render (no
- * effect, no extra paint): the page's filter follows the top bar until the
+ * effect, no extra paint): the page's filter follows its seed until the
  * member touches it.
  */
 export function useSeeded<T>(seed: T): [T, (next: T | ((prev: T) => T)) => void] {
@@ -209,24 +206,13 @@ export function useSeeded<T>(seed: T): [T, (next: T | ((prev: T) => T)) => void]
   );
   return [value, set];
 }
+/**
+ * A page's own team filter (12/11/2026: there is no team in the top bar any
+ * more). It starts from the team of the address, when a team card opened the
+ * page, and stays local to the page.
+ */
 export function useScopedTeam() {
   const scope = useScope();
-  const global = scope.teamId ?? "";
-  const [team, setTeam] = useSeeded(global);
-  return {
-    team,
-    setTeam,
-    differs: team !== global,
-    apply: () => scope.setTeam(team || null),
-  };
-}
-const applyCopy = { fr: "Appliquer à toute la plateforme", nl: "Overal toepassen", en: "Apply everywhere" };
-/** The small link shown next to a local filter that differs from the top bar. */
-export function ApplyScope({ locale, differs, apply }: { locale: "fr" | "nl" | "en"; differs: boolean; apply: () => void }) {
-  if (!differs) return null;
-  return (
-    <button type="button" className="text-button apply-scope" onClick={apply}>
-      {applyCopy[locale]}
-    </button>
-  );
+  const [team, setTeam] = useSeeded(scope.teamId ?? "");
+  return { team, setTeam };
 }

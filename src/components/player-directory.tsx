@@ -3,7 +3,7 @@ import { HoverBubble } from "./hover-bubble";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { useScopedTeam, ApplyScope, useScope } from "./use-scope";
+import { useScopedTeam, useScope } from "./use-scope";
 import { teamChoices } from "./team-choices";
 import type { peopleView } from "@/domains/people/service";
 import { ageOn } from "@/domains/people/schema";
@@ -57,7 +57,7 @@ function TrainingBadge({ locale, state }: { locale: Locale; state: TrainingState
 const copy = {
   fr: {
     players: "Joueurs",
-    coaches: "Gestion des coachs",
+    coaches: "Coachs",
     former: "Anciens joueurs",
     formerCoach: "Anciens coachs",
     active: "Joueurs actuels",
@@ -89,7 +89,7 @@ const copy = {
   },
   nl: {
     players: "Spelers",
-    coaches: "Coaches beheren",
+    coaches: "Coaches",
     former: "Oud-spelers",
     formerCoach: "Voormalige coaches",
     active: "Huidige spelers",
@@ -121,7 +121,7 @@ const copy = {
   },
   en: {
     players: "Players",
-    coaches: "Coach management",
+    coaches: "Coaches",
     former: "Former players",
     formerCoach: "Former coaches",
     active: "Current players",
@@ -190,7 +190,7 @@ export function PlayerDirectory({
     [position, setPosition] = useState(""),
     // Wave 17 (J1): the departure window (reason and note), for a departure or a later change.
     [leaving, setLeaving] = useState<{ id: string; mode: "leave" | "edit" } | null>(null);
-  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const { team, setTeam } = useScopedTeam();
   // 1: the team menu lists the teams of the season chosen in the top bar, each once.
   const scope = useScope();
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -526,7 +526,6 @@ export function PlayerDirectory({
                   </option>
                 ))}
               </select>
-              <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
             </div>
             {role === "player" && (
               <label>

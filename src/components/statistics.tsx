@@ -122,6 +122,48 @@ export function StatisticsTabs({ locale, current }: { locale: Locale; current: "
   );
 }
 
+/**
+ * 5 and 12/11/2026: the team filter of both tabs, « Toutes les équipes » then
+ * one tab per team, each with its address (no team in the top bar any more).
+ */
+export function StatisticsTeams({ locale }: { locale: Locale }) {
+  const g = statisticsCopy[locale].game;
+  const scope = useScope();
+  if (scope.seasonTeams.length < 2) return null;
+  return (
+    <nav className="game-team-tabs" aria-label={g.teamTabs}>
+      <ul>
+        <li>
+          <a
+            href="?"
+            aria-current={!scope.teamId ? "page" : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              scope.setTeam(null);
+            }}
+          >
+            {g.allTeams}
+          </a>
+        </li>
+        {scope.seasonTeams.map((x) => (
+          <li key={x.id}>
+            <a
+              href={`?team=${x.id}`}
+              aria-current={scope.teamId === x.id ? "page" : undefined}
+              onClick={(e) => {
+                e.preventDefault();
+                scope.setTeam(x.id);
+              }}
+            >
+              {x.name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 /** The page header of both tabs: title, season and team in the subtitle, the report and the CSV of the tab. */
 export function StatisticsHeader({
   locale,
@@ -218,6 +260,7 @@ export function StatisticsClub({ locale }: { locale: Locale }) {
         onXlsx={() => excelAll(["tiles", "attendance", "headcount", "results", "storage"], scope.organizationId, t.title, s?.season?.name ?? "", exportCopy[locale].sheet)}
       />
       <StatisticsTabs locale={locale} current="club" />
+      <StatisticsTeams locale={locale} />
       {summary.error && <Failed locale={locale} retry={summary.retry} />}
       <div role="status" className="sr-only">
         {summary.loading ? t.loading : ""}

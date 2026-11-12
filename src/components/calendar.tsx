@@ -22,7 +22,7 @@ import {
   type FormEvent,
 } from "react";
 import type { Locale } from "@/lib/locale";
-import { useScopedTeam, ApplyScope } from "./use-scope";
+import { useScopedTeam } from "./use-scope";
 import { localAt, shiftLocal } from "@/domains/calendar/time";
 import { kinds, visibilities } from "@/domains/calendar/schema";
 import {
@@ -272,7 +272,7 @@ export function Calendar({
           };
   const t = calendarCopy[locale],
     kl = kindLabels[locale];
-  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const { team, setTeam } = useScopedTeam();
   const [inviting, setInviting] = useState<string | null>(null);
   const [data, setData] = useState<View | null>(null),
     [anchor, setAnchorState] = useState(() =>
@@ -664,7 +664,6 @@ export function Calendar({
                       <option key={v.id} value={v.id}>{v.name}</option>
                     ))}
                   </select>
-                  <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
                 </div>
                 <div className="toolbar-field">
                   <label htmlFor="calendar-place">{t.place}</label>

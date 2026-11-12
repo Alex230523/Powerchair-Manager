@@ -4,7 +4,7 @@ import Link from "next/link";
 import { sidelineCopy } from "./sideline-copy";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
-import { useScopedTeam, ApplyScope } from "./use-scope";
+import { useScopedTeam } from "./use-scope";
 import type { matchesView, matchDetail } from "@/domains/competitions/service";
 import {
   matchKinds,
@@ -28,7 +28,7 @@ type Detail = Awaited<ReturnType<typeof matchDetail>>;
 export function Matches({ locale }: { locale: Locale }) {
   const t = matchesCopy[locale];
   const lc = matchLineCopy[locale];
-  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  const { team, setTeam } = useScopedTeam();
   const [competition, setCompetition] = useState("");
   const [view, setView] = useState<View | null>(null),
     [error, setError] = useState(""),
@@ -185,7 +185,6 @@ export function Matches({ locale }: { locale: Locale }) {
               </option>
             ))}
           </select>
-          <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
         </label>
         <label>
           {t.show}

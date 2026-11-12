@@ -841,15 +841,15 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     </ScopeProvider>
   );
 }
-/** Season and team capsules of the top bar (wave 12): the choice every page follows. */
+/** The season capsule of the top bar (wave 12); the team is a filter of the pages that need it (12/11/2026). */
 function ScopeBar({ t }: { t: Copy }) {
   const scope = useScope();
-  const season = useRef<HTMLSelectElement>(null),
-    team = useRef<HTMLSelectElement>(null);
+  const season = useRef<HTMLSelectElement>(null);
   // "Changer de saison" and "Changer d'équipe" of the Ctrl+K window (wave 15, C6) land here.
   useEffect(() => {
     const focus = (e: Event) => {
-      const target = (e as CustomEvent<string>).detail === "team" ? team.current : season.current;
+      // 12/11/2026: only the season is chosen here; each page that needs it has its own team filter.
+      const target = season.current;
       if (!target) return;
       target.focus();
       try {
@@ -886,20 +886,6 @@ function ScopeBar({ t }: { t: Copy }) {
           )}
         </select>
       </label>
-      {scope.seasonTeams.length > 1 && (
-        <label className="capsule" data-active={scope.teamId ? "" : undefined}>
-          <span className="team-dot" data-color={scope.team?.color ?? "none"} aria-hidden="true" />
-          <span className="capsule-label">{t.team}</span>
-          <select ref={team} aria-label={t.team} value={scope.teamId ?? ""} onChange={(e) => scope.setTeam(e.target.value || null)}>
-            <option value="">{t.allTeams}</option>
-            {scope.seasonTeams.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
     </div>
   );
 }

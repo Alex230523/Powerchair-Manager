@@ -79,7 +79,7 @@ describe("wave 17, O1: first connection", () => {
     expect(tutorialAudience("coach")).toBe("coach");
     expect(tutorialAudience("club_president")).toBeNull();
     for (const l of ["fr", "nl", "en"] as const) expect(tutorialCopy[l].steps.coach).toHaveLength(5);
-    expect(tutorialCopy.fr.steps.coach!.map((s) => s.title)).toEqual(["Votre équipe", "Le calendrier", "L'appel des présences", "À faire", "Votre profil"]);
+    expect(tutorialCopy.fr.steps.coach!.map((s) => s.title)).toEqual(["La saison", "Le calendrier", "L'appel des présences", "À faire", "Votre profil"]);
     expect(tutorialCommand.safeParse({ action: "reset" }).success).toBe(true);
   });
   it("has every text in the three languages, without long dashes", () => {

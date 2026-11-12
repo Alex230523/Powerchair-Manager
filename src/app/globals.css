@@ -13585,3 +13585,126 @@ input[type="search"] {
   align-items: center;
   gap: var(--space-3);
 }
+
+/* ---------- 12/11/2026: the « Fédération » page of a club ---------- */
+.federation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--card-gap);
+  margin-block: var(--space-4) var(--space-8);
+}
+.federation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.federation-list li {
+  display: grid;
+  gap: 2px;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.federation-list li:last-child {
+  border-bottom: 0;
+}
+.federation-list a {
+  font-weight: 600;
+  text-decoration: none;
+}
+.federation-list a:hover {
+  text-decoration: underline;
+}
+.federation-list a.unread::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--primary);
+  vertical-align: middle;
+}
+.federation-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+.federation-clubs h2 {
+  margin-bottom: var(--space-1);
+}
+.federation-club-grid {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: var(--card-gap);
+}
+.federation-club {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding: var(--card-padding);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.federation-club[data-mine] {
+  border-color: var(--primary);
+}
+.federation-club-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.federation-club-head h3 {
+  margin: 0;
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+.federation-club-head p {
+  margin: 0;
+}
+.federation-club-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+  background: var(--surface-soft);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.federation-club-facts {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.federation-club-facts dt {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.federation-club-facts dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.federation-club-hall {
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xs);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text);
+}

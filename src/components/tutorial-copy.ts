@@ -42,7 +42,7 @@ export const tutorialCopy: Record<"fr" | "nl" | "en", Copy> = {
     replay: "Revoir la visite guidée",
     steps: {
       coach: [
-        { target: targets.team, title: "Votre équipe", text: "En haut de l'écran, choisissez la saison et l'équipe : toutes les pages suivent ce choix." },
+        { target: targets.team, title: "La saison", text: "En haut de l'écran, choisissez la saison. Les présences, le calendrier et les statistiques ont leur propre filtre par équipe." },
         { target: targets.calendar, title: "Le calendrier", text: "Ouvrez « Calendrier » puis « Nouvel événement » et choisissez « Entraînement » pour créer une séance." },
         { target: targets.attendance, title: "L'appel des présences", text: "Dans « Présences », ouvrez la séance et cochez qui est là. Les joueurs ont pu répondre à l'avance." },
         { target: targets.tasks, title: "À faire", text: "Vos tâches, par type : transport, entraînement, documents. Cochez-les quand c'est fait." },
@@ -74,7 +74,7 @@ export const tutorialCopy: Record<"fr" | "nl" | "en", Copy> = {
     replay: "De rondleiding opnieuw bekijken",
     steps: {
       coach: [
-        { target: targets.team, title: "Uw team", text: "Kies bovenaan het seizoen en het team: alle pagina's volgen die keuze." },
+        { target: targets.team, title: "Het seizoen", text: "Kies bovenaan het seizoen. Aanwezigheden, kalender en statistieken hebben hun eigen filter per team." },
         { target: targets.calendar, title: "De kalender", text: "Open « Kalender », dan « Nieuw evenement » en kies « Training » om een sessie aan te maken." },
         { target: targets.attendance, title: "De aanwezigheden", text: "Open in « Aanwezigheden » de sessie en vink aan wie er is. Spelers konden vooraf antwoorden." },
         { target: targets.tasks, title: "Te doen", text: "Uw taken per soort: vervoer, training, documenten. Vink ze aan wanneer ze gedaan zijn." },
@@ -106,7 +106,7 @@ export const tutorialCopy: Record<"fr" | "nl" | "en", Copy> = {
     replay: "Replay the guided tour",
     steps: {
       coach: [
-        { target: targets.team, title: "Your team", text: "At the top of the screen, choose the season and the team: every page follows that choice." },
+        { target: targets.team, title: "The season", text: "At the top of the screen, choose the season. Attendance, the calendar and the statistics have their own filter by team." },
         { target: targets.calendar, title: "The calendar", text: "Open « Calendar », then « New event » and choose « Training » to create a session." },
         { target: targets.attendance, title: "Taking attendance", text: "In « Attendance », open the session and tick who is there. Players could answer beforehand." },
         { target: targets.tasks, title: "To do", text: "Your tasks, by type: transport, training, documents. Tick them once done." },
