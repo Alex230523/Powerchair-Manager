@@ -13798,6 +13798,8 @@ details.task-group[data-drop-group] > p.muted {
   flex: none;
   width: 20px;
   height: 20px;
+  min-width: 0;
+  min-height: 0;
   margin: 0;
   accent-color: var(--primary);
 }
@@ -13878,10 +13880,11 @@ details.task-group {
   top: 6px;
   right: var(--space-3);
   display: inline-flex;
-  gap: 2px;
+  gap: 4px;
 }
-details.task-group[open] > summary {
-  padding-inline-end: calc(4 * 34px);
+/* The group's tools sit beside its title, never over it: two separate targets. */
+details.task-group[open]:has(> .task-group-tools) > summary {
+  margin-inline-end: calc(4 * 36px);
 }
 .task-quick-date {
   flex: 0 0 auto;
@@ -13925,8 +13928,8 @@ details.task-group[open] > summary {
   .task-row .task-grip {
     width: 36px;
   }
-  details.task-group[open] > summary {
-    padding-inline-end: 0;
+  details.task-group[open]:has(> .task-group-tools) > summary {
+    margin-inline-end: 0;
   }
   .task-group-tools {
     position: static;
