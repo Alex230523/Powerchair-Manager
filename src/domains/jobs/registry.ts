@@ -18,7 +18,7 @@ import { eventMailTick } from "../communication/service";
 import { fundingTaskTick } from "../funding/service";
 import { affiliationTick } from "../affiliations/service";
 import { equipmentLoanTick } from "../equipment/loans";
-import { taskSourcesTick } from "../tasks/sources";
+import { taskSourcesTick, tellAssignedTick } from "../tasks/sources";
 import { runAutomations } from "../automations/engine";
 import { majorityTick } from "../people/service";
 import { seasonCheckTick } from "../season-check/service";
@@ -158,6 +158,8 @@ export const jobs = {
         clubRequests: await clubRequestTick(db),
         // 12/11/2026: the accounts whose 30 days are over are anonymised.
         accountDeletions: await deletionTick(db),
+        // 12/11/2026: the people given a task by any path hear it once.
+        taskAssignees: await tellAssignedTick(db),
         // Console, step 3b: the support accesses past their end are closed.
         borrows: await borrowTick(db),
       };

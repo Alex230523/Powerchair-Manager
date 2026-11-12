@@ -9,6 +9,8 @@ import {
   Copy,
   Eye,
   GripVertical,
+  Package,
+  Pencil,
   Share2,
   Trash2,
   ArrowLeft,
@@ -143,6 +145,9 @@ const icons = {
   grip: GripVertical,
   share: Share2,
   trash: Trash2,
+  /** 12/11/2026: a task's row: what to bring, and to change it. */
+  package: Package,
+  pencil: Pencil,
 } satisfies Record<string, LucideIcon>;
 export type IconName = keyof typeof icons;
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {

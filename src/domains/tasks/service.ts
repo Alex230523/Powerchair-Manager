@@ -6,8 +6,9 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { ownProfiles } from "../calendar/access";
 import { brusselsToday } from "../people/service";
 import { publish } from "../notifications/queue";
-import { categoryOf, dueBefore, kindOf, moneyCategories, nextDue, yearTemplate, type Category, type Status, type TaskCommand, type TaskKind, type TemplateItem } from "./schema";
+import { categories, categoryOf, dueBefore, kindOf, moneyCategories, nextDue, yearTemplate, type Category, type Status, type TaskCommand, type TaskKind, type TemplateItem } from "./schema";
 import { syncSources } from "./sources";
+import { presetOf } from "./presets";
 import { moneyDeadlinesIn } from "../funding/service";
 import { visibleVenue } from "../venues/schema";
 
@@ -118,6 +119,10 @@ export type TaskRow = {
   recurrence_until: string | null;
   transaction_id: string | null;
   affiliation_due_id: string | null;
+  /** 12/11/2026: the board's order, what to bring, a list of the club's own. */
+  board_position: number | null;
+  materials: string[];
+  list_id: string | null;
 };
 
 const isMoney = (category: Category) => moneyCategories.includes(category);
@@ -149,7 +154,7 @@ async function assigneesOf(c: PoolClient, org: string, ids: string[]) {
 const select = `SELECT t.id,t.kind,t.category,t.title,t.detail,t.due_on::text AS due_on,t.status,t.done_on::text AS done_on,t.priority,t.recurrence,t.checklist,
         t.responsible_id,t.responsible_user_id,COALESCE(cp.full_name,ru.name) AS responsible_name,t.team_id,
         t.partner_id,t.grant_id,t.event_id,t.match_id,t.trip_id,t.obligation_id,t.chair_id,t.pot_id,t.document_id,t.receivable_id,t.source_kind,t.source_params,t.auto_closed,t.contact_id,
-        t.completion,t.meeting_starts_at,t.meeting_ends_at,t.place_id,t.shared_venue_id,COALESCE(pl.name,sv.name) AS place_name,t.free_location,t.link_url,t.amount_cents,t.recurrence_until::text AS recurrence_until,t.transaction_id,t.affiliation_due_id,
+        t.completion,t.meeting_starts_at,t.meeting_ends_at,t.place_id,t.shared_venue_id,COALESCE(pl.name,sv.name) AS place_name,t.free_location,t.link_url,t.amount_cents,t.recurrence_until::text AS recurrence_until,t.transaction_id,t.affiliation_due_id,t.board_position,t.materials,t.list_id,
         COALESCE(pa.name, g.funder, e.title, CASE WHEN m.id IS NOT NULL THEN mt.name||' · '||m.opponent END, tr.title, o.title, ch.name, pot.name, doc.name, ct.full_name) AS about
    FROM task t LEFT JOIN club_person cp ON cp.id=t.responsible_id AND cp.organization_id=t.organization_id LEFT JOIN "user" ru ON ru.id=t.responsible_user_id
    LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id
@@ -185,7 +190,7 @@ export async function tasksView(db: Pool, p: Principal) {
     // The application's own tasks are brought up to date first (idempotent).
     if (!s.federation) await syncSources(s.c, s.org);
     const rows = (
-      await s.c.query(`${select} WHERE t.organization_id=$1 AND (t.status<>'done' OR t.done_on>CURRENT_DATE-90) ORDER BY t.due_on NULLS LAST,t.title LIMIT 2000`, [s.org])
+      await s.c.query(`${select} WHERE t.organization_id=$1 AND (t.status<>'done' OR t.done_on>CURRENT_DATE-90) ORDER BY t.board_position NULLS LAST,t.due_on NULLS LAST,t.title LIMIT 2000`, [s.org])
     ).rows as TaskRow[];
     const crew = await assigneesOf(s.c, s.org, rows.map((t) => t.id));
     for (const t of rows) t.assignees = crew.get(t.id) ?? [];
@@ -230,6 +235,9 @@ export async function tasksView(db: Pool, p: Principal) {
       sharedVenues: s.federation
         ? []
         : ((await s.c.query(`SELECT v.id,v.name,v.address FROM shared_venue v WHERE ${visibleVenue()} ORDER BY v.name LIMIT 500`, [s.org])).rows as { id: string; name: string; address: string }[]),
+      // 12/11/2026: the club's own categories, and the order of the groups.
+      lists: (await s.c.query("SELECT id,name FROM task_list WHERE organization_id=$1 ORDER BY lower(name)", [s.org])).rows as { id: string; name: string }[],
+      groupOrder: ((await s.c.query("SELECT task_group_order FROM organization WHERE id=$1", [s.org])).rows[0]?.task_group_order ?? []) as string[],
       templates: s.federation
         ? []
         : ((await s.c.query("SELECT id,kind,name,items,archived,category FROM task_template WHERE organization_id=$1 ORDER BY archived,kind,name", [s.org])).rows as {
@@ -404,6 +412,8 @@ async function tellResponsible(s: Pick<Scope, "c" | "org" | "userId">, taskId: s
       [taskId, s.org],
     )
   ).rows as { title: string; due_on: string | null; organization: string; id: string; email: string; name: string; locale: "fr" | "nl" | "en"; who: string }[];
+  // 12/11/2026: each one is told once; the hourly task tells whoever another path forgot.
+  await s.c.query("UPDATE task_assignee SET told_at=COALESCE(told_at,now()) WHERE task_id=$1 AND organization_id=$2 AND ($3::text[] IS NULL OR COALESCE(profile_id::text,user_id)=ANY($3::text[]))", [taskId, s.org, only]);
   for (const r of rows) {
     if (r.id === s.userId || (only && !only.includes(r.who))) continue;
     await publish(s.c, {
@@ -569,6 +579,11 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
             extra,
           })
         ).rows[0].id as string;
+        if (command.listId) {
+          if (s.federation || !planning) throw new AccessError("FORBIDDEN");
+          if (!(await s.c.query("UPDATE task SET list_id=$3,category='other',kind='other' WHERE id=$1 AND organization_id=$2 AND EXISTS (SELECT 1 FROM task_list l WHERE l.id=$3 AND l.organization_id=$2)", [id, s.org, command.listId])).rowCount)
+            throw new AccessError("NOT_FOUND", 404);
+        }
         await setAssignees(s, id, crew.profiles, crew.users);
         await audit(s.c, s.org, s.userId, "task.created", id, { category });
         await tellResponsible(s, id);
@@ -697,6 +712,86 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
         return { ok: true as const };
       }
 
+      if (command.action === "fromPreset" || command.action === "copyPreset") {
+        if (s.federation || !s.manage) throw new AccessError("FORBIDDEN");
+        const preset = presetOf(command.preset);
+        if (!preset) throw new AccessError("NOT_FOUND", 404);
+        if (command.action === "copyPreset") {
+          const items = preset.items.map((x) => ({ title: x.title[command.locale], detail: "", daysBefore: x.daysBefore }));
+          const id = (
+            await s.c.query("INSERT INTO task_template(organization_id,kind,category,name,items,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING id", [s.org, preset.kind, preset.category, command.name, JSON.stringify(items), s.userId])
+          ).rows[0].id as string;
+          await audit(s.c, s.org, s.userId, "task.template.saved", id, { preset: preset.key });
+          return { ok: true as const, id };
+        }
+        await checkLinks(s, command);
+        const ids: string[] = [];
+        for (const [n, x] of preset.items.entries()) {
+          if ((command.excluded ?? []).includes(n)) continue;
+          const id = (
+            await insert(s, {
+              kind: preset.kind,
+              category: preset.category,
+              title: x.title[command.locale],
+              detail: "",
+              due: dueBefore(command.date, x.daysBefore),
+              responsible: { profile: null, user: null },
+              links: { eventId: command.eventId, matchId: command.matchId, tripId: command.tripId, obligationId: command.obligationId, chairId: command.chairId },
+              origin: "template",
+            })
+          ).rows[0].id as string;
+          await setAssignees(s, id, (command.assignments ?? {})[String(n)] ?? [], []);
+          await tellResponsible(s, id);
+          ids.push(id);
+        }
+        await audit(s.c, s.org, s.userId, "task.preset.applied", s.org, { preset: preset.key, count: ids.length });
+        return { ok: true as const, ids };
+      }
+      if (command.action === "saveList" || command.action === "deleteList" || command.action === "groupOrder") {
+        if (s.federation || !s.manage) throw new AccessError("FORBIDDEN");
+        if (command.action === "groupOrder") {
+          await s.c.query("UPDATE organization SET task_group_order=$2 WHERE id=$1", [s.org, [...new Set(command.order)]]);
+          return { ok: true as const };
+        }
+        if (command.action === "saveList") {
+          const id = command.id
+            ? ((await s.c.query("UPDATE task_list SET name=$3 WHERE id=$1 AND organization_id=$2 RETURNING id", [command.id, s.org, command.name])).rows[0]?.id as string | undefined)
+            : ((await s.c.query("INSERT INTO task_list(organization_id,name,created_by) VALUES($1,$2,$3) RETURNING id", [s.org, command.name, s.userId])).rows[0].id as string);
+          if (!id) throw new AccessError("NOT_FOUND", 404);
+          await audit(s.c, s.org, s.userId, "task.list.saved", id);
+          return { ok: true as const, id };
+        }
+        // A list with open tasks stays: they would have nowhere to go.
+        if ((await s.c.query("SELECT 1 FROM task WHERE list_id=$1 AND organization_id=$2 AND status<>'done' LIMIT 1", [command.id, s.org])).rowCount) throw new AccessError("LIST_NOT_EMPTY", 409);
+        if (!(await s.c.query("DELETE FROM task_list WHERE id=$1 AND organization_id=$2", [command.id, s.org])).rowCount) throw new AccessError("NOT_FOUND", 404);
+        await s.c.query("UPDATE organization SET task_group_order=array_remove(task_group_order,$2) WHERE id=$1", [s.org, `list:${command.id}`]);
+        await audit(s.c, s.org, s.userId, "task.list.deleted", command.id);
+        return { ok: true as const };
+      }
+      if (command.action === "reorder") {
+        // Planning only: the order is the club's, the same for everyone.
+        if (!s.manage) throw new AccessError("FORBIDDEN");
+        const [kind, value] = command.group.split(":") as ["cat" | "list", string];
+        if (kind === "cat" && !(categories as readonly string[]).includes(value)) throw new AccessError("INVALID_INPUT", 400);
+        if (kind === "cat") checkCategory(s, value as Category);
+        if (kind === "list" && (s.federation || !(await s.c.query("SELECT 1 FROM task_list WHERE id=$1 AND organization_id=$2", [value, s.org])).rowCount)) throw new AccessError("NOT_FOUND", 404);
+        const ids = [...new Set(command.ids)];
+        const rows = (await s.c.query("SELECT id,category,list_id,kind,source_key FROM task WHERE organization_id=$1 AND id=ANY($2::uuid[]) FOR UPDATE", [s.org, ids])).rows as { id: string; category: Category; list_id: string | null; kind: TaskKind; source_key: string | null }[];
+        if (rows.length !== ids.length) throw new AccessError("NOT_FOUND", 404);
+        for (const r of rows) {
+          const here = kind === "list" ? r.list_id === value : !r.list_id && r.category === value;
+          if (here) continue;
+          // Moved into this group: a file's task (sponsor, grant) or the application's own keeps its place.
+          if (r.kind === "sponsor" || r.kind === "grant" || r.source_key) throw new AccessError("TASK_FIXED", 409);
+          if (isMoney(r.category) && !s.moneyManage) throw new AccessError("FORBIDDEN");
+          if (kind === "list") await s.c.query("UPDATE task SET list_id=$3,category='other',kind='other',updated_at=now() WHERE id=$1 AND organization_id=$2", [r.id, s.org, value]);
+          else await s.c.query("UPDATE task SET list_id=NULL,category=$3,kind=$4,updated_at=now() WHERE id=$1 AND organization_id=$2", [r.id, s.org, value, kindOf(value as Category)]);
+        }
+        for (const [n, x] of ids.entries()) await s.c.query("UPDATE task SET board_position=$3 WHERE id=$1 AND organization_id=$2", [x, s.org, n]);
+        await audit(s.c, s.org, s.userId, "task.reordered", s.org, { group: command.group, count: ids.length });
+        return { ok: true as const };
+      }
+
       // One task: tick, start, edit, sub-tasks, comments, delete.
       const t = await taskFor(s, command.id);
       if (command.action === "comment") {
@@ -705,6 +800,19 @@ export async function tasksExecute(db: Pool, p: Principal, command: TaskCommand,
         return { ok: true as const };
       }
       if (!canWork(s, t)) throw new AccessError("FORBIDDEN");
+      if (command.action === "materials") {
+        await s.c.query("UPDATE task SET materials=$3,updated_at=now() WHERE id=$1 AND organization_id=$2", [t.id, s.org, [...new Set(command.items)]]);
+        return { ok: true as const };
+      }
+      if (command.action === "assign") {
+        // Planning: anyone of the club; otherwise one only takes the task for oneself.
+        const planning = isMoney(t.category) ? s.moneyManage || s.manage : s.manage;
+        if (!planning && (command.assignees.some((x) => !s.own.has(x)) || command.assigneeUserIds.some((x) => x !== s.userId))) throw new AccessError("FORBIDDEN");
+        const added = await setAssignees(s, t.id, command.assignees, command.assigneeUserIds);
+        await audit(s.c, s.org, s.userId, "task.assigned", t.id, { count: command.assignees.length + command.assigneeUserIds.length });
+        if (added.length) await tellResponsible(s, t.id, added);
+        return { ok: true as const };
+      }
       if (command.action === "expense") {
         // 2 (7): the task's expense, once; the line is linked to the task, never written twice.
         if (!(isMoney(t.category) ? s.moneyManage : s.manage) || s.financeOff || s.federation) throw new AccessError("FORBIDDEN");

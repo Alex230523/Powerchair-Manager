@@ -23,7 +23,9 @@ import {
   type TemplateItem,
 } from "@/domains/tasks/schema";
 import type { TaskRow, YearItem } from "@/domains/tasks/service";
+import { presets } from "@/domains/tasks/presets";
 import { todoMoreCopy } from "./todo-more-copy";
+import { boardCopy } from "./task-board-copy";
 import { PlaceCombobox } from "./place-combobox";
 import { tasksCopy } from "./tasks-copy";
 import { fill, todoCopy } from "./todo-copy";
@@ -60,7 +62,18 @@ type View = {
   places: { id: string; name: string; address: string }[];
   sharedVenues: { id: string; name: string; address: string }[];
   templates: { id: string; kind: TaskKind; name: string; items: TemplateItem[]; archived: boolean; category: Category | null }[];
+  /** 12/11/2026: the club's own categories, and the order of the groups. */
+  lists?: { id: string; name: string }[];
+  groupOrder?: string[];
 };
+type BoardGroup = { key: string; category: Category; label: string; list: { id: string; name: string } | null; tasks: TaskRow[] };
+/** Done at the bottom; then the order chosen by dragging; then by date, priority and title. */
+const boardOrder = (a: TaskRow, b: TaskRow) =>
+  Number(a.status === "done") - Number(b.status === "done") ||
+  (a.board_position ?? 1e9) - (b.board_position ?? 1e9) ||
+  (a.due_on ?? "9999").localeCompare(b.due_on ?? "9999") ||
+  Number(b.priority === "high") - Number(a.priority === "high") ||
+  a.title.localeCompare(b.title);
 type Filter = "all" | "mine" | "late" | "week" | "recurring";
 /** 2: given to me: one of my profiles, or my account, among the people in charge. */
 const isMine = (data: Pick<View, "own" | "userId">, x: TaskRow) =>
@@ -86,6 +99,8 @@ function href(locale: Locale, t: TaskRow) {
   if (t.receivable_id) return at(`/dues`);
   if (t.contact_id) return at(`/contacts?contact=${t.contact_id}`);
   if (t.source_kind === "accountsAssembly" || t.source_kind === "accountsFiling") return at(`/funding/annual-accounts`);
+  // 12/11/2026: the next season is prepared from the seasons' settings.
+  if (t.source_kind === "seasonNext") return at(`/settings/seasons`);
   // 18: a hall's booking, its follow-up, its invoice, a change to tell.
   if (t.source_kind?.startsWith("venue")) return at(`/venues#bookings`);
   // « Fin de coach »: a step of a departure opens the coach's file.
@@ -143,6 +158,12 @@ export function Tasks({
     [fromTemplate, setFromTemplate] = useState(false),
     [after, setAfter] = useState<TaskRow | null>(null),
     [asked, setAsked] = useState(create),
+    // 12/11/2026: the board: the task dragged, where it would land, the windows of a row.
+    [drag, setDrag] = useState<string | null>(null),
+    [over, setOver] = useState<{ group: string; id: string | null; after: boolean } | null>(null),
+    [assigning, setAssigning] = useState<string | null>(null),
+    [packing, setPacking] = useState<string | null>(null),
+    [listEdit, setListEdit] = useState<{ id: string | null; name: string } | null>(null),
     [lastCreate, setLastCreate] = useState(create);
   // Ctrl+K on the tasks page itself: the same page gets « ?new=1 » without remounting.
   if (create !== lastCreate) {
@@ -178,8 +199,30 @@ export function Tasks({
   );
   // What is done goes down the list, still visible.
   rows.sort((p, q) => Number(p.status === "done") - Number(q.status === "done"));
-  const groups = groupTasks(rows, data.federation).filter((g) => (category === "all" || g.category === category) && (!(embedded || linked) || g.tasks.length > 0));
+  // 12/11/2026: the board: the platform's categories and the club's own lists, in the club's order; inside, the order chosen by dragging.
+  const bc = boardCopy[locale];
+  const baseGroups: BoardGroup[] = (data.federation ? federationCategories : clubCategories).map((c) => ({ key: `cat:${c}`, category: c as Category, label: t.categories[c as Category], list: null, tasks: [] }));
+  const listGroups: BoardGroup[] = data.federation ? [] : (data.lists ?? []).map((l) => ({ key: `list:${l.id}`, category: "other" as Category, label: l.name, list: l, tasks: [] }));
+  const everyGroup = [...baseGroups, ...listGroups];
+  const rank = (k: string) => {
+    const n = (data.groupOrder ?? []).indexOf(k);
+    return n < 0 ? 1000 + everyGroup.findIndex((g) => g.key === k) : n;
+  };
+  everyGroup.sort((a, b) => rank(a.key) - rank(b.key));
+  const inGroup = (g: BoardGroup, x: TaskRow) => (g.list ? x.list_id === g.list.id : !x.list_id && x.category === g.category);
+  const groups = everyGroup
+    .map((g) => ({ ...g, tasks: rows.filter((x) => inGroup(g, x)).sort(boardOrder) }))
+    .filter((g) => (category === "all" || g.category === category) && (!(embedded || linked) || g.tasks.length > 0));
   const send = (body: Record<string, unknown>) => post({ ...body, organizationId: data.organization_id }, t.saved);
+  /** A group one step up or down; the whole order is kept by the club. */
+  const moveGroup = (key: string, step: number) => {
+    const keys = groups.map((g) => g.key);
+    const n = keys.indexOf(key);
+    if (n < 0 || n + step < 0 || n + step >= keys.length) return;
+    [keys[n], keys[n + step]] = [keys[n + step], keys[n]];
+    const rest = everyGroup.map((g) => g.key).filter((k) => !keys.includes(k));
+    void send({ action: "groupOrder", order: [...keys, ...rest] });
+  };
   /** 2: once ticked, a task with an amount proposes its expense, an affiliation its « en ordre ». */
   const tick = async (x: TaskRow, done: boolean) => {
     const ok = await send({ action: "done", id: x.id, done });
@@ -191,6 +234,10 @@ export function Tasks({
   const canWork = (x: TaskRow) => mineTask(x) || (isMoney(x.category) ? data.can.moneyManage : data.can.manage);
   const all = (data.federation ? federationCategories : clubCategories) as readonly Category[];
   const current = detail ? data.tasks.find((x) => x.id === detail) : undefined;
+  const assigningTask = assigning ? data.tasks.find((x) => x.id === assigning) : undefined;
+  const packingTask = packing ? data.tasks.find((x) => x.id === packing) : undefined;
+  // Dragging and the group tools: for whoever plans, on the full page.
+  const board = data.can.manage && !embedded && !linked;
   const anyAdd = all.some(canAdd);
   return (
     <Wrapper
@@ -271,52 +318,127 @@ export function Tasks({
         </Toolbar>
       )}
       {groups.some((g) => g.tasks.length > 0) || groups.some((g) => canAdd(g.category)) ? (
-        groups.map((g) => {
-          const open = g.tasks.filter((x) => x.status !== "done").length,
-            late = g.tasks.filter((x) => isLate(x, data.today)).length;
-          const id = `tasks-${g.category}`;
-          return (
-            <details
-              key={g.category}
-              className="task-group"
-              id={id}
-              open={opened[g.category] ?? (embedded || open > 0 || category === g.category)}
-              onToggle={(e) => {
-                const now = e.currentTarget.open;
-                setOpened((o) => (o[g.category] === now ? o : { ...o, [g.category]: now }));
-              }}
-            >
-              <summary>
-                <span className="task-group-name">{t.categories[g.category]}</span>
-                <Badge>{fill(t.openCount, { n: open })}</Badge>
-                {late > 0 && (
-                  <Badge tone="danger">
-                    <Icon name="alert" size={14} /> {fill(t.lateCount, { n: late })}
-                  </Badge>
+        <>
+          {groups.map((g, gi) => {
+            const open = g.tasks.filter((x) => x.status !== "done").length,
+              late = g.tasks.filter((x) => isLate(x, data.today)).length,
+              done = g.tasks.length - open;
+            const id = g.list ? `tasks-list-${g.list.id}` : `tasks-${g.category}`;
+            const ids = g.tasks.map((x) => x.id);
+            /** The group's new order after a drop or a move, sent at once. */
+            const place = (moving: string, before: string | null) => {
+              const rest = ids.filter((x) => x !== moving);
+              const at = before ? rest.indexOf(before) : rest.length;
+              rest.splice(at < 0 ? rest.length : at, 0, moving);
+              void send({ action: "reorder", group: g.key, ids: rest });
+            };
+            return (
+              <details
+                key={g.key}
+                className="task-group"
+                id={id}
+                data-drop-group={drag && over?.group === g.key && over.id === null ? "" : undefined}
+                open={opened[g.key] ?? (embedded || open > 0 || category === g.category)}
+                onToggle={(e) => {
+                  const now = e.currentTarget.open;
+                  setOpened((o) => (o[g.key] === now ? o : { ...o, [g.key]: now }));
+                }}
+                onDragOver={(e) => {
+                  if (!drag) return;
+                  e.preventDefault();
+                  if (!(e.target as HTMLElement).closest(".task-row")) setOver({ group: g.key, id: null, after: true });
+                }}
+                onDrop={(e) => {
+                  if (!drag) return;
+                  e.preventDefault();
+                  const target = over && over.group === g.key ? over : { group: g.key, id: null, after: true };
+                  const before = target.id ? (target.after ? (ids[ids.indexOf(target.id) + 1] ?? null) : target.id) : null;
+                  if (before !== drag) place(drag, before);
+                  setDrag(null);
+                  setOver(null);
+                }}
+              >
+                <summary>
+                  <span className="task-group-name">{g.label}</span>
+                  <span className="task-group-count muted small">{fill(bc.doneCount, { done, total: g.tasks.length })}</span>
+                  <Badge>{fill(t.openCount, { n: open })}</Badge>
+                  {late > 0 && (
+                    <Badge tone="danger">
+                      <Icon name="alert" size={14} /> {fill(t.lateCount, { n: late })}
+                    </Badge>
+                  )}
+                </summary>
+                {board && (
+                  <div className="task-group-tools">
+                    <button type="button" className="icon-button sm" aria-label={fill(bc.groupUp, { name: g.label })} title={fill(bc.groupUp, { name: g.label })} disabled={busy || gi === 0} onClick={() => moveGroup(g.key, -1)}>
+                      <Icon name="arrowUp" size={16} />
+                    </button>
+                    <button type="button" className="icon-button sm" aria-label={fill(bc.groupDown, { name: g.label })} title={fill(bc.groupDown, { name: g.label })} disabled={busy || gi === groups.length - 1} onClick={() => moveGroup(g.key, 1)}>
+                      <Icon name="arrowDown" size={16} />
+                    </button>
+                    {g.list && (
+                      <>
+                        <button type="button" className="icon-button sm" aria-label={fill(bc.renameCategory, { name: g.label })} title={fill(bc.renameCategory, { name: g.label })} onClick={() => setListEdit({ id: g.list!.id, name: g.list!.name })}>
+                          <Icon name="pencil" size={16} />
+                        </button>
+                        <button type="button" className="icon-button sm" aria-label={fill(bc.deleteCategory, { name: g.label })} title={fill(bc.deleteCategory, { name: g.label })} disabled={busy} onClick={() => void send({ action: "deleteList", id: g.list!.id })}>
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
-              </summary>
-              {g.tasks.length ? (
-                <ul className="task-list task-page">
-                  {g.tasks.map((x) => (
-                    <TaskItem
-                      key={x.id}
-                      locale={locale}
-                      task={x}
-                      today={data.today}
-                      busy={busy}
-                      work={canWork(x)}
-                      tick={tick}
-                      details={() => setDetail(x.id)}
-                    />
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted">{view === "mine" ? t.emptyMine : t.empty}</p>
-              )}
-              {canAdd(g.category) && <QuickAdd locale={locale} category={g.category} people={data.federation ? null : data.people} busy={busy} send={send} />}
-            </details>
-          );
-        })
+                {g.tasks.length ? (
+                  <ul className="task-list task-page task-board">
+                    {g.tasks.map((x, n) => (
+                      <TaskItem
+                        key={x.id}
+                        locale={locale}
+                        task={x}
+                        today={data.today}
+                        busy={busy}
+                        work={canWork(x)}
+                        tick={tick}
+                        details={() => setDetail(x.id)}
+                        edit={canWork(x) && (canAdd(x.category) || mineTask(x)) ? () => setEditing(x) : undefined}
+                        assign={canWork(x) && !data.federation ? () => setAssigning(x.id) : undefined}
+                        materials={canWork(x) ? () => setPacking(x.id) : undefined}
+                        board={
+                          board
+                            ? {
+                                drop: over && over.id === x.id ? (over.after ? "after" : "before") : undefined,
+                                dragging: drag === x.id,
+                                start: () => setDrag(x.id),
+                                end: () => {
+                                  setDrag(null);
+                                  setOver(null);
+                                },
+                                over: (after: boolean) => setOver((o) => (o && o.id === x.id && o.after === after && o.group === g.key ? o : { group: g.key, id: x.id, after })),
+                                up: n > 0 ? () => place(x.id, ids[n - 1]) : undefined,
+                                down: n < ids.length - 1 ? () => place(x.id, ids[n + 2] ?? null) : undefined,
+                                to: groups.filter((o) => o.key !== g.key && canAdd(o.category)).map((o) => ({ key: o.key, label: o.label })),
+                                moveTo: (key: string) => void send({ action: "reorder", group: key, ids: [...(groups.find((o) => o.key === key)?.tasks.map((y) => y.id) ?? []), x.id] }),
+                              }
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">{view === "mine" ? t.emptyMine : t.empty}</p>
+                )}
+                {canAdd(g.category) && <QuickAdd locale={locale} category={g.category} listId={g.list?.id ?? null} label={g.label} people={data.federation ? null : data.people} busy={busy} send={send} />}
+              </details>
+            );
+          })}
+          {board && !data.federation && (
+            <p className="task-new-category">
+              <Button variant="secondary" icon="plus" onClick={() => setListEdit({ id: null, name: "" })}>
+                {bc.newCategory}
+              </Button>
+            </p>
+          )}
+        </>
       ) : (
         <EmptyState
           title={view === "mine" || embedded ? t.emptyMine : t.empty}
@@ -329,6 +451,33 @@ export function Tasks({
             ) : undefined
           }
         />
+      )}
+      {assigningTask && (
+        <AssignWindow locale={locale} task={assigningTask} people={data.people} own={data.can.manage ? null : data.own} busy={busy} send={send} close={() => setAssigning(null)} />
+      )}
+      {packingTask && <MaterialsWindow locale={locale} task={packingTask} busy={busy} send={send} close={() => setPacking(null)} />}
+      {listEdit && (
+        <Modal title={listEdit.id ? fill(bc.renameCategory, { name: listEdit.name }) : bc.newCategory} close={() => setListEdit(null)}>
+          <form
+            className="stack-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
+              void send({ action: "saveList", id: listEdit.id, name }).then((ok) => ok && setListEdit(null));
+            }}
+          >
+            <label htmlFor="task-list-name">
+              {bc.categoryName}
+              <input id="task-list-name" name="name" required minLength={2} maxLength={80} defaultValue={listEdit.name} />
+            </label>
+            <div className="actions">
+              <Button disabled={busy}>{bc.save}</Button>
+              <Button type="button" variant="secondary" onClick={() => setListEdit(null)}>
+                {bc.cancel}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
       {editing && (
         <TaskForm
@@ -364,6 +513,23 @@ export function Tasks({
   );
 }
 
+type BoardRow = {
+  /** The coloured line where the dragged task would land. */
+  drop?: "before" | "after";
+  dragging: boolean;
+  start: () => void;
+  end: () => void;
+  over: (after: boolean) => void;
+  up?: () => void;
+  down?: () => void;
+  to: { key: string; label: string }[];
+  moveTo: (key: string) => void;
+};
+/**
+ * 12/11/2026: one row of the board, like a checklist: the handle to drag (or
+ * to move with the arrows), the box to tick, the title and its date, then the
+ * people in charge, the material and the edit, each in one click.
+ */
 function TaskItem({
   locale,
   task: x,
@@ -372,6 +538,10 @@ function TaskItem({
   work,
   tick,
   details,
+  edit,
+  assign,
+  materials,
+  board,
 }: {
   locale: Locale;
   task: TaskRow;
@@ -380,63 +550,268 @@ function TaskItem({
   work: boolean;
   tick: (x: TaskRow, done: boolean) => Promise<boolean>;
   details: () => void;
+  edit?: () => void;
+  assign?: () => void;
+  materials?: () => void;
+  board?: BoardRow;
 }) {
   const t = todoCopy[locale];
   const more = todoMoreCopy[locale];
+  const bc = boardCopy[locale];
+  const [menu, setMenu] = useState(false);
   const progress = x.completion === "each" && (x.assignees ?? []).length > 1 ? progressOf(x.assignees) : null;
   const rule = recurrenceText(locale, x.recurrence, x.due_on, x.recurrence_until);
   const title = titleOf(locale, x);
   const link = href(locale, x);
   const ticked = x.checklist.filter((i) => i.done).length;
+  const names = namesOf(x);
   return (
-    <li data-status={x.status} data-priority={x.priority}>
-      <label className="check task-check">
-        <input
-          type="checkbox"
-          checked={x.status === "done"}
-          disabled={busy || !work}
-          aria-label={fill(x.status === "done" ? t.untickOf : t.tickOf, { title })}
-          onChange={(e) => void tick(x, e.target.checked)}
-        />
-        <span className="task-title">{title}</span>
-      </label>
-      {/* A light line: when, who, and late; the rest is in the task's window. */}
-      <p className="task-meta muted small">
-        {x.priority === "high" && <Badge tone="warning">{t.priorities.high}</Badge>}
-        {x.status === "doing" && <Badge tone="info">{t.statuses.doing}</Badge>}
-        {x.about && link && (
-          <Link href={link} aria-label={fill(t.openOf, { about: x.about })}>
-            {x.about}
-          </Link>
-        )}
-        <span>{x.due_on ? `${t.due} ${dayLabel(locale, x.due_on)}` : t.noDate}</span>
-        {isLate(x, today) && x.status !== "done" && (
-          <Badge tone="danger">
-            <Icon name="alert" size={14} /> {t.views.late}
-          </Badge>
-        )}
-        {namesOf(x) && <span>{namesOf(x)}</span>}
-        {progress && <span>{fill(more.progress, { done: progress.done, total: progress.total })}</span>}
-        {rule && (
-          <span className="task-rule" title={rule}>
-            <Icon name="clock" size={14} />
-            <span className="sr-only">{rule}</span>
+    <li
+      className="task-row"
+      data-status={x.status}
+      data-priority={x.priority}
+      data-drop={board?.drop}
+      data-dragging={board?.dragging ? "" : undefined}
+      draggable={!!board}
+      onDragStart={(e) => {
+        if (!board) return;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", x.id);
+        board.start();
+      }}
+      onDragEnd={() => board?.end()}
+      onDragOver={(e) => {
+        if (!board) return;
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        board.over(e.clientY > r.top + r.height / 2);
+      }}
+    >
+      {board && (
+        <span className="task-grip-wrap">
+          <button
+            type="button"
+            className="icon-button sm task-grip"
+            aria-label={fill(bc.move, { title })}
+            title={bc.moveHelp}
+            aria-expanded={menu}
+            onClick={() => setMenu(!menu)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowUp" && board.up) {
+                e.preventDefault();
+                board.up();
+              } else if (e.key === "ArrowDown" && board.down) {
+                e.preventDefault();
+                board.down();
+              }
+            }}
+          >
+            <Icon name="grip" size={16} />
+          </button>
+          {menu && (
+            <span className="task-move-menu" role="group" aria-label={fill(bc.move, { title })}>
+              <Button type="button" variant="secondary" size="sm" icon="arrowUp" disabled={busy || !board.up} onClick={() => (board.up?.(), setMenu(false))}>
+                {bc.moveUp}
+              </Button>
+              <Button type="button" variant="secondary" size="sm" icon="arrowDown" disabled={busy || !board.down} onClick={() => (board.down?.(), setMenu(false))}>
+                {bc.moveDown}
+              </Button>
+              {board.to.length > 0 && (
+                <label>
+                  {bc.moveTo}
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) board.moveTo(e.target.value);
+                      setMenu(false);
+                    }}
+                  >
+                    <option value="" />
+                    {board.to.map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </span>
+          )}
+        </span>
+      )}
+      <input
+        type="checkbox"
+        className="task-tick"
+        checked={x.status === "done"}
+        disabled={busy || !work}
+        aria-label={fill(x.status === "done" ? t.untickOf : t.tickOf, { title })}
+        onChange={(e) => void tick(x, e.target.checked)}
+      />
+      <div className="task-main">
+        <button type="button" className="task-title-button" aria-label={fill(t.detailsOf, { title })} onClick={details}>
+          <span className="task-title">{title}</span>
+        </button>
+        {/* A light line: when, who, and late; the rest is in the task's window. */}
+        <p className="task-meta muted small">
+          <span className="task-chip">
+            <Icon name="calendar" size={14} /> {x.due_on ? fill(bc.dueFor, { day: dayLabel(locale, x.due_on) }) : t.noDate}
           </span>
+          {x.priority === "high" && <Badge tone="warning">{t.priorities.high}</Badge>}
+          {x.status === "doing" && <Badge tone="info">{t.statuses.doing}</Badge>}
+          {isLate(x, today) && x.status !== "done" && (
+            <Badge tone="danger">
+              <Icon name="alert" size={14} /> {t.views.late}
+            </Badge>
+          )}
+          {x.about && link && (
+            <Link href={link} aria-label={fill(t.openOf, { about: x.about })}>
+              {x.about}
+            </Link>
+          )}
+          {names && <span>{names}</span>}
+          {progress && <span>{fill(more.progress, { done: progress.done, total: progress.total })}</span>}
+          {rule && (
+            <span className="task-rule" title={rule}>
+              <Icon name="clock" size={14} />
+              <span className="sr-only">{rule}</span>
+            </span>
+          )}
+          {x.checklist.length > 0 && <span>{`${ticked}/${x.checklist.length}`}</span>}
+          {(x.materials ?? []).length > 0 && <span className="task-materials">{x.materials.join(", ")}</span>}
+        </p>
+      </div>
+      <span className="task-actions">
+        {assign && (
+          <button type="button" className="icon-button sm" aria-label={fill(bc.assign, { title })} title={fill(bc.assign, { title })} onClick={assign}>
+            <Icon name="userPlus" size={16} />
+          </button>
         )}
-        {x.checklist.length > 0 && <span>{`${ticked}/${x.checklist.length}`}</span>}
-      </p>
-      <button type="button" className="text-button task-open" aria-label={fill(t.detailsOf, { title })} onClick={details}>
-        {t.open}
-      </button>
+        {materials && (
+          <button type="button" className="icon-button sm" aria-label={fill(bc.materials, { title })} title={fill(bc.materials, { title })} onClick={materials}>
+            <Icon name="package" size={16} />
+            {(x.materials ?? []).length > 0 && <span className="task-action-count">{x.materials.length}</span>}
+          </button>
+        )}
+        {edit && (
+          <button type="button" className="icon-button sm" aria-label={fill(bc.edit, { title })} title={fill(bc.edit, { title })} onClick={edit}>
+            <Icon name="pencil" size={16} />
+          </button>
+        )}
+      </span>
     </li>
   );
 }
 
-function QuickAdd({ locale, category, people, busy, send }: { locale: Locale; category: Category; people: Person[] | null; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean> }) {
+/** 12/11/2026: who takes care of a task, from its row. */
+function AssignWindow({ locale, task, people, own, busy, send, close }: { locale: Locale; task: TaskRow; people: Person[]; own: string[] | null; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean>; close: () => void }) {
+  const bc = boardCopy[locale];
+  const title = titleOf(locale, task);
+  const current = new Set((task.assignees ?? []).map((a) => a.profile_id).filter(Boolean) as string[]);
+  // Not planning: one only takes the task for oneself.
+  const shown = own ? people.filter((p) => own.includes(p.id)) : people;
+  return (
+    <Modal title={bc.assignTitle} close={close}>
+      <form
+        className="stack-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const ids = new FormData(e.currentTarget).getAll("who").map(String);
+          void send({ action: "assign", id: task.id, assignees: ids }).then((ok) => ok && close());
+        }}
+      >
+        <p className="muted">{title}</p>
+        {shown.length ? (
+          <fieldset className="task-assignee-list">
+            <legend className="sr-only">{bc.assignTitle}</legend>
+            {shown.map((p) => (
+              <label key={p.id} className="check">
+                <input type="checkbox" name="who" value={p.id} defaultChecked={current.has(p.id)} />
+                {p.full_name}
+              </label>
+            ))}
+          </fieldset>
+        ) : (
+          <p className="muted">{bc.assignNone}</p>
+        )}
+        <div className="actions">
+          <Button disabled={busy}>{bc.save}</Button>
+          <Button type="button" variant="secondary" onClick={close}>
+            {bc.cancel}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** 12/11/2026: what to bring for a task. */
+function MaterialsWindow({ locale, task, busy, send, close }: { locale: Locale; task: TaskRow; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean>; close: () => void }) {
+  const bc = boardCopy[locale];
+  const [items, setItems] = useState<string[]>(task.materials ?? []);
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const v = draft.trim();
+    if (v && !items.includes(v) && items.length < 30) setItems([...items, v.slice(0, 120)]);
+    setDraft("");
+  };
+  return (
+    <Modal title={bc.materialsTitle} close={close}>
+      <div className="stack-form">
+        <p className="muted">
+          {titleOf(locale, task)} · {bc.materialsIntro}
+        </p>
+        {items.length > 0 && (
+          <ul className="task-material-list">
+            {items.map((m) => (
+              <li key={m}>
+                <span>{m}</span>
+                <button type="button" className="icon-button sm" aria-label={fill(bc.materialsRemove, { item: m })} title={fill(bc.materialsRemove, { item: m })} onClick={() => setItems(items.filter((x) => x !== m))}>
+                  <Icon name="close" size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="task-material-add">
+          <label htmlFor="task-material-new" className="sr-only">
+            {bc.materialsLabel}
+          </label>
+          <input
+            id="task-material-new"
+            maxLength={120}
+            placeholder={bc.materialsLabel}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                add();
+              }
+            }}
+          />
+          <Button type="button" variant="secondary" icon="plus" onClick={add}>
+            {bc.materialsAdd}
+          </Button>
+        </div>
+        <div className="actions">
+          <Button type="button" disabled={busy} onClick={() => void send({ action: "materials", id: task.id, items }).then((ok) => ok && close())}>
+            {bc.save}
+          </Button>
+          <Button type="button" variant="secondary" onClick={close}>
+            {bc.cancel}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function QuickAdd({ locale, category, listId = null, label, people, busy, send }: { locale: Locale; category: Category; listId?: string | null; label?: string; people: Person[] | null; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean> }) {
   const t = todoCopy[locale];
   const more = todoMoreCopy[locale];
-  const id = `quick-${category}`;
-  const name = t.categories[category];
+  const bc = boardCopy[locale];
+  const id = listId ? `quick-list-${listId}` : `quick-${category}`;
+  const name = label ?? t.categories[category];
   return (
     <form
       className="task-quick"
@@ -451,6 +826,7 @@ function QuickAdd({ locale, category, people, busy, send }: { locale: Locale; ca
         void send({
           action: "create",
           category,
+          ...(listId ? { listId } : {}),
           title,
           dueOn: f.get("due") || null,
           freeLocation: String(f.get("where") ?? "").trim(),
@@ -462,8 +838,12 @@ function QuickAdd({ locale, category, people, busy, send }: { locale: Locale; ca
         <label htmlFor={id} className="sr-only">
           {fill(t.quickLabel, { category: name })}
         </label>
-        <input id={id} name="title" required minLength={2} maxLength={200} placeholder={fill(t.quickLabel, { category: name })} />
-        <Button size="sm" icon="plus" disabled={busy} aria-label={fill(t.quickAdd, { category: name })}>
+        <input id={id} name="title" required minLength={2} maxLength={200} placeholder={bc.quickPlaceholder} />
+        <label htmlFor={id + "-due"} className="sr-only">
+          {bc.quickDate}
+        </label>
+        <input id={id + "-due"} name="due" type="date" className="task-quick-date" />
+        <Button icon="plus" disabled={busy} aria-label={fill(t.quickAdd, { category: name })}>
           {t.add}
         </Button>
       </div>
@@ -485,10 +865,6 @@ function QuickAdd({ locale, category, people, busy, send }: { locale: Locale; ca
           <label>
             {more.quickWhere}
             <input name="where" maxLength={200} />
-          </label>
-          <label>
-            {more.quickWhen}
-            <input name="due" type="date" />
           </label>
         </div>
       </details>
@@ -942,6 +1318,8 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
   if (!data?.can.manage) return null;
   const send = (body: Record<string, unknown>) => post({ ...body, organizationId: data.organization_id }, t.saved);
   const suggested = suggestedTemplates[locale].filter((s) => !data.templates.some((x) => x.name === s.name));
+  // 12/11/2026: the ready-made lists (match at home or away, assembly, discovery day, fundraising) too.
+  const ready = presets.filter((p) => !data.templates.some((x) => x.name === p.name[locale]));
   const current = editing && editing !== "new" ? editing : null;
   return (
     <section className="settings-section" aria-labelledby="settings-task-templates" id="settings-task-templates">
@@ -983,12 +1361,17 @@ export function TaskTemplates({ locale }: { locale: Locale }) {
           ))}
         </ul>
       )}
-      {suggested.length > 0 && (
+      {suggested.length + ready.length > 0 && (
         <div className="affiliation-examples">
           <p className="muted">{t.suggested}</p>
           {suggested.map((s) => (
             <Button key={s.key} variant="secondary" size="sm" disabled={busy} onClick={() => void send({ action: "saveTemplate", kind: s.kind, name: s.name, items: s.items })}>
               {fill(t.addSuggested, { name: s.name })}
+            </Button>
+          ))}
+          {ready.map((p) => (
+            <Button key={p.key} variant="secondary" size="sm" disabled={busy} onClick={() => void send({ action: "copyPreset", preset: p.key, locale, name: p.name[locale] })}>
+              {fill(t.addSuggested, { name: p.name[locale] })}
             </Button>
           ))}
         </div>
@@ -1128,9 +1511,11 @@ function Assignees({ locale, data, task }: { locale: Locale; data: View; task: T
 function FromTemplate({ locale, data, busy, send, close }: { locale: Locale; data: View; busy: boolean; send: (b: Record<string, unknown>) => Promise<boolean>; close: () => void }) {
   const more = todoMoreCopy[locale];
   const live = data.templates.filter((x) => !x.archived);
-  const [templateId, setTemplateId] = useState(live[0]?.id ?? ""),
+  // 12/11/2026: the ready-made lists are offered beside the club's own templates.
+  const [templateId, setTemplateId] = useState(live[0]?.id ?? `preset:${presets[0].key}`),
     [date, setDate] = useState(data.today);
-  const tpl = live.find((x) => x.id === templateId);
+  const preset = templateId.startsWith("preset:") ? presets.find((p) => `preset:${p.key}` === templateId) : undefined;
+  const tpl = preset ? { items: preset.items.map((x) => ({ title: x.title[locale], detail: "", daysBefore: x.daysBefore })) } : live.find((x) => x.id === templateId);
   const due = (days: number) => {
     const d = new Date(date + "T12:00:00Z");
     d.setUTCDate(d.getUTCDate() - days);
@@ -1138,9 +1523,7 @@ function FromTemplate({ locale, data, busy, send, close }: { locale: Locale; dat
   };
   return (
     <Modal title={more.fromTemplate} close={close}>
-      {!live.length ? (
-        <p className="muted">{more.noTemplate}</p>
-      ) : (
+      {
         <form
           className="stack-form"
           onSubmit={(e) => {
@@ -1152,18 +1535,29 @@ function FromTemplate({ locale, data, busy, send, close }: { locale: Locale; dat
               assignments[String(n)] = f.getAll(`line-${n}`).map(String);
               if (f.get(`skip-${n}`) === "on") excluded.push(n);
             });
-            void send({ action: "fromTemplate", templateId, date, assignments, excluded }).then((ok) => ok && close());
+            void send(preset ? { action: "fromPreset", preset: preset.key, locale, date, assignments, excluded } : { action: "fromTemplate", templateId, date, assignments, excluded }).then((ok) => ok && close());
           }}
         >
           <p className="muted">{more.templateIntro}</p>
           <label htmlFor="from-template">
             {more.template}
             <select id="from-template" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-              {live.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
+              {live.length > 0 && (
+                <optgroup label={boardCopy[locale].ownTemplates}>
+                  {live.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label={boardCopy[locale].readyTemplates}>
+                {presets.map((p) => (
+                  <option key={p.key} value={`preset:${p.key}`}>
+                    {p.name[locale]}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </label>
           <label htmlFor="from-template-date">
@@ -1193,7 +1587,7 @@ function FromTemplate({ locale, data, busy, send, close }: { locale: Locale; dat
             <Button disabled={busy || !tpl}>{more.createTasks}</Button>
           </div>
         </form>
-      )}
+      }
     </Modal>
   );
 }
