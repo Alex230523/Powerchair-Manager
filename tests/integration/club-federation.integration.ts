@@ -4,6 +4,13 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { clubFederationView } from "../../src/domains/federation-page/service";
+
+type Full = Extract<Awaited<ReturnType<typeof clubFederationView>>, { clubs: unknown }>;
+const full = async (p: Principal) => {
+  const v = await clubFederationView(db, p);
+  if (!v.federation) throw new Error("no federation");
+  return v as Full;
+};
 import { clubExecute } from "../../src/domains/club/service";
 
 /**
@@ -68,8 +75,7 @@ afterAll(async () => {
 });
 
 it("shows club A its federation: circulars, tournaments, discipline and the clubs of federation 1 only", async () => {
-  const v = await clubFederationView(db, presidentA);
-  if (!("clubs" in v)) throw new Error("no federation");
+  const v = await full(presidentA);
   expect(v.federation).toMatchObject({ name: "Fédération Une", contact_email: "contact@fed1.test" });
   expect(v.circulars.map((x) => x.title)).toEqual(["Calendrier de la saison"]);
   expect(v.unread).toBe(1);
@@ -84,8 +90,7 @@ it("shows club A its federation: circulars, tournaments, discipline and the club
 });
 
 it("keeps the discipline to the presidency and coaches, and the circulars to their recipients", async () => {
-  const v = await clubFederationView(db, playerA);
-  if (!("clubs" in v)) throw new Error("no federation");
+  const v = await full(playerA);
   expect(v.discipline).toBeNull();
   expect(v.can.discipline).toBe(false);
   expect(v.circulars).toEqual([]);
@@ -93,8 +98,7 @@ it("keeps the discipline to the presidency and coaches, and the circulars to the
 });
 
 it("shows club B its own federation, a club without one nothing, and refuses a federation", async () => {
-  const b = await clubFederationView(db, presidentB);
-  if (!("clubs" in b)) throw new Error("no federation");
+  const b = await full(presidentB);
   expect(b.clubs.map((x) => x.name)).toEqual(["Club B"]);
   expect(JSON.stringify(b)).not.toContain("Club A");
   expect(await clubFederationView(db, alone)).toEqual({ federation: null });
