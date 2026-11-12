@@ -82,7 +82,8 @@ test("a club asks to open without a federation, the owner makes a code and accep
     await owner.getByRole("tab", { name: "Facturation" }).click();
     await owner.getByRole("button", { name: "Nouveau code" }).click();
     const dialog = owner.getByRole("dialog");
-    await dialog.getByLabel("Code", { exact: true }).fill(code);
+    // The label carries the « required » star (hidden from the accessible name).
+    await dialog.getByRole("textbox", { name: "Code", exact: true }).fill(code);
     await dialog.getByLabel("Valeur (%)").fill("50");
     await dialog.getByLabel("Factures concernées").selectOption("1");
     await axe(owner, "discount form");
