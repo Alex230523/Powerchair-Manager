@@ -7,6 +7,8 @@ export const invoiceStates = ["draft", "sent", "paid", "cancelled"] as const;
 export type InvoiceState = (typeof invoiceStates)[number];
 const id = z.uuid();
 const cents = z.number().int().min(0).max(100000000);
+/** A discount code: letters, digits and hyphens, written in capitals. */
+export const discountCode = z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{4,30}$/);
 export const billingCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("plan"),
@@ -26,7 +28,25 @@ export const billingCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("paid"), id, paidOn: z.iso.date() }),
   z.object({ action: z.literal("cancel"), id }),
   z.object({ action: z.literal("remind"), id }),
+  /** 12/11/2026: a discount code, made here and given to clubs; percent or amount, for one invoice, several or all. */
+  z.object({
+    action: z.literal("discount"),
+    id: id.nullable().default(null),
+    code: discountCode,
+    percent: z.number().int().min(1).max(100).nullable().default(null),
+    amountCents: z.number().int().min(1).max(1000000).nullable().default(null),
+    cycles: z.number().int().min(1).max(10).nullable().default(1),
+    validUntil: z.iso.date().nullable().default(null),
+    maxUses: z.number().int().min(1).max(10000).nullable().default(null),
+    note: z.string().trim().max(300).default(""),
+    active: z.boolean().default(true),
+  }).refine((d) => (d.percent === null) !== (d.amountCents === null), { message: "percent or amount", path: ["percent"] }),
+  /** A code given to a club by hand: its next invoices are lowered. */
+  z.object({ action: z.literal("applyDiscount"), subscriptionId: id, code: discountCode }),
 ]);
+/** What a code takes off an amount: never more than the amount itself. */
+export const discountOf = (amountCents: number, d: { percent: number | null; amount_cents: number | null }) =>
+  Math.min(amountCents, d.percent !== null ? Math.round((amountCents * d.percent) / 100) : (d.amount_cents ?? 0));
 export type BillingCommand = z.infer<typeof billingCommand>;
 
 /** Invoice numbers: year and a sequence of the platform. */

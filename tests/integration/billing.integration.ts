@@ -90,7 +90,8 @@ it("bills a subscription: plan, invoice per period, sent to the presidency, paid
   await billingExecute(db, finance, { action: "subscribe", organizationId: clubB, planId: planA, startedOn: "2026-09-01", note: "" });
   const v = await billingView(db, support);
   expect(v.canBill).toBe(false);
-  expect(v.plans.map((p) => [p.code, p.subscribers])).toEqual([
+  // 12/11/2026: the plan of clubs without a federation comes with the migrations.
+  expect(v.plans.filter((p) => p.code !== "club-independant").map((p) => [p.code, p.subscribers])).toEqual([
     ["club-an", 1],
     ["joueur-mois", 1],
     ["ancien", 0],

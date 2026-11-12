@@ -1,15 +1,17 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Locale } from "@/lib/locale";
 import type { organizationBilling } from "@/domains/billing/service";
 import { organizationBillingCopy } from "./organization-billing-copy";
 import { errors } from "./access-copy";
-import { Badge, Card, EmptyState, PageHeader } from "./ui";
-import { useData } from "./use-api";
+import { Badge, Button, Card, EmptyState, Field, PageHeader } from "./ui";
+import { useData, usePost } from "./use-api";
+import { independentCopy } from "./independent-copy";
 import { formatCents } from "@/domains/dashboard/summary";
 import { externalHref } from "@/lib/html";
 
 type View = Awaited<ReturnType<typeof organizationBilling>>;
+const today = () => new Date().toISOString().slice(0, 10);
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] === undefined ? m : String(v[k])));
 
@@ -17,7 +19,10 @@ const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w
 export function OrganizationBilling({ locale }: { locale: Locale }) {
   const t = organizationBillingCopy[locale];
   const failure = useCallback((code: string) => errors[code]?.[locale] ?? code, [locale]);
-  const { data, error, denied } = useData<View>("/api/club/billing", failure);
+  const { data, error, denied, setError, reload } = useData<View>("/api/club/billing", failure);
+  const { busy, message, post } = usePost("/api/club/billing", reload, setError, failure);
+  const x = independentCopy[locale].club;
+  const [code, setCode] = useState("");
   const day = (iso: string) => new Intl.DateTimeFormat(tag(locale), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(iso.slice(0, 10) + "T12:00:00Z"));
   const money = (c: number) => formatCents(c, locale);
   if (denied) return <main id="main" className="access"><EmptyState title={errors.FORBIDDEN?.[locale] ?? t.title} /></main>;
@@ -37,9 +42,41 @@ export function OrganizationBilling({ locale }: { locale: Locale }) {
             ) : (
               <p className="muted">{t.noPlan}</p>
             )}
+            {data.subscription?.trial_ends_on && !data.subscription.ended_on && (
+              <p className="notice">{fill(data.subscription.trial_ends_on > today() ? x.trial : x.trialOver, { day: day(data.subscription.trial_ends_on) })}</p>
+            )}
+            {data.subscription?.auto_invoice && !data.subscription.ended_on && <p className="muted small">{x.autoInvoice}</p>}
+            {data.subscription?.discount_code && (
+              <p>
+                {fill(x.codeApplied, {
+                  code: data.subscription.discount_code,
+                  what: `${data.subscription.discount_percent !== null ? fill(x.percentOff, { n: data.subscription.discount_percent }) : fill(x.amountOff, { amount: money(data.subscription.discount_amount ?? 0) })} ${data.subscription.discount_cycles_left === null ? x.allInvoices : data.subscription.discount_cycles_left === 1 ? x.firstInvoice : fill(x.nInvoices, { n: data.subscription.discount_cycles_left })}`,
+                })}
+              </p>
+            )}
             {data.open > 0 && <p className="finance-treasury"><span className="stat-value">{fill(t.open, { amount: money(data.open) })}</span></p>}
             <p className="muted small">{t.howToPay}</p>
           </Card>
+          {data.canAddCode && (
+            <Card title={x.codeTitle}>
+              <p className="muted">{x.codeIntro}</p>
+              <p role="status" className="sr-only">
+                {message}
+              </p>
+              <form
+                className="inline-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void post({ action: "code", code: code.trim().toUpperCase() }, x.codeDone).then((ok) => ok && setCode(""));
+                }}
+              >
+                <Field id="club-discount-code" label={x.codeLabel} help={x.codeHelp} required>
+                  <input id="club-discount-code" value={code} onChange={(e) => setCode(e.target.value)} required pattern="[A-Za-z0-9\-]{4,30}" maxLength={30} autoCapitalize="characters" autoComplete="off" spellCheck={false} aria-describedby="club-discount-code-help" />
+                </Field>
+                <Button loading={busy}>{x.codeSend}</Button>
+              </form>
+            </Card>
+          )}
           <Card title={t.invoices}>
             {data.invoices.length ? (
               <div className="table-scroll" tabIndex={0}>

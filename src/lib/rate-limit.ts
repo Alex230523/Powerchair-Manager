@@ -27,6 +27,8 @@ export const limits = {
   "user-invite": { max: 30, window: 3600 },
   /** Whole files built on demand: exports, archives. */
   "user-export": { max: 20, window: 600 },
+  /** 12/11/2026: a discount code typed by a club's president (codes cannot be guessed by trying). */
+  "user-code": { max: 10, window: 3600 },
   /** Support tickets and their messages. */
   "user-support": { max: 30, window: 3600 },
   /** The console's assistant: each turn calls the model (and costs). */
