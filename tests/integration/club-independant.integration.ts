@@ -157,7 +157,7 @@ it("accepts: the club without a federation, its trial, its code, and its preside
   // No federation: no transfers, classification, discipline nor circulars in the menu; club A keeps them.
   const routes = (w: typeof ws) => menuGroups(w as never).flatMap((g) => g.items.map((i) => i.route));
   for (const route of ["/transfers", "/classification", "/discipline", "/circulars"]) expect(routes(ws)).not.toContain(route);
-  expect(routes(await workspace(db, presidentA))).toEqual(expect.arrayContaining(["/transfers", "/circulars"]));
+  expect(routes(await workspace(db, presidentA))).toEqual(expect.arrayContaining(["/transfers", "/club/federation"]));
   // Her own billing: the trial and the code; club A sees none of it.
   const mine = await organizationBilling(db, ines);
   expect(mine.subscription).toMatchObject({ trial_ends_on: sub.trial, discount_code: "BIENVENUE-50", discount_percent: 50 });
