@@ -436,7 +436,7 @@ export function Access({ locale }: { locale: Locale }) {
         {state && (
           <>
             <p>
-              <Link href={`/${locale}/settings/notifications`}>
+              <Link className="button secondary" href={`/${locale}/settings/notifications`}>
                 {locale === "en"
                   ? "Notifications"
                   : locale === "fr"
@@ -808,7 +808,7 @@ export function Access({ locale }: { locale: Locale }) {
             <Panel title={t.accountMoved} id="access-account">
               <p className="muted">{t.accountMovedText}</p>
               <p>
-                <Link href={`/${locale}/settings/account`}>{t.accountMovedLink}</Link>
+                <Link className="button secondary" href={`/${locale}/settings/account`}>{t.accountMovedLink}</Link>
               </p>
             </Panel>
           </>

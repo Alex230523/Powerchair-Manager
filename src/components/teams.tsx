@@ -230,9 +230,9 @@ export function Teams({ locale }: { locale: Locale }) {
                 )}
               </div>
               <div className="team-card-foot">
-                <Link href={link("/players", team.id)}>{t.roster}</Link>
-                <Link href={link("/calendar", team.id)}>{t.calendar}</Link>
-                <Link href={link("/attendance", team.id)}>{t.presence}</Link>
+                <Link className="button secondary" href={link("/players", team.id)}>{t.roster}</Link>
+                <Link className="button secondary" href={link("/calendar", team.id)}>{t.calendar}</Link>
+                <Link className="button secondary" href={link("/attendance", team.id)}>{t.presence}</Link>
               </div>
             </li>
           ))}

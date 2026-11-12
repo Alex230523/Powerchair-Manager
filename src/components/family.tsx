@@ -290,7 +290,7 @@ export function Family({ locale }: { locale: Locale }) {
                     )}
                     {club.current && (
                       <p>
-                        <Link href={`/${locale}/dues`}>{t.seeDues}</Link>
+                        <Link className="button secondary" href={`/${locale}/dues`}>{t.seeDues}</Link>
                       </p>
                     )}
                   </Card>

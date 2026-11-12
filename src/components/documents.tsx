@@ -223,7 +223,7 @@ export function Documents({ locale }: { locale: Locale }) {
           </p>
         )}
         {!data && !loading && (
-          <Link href={"/" + locale + "/access"}>{t.access}</Link>
+          <Link className="button secondary" href={"/" + locale + "/access"}>{t.access}</Link>
         )}
         {data && (
           <>
@@ -259,7 +259,7 @@ export function Documents({ locale }: { locale: Locale }) {
                 );
               })}
             <div className="actions">
-              <Link href={"/" + locale + "/calendar"}>
+              <Link className="button secondary" href={"/" + locale + "/calendar"}>
                 {locale === "fr"
                   ? "Associer à un entraînement"
                   : locale === "en"

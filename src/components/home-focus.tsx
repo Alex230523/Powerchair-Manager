@@ -50,7 +50,7 @@ function Member({ locale, focus, organizationId, href, reload }: { locale: Local
   return (
     <div className="dash-section focus-grid">
       {focus.people.map((p) => (
-        <Card key={p.profileId} title={several ? fill(t.nextFor, { name: p.name }) : t.next} labelledBy={`focus-${p.profileId}`} headingId={`focus-${p.profileId}`} actions={<Link href={href("/calendar")}>{t.seeCalendar}</Link>}>
+        <Card key={p.profileId} title={several ? fill(t.nextFor, { name: p.name }) : t.next} labelledBy={`focus-${p.profileId}`} headingId={`focus-${p.profileId}`} actions={<Link className="button secondary" href={href("/calendar")}>{t.seeCalendar}</Link>}>
           {p.next ? (
             <div className="focus-next">
               <p className="focus-title">
@@ -152,7 +152,7 @@ function Coach({ locale, focus, href }: { locale: Locale; focus: CoachFocus; hre
         </Link>
       </p>
       {focus.teams.map((team) => (
-        <Card key={team.id} title={fill(t.team, { name: team.name })} labelledBy={`focus-team-${team.id}`} headingId={`focus-team-${team.id}`} actions={<Link href={href(`/teams/${team.id}`)}>{t.seeAll}</Link>}>
+        <Card key={team.id} title={fill(t.team, { name: team.name })} labelledBy={`focus-team-${team.id}`} headingId={`focus-team-${team.id}`} actions={<Link className="button secondary" href={href(`/teams/${team.id}`)}>{t.seeAll}</Link>}>
           {(
             [
               [t.nextTraining, team.nextTraining],
@@ -199,12 +199,12 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
   return (
     <div className="dash-section focus-grid">
       {focus.can.licences && (
-        <Card title={t.clubs} labelledBy="focus-clubs" headingId="focus-clubs" actions={<Link href={href("/federation/clubs")}>{t.seeAll}</Link>}>
+        <Card title={t.clubs} labelledBy="focus-clubs" headingId="focus-clubs" actions={<Link className="button secondary" href={href("/federation/clubs")}>{t.seeAll}</Link>}>
           <p>{fill(t.clubsLine, { affiliated: focus.clubs.affiliated, pending: focus.clubs.pending })}</p>
         </Card>
       )}
       {focus.can.licences && (
-        <Card title={t.licences} labelledBy="focus-licences" headingId="focus-licences" actions={<Link href={href("/federation/licenses")}>{t.seeAll}</Link>}>
+        <Card title={t.licences} labelledBy="focus-licences" headingId="focus-licences" actions={<Link className="button secondary" href={href("/federation/licenses")}>{t.seeAll}</Link>}>
           {seasons.length ? (
             <ul className="focus-list focus-bars">
               {seasons.map((season) => {
@@ -228,7 +228,7 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
         </Card>
       )}
       {focus.can.licences && (
-        <Card title={t.lateClubs} labelledBy="focus-late" headingId="focus-late" actions={<Link href={href("/federation/affiliations")}>{t.seeAll}</Link>}>
+        <Card title={t.lateClubs} labelledBy="focus-late" headingId="focus-late" actions={<Link className="button secondary" href={href("/federation/affiliations")}>{t.seeAll}</Link>}>
           {focus.lateClubs ? <p className="focus-figure">{focus.lateClubs}</p> : <p className="muted">{t.lateClubsNone}</p>}
         </Card>
       )}
@@ -261,7 +261,7 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
         )}
       </Card>
       {focus.classificationDays.length > 0 && (
-        <Card title={t.classificationDays} labelledBy="focus-classification" headingId="focus-classification" actions={<Link href={href("/federation/licenses")}>{t.seeAll}</Link>}>
+        <Card title={t.classificationDays} labelledBy="focus-classification" headingId="focus-classification" actions={<Link className="button secondary" href={href("/federation/licenses")}>{t.seeAll}</Link>}>
           <ul className="focus-list">
             {focus.classificationDays.map((d) => (
               <li key={d.id}>
@@ -273,7 +273,7 @@ function Federation({ locale, focus, href }: { locale: Locale; focus: Federation
         </Card>
       )}
       {focus.tournamentDays.length > 0 && (
-        <Card title={t.tournamentDays} labelledBy="focus-tournaments" headingId="focus-tournaments" actions={<Link href={href("/tournaments")}>{t.seeAll}</Link>}>
+        <Card title={t.tournamentDays} labelledBy="focus-tournaments" headingId="focus-tournaments" actions={<Link className="button secondary" href={href("/tournaments")}>{t.seeAll}</Link>}>
           <ul className="focus-list">
             {focus.tournamentDays.map((d) => (
               <li key={d.id}>

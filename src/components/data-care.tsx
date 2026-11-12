@@ -79,7 +79,7 @@ function RequestRow({ locale, r, busy, send }: { locale: Locale; r: View["reques
           {r.response && <p className="muted small prewrap">{r.response}</p>}
           {r.certificate_number && (
             <p>
-              <a className="text-button" href={`/api/privacy/requests?certificate=${r.id}`}>
+              <a className="button secondary" href={`/api/privacy/requests?certificate=${r.id}`}>
                 {t.certificate(r.certificate_number)}
                 <span className="sr-only"> : {r.person ?? r.requester}</span>
               </a>
@@ -158,7 +158,7 @@ export function ClubSecurity({ locale }: { locale: Locale }) {
 
       <Card title={t.dpa} labelledBy="security-dpa" headingId="security-dpa">
         <p>
-          <Link href={`/${locale}/legal/dpa`}>{t.dpaRead}</Link>
+          <Link className="button secondary" href={`/${locale}/legal/dpa`}>{t.dpaRead}</Link>
         </p>
         {data.dpa.accepted && <p>{t.dpaAccepted(data.dpa.accepted.version, data.dpa.accepted.accepted_by, date(data.dpa.accepted.accepted_at))}</p>}
         {!data.dpa.required && !data.dpa.accepted && <p className="muted">{t.dpaNone}</p>}

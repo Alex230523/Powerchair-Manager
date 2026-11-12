@@ -589,7 +589,7 @@ function TripAuthorizations({ locale, d }: { locale: Locale; d: Detail }) {
       )}
       {!d.can.full && (
         <p>
-          <Link href={`/${locale}/family`}>{f.title}</Link>
+          <Link className="button secondary" href={`/${locale}/family`}>{f.title}</Link>
         </p>
       )}
       <p className="sr-only" role="status" aria-live="polite">

@@ -39,7 +39,7 @@ export function Join({ locale, contact }: { locale: Locale; contact: string | nu
         </Card>
       </div>
       <p>
-        <Link href={`/${locale}/access`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/access`}>{t.back}</Link>
       </p>
     </main>
   );

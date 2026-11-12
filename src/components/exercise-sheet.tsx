@@ -49,7 +49,7 @@ function SheetBody({ locale, x, planned, notes, drawing, exports = false }: { lo
       {x.has_diagram &&
         (x.diagram_type === "application/pdf" ? (
           <p>
-            <a href={`/api/exercises/${x.id}/diagram`} target="_blank" rel="noopener noreferrer">
+            <a className="button secondary" href={`/api/exercises/${x.id}/diagram`} target="_blank" rel="noopener noreferrer">
               {t.diagramPdf}
             </a>
           </p>
@@ -152,7 +152,7 @@ export function ExerciseSheet({ locale, id }: { locale: Locale; id: string }) {
   return (
     <main id="main" className="access exercise-page">
       <p className="no-print">
-        <Link href={`/${locale}/exercises`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/exercises`}>{t.back}</Link>
       </p>
       {error && !editing && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
@@ -356,7 +356,7 @@ export function ProgramPrint({ locale, eventId }: { locale: Locale; eventId: str
   return (
     <main id="main" className="access exercise-page">
       <p className="no-print">
-        <Link href={`/${locale}/calendar?event=${eventId}`}>{t.back}</Link>
+        <Link className="button secondary" href={`/${locale}/calendar?event=${eventId}`}>{t.back}</Link>
       </p>
       {error && <p role="alert">{error}</p>}
       {data && (

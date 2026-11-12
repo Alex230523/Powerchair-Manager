@@ -133,7 +133,7 @@ export function SeasonPlan({ locale }: { locale: Locale }) {
           ))}
         </dl>
         <p>
-          <Link href={`/${locale}/statistics/report`}>{t.reportLink}</Link>
+          <Link className="button secondary" href={`/${locale}/statistics/report`}>{t.reportLink}</Link>
         </p>
         <p className="actions">
           <Button disabled={busy} onClick={() => void save("review", { state: "done" })}>

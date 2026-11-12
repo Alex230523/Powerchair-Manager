@@ -718,7 +718,7 @@ function TaskDetail({
         {x.detail && <p>{x.detail}</p>}
         {x.link_url && (
           <p>
-            <a href={externalHref(x.link_url)} target="_blank" rel="noopener noreferrer">
+            <a className="button secondary" href={externalHref(x.link_url)} target="_blank" rel="noopener noreferrer">
               {todoMoreCopy[locale].linkOpen}
             </a>
           </p>

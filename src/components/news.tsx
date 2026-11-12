@@ -49,7 +49,7 @@ export function NewsPage({ locale }: { locale: Locale }) {
                     </p>
                     <p>{e[locale].text}</p>
                     <p>
-                      <Link href={`/${locale}${e.link === "/" ? "" : e.link}`}>
+                      <Link className="button secondary" href={`/${locale}${e.link === "/" ? "" : e.link}`}>
                         {t.open}
                         <span className="sr-only"> : {e[locale].title}</span>
                       </Link>

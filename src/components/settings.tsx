@@ -452,7 +452,7 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
             <Card title={h.rolloverTitle} labelledBy="settings-rollover" headingId="settings-rollover">
               <p className="muted">{h.rolloverText}</p>
               <p>
-                <Link href={`/${locale}/club/rollover`}>{h.rolloverLink}</Link>
+                <Link className="button secondary" href={`/${locale}/club/rollover`}>{h.rolloverLink}</Link>
               </p>
             </Card>
           )}

@@ -2671,6 +2671,10 @@ caption {
 .card-link-row {
   margin: var(--space-3) 0 0;
 }
+/* 12/11/2026: a card's way onward is a button the width of the card, not an underlined text. */
+.card-link-row .button {
+  width: 100%;
+}
 .create-menu {
   position: relative;
 }
@@ -6154,8 +6158,8 @@ input.narrow {
 .team-coaches { display: flex; align-items: center; min-height: 1.75rem; }
 .avatar-small { width: 28px; height: 28px; font-size: var(--text-xs); border: 2px solid var(--surface); }
 .team-coaches .avatar-small + .avatar-small { margin-left: -8px; }
-.team-card-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 10px; border-top: 1px solid var(--border); }
-.team-card-foot a { min-height: 2.75rem; display: inline-flex; align-items: center; font-weight: 600; }
+.team-card-foot { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.team-card-foot .button { flex: 1 1 auto; }
 .color-picker { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0 0 12px; }
 .color-swatch { width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 2px solid var(--team-border); background: var(--team-bg); display: grid; place-items: center; cursor: pointer; }
 .color-swatch .team-dot { width: 14px; height: 14px; background: var(--team-border); }

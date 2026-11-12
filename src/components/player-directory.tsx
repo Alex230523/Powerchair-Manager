@@ -474,7 +474,7 @@ export function PlayerDirectory({
       {!person && !creating && feedback}
       {!data && (
         <p>
-          <Link href={`/${locale}/access`}>{p.missing}</Link>
+          <Link className="button secondary" href={`/${locale}/access`}>{p.missing}</Link>
         </p>
       )}
       {data && (
