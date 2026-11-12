@@ -6,7 +6,7 @@ import type { shellCopy } from "./shell-copy";
 import type { SeasonOption, TeamOption } from "../domains/scope/service";
 type Copy = (typeof shellCopy)[Locale];
 export type Workspace = {
-  user: { name: string };
+  user: { name: string; email?: string };
   contexts: { id: string; name: string; role: Role }[];
   profiles: {
     id: string;

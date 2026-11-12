@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FirstSteps } from "./first-steps";
+import { DemoSwitch } from "./demo-switch";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
@@ -629,6 +630,8 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
                   </select>
                 </label>
               )}
+              {/* 12/11/2026, previews only: another demo account in one choice. */}
+              {state && <DemoSwitch locale={locale} email={state.user.email ?? null} />}
               {state && (
                 <Link className="menu-link" href={`/${locale}/settings/account`}>
                   <Icon name="userRound" size={16} /> {t.myAccount}
