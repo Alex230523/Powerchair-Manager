@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { securityEvent } from "../domains/security/events";
 
 /**
  * Security (07/11/2026), missing rate limiting. A counter per bucket, key and
@@ -62,7 +63,11 @@ export async function limit(db: Pool | PoolClient, bucket: Bucket, key: string, 
   ).rows[0] as { count: number; reset: number };
   // Old windows go now and then: the table stays small.
   if (Math.random() < 0.01) await db.query("DELETE FROM rate_counter WHERE window_start<now()-interval '1 day'");
-  if (row.count > max * scale(env)) throw new RateLimited(Math.max(1, row.reset));
+  if (row.count > max * scale(env)) {
+    // Security (07/11/2026): the first refusal of a window is journaled, not every one.
+    if (row.count === Math.floor(max * scale(env)) + 1) await securityEvent(db, "rate.limited", { source: key.slice(0, 32), details: { bucket, max, window } });
+    throw new RateLimited(Math.max(1, row.reset));
+  }
 }
 
 /**

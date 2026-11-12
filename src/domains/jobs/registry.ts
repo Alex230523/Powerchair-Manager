@@ -38,6 +38,7 @@ import { ruleKeys } from "../automations/catalog";
 import { mailBudget } from "./mail-budget";
 import { lineupRevealTick } from "../competitions/lineup-reveal";
 import { watchdog } from "./watchdog";
+import { securityTick } from "../security/alerts";
 
 /**
  * B2: the background tasks, each an idempotent runOnce() the cron route
@@ -154,6 +155,13 @@ export const jobs = {
         // Console, step 3b: the support accesses past their end are closed.
         borrows: await borrowTick(db),
       };
+    },
+  },
+  /** Security (07/11/2026): the alerts of the security journal, within minutes; the journal past twelve months goes. */
+  security: {
+    every: 5,
+    async run(db, env) {
+      return securityTick(db, env);
     },
   },
   /** Tells the operator when a task has not run for two cycles. */

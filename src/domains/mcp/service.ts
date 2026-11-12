@@ -8,6 +8,7 @@ import { consoleCommand, keyReview } from "../console/schema";
 import { consoleSupport, consoleTicket, supportOperatorExecute } from "../support/service";
 import { supportOperatorCommand } from "../support/schema";
 import { redactForModel } from "../../lib/redact";
+import { securityEvent } from "../security/events";
 import { PROTOCOL_VERSION, mcpScopes, rpcRequest, serverInfo, tools, type McpKeyCommand, type McpScope, type RpcRequest, type ToolDef } from "./schema";
 export { mcpKeyCommand } from "./schema";
 
@@ -50,6 +51,7 @@ export async function mcpKeysExecute(db: Pool, p: Principal, command: McpKeyComm
       const key = `pfmop_${prefix}_${randomBytes(32).toString("base64url")}`;
       const id = (await c.query("INSERT INTO operator_api_key(operator_id,name,prefix,key_hash,scopes) VALUES($1,$2,$3,$4,$5) RETURNING id", [o.userId, command.name, prefix, keyHash(key), [...new Set(command.scopes)]])).rows[0].id as string;
       await c.query("INSERT INTO platform_action(operator_id,kind,payload) VALUES($1,'mcp.key.create',$2)", [o.userId, JSON.stringify({ id, scopes: command.scopes })]);
+      await securityEvent(c, "operator.key_created", { actorId: o.userId, details: { id, scopes: command.scopes.join(" ") } });
       // The secret is shown once; only its hash stays.
       return { ok: true as const, id, key };
     }

@@ -1,4 +1,5 @@
 import { limit } from "@/lib/rate-limit";
+import { securityEvent } from "@/domains/security/events";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { accountsLedger, accountsView } from "@/domains/accounts/service";
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
     const p = await principalIn(request, "finance");
     // Security (07/11/2026): a whole file built on demand counts.
     await limit(getDb(), "user-export", p.userId);
+    await securityEvent(getDb(), "data.export", { actorId: p.userId, details: { path: "/api/accounts/export" } });
     const view = await accountsView(getDb(), p, year);
     const ledger = await accountsLedger(getDb(), p, view.year.from);
     return new Response(xlsx(accountsSheet(view, ledger, accountsCopy[locale]), accountsCopy[locale].title) as BodyInit, {

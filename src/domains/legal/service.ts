@@ -262,6 +262,9 @@ export async function closeClub(c: PoolClient, org: string) {
   fkCache = null;
   const counts: Record<string, number> = {};
   const tables = (await clubTables(c)).filter((t) => !keptTables.includes(t));
+  // Security (07/11/2026): the journals refuse any deletion before twelve months, except in this
+  // transaction, the closure the club asked for 30 days ago (db/migrations/0142).
+  await c.query("SET LOCAL pfm.journal_purge = 'club'");
   for (let pass = 0; pass < 4; pass++) for (const t of tables) await deleteRows(c, t, "organization_id=$1", [org], 0, counts);
   // The people the accounting still points at keep no name, no birth date, no address.
   const anonymised =

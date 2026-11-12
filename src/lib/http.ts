@@ -4,7 +4,9 @@ import { getAuth } from "@/lib/auth-server";
 import { AccessError } from "@/domains/access/service";
 import { ZodError } from "zod";
 import { getDb } from "@/lib/db";
-import { limit, RateLimited, throttle, type Bucket } from "@/lib/rate-limit";
+import { clientKey, limit, RateLimited, throttle, type Bucket } from "@/lib/rate-limit";
+import { securityEvent } from "@/domains/security/events";
+import { after } from "next/server";
 import { assertModule } from "@/domains/club/governance";
 import type { OptionalModule } from "@/domains/access/rights";
 export const noStore = { "Cache-Control": "private, no-store" };
@@ -27,6 +29,8 @@ export async function principal(request: Request) {
 export async function principalCounted(request: Request, bucket: Bucket) {
   const p = await principal(request);
   await limit(getDb(), bucket, p.userId);
+  // Security (07/11/2026): a whole file of data taken out is journaled.
+  if (bucket === "user-export") await securityEvent(getDb(), "data.export", { actorId: p.userId, details: { path: new URL(request.url).pathname.slice(0, 100) } });
   return p;
 }
 /** Session of a route that belongs to a module the club may switch off. */
@@ -55,8 +59,17 @@ export async function gate(request: Request, ...buckets: Bucket[]) {
   }
 }
 export function origin(request: Request) {
-  if (request.headers.get("origin") !== process.env.BETTER_AUTH_URL)
+  if (request.headers.get("origin") !== process.env.BETTER_AUTH_URL) {
+    // Security (07/11/2026): a change sent from another site is journaled, once the answer is gone.
+    const path = new URL(request.url).pathname.slice(0, 100),
+      source = clientKey(request);
+    try {
+      after(() => securityEvent(getDb(), "request.bad_origin", { source, details: { path } }));
+    } catch {
+      // Outside a request (a test): nothing to journal.
+    }
     throw new AccessError("INVALID_ORIGIN");
+  }
 }
 export async function bounded(request: Request, limit: number) {
   if (Number(request.headers.get("content-length")) > limit)

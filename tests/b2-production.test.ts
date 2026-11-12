@@ -11,7 +11,7 @@ import { pageHeaders, widgetHeaders } from "../src/lib/security-headers";
 /** B2: production at no cost, the pure parts. */
 describe("B2 production", () => {
   it("knows its background tasks", () => {
-    expect(jobNames).toEqual(["mail", "documents", "attendance", "platform", "reminders", "watchdog"]);
+    expect(jobNames).toEqual(["mail", "documents", "attendance", "platform", "reminders", "security", "watchdog"]);
     expect(isJob("mail")).toBe(true);
     expect(isJob("toString")).toBe(false);
   });

@@ -33,7 +33,7 @@ jobs:
         run: |
           set -u
           failed=0
-          for task in mail attendance reminders documents watchdog; do
+          for task in mail attendance security reminders documents watchdog; do
             code=$(curl -sS -o /tmp/out.json -w '%{http_code}' -X POST -H "Authorization: Bearer $CRON_SECRET" --max-time 90 "$PFM_URL/api/cron/$task" || echo 000)
             echo "$task: $code $(cat /tmp/out.json 2>/dev/null)"
             [ "$code" = "200" ] || failed=1

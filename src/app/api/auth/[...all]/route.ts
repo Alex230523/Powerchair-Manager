@@ -2,6 +2,8 @@ import { getAuth } from "@/lib/auth-server";
 import { getDb } from "@/lib/db";
 import { invitationHeader, isPasswordSignIn, isSignUp, signupAllowed } from "@/domains/access/signup";
 import { recordSignIn, signInBlocked } from "@/domains/access/lockout";
+import { securityEvent } from "@/domains/security/events";
+import { clientKey } from "@/lib/rate-limit";
 
 const noStore = { "Cache-Control": "private, no-store" };
 const bodyEmail = async (request: Request) => {
@@ -31,6 +33,11 @@ export async function POST(request: Request) {
       return Response.json({ code: "TOO_MANY_ATTEMPTS", message: "Too many failed attempts for this address. Try again in a quarter of an hour." }, { status: 429, headers: noStore });
     const response = await getAuth().handler(request);
     if (response.status === 200 || response.status === 401) await recordSignIn(getDb(), email, response.status === 200);
+    // Security (07/11/2026): a platform operator's sign-in is journaled (the accounts that can do the most).
+    if (response.status === 200 && typeof email === "string") {
+      const operator = (await getDb().query('SELECT u.id FROM "user" u JOIN platform_operator o ON o.user_id=u.id AND o.revoked_at IS NULL WHERE lower(u.email)=lower($1)', [email])).rows[0] as { id: string } | undefined;
+      if (operator) await securityEvent(getDb(), "auth.operator_signin", { actorId: operator.id, source: clientKey(request) });
+    }
     return response;
   }
   return getAuth().handler(request);
