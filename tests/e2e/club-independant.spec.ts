@@ -70,7 +70,9 @@ test("a club asks to open without a federation, the owner makes a code and accep
     expect((await db.query("SELECT state FROM club_request WHERE president_email=$1", [president])).rows[0].state).toBe("pending");
 
     // The platform's owner, in the console.
-    const owner = await browser.newPage();
+    // A context of its own (axe needs one), signed in apart from the public visitor.
+    const ownerContext = await browser.newContext();
+    const owner = await ownerContext.newPage();
     const email = `owner-club-${stamp}@example.test`;
     await prepareSignIn(owner, db, "Alex Plateforme", email, "Browser-test-passphrase-2026!");
     const user = (await db.query('SELECT id FROM "user" WHERE email=$1', [email])).rows[0].id;
@@ -107,7 +109,7 @@ test("a club asks to open without a federation, the owner makes a code and accep
     const sub = (await db.query("SELECT (trial_ends_on-started_on) AS days,auto_invoice,discount_cycles_left FROM billing_subscription WHERE organization_id=$1", [org.id])).rows[0];
     expect(sub).toEqual({ days: 30, auto_invoice: true, discount_cycles_left: 1 });
     expect((await db.query("SELECT role,issued_by_platform FROM invitation WHERE organization_id=$1", [org.id])).rows).toEqual([{ role: "club_president", issued_by_platform: true }]);
-    await owner.close();
+    await ownerContext.close();
   } finally {
     await db.end();
   }
