@@ -29,7 +29,7 @@ Le président d'un club sans fédération qui n'a pas encore de code peut en sai
 
 ## Base de données
 
-Migration `0143_independent_club.sql` : tables `club_request` et `billing_discount`, formule `club-independant` (9 900 centimes par an), colonnes `trial_ends_on`, `auto_invoice`, `discount_id`, `discount_cycles_left` sur `billing_subscription`, `discount_cents` et `discount_code` sur `billing_invoice`, `issued_by_platform` sur `invitation`. Tout est additif et rejouable.
+Migration `0144_independent_club.sql` : tables `club_request` et `billing_discount`, formule `club-independant` (9 900 centimes par an), colonnes `trial_ends_on`, `auto_invoice`, `discount_id`, `discount_cycles_left` sur `billing_subscription`, `discount_cents` et `discount_code` sur `billing_invoice`, `issued_by_platform` sur `invitation`. Tout est additif et rejouable.
 
 ## Garde-fous
 

@@ -143,5 +143,6 @@
   "0140_venue_website.sql": "a9f94e37536c6200248761cf0c611df1ace1a874330bf527a9415a300ffb4b04",
   "0141_rate_counter.sql": "fca4cb3a835f406e26a418251e25e46ece958fb7693b592ce39cdd81987da878",
   "0142_security_event.sql": "e09380099b7794f98c4e4725ff7a845e9316c407bf4a0cace5578728ed3d52f7",
-  "0143_journal_purge.sql": "3696f8ba838555fc24de1d1e5ab014bad2acf5836969b0eb34a1ad71480ffc94"
+  "0143_journal_purge.sql": "3696f8ba838555fc24de1d1e5ab014bad2acf5836969b0eb34a1ad71480ffc94",
+  "0144_independent_club.sql": "a014ca92dac750c804fa73ce76284778575f3db457f0b88ee32b7e30d3c5ba2b"
 }
