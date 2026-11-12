@@ -20,6 +20,10 @@ Audit du 07/11/2026 : si quelqu'un attaque la plateforme, est-ce que ça laisse 
 - **Les journaux pouvaient être réécrits.** Rien n'empêchait de modifier ou d'effacer une ligne du journal d'un club ou des opérateurs. La base refuse désormais toute modification des trois journaux, et tout effacement avant douze mois (la plus courte durée de conservation qu'un club peut choisir). Seule exception : la fermeture d'un club, 30 jours après sa demande, qui efface ses données comme la loi le veut ; sa transaction, et elle seule, le déclare à la base.
 - **Rien à lire.** La console (onglet Supervision) montre le journal de sécurité : les comptes du jour par gravité, les alertes envoyées, chaque événement avec son compte ou son organisation et le début de l'empreinte de sa source.
 
+## Correctif du 12/11/2026
+
+La première version de l'exception « fermeture d'un club » réécrivait la migration `0142`, déjà appliquée par l'aperçu : `scripts/migrate.mjs` refusait alors le texte changé et chaque déploiement Vercel échouait (« Migration modified »). `0142` retrouve son texte d'origine et l'exception arrive dans une nouvelle migration, `0143_journal_purge.sql`. Garde-fou : `db/migrations.lock.json` garde l'empreinte de chaque migration et `tests/migrations-frozen.test.ts` refuse toute réécriture ; `npx tsx scripts/migrations-lock.ts` ajoute les nouvelles.
+
 ## Choix
 
 - Le journal de sécurité garde douze mois, puis la tâche efface ce qui est plus ancien. Il n'a pas de clé étrangère : il survit à ce dont il parle et ne peut pas être réécrit par une suppression en cascade.
