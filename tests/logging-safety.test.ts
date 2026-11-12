@@ -65,7 +65,9 @@ describe("missing logging and alerting", () => {
     const m = read("db/migrations/0142_security_event.sql");
     expect(m).toContain("FOREACH t IN ARRAY ARRAY['audit_log', 'platform_action', 'security_event'] LOOP");
     expect(m).toContain("BEFORE UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION journal_append_only()");
-    expect(m).toContain("IF OLD.created_at > now() - interval '12 months' AND coalesce(current_setting('pfm.journal_purge', true), '') <> 'club' THEN");
+    expect(m).toContain("IF OLD.created_at > now() - interval '12 months' THEN");
+    // 0142 is never rewritten (the databases that applied it check its checksum): the exception comes in 0143.
+    expect(read("db/migrations/0143_journal_purge.sql")).toContain("IF OLD.created_at > now() - interval '12 months' AND coalesce(current_setting('pfm.journal_purge', true), '') <> 'club' THEN");
     // The one exception: the closure of a club, in its own transaction.
     const legal = read("src/domains/legal/service.ts");
     expect(legal.match(/SET LOCAL pfm\.journal_purge = 'club'/g)).toHaveLength(1);
