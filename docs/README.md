@@ -203,6 +203,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 13/11/2026 | [« Mon équipe nationale » : l'écran du staff national](evolutions/2026-11-13-encadrement-national.md) |
 | 13/11/2026 | [Routes sans écran : une retirée, une gardée](evolutions/2026-11-13-routes-orphelines.md) |
 | 13/11/2026 | [Les actions des tableaux en boutons](evolutions/2026-11-13-actions-tableaux.md) |
+| 13/11/2026 | [Réactivité : moins d'attente, moins d'actualisations ; la loupe des champs de recherche](evolutions/2026-11-13-reactivite.md) |
 
 ## Convention
 
