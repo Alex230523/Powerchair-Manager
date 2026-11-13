@@ -72,7 +72,8 @@ function TeamCard({ locale, team }: { locale: Locale; team: Team }) {
 
       <h3>{t.players}</h3>
       {team.players.length ? (
-        <div className="table-wrap">
+        // At 390 px the table scrolls in its frame: reachable with the keyboard.
+        <div className="table-wrap" tabIndex={0} role="region" aria-label={`${t.players} : ${team.name}`}>
           <table className="data-table">
             <thead>
               <tr>
