@@ -14,6 +14,7 @@ import { billingSplitExecute, familyChildren, familyExecute, familyView } from "
 import { duesExecute, duesView } from "../../src/domains/dues/service";
 import { publicName } from "../../src/domains/integrations/public";
 import { publicHallOfFame } from "../../src/domains/awards/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 27 to 29: a parent of two children in two clubs (« Ma famille », nothing
@@ -229,7 +230,7 @@ it("hides the name in public when the image right is refused", async () => {
   await expect(authorizationsExecute(db, presidentB, { action: "refuse", id: r.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
   await authorizationsExecute(db, mother, { action: "refuse", id: r.id });
   const e = (await db.query("SELECT full_name,birth_date::text AS birth_date,public_name_consent FROM club_person WHERE id=$1", [emma])).rows[0];
-  expect(publicName(e.full_name, e.birth_date, e.public_name_consent, new Date().toISOString().slice(0, 10))).toBeNull();
+  expect(publicName(e.full_name, e.birth_date, e.public_name_consent, brusselsDay())).toBeNull();
   // Her individual prize leaves the public Hall of fame.
   await db.query("INSERT INTO award(organization_id,awarded_on,title,kind,profile_id,publishable,created_by) VALUES($1,CURRENT_DATE,'Meilleure joueuse','individual',$2,true,$3)", [clubA, emma, presidentA.userId]);
   const widget = (await db.query("UPDATE organization SET hall_of_fame_widget=gen_random_uuid() WHERE id=$1 RETURNING hall_of_fame_widget::text AS w", [clubA])).rows[0].w;
@@ -252,7 +253,7 @@ it("shares the dues 50/50: each parent sees his share and only his payments", as
   await billingSplitExecute(db, presidentA, { subjectId: lucas, shares: [{ guardianId: motherA, percent: 50 }, { guardianId: fatherA, percent: 50 }] });
   // Another club's president cannot set it.
   await expect(billingSplitExecute(db, presidentB, { subjectId: lucas, shares: [] })).rejects.toMatchObject({ code: "NOT_FOUND" });
-  await duesExecute(db, presidentA, { action: "pay", id: receivable, amountCents: 10000, method: "transfer", occurredOn: new Date().toISOString().slice(0, 10), reference: "", payerProfileId: fatherA }, clubA);
+  await duesExecute(db, presidentA, { action: "pay", id: receivable, amountCents: 10000, method: "transfer", occurredOn: brusselsDay(), reference: "", payerProfileId: fatherA }, clubA);
   const forFather = (await familyView(db, father)).clubs[0].dues.find((d) => d.id === receivable)!;
   const forMother = (await familyView(db, mother)).clubs[0].dues.find((d) => d.id === receivable)!;
   expect([forFather.percent, forFather.shareCents, forFather.paid_by_me_cents]).toEqual([50, 10000, 10000]);

@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { chairReport, workshopCommand, workshopExecute, workshopView } from "../../src/domains/equipment/workshop";
 import { chairReportPdf } from "../../src/domains/equipment/chair-report";
 import { workshopCopy } from "../../src/components/workshop-copy";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * B3: the chairs' workshop. A breakdown reported by a parent the day before
@@ -125,7 +126,7 @@ it("takes a chair out of service at once when a parent reports a breakdown the d
   await expect(run(parent, { action: "report", chairId: own, description: "Encore", photo: { type: "image/jpeg", data: photo } })).rejects.toMatchObject({ code: "INVALID_IMAGE" });
   await expect(run(parent, { action: "report", chairId: spare2, description: "Pas mon fauteuil" })).rejects.toMatchObject({ code: "NOT_FOUND" });
   // The repair gives it back, and closes the report.
-  await run(president, { action: "intervention", chairId: own, occurredOn: new Date().toISOString().slice(0, 10), kind: "repair", diagnosis: "Connecteur", costCents: 8000, daysOut: 1, backInService: true });
+  await run(president, { action: "intervention", chairId: own, occurredOn: brusselsDay(), kind: "repair", diagnosis: "Connecteur", costCents: 8000, daysOut: 1, backInService: true });
   expect(await status(own)).toBe("in_use");
   expect((await db.query("SELECT status FROM chair_report WHERE id=$1", [r.id])).rows[0].status).toBe("closed");
 });
@@ -149,7 +150,7 @@ it("replaces a battery and logs it", async () => {
 
 it("follows a subsidised chair, its repair invoice and its cost report", async () => {
   const grant = (await db.query("INSERT INTO grant_application(organization_id,funder,program,status,created_by) VALUES($1,'Province','Sport adapté','granted',$2) RETURNING id", [clubA, user])).rows[0].id;
-  await run(president, { action: "chairExtras", chairId: spare2, warrantyUntil: new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10), purchaseValueCents: 450000, grantId: grant, partnerId: null, potId: null });
+  await run(president, { action: "chairExtras", chairId: spare2, warrantyUntil: brusselsDay(new Date(Date.now() + 10 * 86400000)), purchaseValueCents: 450000, grantId: grant, partnerId: null, potId: null });
   const invoice = (await db.query("INSERT INTO finance_transaction(organization_id,occurred_on,label,direction,category,amount_cents,created_by) VALUES($1,CURRENT_DATE-2,'Facture atelier 12','out','equipment',15000,$2) RETURNING id", [clubA, user])).rows[0].id;
   expect((await workshopView(db, president, spare2)).choices!.expenses.map((x) => x.id)).toContain(invoice);
   await run(president, { action: "intervention", chairId: spare2, occurredOn: "2026-10-28", kind: "repair", diagnosis: "Moteur", transactionId: invoice, daysOut: 4 });

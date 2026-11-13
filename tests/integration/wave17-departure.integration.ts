@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { filterSchema, peopleExecute, peopleView } from "../../src/domains/people/service";
 import { publish } from "../../src/domains/notifications/queue";
 import { allowed } from "../../src/domains/notifications/eligibility";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (J1): the current situation of former players (licensed in another
@@ -16,7 +17,7 @@ const schema = "w17dep_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let federation: string, clubA: string, clubB: string, presidentA: Principal, coachA: Principal, presidentB: Principal, seasonA: string, seasonB: string;
-const day = new Date().toISOString().slice(0, 10);
+const day = brusselsDay();
 
 async function actor(org: string, role: string) {
   const userId = randomUUID(),

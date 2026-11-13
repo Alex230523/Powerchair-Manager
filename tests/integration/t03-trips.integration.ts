@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { roadSheet, saveCare, tripDetail as detailOf, tripExecute, tripsView } from "../../src/domains/trips/service";
 import type { Round } from "../../src/domains/trips/rounds";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 3: a rental with its pick-up and return steps, the club's vehicle without
@@ -18,7 +19,7 @@ const schema = "t03_" + randomUUID().replaceAll("-", ""),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, president: Principal, presidentB: Principal, driver: Principal, player: Principal;
 let driverProfile: string, helperProfile: string, playerProfile: string, otherProfile: string, tripId: string, van: string, minibus: string;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 /** The full view (who prepares the trip): its vehicles carry their round and checks. */
 const tripDetail = async (database: Pool, p: Principal, id: string) => {
   const d = await detailOf(database, p, id);

@@ -7,6 +7,7 @@ import { teamsExecute, teamsView, teamDetail } from "../../src/domains/teams/ser
 import { registrationExecute } from "../../src/domains/registrations/service";
 import { dashboardView } from "../../src/domains/dashboard/service";
 import { rolloverExecute } from "../../src/domains/seasons/rollover";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 16 (R1): places per team, in two clubs. */
 const schema = "w16pl_" + randomUUID().replaceAll("-", ""),
@@ -83,7 +84,7 @@ it("warns after a move into a full team, without blocking it", async () => {
   // Tigres: 1 place, Yanis already there; Zoé joins and keeps the Lions.
   const others = (await teamDetail(db, presidentA, lions)).others;
   expect(others).toEqual([expect.objectContaining({ name: "Tigres", capacity: 1, players: 1 })]);
-  const r = (await teamsExecute(db, presidentA, { action: "move", profileId: zoe, fromTeamId: lions, toTeamId: tigers, effectiveOn: new Date().toISOString().slice(0, 10), keep: true }, clubA)) as {
+  const r = (await teamsExecute(db, presidentA, { action: "move", profileId: zoe, fromTeamId: lions, toTeamId: tigers, effectiveOn: brusselsDay(), keep: true }, clubA)) as {
     over?: boolean;
   };
   expect(r.over).toBe(true);
@@ -124,8 +125,8 @@ it("copies the places with the team into the next season", async () => {
     {
       fromSeasonId: season,
       name: "2027-28",
-      startsOn: new Date(Date.now() + 250 * 86400000).toISOString().slice(0, 10),
-      endsOn: new Date(Date.now() + 600 * 86400000).toISOString().slice(0, 10),
+      startsOn: brusselsDay(new Date(Date.now() + 250 * 86400000)),
+      endsOn: brusselsDay(new Date(Date.now() + 600 * 86400000)),
       teams: [{ teamId: lions, profiles: [] }],
       copyPlans: false,
       archiveOld: false,

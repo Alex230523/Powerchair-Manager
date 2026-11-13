@@ -12,6 +12,7 @@ import type { Round } from "../../src/domains/trips/rounds";
 import { playerProfileExecute } from "../../src/domains/player-profile/service";
 import { financeExecute } from "../../src/domains/finance/service";
 import { venueExecute, venuesView } from "../../src/domains/venues/service";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave7_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -69,7 +70,7 @@ async function profile(person: string | null, name: string, roles: string) {
 const today = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
 const inDays = (n: number) =>
-  new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  brusselsDay(new Date(Date.now() + n * 86400000));
 const tripFields = {
   title: "Tournoi de Gand",
   kind: "tournament" as const,

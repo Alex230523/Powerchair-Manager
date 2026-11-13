@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * A5: one match sheet, before / match day / after, on a phone (390 px).
@@ -44,7 +45,7 @@ test("a match from the call-up to the result", async ({ page }) => {
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     // The match, created like the Matches page does: the call-up comes with it.
-    const day = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    const day = brusselsDay(new Date(Date.now() + 3 * 86400000));
     const created = await page.request.post("/api/matches", {
       headers: { origin: "http://127.0.0.1:3100" },
       data: { organizationId: club, action: "create", teamId: team, opponent: "Lions", home: true, kind: "league", competition: "D1", startsAt: `${day}T14:00`, venue: "Salle du club", calendarEventId: null, notes: "" },

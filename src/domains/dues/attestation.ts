@@ -3,6 +3,7 @@ import { mfaSatisfied } from "../../lib/security-policy";
 import { AccessError, account, active, type Principal } from "../access/service";
 import { permissions } from "../access/policy";
 import { ownProfiles } from "../calendar/access";
+import { brusselsDay } from "../../lib/today";
 
 /**
  * Attestations for the mutual insurance funds: in Belgium they refund part of
@@ -47,7 +48,7 @@ export async function attestationsView(db: Pool, p: Principal, seasonId?: string
     ).rows as { id: string; name: string; starts_on: string; ends_on: string }[];
     const season =
       seasons.find((s) => s.id === seasonId) ??
-      seasons.find((s) => s.starts_on <= new Date().toISOString().slice(0, 10)) ??
+      seasons.find((s) => s.starts_on <= brusselsDay()) ??
       seasons[0];
     const rows = season
       ? (

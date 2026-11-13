@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { seasonPlanExecute, seasonPlanTick, seasonPlanView } from "../../src/domains/seasons/plan";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 16: « Préparer la saison suivante ». Left halfway and resumed, launched
@@ -78,7 +79,7 @@ it("is left halfway and resumed with its choices", async () => {
   await expect(seasonPlanExecute(db, presidentA, { action: "save", expectedVersion: v1, step: "check", state: "done" })).rejects.toMatchObject({ code: "STALE_VERSION" });
   // The affiliations step is skipped.
   await seasonPlanExecute(db, presidentA, { action: "save", expectedVersion: await version(), step: "affiliations", state: "skipped" });
-  const send = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  const send = brusselsDay(new Date(Date.now() + 5 * 86400000));
   await seasonPlanExecute(db, presidentA, {
     action: "save",
     expectedVersion: await version(),

@@ -10,6 +10,7 @@ import { publish } from "../notifications/queue";
 import { isLocale, type Locale } from "../../lib/locale";
 import { templateText } from "../documents/schema";
 import { authorizationCopy, authorizationDefaults, authorizationKinds, fillCopy, type AuthorizationKind } from "./authorization-copy";
+import { brusselsDay } from "../../lib/today";
 
 /**
  * 28: parental authorizations signed online.
@@ -117,7 +118,7 @@ async function signers(c: PoolClient, org: string, profileId: string) {
 
 async function notifySigners(c: PoolClient, org: string, requestId: string, k: AuthorizationKind, profileId: string, name: string, reminder: boolean) {
   const base = process.env.BETTER_AUTH_URL ?? "";
-  const day = new Date().toISOString().slice(0, 10);
+  const day = brusselsDay();
   for (const u of await signers(c, org, profileId)) {
     const locale: Locale = isLocale(u.locale) ? u.locale : "fr";
     const t = authorizationCopy[locale];
@@ -369,7 +370,7 @@ export async function authorizationsExecute(db: Pool, p: Principal, cmd: Authori
       const s = (await authorizationSettings(x.c, x.org)).find((k) => k.kind === cmd.kind)!;
       if (s.validity !== "season") throw new AccessError("SEASON_ONLY", 409);
       if (!(s.texts.fr || s.texts.nl || s.texts.en)) throw new AccessError("NO_TEXT", 409);
-      const season = await seasonOn(x.c, x.org, new Date().toISOString().slice(0, 10));
+      const season = await seasonOn(x.c, x.org, brusselsDay());
       if (!season) throw new AccessError("NO_SEASON", 409);
       const minors = (
         await x.c.query(

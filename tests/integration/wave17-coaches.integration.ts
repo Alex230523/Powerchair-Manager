@@ -8,6 +8,7 @@ import { tasksExecute, tasksView } from "../../src/domains/tasks/service";
 import { licenceCopy, licenceCopyUpload, licenceExecute, licenceReminderTick, licenceView } from "../../src/domains/licences/service";
 import { coachExecute, coachProfileView, coursesExecute, coursesView, requestProof } from "../../src/domains/coaches/service";
 import { tutorialExecute, tutorialView } from "../../src/domains/tutorial/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (O1), in two clubs: tasks by type and « Mes tâches », the
@@ -20,9 +21,9 @@ const schema = "w17coa_" + randomUUID().replaceAll("-", ""),
 let federation: string, clubA: string, clubB: string;
 let fedPresident: Principal, presidentA: Principal, coachA: Principal, otherCoachA: Principal, presidentB: Principal;
 let coachProfile: string, otherProfile: string;
-const day = new Date().toISOString().slice(0, 10);
+const day = brusselsDay();
 const plus = (n: number) => {
-  const d = new Date();
+  const d = new Date(day + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };

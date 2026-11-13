@@ -8,13 +8,14 @@ import { duesExecute, duesView } from "../../src/domains/dues/service";
 import { duesTotals } from "../../src/domains/dues/schema";
 import { financeExecute } from "../../src/domains/finance/service";
 import { calendarExecute } from "../../src/domains/calendar/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 14: the president's home card of money and the week view, under the same rules as the pages. */
 const schema = "home_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, seasonA: string, teamA: string, presidentA: Principal, presidentB: Principal, coachA: Principal, parentA: Principal, emma: string;
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 async function actor(org: string, role: string, grants: string[] = []) {
   const userId = randomUUID(),

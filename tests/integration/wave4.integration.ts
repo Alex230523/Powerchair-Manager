@@ -26,6 +26,7 @@ import {
 import { calendarExecute } from "../../src/domains/calendar/service";
 import { playerProfileExecute } from "../../src/domains/player-profile/service";
 import { seasonOf } from "../../src/domains/finance/schema";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave4_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -414,7 +415,7 @@ it("runs licences and classification checks between club and federation", async 
 });
 
 it("shows the federation's public events to affiliated clubs", async () => {
-  const day = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+  const day = brusselsDay(new Date(Date.now() + 10 * 86400000));
   await calendarExecute(
     db,
     fedPresident,

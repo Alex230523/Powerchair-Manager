@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { attendanceExecute, attendanceView, commandSchema } from "../../src/domains/attendance/service";
 import { playerSummaries } from "../../src/domains/attendance/rollcall";
 import { undoExecute } from "../../src/domains/undo/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (J2), in two clubs: « Excusé » prefilled by an announced absence
@@ -112,8 +113,8 @@ it("asks a reason for a correction after closing, and counts « Excusé » apart
   await run(president, { action: "mark", id: ana.id, expectedVersion: ana.version, actual: "absent", reason: "" });
   await run(president, { action: "markAll", id: first, expectedVersion: await version(first) });
   await run(president, { action: "close", id: first, expectedVersion: await version(first) });
-  const day = new Date().toISOString().slice(0, 10);
-  const view = await attendanceView(db, president, new Date(Date.now() - 86400000).toISOString().slice(0, 10), day);
+  const day = brusselsDay();
+  const view = await attendanceView(db, president, brusselsDay(new Date(Date.now() - 86400000)), day);
   const byName = Object.fromEntries(playerSummaries(view.events).map((s) => [s.name, s]));
   expect(byName.Ana).toMatchObject({ training: { attended: 0, closed: 1 }, match: { attended: 1, closed: 1 }, absent: 1, excused: 0, rate: 50 });
   expect(byName.Bilal).toMatchObject({ training: { attended: 1, closed: 1 }, match: { attended: 1, closed: 1 }, rate: 100 });
@@ -121,5 +122,5 @@ it("asks a reason for a correction after closing, and counts « Excusé » apart
   // The server's per-kind statistics count « Excusé » apart as well.
   expect(view.stats.find((s) => s.name === "Chloé" && s.kind === "training")).toMatchObject({ excused: 1, absent: 0 });
   // Club B sees nothing of it.
-  expect((await attendanceView(db, presidentB, new Date(Date.now() - 86400000).toISOString().slice(0, 10), day)).events).toEqual([]);
+  expect((await attendanceView(db, presidentB, brusselsDay(new Date(Date.now() - 86400000)), day)).events).toEqual([]);
 });

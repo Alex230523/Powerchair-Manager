@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { signUpVia } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 const origin = "http://127.0.0.1:3100";
 async function accessible(page: Page) {
   expect(
@@ -122,7 +123,7 @@ test("invitation response, offline refusal, independent pointage, closure and tr
       "INSERT INTO team_membership(organization_id,team_id,profile_id,role) VALUES($1,$2,$3,'player')",
       [org, team, profile],
     );
-    const day = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+    const day = brusselsDay(new Date(Date.now() + 4 * 86400000));
     const created = await page.request.post("/api/calendar", {
       headers: { origin },
       data: {

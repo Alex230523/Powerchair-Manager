@@ -10,6 +10,7 @@ import { remindersView } from "../../src/domains/reminders/service";
 import { tripExecute, tripsView } from "../../src/domains/trips/service";
 import { financeExecute, financeView } from "../../src/domains/finance/service";
 import { fundraisingExecute, fundraisingView } from "../../src/domains/fundraising/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 15 (1.C): dues, trips and pots follow the team in view, with the same figures everywhere. */
 const schema = "w15team_" + randomUUID().replaceAll("-", ""),
@@ -18,7 +19,7 @@ const schema = "w15team_" + randomUUID().replaceAll("-", ""),
 let clubA: string, clubB: string, seasonA: string, teamA1: string, teamA2: string, teamB1: string;
 let president: Principal, presidentB: Principal, emmaUser: Principal, lucasUser: Principal;
 let emma: string, lucas: string, noah: string;
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 async function actor(org: string, role: string, grants: string[] = []) {
   const userId = randomUUID(),

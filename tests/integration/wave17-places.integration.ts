@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { venueExecute, venuesView } from "../../src/domains/venues/service";
 import { currentRates, placeCommand } from "../../src/domains/venues/schema";
 import { calendarView } from "../../src/domains/calendar/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (C4): a club's place stays private (contact, rates, food, notes),
@@ -17,7 +18,7 @@ const schema = "w17pla_" + randomUUID().replaceAll("-", ""),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let federation: string, clubA: string, clubB: string, clubC: string;
 let fedPresident: Principal, presidentA: Principal, coachA: Principal, presidentB: Principal, presidentC: Principal, place: string;
-const range = { from: new Date().toISOString().slice(0, 10), to: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), team: "", place: "" };
+const range = { from: brusselsDay(), to: brusselsDay(new Date(Date.now() + 30 * 86400000)), team: "", place: "" };
 
 async function actor(org: string, role: string, grants: string[] = []) {
   const userId = randomUUID(),

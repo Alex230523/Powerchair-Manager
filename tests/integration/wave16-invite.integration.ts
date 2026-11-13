@@ -6,13 +6,14 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { inviteProfile, welcomeView, welcomeComplete, welcomeDispute, hashToken } from "../../src/domains/access/invite";
 import { peopleExecute } from "../../src/domains/people/service";
 import { registrationExecute } from "../../src/domains/registrations/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 16 (I2): invitations tied to a file and the guided account creation, in two clubs. */
 const schema = "w16inv_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, presidentA: Principal, coachA: Principal, presidentB: Principal, season: string;
-const day = new Date().toISOString().slice(0, 10);
+const day = brusselsDay();
 const yearsAgo = (n: number) => `${new Date().getFullYear() - n}-01-15`;
 
 async function actor(org: string, role: string) {

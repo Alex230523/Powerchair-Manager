@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 14 at 390 px: the pitch side from start to end. A presence, then the
@@ -42,7 +43,7 @@ test("the pitch side, offline then synchronised", async ({ page, context }) => {
     await page.evaluate(async (id) => {
       await fetch("/api/workspace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "context", mandateId: id }) });
     }, mandate);
-    const day = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+    const day = brusselsDay(new Date(Date.now() + 2 * 86400000));
     const created = await page.evaluate(
       async (x) => (await (await fetch("/api/matches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ organizationId: x.club, action: "create", teamId: x.team, opponent: "Lions", home: true, kind: "league", competition: "", startsAt: `${x.day}T14:00`, venue: "Salle", calendarEventId: null, notes: "" }) })).json()) as { id: string },
       { club, team, day },

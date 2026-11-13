@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (Q1): equipment. The chair sheet opens from its name in a window
@@ -40,7 +41,7 @@ test("equipment: sheet in a window, model validated, storage place, loan between
       await db.query("INSERT INTO organization_membership(organization_id,user_id) VALUES($1,$2)", [org, user]);
       mandate[key] = (await db.query("INSERT INTO role_assignment(organization_id,user_id,role) VALUES($1,$2,$3) RETURNING id", [org, user, role])).rows[0].id;
     }
-    const iso = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+    const iso = (days: number) => brusselsDay(new Date(Date.now() + days * 86400000));
     await page.goto("/fr");
     await switchTo(page, mandate.A);
     await page.setViewportSize({ width: 1280, height: 900 });

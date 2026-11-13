@@ -10,6 +10,7 @@ import { financeExecute, financeView, financeReport } from "../../src/domains/fi
 import { duesExecute } from "../../src/domains/dues/service";
 import { calendarExecute, calendarView } from "../../src/domains/calendar/service";
 import { seasonOf } from "../../src/domains/finance/schema";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave12_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -40,7 +41,7 @@ async function player(org: string, name: string, team: string) {
   await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'player',CURRENT_DATE-30)", [org, team, id]);
   return id;
 }
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 const label = seasonOf(inDays(0)).label;
 
 beforeAll(async () => {

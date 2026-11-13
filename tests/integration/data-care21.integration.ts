@@ -7,6 +7,7 @@ import { inviteProfile } from "../../src/domains/access/invite";
 import { careCommand, careExecute, closureTick, dataRequestCreate, exportDownload, exportTick, retentionTick, securityView } from "../../src/domains/legal/service";
 import { keptTables } from "../../src/domains/legal/schema";
 import { DPA_VERSION } from "../../src/domains/legal/texts";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 21: opening to other clubs. No member invited before the agreement is
@@ -127,7 +128,7 @@ it("closes the club after its 30 days: cancelled once, then done, nothing left b
   await expect(run(president, { action: "close", confirmName: "Autre club" })).rejects.toMatchObject({ code: "INVALID_INPUT" });
   await run(president, { action: "close", confirmName: "club a", reason: "Fusion" });
   const planned = (await securityView(db, president)).closure!;
-  expect(planned.effective_on > new Date().toISOString().slice(0, 10)).toBe(true);
+  expect(planned.effective_on > brusselsDay()).toBe(true);
   await run(president, { action: "cancelClose" });
   expect((await securityView(db, president)).closure).toBeNull();
   await run(president, { action: "close", confirmName: "Club A" });

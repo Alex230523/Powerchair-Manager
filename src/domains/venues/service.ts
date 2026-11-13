@@ -12,6 +12,7 @@ import {
 import { permissions } from "../access/policy";
 import { publish } from "../notifications/queue";
 import { placeCommand, publicFields, visibleVenue, type PlaceCommand, type PlaceRow } from "./schema";
+import { brusselsDay } from "../../lib/today";
 export { visibleVenue };
 export { placeCommand };
 
@@ -125,7 +126,7 @@ export async function venuesView(db: Pool, p: Principal) {
       organization_id: org,
       kind,
       federation,
-      today: new Date().toISOString().slice(0, 10),
+      today: brusselsDay(),
       can: { edit, decide: kind === "federation" && edit },
       venues: (
         await c.query(

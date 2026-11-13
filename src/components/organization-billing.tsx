@@ -9,9 +9,10 @@ import { useData, usePost } from "./use-api";
 import { independentCopy } from "./independent-copy";
 import { formatCents } from "@/domains/dashboard/summary";
 import { externalHref } from "@/lib/html";
+import { brusselsDay } from "@/lib/today";
 
 type View = Awaited<ReturnType<typeof organizationBilling>>;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => brusselsDay();
 const tag = (l: Locale) => (l === "en" ? "en-GB" : `${l}-BE`);
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] === undefined ? m : String(v[k])));
 

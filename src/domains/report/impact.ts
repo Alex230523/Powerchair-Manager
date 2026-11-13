@@ -9,6 +9,7 @@ import { permissions } from "../access/policy";
 import { allocationsOf } from "../finance/allocations";
 import { brusselsToday } from "../people/service";
 import { adjusted, ageBand, ageBands, ageOn, communeOf, defaultTaskHours, impactCommand, impactQuery, round, volunteerHours, type Adjustable } from "./impact-schema";
+import { brusselsDay } from "../../lib/today";
 
 /**
  * H13: the impact report for a season, a calendar year or a grant's period,
@@ -406,7 +407,7 @@ async function pdfOf(s: Scope, locale: Locale, from: string, to: string, grantId
     ...f.adjustments.map((a, i) => ({ text: fill(w.adjustment, { indicator: (w as Record<string, unknown>)[a.indicator] as string, delta: (a.delta > 0 ? "+" : "") + a.delta, note: a.note }), size: 9, gap: i ? 0 : 8 })),
     { text: w.method, bold: true, gap: 14 },
     ...Object.entries(w.definitions).map(([k, v]) => ({ text: `${(w as Record<string, unknown>)[k] as string} : ${v}`, size: 9 })),
-    { text: fill(w.made, { d: day(new Date().toISOString().slice(0, 10)) }), size: 8, gap: 10 },
+    { text: fill(w.made, { d: day(brusselsDay()) }), size: 8, gap: 10 },
   ];
   return pdfDocument(lines, `${w.title} ${from} ${to}`, {
     images: image ? { logo: image } : {},

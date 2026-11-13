@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { bookingExecute, bookingMissing, bookingsTick, bookingsView } from "../../src/domains/venues/bookings";
 import { bookingCommand } from "../../src/domains/venues/bookings-schema";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 18: a weekly series that makes one booking for the season, its cost
@@ -17,7 +18,7 @@ const schema = "t18_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, president: Principal, presidentB: Principal, hall: string, home: string, season: string, team: string;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 const run = (p: Principal, body: Record<string, unknown>, org = clubA) => bookingExecute(db, p, bookingCommand.parse(body), org);
 const tasks = async (kind: string) => (await db.query("SELECT title,status,detail,due_on::text AS due_on,amount_cents FROM task WHERE organization_id=$1 AND source_kind=$2 ORDER BY created_at", [clubA, kind])).rows;
 

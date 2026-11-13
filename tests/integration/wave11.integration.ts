@@ -9,6 +9,7 @@ import { dashboardView } from "../../src/domains/dashboard/service";
 import { fundingExecute, fundingView } from "../../src/domains/funding/service";
 import { contactsExecute, contactsView } from "../../src/domains/crm/service";
 import { duesReminderTick } from "../../src/domains/reminders/service";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave11_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -41,7 +42,7 @@ async function actor(role: string, grants: string[] = []) {
   await execute(db, p, { action: "context", mandateId });
   return { p, person };
 }
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 beforeAll(async () => {
   await root.query(`CREATE SCHEMA ${schema}`);

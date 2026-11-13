@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { commandSchema, equipmentExecute, equipmentView } from "../../src/domains/equipment/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 11: the equipment page. The chair's label with its model, a loan from the
@@ -29,7 +30,7 @@ async function actor(org: string, role: string, name: string) {
   return p;
 }
 const run = (p: Principal, cmd: Record<string, unknown>, org = clubA) => equipmentExecute(db, p, commandSchema.parse(cmd), org) as Promise<{ id: string }>;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 const item = (name: string, extra: Record<string, unknown> = {}) => ({ action: "item", name, category: "ball", quantity: 8, storage: "", expiresOn: null, notes: "", ...extra });
 
 beforeAll(async () => {

@@ -4,13 +4,14 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { finesExecute, finesView } from "../../src/domains/fines/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Point 10 (04/11/2026): the federation's fines; each club sees its own, never another club's. */
 const schema = "fines_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let fed: string, other: string, clubA: string, clubB: string, fedPresident: Principal, otherFed: Principal, presidentA: Principal, presidentB: Principal, coachA: Principal;
-const today = new Date().toISOString().slice(0, 10);
+const today = brusselsDay();
 
 async function actor(org: string, role: string) {
   const userId = randomUUID(),

@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 18 on a phone (390 px): the hall's booking worked out from a weekly
@@ -64,7 +65,7 @@ test("a hall's booking from the calendar, on a phone", async ({ page }) => {
     await expect(card.locator(".trip-meta").getByText("Confirmée")).toBeVisible();
 
     await card.getByLabel("Montant (€)").fill("150");
-    await card.getByLabel("Date de la facture").fill(new Date().toISOString().slice(0, 10));
+    await card.getByLabel("Date de la facture").fill(brusselsDay());
     await card.getByRole("button", { name: "Ajouter la facture" }).click();
     await expect(card.locator(".booking-invoices li")).toHaveCount(1);
     await card.getByRole("button", { name: /^Enregistrer la dépense :/ }).click();

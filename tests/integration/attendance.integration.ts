@@ -15,6 +15,7 @@ import {
 } from "../../src/domains/attendance/service";
 import { notificationAllowed } from "../../src/domains/attendance/access";
 import { processOne } from "../../src/domains/notifications/worker";
+import { brusselsDay } from "../../src/lib/today";
 const schema = "attendance_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({
@@ -221,7 +222,7 @@ beforeEach(async () => {
     coach.mandateId,
     team,
   ]);
-  const day = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const day = brusselsDay(new Date(Date.now() + 4 * 86400000));
   eventId = (
     await calendarExecute(
       db,

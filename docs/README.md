@@ -199,6 +199,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 12/11/2026 | [Changer de profil de démo, et des champs de recherche plus fins](evolutions/2026-11-12-zzzzz-demo-recherche.md) |
 | 13/11/2026 | [Présences : les coachs donnent aussi la leur](evolutions/2026-11-13-presences-coachs.md) |
 | 13/11/2026 | [Vérification générale : appels, liens, sécurité, droits par profil](evolutions/2026-11-13-verification-generale.md) |
+| 13/11/2026 | [« Aujourd'hui » est le jour de Bruxelles (fuseau de la base et des écrans)](evolutions/2026-11-13-fuseau-bruxelles.md) |
 
 ## Convention
 

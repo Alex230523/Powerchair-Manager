@@ -16,6 +16,7 @@ import { initials } from "./app-shell";
 import { useScope } from "./use-scope";
 import { undoToast } from "./toast";
 import { cssVars } from "./css-vars";
+import { brusselsDay } from "@/lib/today";
 
 export type View = Awaited<ReturnType<typeof attendanceView>>;
 type Ev = View["events"][number];
@@ -393,8 +394,8 @@ export function MyNextSessions({ locale, revision, onAnswered }: { locale: Local
     [own, setOwn] = useState(0);
   useEffect(() => {
     const abort = new AbortController();
-    const from = new Date(now).toISOString().slice(0, 10),
-      to = new Date(now + 21 * 86400000).toISOString().slice(0, 10);
+    const from = brusselsDay(new Date(now)),
+      to = brusselsDay(new Date(now + 21 * 86400000));
     fetch("/api/attendance?" + new URLSearchParams({ from, to, team: "", place: "" }), { signal: abort.signal, cache: "no-store" })
       .then(async (r) => (r.ok ? setData((await r.json()) as View) : null))
       .catch(() => undefined);

@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { acceptInvitation, type InvitationRow } from "../../src/domains/access/invite";
 import { presidencyExecute, presidencyView } from "../../src/domains/access/presidency";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (G1): the club president hands over the presidency. Cancelled,
@@ -127,7 +128,7 @@ it("takes effect at the date chosen, never with two presidents nor none", async 
   const mandate = (await db.query("SELECT id FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND role='club_president' AND revoked_at IS NULL", [clubA, marie.userId])).rows[0].id;
   await execute(db, marie, { action: "context", mandateId: mandate });
   const coachEmail = (await db.query('SELECT email FROM "user" WHERE id=$1', [coach.userId])).rows[0].email;
-  const later = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+  const later = brusselsDay(new Date(Date.now() + 10 * 86400000));
   const { id } = await handOver({ userId: coach.userId, keep: "none", effectiveOn: later }, marie);
   await accept(id, { userId: coach.userId, email: coachEmail });
   expect(await presidents()).toEqual([marie.userId]);

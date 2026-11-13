@@ -6,13 +6,14 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { fundingExecute, fundingTasksView, fundingView, grantChairsExport, moneyDeadlines } from "../../src/domains/funding/service";
 import { contactsView } from "../../src/domains/crm/service";
 import { dashboardView } from "../../src/domains/dashboard/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 15 (C2): funders, grant file fields, standard check-list, next year, equipment financed. */
 const schema = "w15gr_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, seasonA: string, president: Principal, presidentB: Principal, coach: Principal, coachProfile: string, oldGrant: string;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 async function actor(org: string, role: string) {
   const userId = randomUUID(),

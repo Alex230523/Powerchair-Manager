@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (C5): a friendly between two clubs of the federation (invitation,
@@ -53,7 +54,7 @@ test("friendly between clubs: invitation, line, transport, score to confirm, tou
       await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,$4,CURRENT_DATE-30)", [org, t, id, role]);
     }
     await db.query("INSERT INTO calendar_place(organization_id,name,address,home) VALUES($1,'Salle du club','Rue 1',true)", [clubA]);
-    const date = new Date(Date.now() + 12 * 86400000).toISOString().slice(0, 10);
+    const date = brusselsDay(new Date(Date.now() + 12 * 86400000));
     await page.goto("/fr");
     await switchTo(page, mandate.A);
     await page.setViewportSize({ width: 1280, height: 900 });
