@@ -176,7 +176,7 @@ async function protectLastAdmin(db: Db, org: string) {
   );
   if (!result.rowCount) throw new AccessError("LAST_ADMIN", 409);
 }
-async function readWorkspace(db: Db, p: Principal) {
+async function readWorkspace(db: Db, p: Principal, brief = false) {
   const user = await account(db, p);
   const contexts = await db.query(
     `SELECT r.id,r.role,r.organization_id,o.name,o.kind FROM role_assignment r JOIN organization o ON o.id=r.organization_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE r.user_id=$1 AND ${current} ORDER BY o.name,r.role`,
@@ -216,6 +216,8 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: unknown[];
     audit: unknown[];
     fundraisingOpen: boolean;
+    /** 13/11/2026: on the staff of a national team in use (« Sélection nationale » in the menu, whatever the profile). */
+    nationalStaff: boolean;
     /** Changes with every new photo: the menu refreshes its picture. */
     avatarVersion: string | null;
     /** Seasons and teams the top bar offers (wave 12), already filtered for the actor. */
@@ -244,6 +246,14 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: [],
     audit: [],
     fundraisingOpen: false,
+    nationalStaff: !!(
+      await db.query(
+        `SELECT 1 FROM national_team_staff st JOIN national_team t ON t.id=st.team_id AND NOT t.archived
+           LEFT JOIN club_person cp ON cp.id=st.profile_id LEFT JOIN person pe ON pe.id=cp.person_id
+          WHERE st.user_id=$1 OR pe.user_id=$1 LIMIT 1`,
+        [p.userId],
+      )
+    ).rowCount,
     seasons: [],
     teams: [],
   };
@@ -265,7 +275,8 @@ async function readWorkspace(db: Db, p: Principal) {
           [selected.organization_id],
         )
       ).rows.length > 0;
-  if (selected && mfaSatisfied(!!user.twoFactorEnabled)) {
+  // 13/11/2026: the menu's read (brief) leaves out the members, invitations and journal of the settings.
+  if (selected && !brief && mfaSatisfied(!!user.twoFactorEnabled)) {
     if (result.permissions.includes("members.read"))
       result.members = (
         await db.query(
@@ -290,7 +301,7 @@ async function readWorkspace(db: Db, p: Principal) {
   }
   return result;
 }
-export async function workspace(db: Pool, p: Principal) {
+export async function workspace(db: Pool, p: Principal, options: { brief?: boolean } = {}) {
   const saved = (
     await db.query(
       `SELECT f.mandate_id FROM user_profile f JOIN role_assignment r ON r.id=f.mandate_id AND r.user_id=f.user_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id JOIN "user" u ON u.id=r.user_id WHERE f.user_id=$1 AND f.is_default AND ${current} AND NOT EXISTS(SELECT 1 FROM active_context WHERE session_id=$2 AND user_id=$1)`,
@@ -319,7 +330,7 @@ export async function workspace(db: Pool, p: Principal) {
       "SELECT o.id FROM active_context c JOIN organization o ON o.id=c.organization_id WHERE c.session_id=$1 AND c.user_id=$2 FOR SHARE OF o,c",
       [p.sessionId, p.userId],
     );
-    const result = await readWorkspace(client, p);
+    const result = await readWorkspace(client, p, !!options.brief);
     await client.query("COMMIT");
     return result;
   } catch (e) {

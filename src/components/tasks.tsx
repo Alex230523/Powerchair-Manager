@@ -92,7 +92,7 @@ function href(locale: Locale, t: TaskRow) {
   if (t.trip_id) return at(`/trips/${t.trip_id}`);
   if (t.event_id) return at(`/calendar?event=${t.event_id}`);
   if (t.match_id) return at(`/matches`);
-  if (t.obligation_id) return at(`/settings/club#settings-obligations`);
+  if (t.obligation_id) return at(`/settings/organisation#settings-obligations`);
   if (t.chair_id) return at(`/equipment`);
   if (t.pot_id) return at(`/fundraising`);
   if (t.document_id) return at(`/documents`);

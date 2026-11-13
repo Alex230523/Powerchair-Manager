@@ -23,6 +23,7 @@ import { shellCopy } from "./shell-copy";
 import { useScope } from "./use-scope";
 import { SetupCard } from "./setup-card";
 import { Badge, Button, Card, EmptyState, IconTile, KpiCard, PageHeader, Segmented } from "./ui";
+import { sharedFetch } from "@/lib/shared-fetch";
 type State =
   | { kind: "loading" }
   | { kind: "visitor"; failed: boolean; noContext?: boolean }
@@ -44,8 +45,9 @@ export function Home({ locale }: { locale: Locale }) {
   const url = "/api/dashboard" + (query.toString() ? "?" + query.toString() : "");
   useEffect(() => {
     let cancelled = false;
+    // 13/11/2026: shared with the menu's counters (one read of the dashboard, not two).
     const load = () =>
-      fetch(url, { cache: "no-store" })
+      sharedFetch(url, 5000)
         .then(async (r) => {
           const body = r.ok ? null : ((await r.json().catch(() => ({}))) as { error?: string });
           // Signed in without a club yet: say so, rather than « unavailable ».
@@ -62,9 +64,12 @@ export function Home({ locale }: { locale: Locale }) {
     void load();
     // The shell announces profile or preference changes with this event.
     window.addEventListener("pfm-workspace", load);
+    // An answer given from a card of the home updates every card.
+    window.addEventListener("pfm-changed", load);
     return () => {
       cancelled = true;
       window.removeEventListener("pfm-workspace", load);
+      window.removeEventListener("pfm-changed", load);
     };
   }, [attempt, url]);
   if (state.kind === "loading")
@@ -228,7 +233,7 @@ function DashboardView({ locale, data }: { locale: Locale; data: Dashboard }) {
               )}
               {/* 12: the president's shortcut to the club's settings (former « Gestion du club »). */}
               {data.context.role === "club_president" && (
-                <Link className="button secondary" href={href("/settings/club")}>
+                <Link className="button secondary" href={href("/settings")}>
                   <Icon name="settings" />
                   {t.clubSettings}
                 </Link>
@@ -419,7 +424,8 @@ function FinanceCardView({ locale, finance, dueSoon }: { locale: Locale; finance
 function WeekView({ locale, weekStart, today, onMove }: { locale: Locale; weekStart: string; today: string; onMove: (iso: string) => void }) {
   const t = homeCopy[locale];
   const scope = useScope();
-  const query = new URLSearchParams({ week: weekStart });
+  // 13/11/2026: the week alone, not the whole dashboard again at each turn of a week.
+  const query = new URLSearchParams({ week: weekStart, only: "week" });
   if (scope.seasonId) query.set("season", scope.seasonId);
   if (scope.teamId) query.set("team", scope.teamId);
   const url = `/api/dashboard?${query.toString()}`;

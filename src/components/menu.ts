@@ -31,6 +31,8 @@ export type Workspace = {
   };
   permissions: string[];
   fundraisingOpen?: boolean;
+  /** 13/11/2026: on the staff of a national team. */
+  nationalStaff?: boolean;
   avatarVersion?: string | null;
   seasons?: SeasonOption[];
   teams?: TeamOption[];
@@ -72,6 +74,13 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
   // 12/11/2026: a club without a federation has no transfers, classification, discipline nor circulars to show.
   const affiliated = kind !== "club" || state?.selected?.federation_id !== null;
   const president = kind === "club" && role === "club_president";
+  /*
+   * 13/11/2026: one order for every club profile, the president's and the staff's
+   * alike (each entry still follows its rights): what one does every day first.
+   *   Agenda · Sport · Personnes · Communication · Finances · Club · Fédération
+   * The members (players, parents): Mon espace · Au club · Compétitions.
+   */
+  const staff = president || role === "coach";
   const club: NavGroup[] =
     kind === "club" && member
       ? [
@@ -82,54 +91,76 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
             items: [
               // 27: the parents' space, every child of every club.
               ...item("/family", "family", "home", role === "guardian"),
-              ...item("/calendar", "calendar", "calendar"),
-              ...item("/tournaments", "tournaments", "trophy"),
               ...item("/players", "myFile", "players"),
-              ...item("/documents", "documents", "document"),
-              ...item("/dues", "dues", "dues"),
-              ...item("/fundraising", "fundraising", "piggyBank", !!state?.fundraisingOpen),
-              registrations,
-              // Wave 17 (J3): « Visible par les autres clubs », the player's or the parent's choice.
-              ...item("/transfers", "transfers", "handshake", affiliated),
+              ...item("/calendar", "calendar", "calendar"),
               // 22: the tasks given to them (A1 sends reminders that lead here).
               ...item("/tasks", "tasks", "clipboardList"),
-              // 12/11/2026: the federation's page (its circulars, tournaments, transfers, clubs) replaces « Circulaires ».
+            ],
+          },
+          {
+            id: "atClub",
+            label: "groupAtClub",
+            icon: "club",
+            items: [
+              ...item("/documents", "documents", "document"),
+              ...item("/dues", "dues", "dues"),
+              registrations,
+              ...item("/fundraising", "fundraising", "piggyBank", !!state?.fundraisingOpen),
+            ],
+          },
+          {
+            id: "competitions",
+            label: "groupCompetitions",
+            icon: "trophy",
+            items: [
+              ...item("/tournaments", "tournaments", "trophy"),
+              // Wave 17 (J3): « Visible par les autres clubs », the player's or the parent's choice.
+              ...item("/transfers", "transfers", "handshake", affiliated),
+              // 12/11/2026: the federation's page (its circulars, tournaments, transfers, clubs).
               ...item("/club/federation", "clubFederation", "landmark", affiliated),
             ],
           },
         ]
-      : president
+      : kind === "club"
         ? [
             {
-              id: "teams",
-              label: "groupTeams",
-              icon: "team",
-              items: [
-                ...item("/teams", "teams", "team", has("people.read", "teams.manage")),
-                ...item("/players", "players", "players", has("people.read")),
-                ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
-                ...(manager ? [registrations] : []),
-                ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
-                // Wave 16 (E2): the coaches' exercise sheets.
-                ...item("/exercises", "exercises", "clipboardList", true),
-                ...item("/classification", "classification", "badgeCheck", affiliated && has("people.read")),
-                // Wave 17 (J3): the transfer market between the federation's clubs.
-                ...item("/transfers", "transfers", "handshake", affiliated && has("people.read")),
-                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage")),
-              ],
-            },
-            {
-              id: "activities",
-              label: "groupActivities",
+              id: "agenda",
+              label: "groupAgenda",
               icon: "calendar",
               items: [
                 ...item("/calendar", "calendar", "calendar"),
+                // A1: everyone has a to-do (only one's own tasks unless one plans).
+                ...item("/tasks", "tasks", "clipboardList"),
+                ...item("/trips", "trips", "bus", has("calendar.read", "calendar.manage")),
                 // B9: events open to the public (registration by a link).
                 ...item("/events", "openEvents", "megaphone", has("calendar.manage", "mandates.manage")),
-                ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
-                ...item("/trips", "trips", "bus", has("calendar.read", "calendar.manage")),
                 ...item("/venues", "halls", "pin", has("calendar.manage")),
+              ],
+            },
+            {
+              id: "sport",
+              label: "groupSport",
+              icon: "team",
+              items: [
+                ...item("/teams", "teams", "team", has("people.read", "teams.manage") || role === "coach"),
+                // 13/11/2026: a coach takes the roll of the teams he coaches, whatever his rights.
+                ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage") || role === "coach"),
+                ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
                 ...item("/tournaments", "tournaments", "trophy"),
+                // Wave 16 (E2): the coaches' exercise sheets.
+                ...item("/exercises", "exercises", "clipboardList", staff || has("calendar.manage", "calendar.read")),
+                ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
+              ],
+            },
+            {
+              id: "people",
+              label: "groupPeople",
+              icon: "players",
+              items: [
+                ...item("/players", "players", "players", has("people.read")),
+                ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
+                ...(manager ? [registrations] : []),
+                ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
               ],
             },
             {
@@ -137,8 +168,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupCommunication",
               icon: "megaphone",
               items: [
-                ...item("/communication", "communication", "megaphone", has("notifications.manage", "calendar.manage")),
+                // Club mails: newsletters (notifications.manage), event mails (planners).
+                ...item("/communication", "communication", "megaphone", has("notifications.manage", "calendar.manage") || role === "coach"),
                 ...item("/documents", "documents", "document"),
+                // B6: the public page, widgets, API keys and webhooks.
+                ...item("/club/public", "publicPage", "globe", president || has("mandates.manage")),
               ],
             },
             {
@@ -160,133 +194,116 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               label: "groupClub",
               icon: "club",
               items: [
-                // B6: the public page, widgets, API keys and webhooks.
-                ...item("/club/public", "publicPage", "globe"),
                 // 17: the register of members and the assemblies, for the presidency (the secretary reaches it from the invitation).
                 ...item("/club/association", "association", "landmark", president || has("mandates.manage")),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
-                ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
-                // Wave 17 (O1): the club's tasks, by type.
-                ...item("/tasks", "tasks", "clipboardList"),
+              ],
+            },
+            {
+              id: "federationGroup",
+              label: "groupFederation",
+              icon: "landmark",
+              items: [
                 // 12/11/2026: the federation's page (circulars, tournaments, transfers, discipline, clubs).
                 ...item("/club/federation", "clubFederation", "landmark", affiliated),
+                ...item("/classification", "classification", "badgeCheck", affiliated && has("people.read")),
+                // Wave 17 (J3): the transfer market between the federation's clubs.
+                ...item("/transfers", "transfers", "handshake", affiliated && has("people.read")),
               ],
             },
           ]
-        : kind === "club"
+        : kind === "federation" && role === "referee"
           ? [
               {
-                id: "players",
-                label: "groupPlayers",
-                icon: "players",
+                id: "federation",
+                label: "groupFederation",
+                icon: "whistle",
                 items: [
-                  ...item("/players", "players", "players", has("people.read")),
-                  ...item("/teams", "teams", "team", has("people.read", "teams.manage") || role === "coach"),
-                  ...(manager ? [registrations] : []),
-                  ...item("/attendance", "attendance", "attendance", has("attendance.manage", "calendar.manage")),
-                  ...item("/exercises", "exercises", "clipboardList", role === "coach" || has("calendar.manage", "calendar.read")),
-                  ...item("/classification", "classification", "badgeCheck", affiliated && has("people.read")),
-                  ...item("/transfers", "transfers", "handshake", affiliated && has("people.read")),
-                  ...item("/statistics", "statistics", "chart", has("attendance.manage", "calendar.manage", "people.read", "teams.manage") || role === "coach"),
-                ],
-              },
-              {
-                id: "life",
-                label: "club",
-                icon: "calendar",
-                items: [
-                  ...item("/calendar", "calendar", "calendar"),
-                  ...item("/events", "openEvents", "megaphone", has("calendar.manage")),
-                  ...item("/matches", "matches", "trophy", has("calendar.read", "calendar.manage")),
-                  // Trips and halls are reached from the calendar page (wave 11).
-                  ...item("/tournaments", "tournaments", "trophy"),
-                  ...item("/documents", "documents", "document"),
-                  // Club mails: newsletters (notifications.manage), event mails (planners).
-                  ...item("/communication", "communication", "megaphone", has("notifications.manage", "calendar.manage") || role === "coach"),
-                ],
-              },
-              {
-                id: "management",
-                label: "groupManagement",
-                icon: "club",
-                items: [
-                  ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
-                  ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
-                  ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
-                  // A1: everyone has a to-do (only one's own tasks unless one plans).
-                  ...item("/tasks", "tasks", "clipboardList"),
-                  // 12/11/2026: the federation's page (circulars, tournaments, transfers, discipline, clubs).
-                  ...item("/club/federation", "clubFederation", "landmark", affiliated),
-                ],
-              },
-              {
-                id: "finance",
-                label: "groupFinance",
-                icon: "funding",
-                items: [
-                  ...item("/funding", "finances", "funding", has("dues.read", "dues.manage")),
-                  ...item("/dues", "dues", "dues", has("dues.read", "dues.manage")),
-                  // A2: grants and sponsors in one page, two views.
-                  ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", has("dues.read", "dues.manage")),
-                  ...item("/fundraising", "fundraising", "piggyBank", has("dues.read", "dues.manage")),
+                  { route: "/referee", label: "refereeSpace", icon: "whistle" },
+                  { route: "/tournaments", label: "tournaments", icon: "trophy" },
+                  // 33: the circulars (written by communication, read by the referees).
+                  ...item("/circulars", "circulars", "megaphone", affiliated),
+                  { route: "/calendar", label: "calendar", icon: "calendar" },
+                  { route: "/venues", label: "venues", icon: "pin" },
+                  { route: "/documents", label: "documents", icon: "document" },
+                  { route: "/tasks", label: "tasks", icon: "clipboardList" },
                 ],
               },
             ]
           : kind === "federation"
             ? [
+                /*
+                 * 13/11/2026: the federation's 21 entries in five groups, the day first:
+                 * Agenda · Clubs et licences · Compétitions · Formation · Administration. 32: each entry by competence.
+                 */
                 {
-                  id: "federation",
-                  label: "groupFederation",
-                  icon: "landmark",
+                  id: "agenda",
+                  label: "groupAgenda",
+                  icon: "calendar",
                   items: [
-                    ...((role === "referee"
-                      ? [{ route: "/referee", label: "refereeSpace", icon: "whistle" }]
-                      : [
-                          // Wave 16 (I3): the order of the federation president's day; 32: each entry by competence.
-                          ...item("/federation/clubs", "federationClubs", "club", fed("federation.licences")),
-                          ...item("/federation/teams", "federationTeams", "players", fed("federation.licences")),
-                          ...item("/tournaments", "tournaments", "trophy", fed("federation.competitions")),
-                          // 6: the federation's national teams.
-                          ...item("/federation/national", "national", "medal", fed("federation.competitions")),
-                          ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
-                          // 34: sanctions, appeals and fines.
-                          ...item("/federation/discipline", "discipline", "shield", fed("federation.discipline")),
-                          // Lot 6 (05/11/2026): the commission's decisions, signed by its members.
-                          ...item("/federation/commission", "commission", "document", fed("federation.licences", "federation.discipline")),
-                          // International (05/11/2026): the federation's rulebook (amounts) and country.
-                          ...item("/federation/policy", "policy", "globe", fed("federation.licences")),
-                          // International, step 3 (06/11/2026): the registry of classifications.
-                          ...item("/federation/registry", "registry", "medal", fed("federation.licences", "federation.classification", "federation.competitions", "federation.discipline")),
-                          ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
-                          ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
-                          ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),
-                          ...item("/federation/courses", "courses", "team", fed("federation.courses")),
-                          // 4: the federal library of exercise and tactic sheets.
-                          ...item("/exercises", "exercises", "clipboardList", fed("federation.courses")),
-                          // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
-                          ...item("/equipment", "equipment", "wheelchair", fed("federation.competitions")),
-                          // 32: the presidency's delegates and their roles.
-                          ...item("/federation/team", "federationTeam", "userPlus", role === "federation_president"),
-                        ]) satisfies NavItem[]),
-                    // 33: the circulars (written by communication, read by the referees).
-                    ...item("/circulars", "circulars", "megaphone", affiliated),
-                    ...(role === "referee" ? ([{ route: "/tournaments", label: "tournaments", icon: "trophy" }] satisfies NavItem[]) : []),
                     { route: "/calendar", label: "calendar", icon: "calendar" },
-                    { route: "/venues", label: "venues", icon: "pin" },
-                    { route: "/documents", label: "documents", icon: "document" },
                     // A1: the federation's own to-do.
                     { route: "/tasks", label: "tasks", icon: "clipboardList" },
+                    // 33: the circulars (written by communication, read by the clubs and the referees).
+                    ...item("/circulars", "circulars", "megaphone", affiliated),
+                    { route: "/documents", label: "documents", icon: "document" },
+                    { route: "/venues", label: "venues", icon: "pin" },
                   ],
                 },
-                // 35: the federation as an ASBL: its own books and its assembly, by the finance competence.
+                {
+                  id: "clubs",
+                  label: "groupClubsLicences",
+                  icon: "club",
+                  items: [
+                    ...item("/federation/clubs", "federationClubs", "club", fed("federation.licences")),
+                    ...item("/federation/teams", "federationTeams", "players", fed("federation.licences")),
+                    ...item("/federation/licenses", "federationLicenses", "badgeCheck", fed("federation.licences", "federation.classification")),
+                    // International, step 3 (06/11/2026): the registry of classifications.
+                    ...item("/federation/registry", "registry", "medal", fed("federation.licences", "federation.classification", "federation.competitions", "federation.discipline")),
+                    ...item("/federation/affiliations", "affiliations", "landmark", fed("federation.licences", "federation.finance")),
+                    ...item("/transfers", "transfers", "handshake", fed("federation.licences")),
+                    // International (05/11/2026): the federation's rulebook (amounts) and country.
+                    ...item("/federation/policy", "policy", "globe", fed("federation.licences")),
+                  ],
+                },
+                {
+                  id: "competitions",
+                  label: "groupCompetitions",
+                  icon: "trophy",
+                  items: [
+                    ...item("/tournaments", "tournaments", "trophy", fed("federation.competitions")),
+                    // 6: the federation's national teams.
+                    ...item("/federation/national", "national", "medal", fed("federation.competitions")),
+                    ...item("/federation/referees", "designations", "whistle", fed("federation.referees")),
+                    // 34: sanctions, appeals and fines.
+                    ...item("/federation/discipline", "discipline", "shield", fed("federation.discipline")),
+                    // Lot 6 (05/11/2026): the commission's decisions, signed by its members.
+                    ...item("/federation/commission", "commission", "document", fed("federation.licences", "federation.discipline")),
+                  ],
+                },
+                {
+                  id: "training",
+                  label: "groupTraining",
+                  icon: "team",
+                  items: [
+                    ...item("/federation/courses", "courses", "team", fed("federation.courses")),
+                    // 4: the federal library of exercise and tactic sheets.
+                    ...item("/exercises", "exercises", "clipboardList", fed("federation.courses")),
+                    // Wave 17 (Q1): the federation's own fleet of chairs, lent to the clubs.
+                    ...item("/equipment", "equipment", "wheelchair", fed("federation.competitions")),
+                  ],
+                },
+                // 35: the federation as an ASBL: its own books and its assembly, by the finance competence; 32: its team.
                 {
                   id: "finance",
-                  label: "groupFinance",
+                  label: "groupAdministration",
                   icon: "funding",
                   items: [
-                    ...item("/funding", "finances", "funding", role !== "referee" && fed("federation.finance")),
-                    ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", role !== "referee" && fed("federation.finance")),
-                    ...item("/club/association", "association", "landmark", role !== "referee" && fed("federation.finance")),
+                    // 32: the presidency's delegates and their roles.
+                    ...item("/federation/team", "federationTeam", "userPlus", role === "federation_president"),
+                    ...item("/funding", "finances", "funding", fed("federation.finance")),
+                    ...item("/funding/grants-sponsors", "grantsSponsors", "handshake", fed("federation.finance")),
+                    ...item("/club/association", "association", "landmark", fed("federation.finance")),
                   ],
                 },
               ]
@@ -297,7 +314,9 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
       const m = moduleOfPath(i.route);
       return !m || !off.has(m);
     });
-  const groups = club.map((g) => ({ ...g, items: shown(g.items) })).filter((g) => g.items.length > 0);
+  // 13/11/2026: the national staff (a club's coach, a federation account) finds its selection, whatever the profile.
+  const national: NavGroup[] = state?.nationalStaff ? [{ id: "national", label: "groupNational", icon: "medal", items: [{ route: "/national", label: "nationalStaff", icon: "medal" }] }] : [];
+  const groups = [...club.map((g) => ({ ...g, items: shown(g.items) })), ...national].filter((g) => g.items.length > 0);
   if (president) return groups;
   // 12: without a profile chosen, the registrations; « Réglages » is the shell's last entry (settingsItem).
   const admin: NavGroup = {

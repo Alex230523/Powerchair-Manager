@@ -139,7 +139,7 @@ export function FormsList({
             hideable: false,
             sort: (f) => f.title,
             cell: (f) => (
-              <button type="button" className="text-button form-open" aria-pressed={f.id === selected} aria-label={fill(t.select, { form: f.title })} onClick={() => onSelect(f)}>
+              <button type="button" className="text-button name-link form-open" aria-pressed={f.id === selected} aria-label={fill(t.select, { form: f.title })} onClick={() => onSelect(f)}>
                 {f.title}
               </button>
             ),

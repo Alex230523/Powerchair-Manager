@@ -40,7 +40,7 @@ describe("tasks in every menu", () => {
   });
   it("counts the open tasks given to me, late ones apart", () => {
     const shell = readFileSync("src/components/app-shell.tsx", "utf8");
-    expect(shell).toContain('fetch("/api/tasks?count=mine"');
+    expect(shell).toContain('sharedFetch("/api/tasks?count=mine"');
     expect(shell).toContain("bottomNav(state, myTasks.open)");
     expect(readFileSync("src/domains/tasks/service.ts", "utf8")).toContain("export async function myTaskCount");
   });

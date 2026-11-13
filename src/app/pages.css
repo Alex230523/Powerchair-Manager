@@ -1,0 +1,136 @@
+/*
+ * 13/11/2026: the styles added since globals.css reached its budget of 300 kB
+ * (review of 05/11/2026). Same tokens; loaded after globals.css.
+ */
+/* 13/11/2026: « Ma présence », the coach's own answer under the session. */
+.focus-mine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.focus-mine-label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.focus-mine .actions {
+  margin: 0;
+}
+
+/* 13/11/2026: the players, then the coaches, each under its title. */
+.call-group {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: none;
+}
+/* « Mes prochaines séances »: one line per session, the three answers on the right. */
+.my-next {
+  margin-bottom: var(--card-gap);
+}
+.my-next-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.my-next-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+.my-next-row:first-child {
+  border-top: 0;
+}
+.my-next-what {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.my-next-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 13/11/2026: the national staff's page. */
+.national-staff-team {
+  margin-bottom: var(--card-gap);
+}
+.national-staff-team h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+.national-staff-list,
+.national-staff-gatherings,
+.national-staff-answers,
+.national-staff-care-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.national-staff-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+.national-staff-gatherings > li,
+.national-staff-care-list > li {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+.national-staff-gatherings > li:first-child,
+.national-staff-care-list > li:first-child {
+  border-top: 0;
+}
+.national-staff-gatherings p {
+  margin: 2px 0 var(--space-1);
+}
+.national-staff-answers {
+  margin-top: var(--space-2);
+}
+.national-staff-care-list ul {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+}
+.national-staff-care .button {
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+/* 13/11/2026: the settings' home in four parts, and the same parts in the side list. */
+.settings-section {
+  margin-top: var(--space-6);
+}
+.settings-section:first-of-type {
+  margin-top: var(--space-4);
+}
+.settings-section-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.settings-nav-section + .settings-nav-section {
+  margin-top: var(--space-3);
+}
+.settings-nav-title {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
