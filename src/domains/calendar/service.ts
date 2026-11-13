@@ -14,6 +14,7 @@ import {
 import { publish } from "../notifications/queue";
 import { queuePush, urgentChange } from "../notifications/push-queue";
 import { manages as managesAttendance, mayRespond } from "../attendance/access";
+import { staffSql } from "../attendance/staff";
 import { docAccess, type Doc } from "../documents/access";
 import {
   manager,
@@ -452,7 +453,7 @@ async function attendanceRows(s: Scope, e: Event) {
   const rows = (
     await s.c.query(
       `SELECT c.id,c.full_name AS name,
- CASE WHEN EXISTS(SELECT 1 FROM team_membership m WHERE m.profile_id=c.id AND m.team_id=$2 AND m.role='coach' AND NOT m.cancelled AND m.closed_at IS NULL AND m.starts_on<=$3::date AND (m.ends_on IS NULL OR m.ends_on>=$3::date)) OR ('coach'=ANY(c.directory_roles) AND NOT 'coach'=ANY(c.former_roles)) THEN 'coach' ELSE 'player' END AS role,
+ CASE WHEN ${staffSql("c.id", "c.organization_id", "$2::uuid", "$3::timestamptz", "c")} THEN 'coach' ELSE 'player' END AS role,
  i.response,i.actual FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id JOIN club_person c ON c.id=i.profile_id WHERE r.event_id=$1 AND i.withdrawn_at IS NULL ORDER BY c.full_name`,
       [e.id, e.team_id, e.starts_at],
     )

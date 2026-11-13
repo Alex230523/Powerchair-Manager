@@ -10143,6 +10143,47 @@ ul.task-page li {
   margin: 0;
   padding: 0;
 }
+/* 13/11/2026: the players, then the coaches, each under its title. */
+.call-group {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: none;
+}
+/* « Mes prochaines séances »: one line per session, the three answers on the right. */
+.my-next {
+  margin-bottom: var(--card-gap);
+}
+.my-next-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.my-next-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+.my-next-row:first-child {
+  border-top: 0;
+}
+.my-next-what {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.my-next-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
 .call-row {
   display: grid;
   grid-template-columns: auto minmax(8rem, 1fr) auto auto auto;
@@ -11515,6 +11556,21 @@ ul.task-page li {
 .focus-title {
   font-size: var(--text-lg);
   font-weight: 700;
+}
+/* 13/11/2026: « Ma présence », the coach's own answer under the session. */
+.focus-mine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.focus-mine-label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.focus-mine .actions {
+  margin: 0;
 }
 .focus-sub {
   margin: var(--space-4) 0 var(--space-2);

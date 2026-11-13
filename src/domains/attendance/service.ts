@@ -15,6 +15,7 @@ import {
   type Event,
 } from "../calendar/access";
 import { manages, mayRespond } from "./access";
+import { staffSql } from "./staff";
 import { publish } from "../notifications/queue";
 import { queuePush } from "../notifications/push-queue";
 import type { Command, responses } from "./schema";
@@ -45,6 +46,10 @@ type Invitation = {
   responded_by_name: string | null;
   responded_at: Date | null;
   canRespond: boolean;
+  /** 13/11/2026: a coach, an assistant or a volunteer of the session's team, shown and counted apart. */
+  staff: boolean;
+  /** The viewer's own profile (not a child's): « Ma présence ». */
+  self: boolean;
 };
 type History = {
   id: string;
@@ -576,8 +581,10 @@ export async function attendanceView(
         for (const i of (
           await s.c.query(
             // 29: who answered (one parent's answer is seen by the other, with its author).
-            'SELECT i.*,p.full_name,ru.name AS responded_by_name FROM attendance_invitation i JOIN club_person p ON p.id=i.profile_id LEFT JOIN "user" ru ON ru.id=i.responded_by WHERE i.register_id=$1 ORDER BY p.full_name',
-            [r.id],
+            `SELECT i.*,p.full_name,ru.name AS responded_by_name,${staffSql("i.profile_id", "i.organization_id", "$2::uuid", "$3::timestamptz", "p")} AS staff,
+                    EXISTS(SELECT 1 FROM person pe WHERE pe.id=p.person_id AND pe.user_id=$4) AS self
+               FROM attendance_invitation i JOIN club_person p ON p.id=i.profile_id LEFT JOIN "user" ru ON ru.id=i.responded_by WHERE i.register_id=$1 ORDER BY p.full_name`,
+            [r.id, e.team_id, e.starts_at, s.p.userId],
           )
         ).rows) {
           if (
@@ -786,8 +793,8 @@ export async function attendanceTick(db: Pool, orgs?: string[]) {
       const s: Scope = { c, a, p: { userId: a.user_id, sessionId: "" } },
         ids = (
           await c.query(
-            "SELECT id,response FROM attendance_invitation WHERE register_id=$1 AND withdrawn_at IS NULL",
-            [r.id],
+            `SELECT i.id,i.response,${staffSql("i.profile_id", "i.organization_id", "$2::uuid", "$3::timestamptz", "p")} AS staff FROM attendance_invitation i JOIN club_person p ON p.id=i.profile_id WHERE i.register_id=$1 AND i.withdrawn_at IS NULL`,
+            [r.id, e.team_id, e.starts_at],
           )
         ).rows;
       if (
@@ -817,7 +824,8 @@ export async function attendanceTick(db: Pool, orgs?: string[]) {
         r.minimum > 0 &&
         (r.deadline <= new Date() || e.starts_at <= new Date())
       ) {
-        const confirmed = ids.filter((i) => i.response === "present").length;
+        // The minimum counts the players: a coach's « present » never makes up for a missing player.
+        const confirmed = ids.filter((i) => i.response === "present" && !i.staff).length;
         if (confirmed < r.minimum)
           await notify(
             s,

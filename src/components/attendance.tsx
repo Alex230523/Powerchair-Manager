@@ -1,10 +1,10 @@
 "use client";
 import { AbsencesPanel, absenceCopy } from "./absences";
 import { familyCopy } from "./family-copy";
-import { AttendanceCall, AttendanceStats, queueOffline, useSeasonAttendance } from "./attendance-call";
+import { AttendanceCall, AttendanceStats, MyNextSessions, queueOffline, useSeasonAttendance } from "./attendance-call";
 import { callCopy } from "./attendance-call-copy";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import { useScopedTeam } from "./use-scope";
 import { Button, ExportButton, Panel, PageHeader, Tabs } from "./ui";
@@ -447,11 +447,10 @@ function SeasonView({ locale }: { locale: Locale }) {
                 </form>
               )}
             <p>{t.notice}</p>
-            {e.invitations.map((i) => (
-              <section
-                className="attendance-person"
-                key={i.id + ":" + i.version}
-              >
+            {[...e.invitations].sort((x, y) => Number(x.staff) - Number(y.staff)).map((i, n, all) => (
+              <Fragment key={i.id + ":" + i.version}>
+              {i.staff && (n === 0 || !all[n - 1].staff) && <h3 className="call-group">{callCopy[locale].staff}</h3>}
+              <section className="attendance-person">
                 <h3>
                   {i.full_name}
                   {i.withdrawn_at ? " · " + t.withdrawn : ""}
@@ -568,6 +567,7 @@ function SeasonView({ locale }: { locale: Locale }) {
                     </form>
                   )}
               </section>
+              </Fragment>
             ))}
             {e.manage && r && !r.closed_at && e.status === "scheduled" && (
               <>
@@ -709,6 +709,8 @@ export function Attendance({ locale }: { locale: Locale }) {
   return (
     <main id="main" className="access attendance">
       <PageHeader title={t.title} subtitle={t.intro} />
+      {/* 13/11/2026: the coach (and anyone invited) answers for himself first. */}
+      <MyNextSessions locale={locale} revision={revision} onAnswered={() => setRevision((v) => v + 1)} />
       <Tabs label={c.tabs} items={items} value={current} onChange={(v) => (setTab(v as "call" | "season" | "stats"), setRevision((r) => r + 1))} idPrefix="attendance-tab" panelId={(v) => `attendance-panel-${v}`} />
       <div role="tabpanel" id={`attendance-panel-${current}`} aria-labelledby={`attendance-tab-${current}`} className="attendance-panel">
         {current !== "season" && error && <p role="alert">{error}</p>}
