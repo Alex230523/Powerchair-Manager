@@ -4,7 +4,7 @@ import { sessionGroup } from "../coaches/schema";
  * Wave 17 (J2): the roll call, one session at a time, and the figures per
  * player. Pure functions over what attendanceView returns.
  */
-type Inv = { id: string; profile_id: string; full_name: string; actual: string; response: string; withdrawn_at: Date | string | null };
+type Inv = { id: string; profile_id: string; full_name: string; actual: string; response: string; withdrawn_at: Date | string | null; staff?: boolean };
 type Ev = {
   id: string;
   kind: string;
@@ -45,13 +45,17 @@ export type PlayerSummary = {
   rate: number | null;
 };
 
-/** Per player, over closed registers of sessions not cancelled; « Excusé » counted apart. */
-export function playerSummaries(events: Ev[]): PlayerSummary[] {
+/**
+ * Per player, over closed registers of sessions not cancelled; « Excusé »
+ * counted apart. 13/11/2026: `staff` gives the coaches' figures instead, never
+ * mixed with the players'.
+ */
+export function playerSummaries(events: Ev[], staff = false): PlayerSummary[] {
   const out = new Map<string, PlayerSummary>();
   for (const e of events) {
     if (e.status === "cancelled" || !e.register?.closed_at) continue;
     for (const i of e.invitations) {
-      if (i.withdrawn_at) continue;
+      if (i.withdrawn_at || !!i.staff !== staff) continue;
       const v =
         out.get(i.profile_id) ??
         ({ profileId: i.profile_id, name: i.full_name, training: { attended: 0, closed: 0 }, match: { attended: 0, closed: 0 }, all: { attended: 0, closed: 0 }, excused: 0, absent: 0, rate: null } as PlayerSummary);
@@ -72,4 +76,26 @@ export function playerSummaries(events: Ev[]): PlayerSummary[] {
 
 export function sortSummaries(list: PlayerSummary[], by: "rate" | "name") {
   return [...list].sort((a, b) => (by === "rate" ? (b.rate ?? -1) - (a.rate ?? -1) : 0) || a.name.localeCompare(b.name));
+}
+
+/** 13/11/2026: the roll call in two groups, the players first, then the coaches. */
+export function splitStaff<I extends { staff?: boolean }>(people: I[]) {
+  return { players: people.filter((i) => !i.staff), staff: people.filter((i) => i.staff) };
+}
+
+/**
+ * 13/11/2026: « Mes prochaines séances »: the viewer's own invitations (not a
+ * child's) for sessions still open to answers, soonest first.
+ */
+type MineInv = Inv & { self?: boolean; canRespond?: boolean; version: number; comment?: string };
+type MineEv = Omit<Ev, "register" | "invitations"> & { title: string; register: { closed_at: Date | string | null; deadline?: Date | string } | null; invitations: MineInv[] };
+export function myUpcoming<E extends MineEv>(events: E[], now: number, limit = 5) {
+  const out: { event: E; invitation: E["invitations"][number] }[] = [];
+  for (const e of events) {
+    if (e.status !== "scheduled" || !e.register || e.register.closed_at || new Date(e.starts_at).getTime() <= now) continue;
+    if (e.register.deadline && new Date(e.register.deadline).getTime() <= now) continue;
+    const mine = e.invitations.find((i) => i.self && i.canRespond && !i.withdrawn_at);
+    if (mine) out.push({ event: e, invitation: mine });
+  }
+  return out.sort((a, b) => new Date(a.event.starts_at).getTime() - new Date(b.event.starts_at).getTime()).slice(0, limit);
 }

@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-13",
+  "roles": [
+    "coach",
+    "president"
+  ],
+  "link": "/attendance",
+  "image": null,
+  "fr": {
+    "title": "Les coachs donnent aussi leur présence",
+    "text": "Sur votre accueil, « Ma présence » sous le prochain entraînement : Présent ou Absent d'un clic. La page Présences commence par « Mes prochaines séances ». À l'appel, les coachs ont leur groupe après les joueurs, et ne comptent ni dans le minimum ni dans les statistiques des joueurs."
+  },
+  "nl": {
+    "title": "Ook de coaches geven hun aanwezigheid",
+    "text": "Op uw startpagina staat « Mijn aanwezigheid » onder de volgende training: Aanwezig of Afwezig in één klik. De pagina Aanwezigheden begint met « Mijn volgende sessies ». Bij het appèl staan de coaches apart na de spelers, buiten het minimum en de statistieken van de spelers."
+  },
+  "en": {
+    "title": "Coaches give their attendance too",
+    "text": "On your home, « My attendance » under the next training: Present or Absent in one click. The attendance page starts with « My next sessions ». In the roll call, coaches have their own group after the players, and count neither in the minimum nor in the players' statistics."
+  }
+}

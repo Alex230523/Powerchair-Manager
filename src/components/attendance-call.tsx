@@ -3,7 +3,7 @@ import { brusselsToday } from "./chair-sheet";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import type { Locale } from "@/lib/locale";
 import type { attendanceView } from "@/domains/attendance/service";
-import { callSessions, playerSummaries, segmentOf, segments, sortSummaries, type Segment } from "@/domains/attendance/rollcall";
+import { callSessions, myUpcoming, playerSummaries, segmentOf, segments, sortSummaries, splitStaff, type Segment } from "@/domains/attendance/rollcall";
 import { queueMark } from "@/lib/offline-queue";
 import { callCopy } from "./attendance-call-copy";
 import { attendanceCopy } from "./attendance-copy";
@@ -84,7 +84,7 @@ export function AttendanceCall({
   const [chosen, setChosen] = useState<string | null>(null),
     [offset, setOffset] = useState(0),
     [fixing, setFixing] = useState<null | { id: string; version: number; actual: string; name: string }>(null);
-  const summaries = new Map(playerSummaries(data.events).map((s) => [s.profileId, s]));
+  const summaries = new Map([...playerSummaries(data.events), ...playerSummaries(data.events, true)].map((s) => [s.profileId, s]));
   if (!sessions.length) return <EmptyState title={t.noSession} />;
   const e: Ev = sessions.find((s) => s.id === chosen) ?? sessions[0];
   const at = Math.max(0, sessions.indexOf(e));
@@ -118,6 +118,50 @@ export function AttendanceCall({
     ev.currentTarget.querySelector<HTMLButtonElement>(`[data-choice="${next}"]`)?.focus();
     choose(i, next);
   }
+  const groups = splitStaff(people);
+  const row = (i: (typeof people)[number]) => {
+    const seg = segmentOf(i.actual);
+    const avg = summaries.get(i.profile_id)?.rate;
+    return (
+      <li key={i.id} className="call-row">
+        <span className="avatar" aria-hidden="true">
+          {initials(i.full_name)}
+        </span>
+        <div className="call-who">
+          <strong>{i.full_name}</strong>
+          <span className="muted small">{avg == null ? t.noAverage : fill(t.average, { n: avg })}</span>
+          {(i.actual === "late" || i.actual === "early") && <Badge tone="warning">{i.actual === "late" ? t.late : t.early}</Badge>}
+        </div>
+        <span className="call-answer">
+          <Badge tone={answerTone(i.response)}>{t.answered[i.response as keyof typeof t.answered] ?? t.answered.none}</Badge>
+        </span>
+        <div className="call-choice" role="radiogroup" aria-label={fill(t.markOf, { name: i.full_name })} onKeyDown={(ev) => keys(ev, i)}>
+          {segments.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              data-choice={s}
+              aria-checked={seg === s}
+              tabIndex={seg === s ? 0 : -1}
+              disabled={busy}
+              onClick={() => choose(i, s)}
+            >
+              <Icon name={icons[s]} size={16} />
+              <span className="call-choice-label">{t.segments[s]}</span>
+            </button>
+          ))}
+        </div>
+        <MoreMenu
+          label={fill(t.moreOf, { name: i.full_name })}
+          items={[
+            { label: t.late, run: () => choose(i, "late") },
+            { label: t.early, run: () => choose(i, "early") },
+          ]}
+        />
+      </li>
+    );
+  };
   return (
     <Card className="call-card">
       <div className="call-head">
@@ -189,51 +233,16 @@ export function AttendanceCall({
       </div>
       {closed && <p className="notice">{t.closed}</p>}
       {people.length ? (
-        <ul className="call-list">
-          {people.map((i) => {
-            const seg = segmentOf(i.actual);
-            const avg = summaries.get(i.profile_id)?.rate;
-            return (
-              <li key={i.id} className="call-row">
-                <span className="avatar" aria-hidden="true">
-                  {initials(i.full_name)}
-                </span>
-                <div className="call-who">
-                  <strong>{i.full_name}</strong>
-                  <span className="muted small">{avg == null ? t.noAverage : fill(t.average, { n: avg })}</span>
-                  {(i.actual === "late" || i.actual === "early") && <Badge tone="warning">{i.actual === "late" ? t.late : t.early}</Badge>}
-                </div>
-                <span className="call-answer">
-                  <Badge tone={answerTone(i.response)}>{t.answered[i.response as keyof typeof t.answered] ?? t.answered.none}</Badge>
-                </span>
-                <div className="call-choice" role="radiogroup" aria-label={fill(t.markOf, { name: i.full_name })} onKeyDown={(ev) => keys(ev, i)}>
-                  {segments.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      role="radio"
-                      data-choice={s}
-                      aria-checked={seg === s}
-                      tabIndex={seg === s ? 0 : -1}
-                      disabled={busy}
-                      onClick={() => choose(i, s)}
-                    >
-                      <Icon name={icons[s]} size={16} />
-                      <span className="call-choice-label">{t.segments[s]}</span>
-                    </button>
-                  ))}
-                </div>
-                <MoreMenu
-                  label={fill(t.moreOf, { name: i.full_name })}
-                  items={[
-                    { label: t.late, run: () => choose(i, "late") },
-                    { label: t.early, run: () => choose(i, "early") },
-                  ]}
-                />
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {groups.staff.length > 0 && <h3 className="call-group">{t.players}</h3>}
+          <ul className="call-list" aria-label={t.players}>{groups.players.map(row)}</ul>
+          {groups.staff.length > 0 && (
+            <>
+              <h3 className="call-group">{t.staff}</h3>
+              <ul className="call-list" aria-label={t.staff}>{groups.staff.map(row)}</ul>
+            </>
+          )}
+        </>
       ) : (
         <EmptyState title={t.noInvited} />
       )}
@@ -284,6 +293,8 @@ export function AttendanceStats({ locale, data, team, seasonName }: { locale: Lo
   const [by, setBy] = useState<"rate" | "name">("rate");
   const events = team ? data.events.filter((e) => e.team_id === team) : data.events;
   const list = sortSummaries(playerSummaries(events), by);
+  // 13/11/2026: the coaches' figures, apart, under the players'.
+  const coaches = sortSummaries(playerSummaries(events, true), "name");
   return (
     <section className="call-stats" aria-label={t.stats}>
       <div className="call-stats-head">
@@ -336,6 +347,29 @@ export function AttendanceStats({ locale, data, team, seasonName }: { locale: Lo
       ) : (
         <EmptyState title={t.noStats} />
       )}
+      {coaches.length > 0 && (
+        <>
+          <h3 className="call-group">{t.staffStats}</h3>
+          <ul className="stat-cards" aria-label={t.staffStats}>
+            {coaches.map((p) => (
+              <li key={p.profileId} className="stat-card">
+                <div className="stat-card-who">
+                  <span className="avatar" aria-hidden="true">
+                    {initials(p.name)}
+                  </span>
+                  <strong>{p.name}</strong>
+                </div>
+                <p className="small">{fill(t.training, { a: p.training.attended, c: p.training.closed })}</p>
+                <p className="small">{fill(t.matches, { a: p.match.attended, c: p.match.closed })}</p>
+                <p className="stat-card-rate">
+                  <span className="sr-only">{t.averageLabel} : </span>
+                  {p.rate ?? 0} %
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
@@ -343,4 +377,81 @@ export function AttendanceStats({ locale, data, team, seasonName }: { locale: Lo
 /** Offline marks of the roll call: kept on the device (same queue as the season grid). */
 export function queueOffline(data: View, body: Record<string, unknown>) {
   return queueMark(String(body.id), { ...body, organizationId: data.context.organization_id });
+}
+
+/**
+ * 13/11/2026: « Mes prochaines séances ». The viewer's own invitations over the
+ * next three weeks, answered in one tap: a coach says whether he will be at
+ * the training as his players do, without searching for his line in the call.
+ */
+export function MyNextSessions({ locale, revision, onAnswered }: { locale: Locale; revision: number; onAnswered: () => void }) {
+  const t = callCopy[locale];
+  const [now] = useState(() => Date.now());
+  const [data, setData] = useState<View | null>(null),
+    [busy, setBusy] = useState(""),
+    [status, setStatus] = useState(""),
+    [own, setOwn] = useState(0);
+  useEffect(() => {
+    const abort = new AbortController();
+    const from = new Date(now).toISOString().slice(0, 10),
+      to = new Date(now + 21 * 86400000).toISOString().slice(0, 10);
+    fetch("/api/attendance?" + new URLSearchParams({ from, to, team: "", place: "" }), { signal: abort.signal, cache: "no-store" })
+      .then(async (r) => (r.ok ? setData((await r.json()) as View) : null))
+      .catch(() => undefined);
+    return () => abort.abort();
+  }, [now, revision, own]);
+  if (!data) return null;
+  const list = myUpcoming(data.events, now);
+  if (!list.length) return null;
+  const day = (d: Date | string) =>
+    new Intl.DateTimeFormat(tag(locale), { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Brussels" }).format(new Date(d));
+  async function answer(i: (typeof list)[number]["invitation"], response: "present" | "absent" | "uncertain") {
+    if (!data || i.response === response) return;
+    setBusy(i.id);
+    setStatus("");
+    try {
+      const r = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: data.context.organization_id, action: "respond", id: i.id, expectedVersion: i.version, response, comment: i.comment ?? "", ...(response === "absent" ? { absenceReason: "other" } : {}) }),
+      });
+      if (!r.ok) throw new Error();
+      setStatus(t.saved);
+      setOwn((v) => v + 1);
+      onAnswered();
+    } catch {
+      setStatus(attendanceCopy[locale].error);
+    } finally {
+      setBusy("");
+    }
+  }
+  return (
+    <Card title={t.mine} className="my-next" labelledBy="my-next-title" headingId="my-next-title">
+      <p className="muted small">{t.mineIntro}</p>
+      <ul className="my-next-list">
+        {list.map(({ event: e, invitation: i }) => (
+          <li key={e.id} className="my-next-row">
+            <div className="my-next-what">
+              <strong>{e.title}</strong>
+              <span className="muted small">
+                {day(e.starts_at)}
+                {e.place_name ? ` · ${e.place_name}` : ""}
+                {e.team_name ? ` · ${e.team_name}` : ""}
+              </span>
+            </div>
+            <div className="my-next-choice" role="group" aria-label={fill(t.mineOf, { title: `${e.title}, ${day(e.starts_at)}` })}>
+              {(["present", "absent", "uncertain"] as const).map((v) => (
+                <Button key={v} variant={i.response === v ? "primary" : "secondary"} aria-pressed={i.response === v} disabled={!!busy} onClick={() => void answer(i, v)}>
+                  {t.mineAnswer[v]}
+                </Button>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="sr-only" role="status" aria-live="polite">
+        {status}
+      </p>
+    </Card>
+  );
 }

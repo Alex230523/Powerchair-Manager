@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { staffSql } from "../attendance/staff";
 
 /**
  * 15: the home by role. Only figures the application already holds, each
@@ -6,7 +7,8 @@ import type { PoolClient } from "pg";
  * - a player or a parent: per person (one block per child), the next event
  *   with « Présent / Absent » and the team's last results;
  * - a coach: per coached team, the next training and the next match with
- *   their answers, and today's call or match;
+ *   their answers, the coach's own « Présent / Absent » (13/11/2026), and
+ *   today's call or match;
  * - a federation: clubs late on its fees, the next classification days and
  *   tournament days, what waits for its validation (places, chair models).
  */
@@ -15,9 +17,14 @@ export type EventFocus = {
   title: string;
   startsAt: string;
   place: string | null;
+  /** The players' answers (13/11/2026: the staff apart). */
   invited: number;
   answered: number;
   present: number;
+  /** The coaches invited, and how many said present. */
+  staff: { invited: number; present: number };
+  /** « Ma présence »: the coach's own invitation, when there is one. */
+  mine: null | { invitationId: string; version: number; response: string; open: boolean };
 };
 export type MemberFocus = {
   kind: "member";
@@ -100,34 +107,55 @@ export async function memberFocus(c: PoolClient, org: string, own: string[]): Pr
   return { kind: "member", people: out, chairs };
 }
 
-async function eventFocus(c: PoolClient, org: string, team: string, kinds: string[]): Promise<EventFocus | null> {
+async function eventFocus(c: PoolClient, org: string, team: string, kinds: string[], own: string[]): Promise<EventFocus | null> {
+  const staff = staffSql("i.profile_id", "i.organization_id", "e.team_id", "e.starts_at", "cp");
   const e = (
     await c.query(
-      `SELECT e.id,e.title,e.starts_at,${place} AS place,
-              (SELECT count(*)::int FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL) AS invited,
-              (SELECT count(*)::int FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL AND i.response<>'none') AS answered,
-              (SELECT count(*)::int FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL AND i.response='present') AS present
+      `SELECT e.id,e.title,e.starts_at,${place} AS place,a.*,
+              (SELECT json_build_object('id',i.id,'version',i.version,'response',i.response,'open',(r.closed_at IS NULL AND r.deadline>now() AND e.starts_at>now()))
+                 FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id WHERE r.event_id=e.id AND i.withdrawn_at IS NULL AND i.profile_id=ANY($4::uuid[]) ORDER BY i.id LIMIT 1) AS mine
          FROM calendar_event e ${places}
+         LEFT JOIN LATERAL (
+           SELECT count(*) FILTER (WHERE NOT x.staff)::int AS invited,
+                  count(*) FILTER (WHERE NOT x.staff AND x.response<>'none')::int AS answered,
+                  count(*) FILTER (WHERE NOT x.staff AND x.response='present')::int AS present,
+                  count(*) FILTER (WHERE x.staff)::int AS staff_invited,
+                  count(*) FILTER (WHERE x.staff AND x.response='present')::int AS staff_present
+             FROM (SELECT i.response,${staff} AS staff FROM attendance_invitation i JOIN attendance_register r ON r.id=i.register_id JOIN club_person cp ON cp.id=i.profile_id
+                    WHERE r.event_id=e.id AND i.withdrawn_at IS NULL) x
+         ) a ON true
         WHERE e.organization_id=$1 AND e.team_id=$2 AND e.kind=ANY($3::text[]) AND e.status='scheduled' AND e.ends_at>now()
         ORDER BY e.starts_at LIMIT 1`,
-      [org, team, kinds],
+      [org, team, kinds, own],
     )
   ).rows[0];
-  return e ? { id: e.id, title: e.title, startsAt: new Date(e.starts_at).toISOString(), place: e.place, invited: e.invited, answered: e.answered, present: e.present } : null;
+  return e
+    ? {
+        id: e.id,
+        title: e.title,
+        startsAt: new Date(e.starts_at).toISOString(),
+        place: e.place,
+        invited: e.invited,
+        answered: e.answered,
+        present: e.present,
+        staff: { invited: e.staff_invited, present: e.staff_present },
+        mine: e.mine ? { invitationId: e.mine.id, version: e.mine.version, response: e.mine.response, open: e.mine.open } : null,
+      }
+    : null;
 }
 
 export async function coachFocus(c: PoolClient, org: string, own: string[]): Promise<CoachFocus> {
   const teams = (
     await c.query(
       `SELECT DISTINCT t.id,t.name FROM team_membership m JOIN team t ON t.id=m.team_id AND t.organization_id=m.organization_id JOIN season s ON s.id=t.season_id
-        WHERE m.organization_id=$1 AND m.profile_id=ANY($2::uuid[]) AND m.role='coach' AND NOT m.cancelled AND m.closed_at IS NULL
+        WHERE m.organization_id=$1 AND m.profile_id=ANY($2::uuid[]) AND m.role IN ('coach','assistant') AND NOT m.cancelled AND m.closed_at IS NULL
           AND m.starts_on<=CURRENT_DATE AND (m.ends_on IS NULL OR m.ends_on>=CURRENT_DATE) AND NOT t.archived AND NOT s.archived
         ORDER BY t.name LIMIT 3`,
       [org, own],
     )
   ).rows as { id: string; name: string }[];
   const out: CoachFocus["teams"] = [];
-  for (const t of teams) out.push({ id: t.id, name: t.name, nextTraining: await eventFocus(c, org, t.id, ["training"]), nextMatch: await eventFocus(c, org, t.id, ["match", "friendly", "tournament"]) });
+  for (const t of teams) out.push({ id: t.id, name: t.name, nextTraining: await eventFocus(c, org, t.id, ["training"], own), nextMatch: await eventFocus(c, org, t.id, ["match", "friendly", "tournament"], own) });
   const ids = teams.map((t) => t.id);
   const today = async (kinds: string[]) =>
     ((

@@ -20,7 +20,7 @@ const day = (l: Locale, d: string) => new Intl.DateTimeFormat(tag(l), { weekday:
 
 export function HomeFocus({ locale, focus, organizationId, href, reload }: { locale: Locale; focus: Focus; organizationId: string | null; href: (route: string) => string; reload: () => void }) {
   if (focus.kind === "member") return <Member locale={locale} focus={focus} organizationId={organizationId} href={href} reload={reload} />;
-  if (focus.kind === "coach") return <Coach locale={locale} focus={focus} href={href} />;
+  if (focus.kind === "coach") return <Coach locale={locale} focus={focus} organizationId={organizationId} href={href} reload={reload} />;
   return <Federation locale={locale} focus={focus} href={href} />;
 }
 
@@ -120,14 +120,59 @@ function Member({ locale, focus, organizationId, href, reload }: { locale: Local
 function Answers({ locale, e }: { locale: Locale; e: EventFocus }) {
   const t = focusCopy[locale];
   return (
-    <p className="muted">
-      {e.invited ? fill(t.answers, { answered: e.answered, invited: e.invited, present: e.present }) : ""}
-    </p>
+    <>
+      <p className="muted">{e.invited ? fill(t.answers, { answered: e.answered, invited: e.invited, present: e.present }) : ""}</p>
+      {e.staff.invited > 0 && <p className="muted small">{fill(t.staffAnswers, { present: e.staff.present, invited: e.staff.invited })}</p>}
+    </>
   );
 }
 
-function Coach({ locale, focus, href }: { locale: Locale; focus: CoachFocus; href: (route: string) => string }) {
+/** 13/11/2026: the coach says whether he will be there, as his players do. */
+function Mine({ locale, e, busy, answer }: { locale: Locale; e: EventFocus; busy: string; answer: (m: NonNullable<EventFocus["mine"]>, response: "present" | "absent") => void }) {
   const t = focusCopy[locale];
+  const m = e.mine;
+  if (!m) return null;
+  return (
+    <div className="focus-mine" role="group" aria-label={fill(t.mineOf, { title: e.title })}>
+      <span className="focus-mine-label">{t.mine}</span>
+      {m.open ? (
+        <span className="actions">
+          <Button variant={m.response === "present" ? "primary" : "secondary"} disabled={!!busy} aria-pressed={m.response === "present"} onClick={() => answer(m, "present")}>
+            {t.present}
+          </Button>
+          <Button variant={m.response === "absent" ? "primary" : "secondary"} disabled={!!busy} aria-pressed={m.response === "absent"} onClick={() => answer(m, "absent")}>
+            {t.absent}
+          </Button>
+        </span>
+      ) : (
+        <span className="muted small">{t.answered[m.response] ?? t.answered.none} {t.closed}</span>
+      )}
+    </div>
+  );
+}
+
+function Coach({ locale, focus, organizationId, href, reload }: { locale: Locale; focus: CoachFocus; organizationId: string | null; href: (route: string) => string; reload: () => void }) {
+  const t = focusCopy[locale];
+  const [busy, setBusy] = useState(""),
+    [status, setStatus] = useState("");
+  async function answer(m: NonNullable<EventFocus["mine"]>, response: "present" | "absent") {
+    setBusy(m.invitationId);
+    setStatus("");
+    try {
+      const r = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId, action: "respond", id: m.invitationId, expectedVersion: m.version, response, comment: "", ...(response === "absent" ? { absenceReason: "other" } : {}) }),
+      });
+      if (!r.ok) throw new Error();
+      setStatus(t.saved);
+      reload();
+    } catch {
+      setStatus(t.failed);
+    } finally {
+      setBusy("");
+    }
+  }
   if (!focus.teams.length) return null;
   return (
     <div className="dash-section focus-grid">
@@ -168,6 +213,7 @@ function Coach({ locale, focus, href }: { locale: Locale; focus: CoachFocus; hre
                     {e.place ? ` · ${e.place}` : ""}
                   </p>
                   <Answers locale={locale} e={e} />
+                  <Mine locale={locale} e={e} busy={busy} answer={(m, v) => void answer(m, v)} />
                 </>
               ) : (
                 <p className="muted">{t.nothingPlanned}</p>
@@ -176,6 +222,9 @@ function Coach({ locale, focus, href }: { locale: Locale; focus: CoachFocus; hre
           ))}
         </Card>
       ))}
+      <p className="sr-only" role="status" aria-live="polite">
+        {status}
+      </p>
     </div>
   );
 }

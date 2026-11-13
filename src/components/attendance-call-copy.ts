@@ -37,6 +37,14 @@ type Copy = {
   averageLabel: string;
   period: string;
   noStats: string;
+  /** 13/11/2026: the coaches apart, and « Mes prochaines séances ». */
+  players: string;
+  staff: string;
+  staffStats: string;
+  mine: string;
+  mineIntro: string;
+  mineOf: string;
+  mineAnswer: Record<"present" | "absent" | "uncertain", string>;
   /** Wave 17 (G2): the columns of the exports. */
   cols: Record<"name" | "response" | "mark" | "trainingsIn" | "trainingsAll" | "matchesIn" | "matchesAll" | "excused" | "absent" | "rate" | "session", string>;
 };
@@ -80,6 +88,13 @@ export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
     averageLabel: "Présence moyenne",
     period: "Saison {name}, appels clôturés.",
     noStats: "Aucun appel clôturé sur cette saison.",
+    players: "Joueurs",
+    staff: "Coachs",
+    staffStats: "Présences des coachs",
+    mine: "Mes prochaines séances",
+    mineIntro: "Dites si vous serez là : vos joueurs et les autres coachs le voient.",
+    mineOf: "Ma présence : {title}",
+    mineAnswer: { present: "Présent", absent: "Absent", uncertain: "Incertain" },
     cols: { name: "Nom", response: "Réponse", mark: "Présence", trainingsIn: "Entraînements présents", trainingsAll: "Entraînements clôturés", matchesIn: "Matchs présents", matchesAll: "Matchs clôturés", excused: "Excusés", absent: "Absents", rate: "Présence moyenne (%)", session: "Séance" },
   },
   nl: {
@@ -120,6 +135,13 @@ export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
     averageLabel: "Gemiddelde aanwezigheid",
     period: "Seizoen {name}, afgesloten registers.",
     noStats: "Nog geen afgesloten register in dit seizoen.",
+    players: "Spelers",
+    staff: "Coaches",
+    staffStats: "Aanwezigheid van de coaches",
+    mine: "Mijn volgende sessies",
+    mineIntro: "Laat weten of u er bent: uw spelers en de andere coaches zien het.",
+    mineOf: "Mijn aanwezigheid: {title}",
+    mineAnswer: { present: "Aanwezig", absent: "Afwezig", uncertain: "Onzeker" },
     cols: { name: "Naam", response: "Antwoord", mark: "Aanwezigheid", trainingsIn: "Trainingen aanwezig", trainingsAll: "Trainingen afgesloten", matchesIn: "Wedstrijden aanwezig", matchesAll: "Wedstrijden afgesloten", excused: "Verontschuldigd", absent: "Afwezig", rate: "Gemiddelde aanwezigheid (%)", session: "Sessie" },
   },
   en: {
@@ -160,6 +182,13 @@ export const callCopy: Record<"fr" | "nl" | "en", Copy> = {
     averageLabel: "Average attendance",
     period: "Season {name}, closed registers.",
     noStats: "No closed register this season yet.",
+    players: "Players",
+    staff: "Coaches",
+    staffStats: "Coaches' attendance",
+    mine: "My next sessions",
+    mineIntro: "Say whether you will be there: your players and the other coaches see it.",
+    mineOf: "My attendance: {title}",
+    mineAnswer: { present: "Present", absent: "Absent", uncertain: "Uncertain" },
     cols: { name: "Name", response: "Answer", mark: "Attendance", trainingsIn: "Trainings attended", trainingsAll: "Trainings closed", matchesIn: "Matches attended", matchesAll: "Matches closed", excused: "Excused", absent: "Absent", rate: "Average attendance (%)", session: "Session" },
   },
 };

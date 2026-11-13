@@ -20,6 +20,10 @@ export const focusCopy: Record<
     nextMatch: string;
     nothingPlanned: string;
     answers: string;
+    /** 13/11/2026: the coaches apart, and the coach's own answer. */
+    staffAnswers: string;
+    mine: string;
+    mineOf: string;
     call: string;
     openMatch: string;
     noTeam: string;
@@ -69,6 +73,9 @@ export const focusCopy: Record<
     nextMatch: "Prochain match",
     nothingPlanned: "Rien de prévu.",
     answers: "{answered} réponses sur {invited}, {present} présents",
+    staffAnswers: "Coachs : {present} présents sur {invited}",
+    mine: "Ma présence",
+    mineOf: "Ma présence : {title}",
     call: "Faire l'appel",
     openMatch: "Ouvrir le match",
     noTeam: "Aucune équipe suivie pour le moment.",
@@ -117,6 +124,9 @@ export const focusCopy: Record<
     nextMatch: "Volgende wedstrijd",
     nothingPlanned: "Niets gepland.",
     answers: "{answered} antwoorden op {invited}, {present} aanwezig",
+    staffAnswers: "Coaches: {present} aanwezig op {invited}",
+    mine: "Mijn aanwezigheid",
+    mineOf: "Mijn aanwezigheid: {title}",
     call: "Aanwezigheden opnemen",
     openMatch: "De wedstrijd openen",
     noTeam: "Voorlopig geen gevolgd team.",
@@ -165,6 +175,9 @@ export const focusCopy: Record<
     nextMatch: "Next match",
     nothingPlanned: "Nothing planned.",
     answers: "{answered} answers out of {invited}, {present} present",
+    staffAnswers: "Coaches: {present} present out of {invited}",
+    mine: "My attendance",
+    mineOf: "My attendance: {title}",
     call: "Take attendance",
     openMatch: "Open the match",
     noTeam: "No team followed for now.",
