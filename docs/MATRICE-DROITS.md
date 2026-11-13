@@ -106,7 +106,6 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/funding/proof/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/funding/report` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/funding/report/proof` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
-| `/api/funding/tasks` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/fundraising` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/fundraising/public` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/governance` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |

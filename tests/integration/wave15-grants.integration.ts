@@ -3,7 +3,8 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
-import { fundingExecute, fundingTasksView, fundingView, grantChairsExport, moneyDeadlines } from "../../src/domains/funding/service";
+import { fundingExecute, fundingView, grantChairsExport, moneyDeadlines } from "../../src/domains/funding/service";
+import { tasksView } from "../../src/domains/tasks/service";
 import { contactsView } from "../../src/domains/crm/service";
 import { dashboardView } from "../../src/domains/dashboard/service";
 import { brusselsDay } from "../../src/lib/today";
@@ -122,8 +123,9 @@ it("adds the standard check-list once, and a step assigned to the coach shows on
   // The coach is in charge of filing, due in five days.
   const file = steps.find((t) => t.title === "Déposer le dossier")!;
   await fundingExecute(db, president, { action: "task", id: file.id, grantId: id, title: file.title, detail: "", dueOn: day(5), responsibleId: coachProfile }, clubA);
-  const mine = await fundingTasksView(db, coach);
-  expect(mine.tasks.map((t) => t.title)).toEqual(["Déposer le dossier"]);
+  // 13/11/2026: the grant's tasks live in the task board (the old /api/funding/tasks is gone).
+  const mine = await tasksView(db, coach);
+  expect(mine.tasks.filter((t) => t.grant_id === id).map((t) => t.title)).toEqual(["Déposer le dossier"]);
   const home = await dashboardView(db, coach);
   expect(home.todos.find((t) => t.key === "grantTasks")?.count).toBe(1);
   const deadlines = await moneyDeadlines(db, coach, day(0), day(30));

@@ -5,7 +5,6 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import {
   fundingExecute,
-  fundingTasksView,
   fundingTaskTick,
   fundingView,
   moneyDeadlines,
@@ -14,6 +13,7 @@ import {
   taskProofUpload,
 } from "../../src/domains/funding/service";
 import { dashboardView } from "../../src/domains/dashboard/service";
+import { tasksView } from "../../src/domains/tasks/service";
 
 /** Wave 15 (C1): packages and conditions of each club, partner tasks, payment, report, deadlines. */
 const schema = "w15sp_" + randomUUID().replaceAll("-", ""),
@@ -169,10 +169,12 @@ it("lets the person in charge tick their task only, and shows them their tasks a
   await expect(fundingExecute(db, coach, { action: "taskDone", id: theirs, done: true }, clubA)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(fundingExecute(db, coach, { action: "deleteTask", id: mine }, clubA)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await fundingExecute(db, coach, { action: "taskDone", id: mine, done: false }, clubA);
-  const coachTasks = await fundingTasksView(db, coach);
-  expect(coachTasks.tasks.map((t) => t.title)).toEqual(["Photo du maillot"]);
-  expect(coachTasks.can.all).toBe(false);
-  expect((await fundingTasksView(db, otherCoach)).tasks).toEqual([]);
+  // 13/11/2026: the sponsor's tasks live in the task board (the old /api/funding/tasks is gone).
+  const fileTasks = (v: Awaited<ReturnType<typeof tasksView>>) => v.tasks.filter((t) => t.partner_id || t.grant_id);
+  const coachTasks = await tasksView(db, coach);
+  expect(fileTasks(coachTasks).map((t) => t.title)).toEqual(["Photo du maillot"]);
+  expect(coachTasks.can.money).toBe(false);
+  expect(fileTasks(await tasksView(db, otherCoach))).toEqual([]);
   // Deadlines: the president sees conditions, payment and renewal; the coach his task only, no amount anywhere.
   const all = await moneyDeadlines(db, president, day(0), day(30));
   expect(all.items.filter((d) => d.title.startsWith("Imprimerie")).map((d) => d.kind).sort()).toEqual(["condition", "condition", "payment", "renewal"].sort());

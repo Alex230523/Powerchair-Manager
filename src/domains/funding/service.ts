@@ -926,23 +926,6 @@ export async function taskProofFile(db: Pool, p: Principal, id: string) {
 }
 
 /**
- * Tasks of the funding files (wave 15): every open task for money people, or
- * the ones the actor is in charge of. No amount is ever part of a task.
- */
-export async function fundingTasksView(db: Pool, p: Principal) {
-  return scope(db, p, false, async (s) => {
-    const tasks = (
-      await s.c.query(
-        selectTasks.replace("FROM task t", ",COALESCE(pa.name,g.funder) AS file_name,COALESCE(g.program,'') AS file_detail FROM task t LEFT JOIN partner pa ON pa.id=t.partner_id LEFT JOIN grant_application g ON g.id=t.grant_id") +
-          " AND ($2 OR t.responsible_id=ANY($3::uuid[])) ORDER BY t.status,t.due_on NULLS LAST,t.position",
-        [s.org, s.moneyRead, [...s.own]],
-      )
-    ).rows as (TaskRow & { file_name: string; file_detail: string })[];
-    return { organization_id: s.org, today: brusselsToday(), can: { all: s.moneyRead, manage: s.moneyManage }, own: [...s.own], tasks };
-  });
-}
-
-/**
  * Money deadlines for the calendar layer and the home (wave 15): conditions to
  * deliver, partner payments and renewals, grant dates. Computed each time from
  * the files, never copied into the calendar, so they cannot drift.
