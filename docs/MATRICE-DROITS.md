@@ -130,6 +130,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/tactic` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/national` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/national/staff` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/national/care` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/national/player` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/news` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -319,6 +320,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/national` |  |  |  |  |  |  |  |  |  |   |
+| `/national` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/referees` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/team` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/teams` |  |  |  |  |  |  |  |  |  |   |

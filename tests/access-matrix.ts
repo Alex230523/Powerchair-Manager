@@ -144,6 +144,8 @@ export const apiRoutes: Record<string, ApiRoute> = {
   "matches/journey/sheet": { methods: ["GET"], expect: { GET: { anonymous: 400, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 } } },
   "matches/journey/tactic": { methods: ["GET"], expect: { GET: { anonymous: 401, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 } } },
   "national": { methods: ["GET", "POST"], expect: { GET: { anonymous: 401, president: 403, coach: 403, player: 403, parent: 403, federation: 200, referee: 403, federation_worker: 200, president_b: 403, federation_b: 200 }, POST: { anonymous: 401, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 } } },
+  // 13/11/2026: the national staff's page; every account reads its own (empty unless on a staff).
+  "national/staff": { methods: ["GET"], expect: { GET: { anonymous: 401, president: 200, coach: 200, player: 200, parent: 200, federation: 200, referee: 200, federation_worker: 200, president_b: 200, federation_b: 200 } } },
   "national/care": { methods: ["GET"], expect: { GET: { anonymous: 400, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 } } },
   "national/player": { methods: ["GET", "POST"], expect: { GET: { anonymous: 400, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 }, POST: { anonymous: 401, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 } } },
   "news": { methods: ["GET", "POST"], expect: { GET: { anonymous: 401, president: 200, coach: 200, player: 200, parent: 200, federation: 200, referee: 200, federation_worker: 200, president_b: 200, federation_b: 200 }, POST: { anonymous: 401, president: 400, coach: 400, player: 400, parent: 400, federation: 400, referee: 400, federation_worker: 400, president_b: 400, federation_b: 400 } }, note: "Nouveautés (point 20) : chaque compte, filtrées sur le rôle du profil utilisé ; lu ou non lu et fenêtre désactivable par compte" },
@@ -280,6 +282,7 @@ export const pages: Record<string, PageAccess> = {
   "/federation/discipline": {},
   "/federation/licenses": {},
   "/federation/national": {},
+  "/national": {},
   "/federation/referees": {},
   "/federation/team": {},
   "/federation/teams": {},
