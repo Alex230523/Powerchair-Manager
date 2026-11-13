@@ -634,11 +634,7 @@ main p[role="status"] {
     transform: rotate(360deg);
   }
 }
-/*
- * 13/11/2026: a row's actions (Modifier, Retirer, Monter…) are small buttons,
- * like « Ouvrir les finances », never an underlined text. A name that opens
- * its sheet (.name-link) stays a name.
- */
+/* 13/11/2026: a row's actions are small buttons; a name opening its sheet (.name-link) stays a name. */
 .text-button {
   font: inherit;
   font-size: var(--text-sm);
@@ -14106,7 +14102,7 @@ main :is(.toolbar-filters, .directory-filters) label:not(.check) {
   font-weight: 500;
 }
 
-/* 13/11/2026: « Mon équipe nationale », the national staff's page. */
+/* 13/11/2026: the national staff's page. */
 .national-staff-team {
   margin-bottom: var(--card-gap);
 }
