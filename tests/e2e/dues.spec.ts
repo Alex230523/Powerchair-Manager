@@ -205,6 +205,8 @@ test("saved profiles, English preferences, sidebar and a 250 EUR debt in four in
     await expect(
       page.locator("nav").getByRole("link", { name: "Players", exact: true }),
     ).toHaveCount(0);
+    // 13/11/2026: the dues are under « At the club ».
+    await openMenuGroup(page, "At the club");
     await page
       .locator("nav")
       .getByRole("link", { name: "Dues", exact: true })

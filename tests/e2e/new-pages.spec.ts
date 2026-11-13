@@ -193,7 +193,8 @@ test("new club, federation and referee pages load and pass axe", async ({
     await expect(
       page.locator("nav").getByRole("link", { name: "Messagerie", exact: true }),
     ).toHaveCount(0);
-    await expect(page.locator("nav").getByRole("link", { name: "Statistiques", exact: true })).toBeVisible();
+    // 13/11/2026: under « Sport », folded on this page.
+    await expect(page.locator("nav").getByRole("link", { name: "Statistiques", exact: true, includeHidden: true })).toHaveCount(1);
     // Presence thresholds: the president lowers the bar for trainings (Settings > Activities since wave 15).
     await page.goto("/fr/settings/activities");
     const okPlayers = page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true });

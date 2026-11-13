@@ -72,11 +72,11 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
 
     // 2. Tasks (A1): « Mes tâches », one section per category, each sorted by date.
     await page.goto("/fr/tasks");
-    await expect(page.locator("summary").filter({ hasText: "Événements" })).toContainText("1 ouverte(s)");
-    await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toContainText("1 ouverte(s)");
+    await expect(page.locator("main summary").filter({ hasText: "Événements" })).toContainText("1 ouverte(s)");
+    await expect(page.locator("main summary").filter({ hasText: /^Sport/ })).toContainText("1 ouverte(s)");
     await expect(page.getByText("Pour personne")).toHaveCount(0);
     await page.getByRole("combobox", { name: "Catégorie", exact: true }).selectOption("events");
-    await expect(page.locator("summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
+    await expect(page.locator("main summary").filter({ hasText: /^Sport/ })).toHaveCount(0);
     await page.getByRole("checkbox", { name: "Marquer comme faite : Réserver la camionnette" }).click();
     // 04/11/2026: a done task stays in the list, struck through, and can be reopened.
     await expect(page.getByRole("checkbox", { name: "Rouvrir : Réserver la camionnette" })).toBeChecked();

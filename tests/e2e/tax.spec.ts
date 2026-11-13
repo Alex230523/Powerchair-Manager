@@ -38,7 +38,8 @@ test("tax receipts only for an approved club", async ({ page }) => {
     // 1. « Non » by default: no tab, no page.
     await page.goto("/fr/funding");
     await expect(page.getByRole("navigation", { name: "Sections des finances" }).getByRole("link", { name: "Attestations fiscales" })).toHaveCount(0);
-    await page.goto("/fr/settings/club");
+    // 13/11/2026: the tax approval is in Réglages › Finances.
+    await page.goto("/fr/settings/money");
     const card = page.locator("#settings-tax");
     await expect(card.getByRole("radio", { name: "Non" })).toBeChecked();
     await expect(card.getByLabel("Numéro d'agrément")).toHaveCount(0);
