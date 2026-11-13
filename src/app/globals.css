@@ -13708,3 +13708,253 @@ input[type="search"] {
   gap: var(--space-1);
   color: var(--text);
 }
+
+/* ---------- 12/11/2026: the task board, a row like a checklist ---------- */
+ul.task-board {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+ul.task-board > li.task-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+ul.task-board > li.task-row:last-child {
+  border-bottom: 0;
+}
+ul.task-board > li.task-row[data-priority="high"] {
+  box-shadow: inset 4px 0 0 var(--warning);
+}
+/* Where the task dragged would land: a coloured line, before or after the row. */
+ul.task-board > li.task-row[data-drop]::before {
+  content: "";
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--surface);
+  z-index: 2;
+  pointer-events: none;
+}
+ul.task-board > li.task-row[data-drop="before"]::before {
+  top: -2px;
+}
+ul.task-board > li.task-row[data-drop="after"]::before {
+  bottom: -2px;
+}
+ul.task-board > li.task-row[data-dragging] {
+  background: var(--surface-soft);
+  outline: 2px dashed var(--border-strong);
+  outline-offset: -2px;
+}
+details.task-group[data-drop-group] ul.task-board,
+details.task-group[data-drop-group] > p.muted {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+.task-grip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.task-row .task-grip {
+  width: 44px;
+  height: 44px;
+  cursor: grab;
+  color: var(--muted);
+}
+.task-row .task-grip:active {
+  cursor: grabbing;
+}
+.task-move-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 5;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 200px;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+}
+.task-move-menu label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+.task-row .task-tick {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--primary);
+}
+.task-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.task-title-button {
+  justify-self: start;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--heading);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.task-title-button:hover .task-title {
+  text-decoration: underline;
+}
+.task-row[data-status="done"] .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.task-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+.task-materials {
+  overflow-wrap: anywhere;
+}
+.task-row .task-actions {
+  flex: none;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  margin: 0;
+}
+.task-row .task-actions .icon-button {
+  position: relative;
+  color: var(--muted);
+}
+.task-row .task-actions .icon-button:hover {
+  color: var(--heading);
+}
+.task-action-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-xs);
+  line-height: 16px;
+  text-align: center;
+}
+details.task-group {
+  position: relative;
+}
+.task-group-count {
+  font-variant-numeric: tabular-nums;
+}
+.task-group-tools {
+  position: absolute;
+  top: 6px;
+  right: var(--space-3);
+  display: inline-flex;
+  gap: 4px;
+}
+/* The group's tools sit beside its title, never over it: two separate targets. */
+details.task-group[open]:has(> .task-group-tools) > summary {
+  margin-inline-end: calc(4 * 36px);
+}
+.task-quick-date {
+  flex: 0 0 auto;
+  width: 11rem;
+  max-width: 40%;
+}
+.task-new-category {
+  margin-block: var(--space-4);
+}
+.task-material-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.task-material-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.task-material-add {
+  display: flex;
+  gap: var(--space-2);
+}
+.task-material-add input {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  ul.task-board > li.task-row {
+    flex-wrap: wrap;
+  }
+  .task-row .task-actions {
+    margin-inline-start: auto;
+  }
+  .task-row .task-grip {
+    width: 36px;
+  }
+  details.task-group[open]:has(> .task-group-tools) > summary {
+    margin-inline-end: 0;
+  }
+  .task-group-tools {
+    position: static;
+    justify-content: flex-end;
+  }
+}
+
+/* 12/11/2026: where the question dragged would land, a coloured line. */
+.registrations fieldset.question-card[data-drop] {
+  position: relative;
+}
+.registrations fieldset.question-card[data-drop]::after {
+  content: "";
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
+}
+.registrations fieldset.question-card[data-drop="before"]::after {
+  top: -9px;
+}
+.registrations fieldset.question-card[data-drop="after"]::after {
+  bottom: -9px;
+}

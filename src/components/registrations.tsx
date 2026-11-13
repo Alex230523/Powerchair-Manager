@@ -486,8 +486,11 @@ function FormEditor({
     [answers, setAnswers] = useState<Answers>({}),
     [dragging, setDragging] = useState<number | null>(null),
     [moved, setMoved] = useState(""),
-    // 1: the questions folded by the editor (their title stays visible).
-    [folded, setFolded] = useState<Set<string>>(() => new Set());
+    // 1: the questions folded by the editor (their title stays visible). 12/11/2026: a form of
+    // more than three questions opens folded, so it reads as a list of titles.
+    [folded, setFolded] = useState<Set<string>>(() => new Set((form?.fields ?? template?.fields ?? []).length > 3 ? (form?.fields ?? template?.fields ?? []).map((f) => f.key) : [])),
+    // 12/11/2026: where the question dragged would land (a coloured line).
+    [dropAt, setDropAt] = useState<{ i: number; after: boolean } | null>(null);
   const toggle = (key: string) =>
     setFolded((cur) => {
       const next = new Set(cur);
@@ -567,8 +570,8 @@ function FormEditor({
         </FieldLabel>
         {fields.length > 1 && (
           <p className="question-fold-all">
-            <button type="button" className="text-button" onClick={() => setFolded(folded.size ? new Set() : new Set(fields.map((f) => f.key)))}>
-              {folded.size ? q.unfoldAll : q.foldAll}
+            <button type="button" className="button secondary sm" aria-pressed={folded.size === fields.length} onClick={() => setFolded(folded.size ? new Set() : new Set(fields.map((f) => f.key)))}>
+              <Icon name={folded.size ? "chevronDown" : "chevronUp"} size={16} /> {folded.size ? q.unfoldAll : q.foldAll}
             </button>
           </p>
         )}
@@ -586,20 +589,33 @@ function FormEditor({
               key={f.key}
               data-key={f.key}
               className={`question-card ${dragging === i ? "dragging" : ""}`.trim()}
+              data-drop={dropAt && dropAt.i === i && dragging !== null && dragging !== i ? (dropAt.after ? "after" : "before") : undefined}
               draggable={dragging === i}
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move";
                 e.dataTransfer.setData("text/plain", f.key);
               }}
               onDragOver={(e) => {
-                if (dragging !== null) e.preventDefault();
+                if (dragging === null) return;
+                e.preventDefault();
+                const r = e.currentTarget.getBoundingClientRect();
+                const after = e.clientY > r.top + r.height / 2;
+                if (!dropAt || dropAt.i !== i || dropAt.after !== after) setDropAt({ i, after });
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                if (dragging !== null) move(dragging, i);
+                if (dragging !== null) {
+                  // Before or after this card, counted once the dragged one is out of the list.
+                  const target = (dropAt?.i === i && dropAt.after ? i + 1 : i) - (dragging < i ? 1 : 0);
+                  move(dragging, Math.max(0, Math.min(fields.length - 1, target)));
+                }
                 setDragging(null);
+                setDropAt(null);
               }}
-              onDragEnd={() => setDragging(null)}
+              onDragEnd={() => {
+                setDragging(null);
+                setDropAt(null);
+              }}
             >
               <legend>
                 {/* 05/11/2026: the whole title folds and unfolds the question, with a chevron that says so. */}

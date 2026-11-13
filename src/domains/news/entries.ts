@@ -66,6 +66,7 @@ import e63 from "../../../content/changelog/2026-11-12-boutons.json";
 import e64 from "../../../content/changelog/2026-11-12-club-independant.json";
 import e65 from "../../../content/changelog/2026-11-12-federation.json";
 import e66 from "../../../content/changelog/2026-11-12-reglages.json";
+import e67 from "../../../content/changelog/2026-11-12-taches.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -135,4 +136,5 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-12-club-independant", data: e64 },
   { id: "2026-11-12-federation", data: e65 },
   { id: "2026-11-12-reglages", data: e66 },
+  { id: "2026-11-12-taches", data: e67 },
 ];

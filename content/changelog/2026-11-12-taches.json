@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-12",
+  "roles": [
+    "all"
+  ],
+  "link": "/tasks",
+  "image": null,
+  "fr": {
+    "title": "Des tâches qu'on range à la souris",
+    "text": "Glissez une tâche pour la ranger, une ligne colorée montre où elle tombe. Chaque ligne donne d'un clic les responsables, le matériel à prévoir et la modification. Créez vos propres catégories, partez d'un modèle prêt (match, assemblée, journée découverte…). Un match à deux semaines crée sa préparation pour les coachs, et chacun est prévenu des tâches qu'on lui confie."
+  },
+  "nl": {
+    "title": "Taken die u met de muis ordent",
+    "text": "Sleep een taak om ze te ordenen, een gekleurde lijn toont waar ze terechtkomt. Elke regel geeft in één klik de verantwoordelijken, het materiaal en de wijziging. Maak eigen categorieën, vertrek van een kant-en-klaar sjabloon (wedstrijd, vergadering…). Een wedstrijd binnen twee weken maakt zijn voorbereiding voor de coaches, en iedereen hoort welke taken hem toevertrouwd worden."
+  },
+  "en": {
+    "title": "Tasks you arrange with the mouse",
+    "text": "Drag a task to arrange it, a coloured line shows where it lands. Each row gives in one click the people in charge, the material to plan and the edit. Create your own categories, start from a ready-made template (match, assembly, discovery day…). A match two weeks away creates its preparation for the coaches, and everyone is told of the tasks given to them."
+  }
+}

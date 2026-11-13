@@ -24,6 +24,8 @@ const links = {
 };
 
 /* A1: the organisation's central to-do. */
+/** 12/11/2026: a group of the board: a category (cat:sport) or a list of the club's own (list:<id>). */
+export const groupKey = z.string().regex(/^(cat:[a-z_]{2,30}|list:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/);
 /** Club categories, in this order on the page. */
 export const clubCategories = ["affiliation", "admin", "grants", "sponsors", "fundraising", "equipment", "sport", "events", "other"] as const;
 /** Federation categories, in this order. */
@@ -70,6 +72,8 @@ export const taskCommand = z.discriminatedUnion("action", [
     category: z.enum(categories).optional(),
     ...fields,
     checklist: z.array(z.string().trim().min(1).max(200)).max(50).default([]),
+    /** 12/11/2026: a list of the club's own (its tasks keep the category « other »). */
+    listId: id.nullable().default(null),
     ...links,
   }),
   z.object({
@@ -121,6 +125,29 @@ export const taskCommand = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("saveTemplate"), id: id.optional(), kind: z.enum(ownKinds), category: z.enum(categories).optional(), name: z.string().trim().min(2).max(120), items: z.array(item).min(1).max(30) }),
   z.object({ action: z.literal("deleteTemplate"), id }),
+  /* 12/11/2026: the task board. */
+  /** A ready-made list (presets.ts), due before a date, like a template. */
+  z.object({
+    action: z.literal("fromPreset"),
+    preset: z.string().min(2).max(40),
+    date: z.iso.date(),
+    locale: z.enum(["fr", "nl", "en"]).default("fr"),
+    assignments: z.record(z.string().regex(/^\d{1,2}$/), z.array(id).max(20)).default({}),
+    excluded: z.array(z.number().int().min(0).max(29)).max(30).default([]),
+    ...links,
+  }),
+  /** A ready-made list copied into the club's templates, to be changed. */
+  z.object({ action: z.literal("copyPreset"), preset: z.string().min(2).max(40), locale: z.enum(["fr", "nl", "en"]).default("fr"), name: z.string().trim().min(2).max(120) }),
+  /** The order of a group after a drag (a task dropped into another group moves there). */
+  z.object({ action: z.literal("reorder"), group: groupKey, ids: z.array(id).min(1).max(500) }),
+  /** The people in charge, from the task's row. */
+  z.object({ action: z.literal("assign"), id, assignees: z.array(id).max(20).default([]), assigneeUserIds: z.array(z.string().min(1).max(200)).max(20).default([]) }),
+  /** What to bring. */
+  z.object({ action: z.literal("materials"), id, items: z.array(z.string().trim().min(1).max(120)).max(30) }),
+  /** The club's own categories. */
+  z.object({ action: z.literal("saveList"), id: id.nullable().default(null), name: z.string().trim().min(2).max(80) }),
+  z.object({ action: z.literal("deleteList"), id }),
+  z.object({ action: z.literal("groupOrder"), order: z.array(groupKey).max(100) }),
 ]);
 export type TaskCommand = z.infer<typeof taskCommand>;
 

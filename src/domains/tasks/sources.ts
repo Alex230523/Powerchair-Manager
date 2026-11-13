@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { accountsDeadlines } from "../accounts/service";
 import { brusselsToday } from "../people/service";
 import type { Category } from "./schema";
+import { publish } from "../notifications/queue";
 
 /**
  * A1: the tasks the application creates by itself. Each cause gives one
@@ -11,12 +12,12 @@ import type { Category } from "./schema";
  * language from source_kind and source_params; the stored title is the
  * French fallback.
  */
-export const sourceKinds = ["grantDeadline", "grantOpening", "grantReport", "partnerRenewal", "partnerContact", "chairService", "documentExpiry", "potDeadline", "accountsAssembly", "accountsFiling"] as const;
+export const sourceKinds = ["grantDeadline", "grantOpening", "grantReport", "partnerRenewal", "partnerContact", "chairService", "documentExpiry", "potDeadline", "accountsAssembly", "accountsFiling", "matchPrep", "grantReopen", "seasonNext"] as const;
 export type SourceKind = (typeof sourceKinds)[number];
 type Desired = {
   key: string;
   category: Category;
-  kind: "grant" | "sponsor" | "equipment" | "documents" | "other";
+  kind: "grant" | "sponsor" | "equipment" | "documents" | "training" | "other";
   source: SourceKind;
   about: string;
   title: string;
@@ -27,6 +28,10 @@ type Desired = {
   pot?: string;
   partner?: string;
   responsible?: string | null;
+  /** 12/11/2026: a match to prepare, and everyone in charge of it (the team's coaches). */
+  match?: string;
+  team?: string;
+  crew?: string[];
 };
 const fallback: Record<SourceKind, string> = {
   grantDeadline: "Déposer le dossier de subside",
@@ -39,6 +44,9 @@ const fallback: Record<SourceKind, string> = {
   potDeadline: "Clôturer la cagnotte",
   accountsAssembly: "Approuver les comptes en assemblée générale",
   accountsFiling: "Déposer les comptes annuels",
+  matchPrep: "Préparer le match",
+  grantReopen: "L'appel rouvre bientôt : préparer le nouveau dossier",
+  seasonNext: "Préparer la saison suivante",
 };
 const addDays = (iso: string, n: number) => {
   const d = new Date(iso + "T12:00:00Z");
@@ -93,6 +101,43 @@ async function desired(c: PoolClient, org: string, today: string): Promise<Desir
     await c.query("SELECT id,name,deadline::text AS deadline FROM fundraising_pot WHERE organization_id=$1 AND status='open' AND deadline<=$2::date", [org, addDays(today, 14)])
   ).rows as { id: string; name: string; deadline: string }[])
     add({ key: `pot_deadline:${r.id}:${r.deadline}`, category: "fundraising", kind: "other", source: "potDeadline", about: r.name, due: r.deadline, pot: r.id });
+  // 12/11/2026: a match within two weeks: its preparation, given to the team's coaches.
+  for (const m of (
+    await c.query(
+      `SELECT m.id,m.team_id,t.name||' · '||m.opponent AS about,(m.starts_at AT TIME ZONE 'Europe/Brussels')::date::text AS day,
+              COALESCE((SELECT array_agg(DISTINCT tm.profile_id) FROM team_membership tm JOIN club_person cp ON cp.id=tm.profile_id AND cp.status='active'
+                         WHERE tm.team_id=m.team_id AND tm.role='coach' AND NOT tm.cancelled AND tm.closed_at IS NULL AND (tm.ends_on IS NULL OR tm.ends_on>=$2::date)),'{}') AS coaches
+         FROM match m JOIN team t ON t.id=m.team_id
+        WHERE m.organization_id=$1 AND m.status='scheduled' AND (m.starts_at AT TIME ZONE 'Europe/Brussels')::date BETWEEN $2::date AND $3::date`,
+      [org, today, addDays(today, 14)],
+    )
+  ).rows as { id: string; team_id: string; about: string; day: string; coaches: string[] }[]) {
+    const due = addDays(m.day, -2) < today ? today : addDays(m.day, -2);
+    add({ key: `match_prep:${m.id}:${m.day}`, category: "sport", kind: "training", source: "matchPrep", about: m.about, due, match: m.id, team: m.team_id, responsible: m.coaches[0] ?? null, crew: m.coaches });
+  }
+  // 12/11/2026: a yearly call that comes back: a month before it reopens, until the club starts a new file for it.
+  for (const g of (
+    await c.query(
+      `SELECT g.id,CASE WHEN g.program<>'' THEN g.funder||' · '||g.program ELSE g.funder END AS about,
+              (COALESCE(g.opens_on,g.deadline_on-60)+interval '1 year')::date::text AS reopens,(g.deadline_on+interval '1 year')::date::text AS deadline
+         FROM grant_application g
+        WHERE g.organization_id=$1 AND g.status IN ('granted','paid','closed','refused') AND COALESCE(g.opens_on,g.deadline_on) IS NOT NULL
+          AND (COALESCE(g.opens_on,g.deadline_on-60)+interval '1 year')::date<=$2::date+30
+          AND COALESCE((g.deadline_on+interval '1 year')::date,(g.opens_on+interval '1 year 3 months')::date)>=$2::date
+          AND NOT EXISTS (SELECT 1 FROM grant_application n WHERE n.organization_id=g.organization_id AND n.id<>g.id AND lower(n.funder)=lower(g.funder) AND lower(n.program)=lower(g.program) AND n.created_at>g.created_at)`,
+      [org, today],
+    )
+  ).rows as { id: string; about: string; reopens: string; deadline: string | null }[])
+    add({ key: `grant_reopen:${g.id}:${g.reopens.slice(0, 4)}`, category: "grants", kind: "grant", source: "grantReopen", about: g.about, due: g.deadline, grant: g.id });
+  // 12/11/2026: the season ends within 45 days and no next one exists yet.
+  for (const se of (
+    await c.query(
+      `SELECT s.id,s.name,s.ends_on::text AS ends FROM season s WHERE s.organization_id=$1 AND NOT s.archived AND s.starts_on<=$2::date AND s.ends_on BETWEEN $2::date AND $2::date+45
+          AND NOT EXISTS (SELECT 1 FROM season n WHERE n.organization_id=s.organization_id AND n.starts_on>s.starts_on)`,
+      [org, today],
+    )
+  ).rows as { id: string; name: string; ends: string }[])
+    add({ key: `season_next:${se.id}`, category: "admin", kind: "documents", source: "seasonNext", about: se.name, due: addDays(se.ends, -14) < today ? today : addDays(se.ends, -14) });
   for (const d of await accountsDeadlines(c, org))
     add({ key: `${d.kind}:${d.year.from}`, category: "admin", kind: "other", source: d.kind, about: d.year.label, due: d.date });
   return out;
@@ -109,16 +154,18 @@ export async function syncSources(c: PoolClient, org: string, today = brusselsTo
   ).rows[0]?.user_id as string | undefined;
   let created = 0;
   if (creator)
-    for (const d of want)
-      created +=
-        (
-          await c.query(
-            `INSERT INTO task(organization_id,kind,category,title,due_on,grant_id,chair_id,document_id,pot_id,origin,source_key,source_kind,source_params,created_by,partner_id,responsible_id)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'template',$10,$11,$12,$13,$14,$15)
-             ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING`,
-            [org, d.kind, d.category, d.title, d.due, d.grant ?? null, d.chair ?? null, d.document ?? null, d.pot ?? null, d.key, d.source, JSON.stringify({ about: d.about }), creator, d.partner ?? null, d.responsible ?? null],
-          )
-        ).rowCount ?? 0;
+    for (const d of want) {
+      const r = await c.query(
+        `INSERT INTO task(organization_id,kind,category,title,due_on,grant_id,chair_id,document_id,pot_id,origin,source_key,source_kind,source_params,created_by,partner_id,responsible_id,match_id,team_id)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'template',$10,$11,$12,$13,$14,$15,$16,$17)
+         ON CONFLICT (organization_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,
+        [org, d.kind, d.category, d.title, d.due, d.grant ?? null, d.chair ?? null, d.document ?? null, d.pot ?? null, d.key, d.source, JSON.stringify({ about: d.about }), creator, d.partner ?? null, d.responsible ?? null, d.match ?? null, d.team ?? null],
+      );
+      created += r.rowCount ?? 0;
+      // Everyone in charge (the first is the responsible, already there): the hourly task tells them.
+      if (r.rows[0] && d.crew?.length)
+        for (const profile of d.crew.slice(1, 20)) await c.query("INSERT INTO task_assignee(task_id,organization_id,profile_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [r.rows[0].id, org, profile]);
+    }
   // A grant given its own check-list (wave 15) keeps only those steps: no double.
   await c.query(
     `DELETE FROM task t WHERE t.organization_id=$1 AND t.source_kind IN ('grantDeadline','grantOpening','grantReport') AND t.status<>'done'
@@ -152,4 +199,43 @@ export async function taskSourcesTick(db: Pool) {
     }
   }
   return changed;
+}
+
+/**
+ * 12/11/2026: the people given a task by any path (a match's checklist, a
+ * sponsor's responsible, a fine, a departure, a preparation) hear it once,
+ * like a task given by hand; the person who gave it is not told.
+ */
+export async function tellAssignedTick(db: Pool) {
+  const rows = (
+    await db.query(
+      `SELECT a.id,a.task_id,t.organization_id,t.title,t.due_on::text AS due_on,o.name AS organization,u.id AS user_id,u.email,u.name,COALESCE(pe.locale,'fr') AS locale,t.created_by
+         FROM task_assignee a JOIN task t ON t.id=a.task_id AND t.organization_id=a.organization_id JOIN organization o ON o.id=t.organization_id
+         LEFT JOIN club_person cp ON cp.id=a.profile_id AND cp.organization_id=a.organization_id LEFT JOIN person cpe ON cpe.id=cp.person_id
+         LEFT JOIN "user" u ON u.id=COALESCE(a.user_id,cpe.user_id) AND u.active LEFT JOIN person pe ON pe.user_id=u.id
+        WHERE a.told_at IS NULL AND t.status<>'done' ORDER BY a.created_at LIMIT 500`,
+    )
+  ).rows as { id: string; task_id: string; organization_id: string; title: string; due_on: string | null; organization: string; user_id: string | null; email: string | null; name: string; locale: "fr" | "nl" | "en"; created_by: string }[];
+  let told = 0;
+  for (const r of rows) {
+    if (r.user_id && r.email && r.user_id !== r.created_by) {
+      await publish(db, {
+        organizationId: r.organization_id,
+        userId: r.user_id,
+        email: r.email,
+        kind: "funding_task",
+        category: "administrative",
+        resourceType: "funding",
+        resourceId: r.task_id,
+        eventKey: `task_assigned:${r.task_id}:${r.user_id}`,
+        locale: r.locale,
+        inApp: true,
+        variables: { name: r.name, organization: r.organization, url: `${process.env.BETTER_AUTH_URL ?? ""}/${r.locale}/tasks?task=${r.task_id}`, title: r.title, due: r.due_on ?? "" },
+      });
+      told++;
+    }
+    // Without an account, nobody to tell: marked too, so the row is not read again.
+    await db.query("UPDATE task_assignee SET told_at=now() WHERE id=$1", [r.id]);
+  }
+  return told;
 }
