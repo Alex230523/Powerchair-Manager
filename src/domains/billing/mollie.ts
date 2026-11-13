@@ -39,7 +39,7 @@ export async function createPaymentLink(c: PoolClient, inv: { id: string; number
   const link = await call(env, f, "POST", "/payment-links", {
     amount: { currency: "EUR", value: euros(inv.amount_cents) },
     description: `${inv.number} · ${inv.organization}`.slice(0, 255),
-    redirectUrl: `${base}/fr/club/billing`,
+    redirectUrl: `${base}/fr/settings/subscription`,
     webhookUrl: `${base}/api/billing/mollie`,
     reusable: false,
   });

@@ -51,8 +51,9 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
     const cards = page.locator(".settings-grid > li");
-    await expect(cards).toHaveCount(10);
-    for (const name of ["Mon compte", "Notifications et résumé", "Données personnelles", "Club", "Membres et droits", "Saisons et équipes", "Activités", "Documents", "Finances", "Journaux et confidentialité"])
+    // 12/11/2026: « Abonnement à la plateforme » for the presidency.
+    await expect(cards).toHaveCount(11);
+    for (const name of ["Mon compte", "Notifications et résumé", "Données personnelles", "Club", "Abonnement à la plateforme", "Membres et droits", "Saisons et équipes", "Activités", "Documents", "Finances", "Journaux et confidentialité"])
       await expect(cards.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
     await axe(page, "settings home");
 
@@ -123,7 +124,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     // Phone: the home is the list of categories, a sub-page has a back link and no side column.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/settings");
-    await expect(cards).toHaveCount(10);
+    await expect(cards).toHaveCount(11);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     await page.locator("main").getByRole("link", { name: /^Finances/ }).click();
     await expect(page).toHaveURL("/fr/settings/money");

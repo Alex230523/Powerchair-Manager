@@ -13,7 +13,7 @@ export { billingCommand };
  * per organisation, invoices numbered per year, payments recorded by hand
  * (no card data here), reminders by steps sent to the organisation's
  * presidents, by hand or by the daily task. The organisation's presidents
- * read their own invoices on /club/billing.
+ * read their own invoices in Réglages, Abonnement à la plateforme.
  */
 const texts = {
   invoice: (org: string, number: string, amount: string, due: string, pay = "") => ({
@@ -222,7 +222,7 @@ export async function clubDiscount(db: Pool, p: Principal, code: string) {
 async function sendReminder(c: PoolClient, inv: { id: string; organization_id: string; organization: string; number: string; amount_cents: number; due_on: string; reminders: number }, by: string | null) {
   const level = inv.reminders + 1;
   if (level > 3) throw new AccessError("REMINDERS_DONE", 409);
-  const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.reminder(level, inv.organization, inv.number, euros(inv.amount_cents), frDay(inv.due_on)), "/club/billing", `billing:${inv.id}:reminder:${level}`, "administrative");
+  const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.reminder(level, inv.organization, inv.number, euros(inv.amount_cents), frDay(inv.due_on)), "/settings/subscription", `billing:${inv.id}:reminder:${level}`, "administrative");
   await c.query("UPDATE billing_invoice SET reminders=$2,last_reminder_at=now() WHERE id=$1", [inv.id, level]);
   await c.query("INSERT INTO billing_reminder(invoice_id,level,sent_by,recipients) VALUES($1,$2,$3,$4)", [inv.id, level, by, recipients]);
   return { level, recipients };
@@ -302,7 +302,7 @@ async function issueInvoice(c: PoolClient, subscriptionId: string, periodFrom: s
 async function sendInvoice(c: PoolClient, inv: { id: string; organization_id: string; organization: string; number: string; amount_cents: number; due_on: string }) {
   if (inv.amount_cents === 0) {
     await c.query("UPDATE billing_invoice SET state='paid',sent_at=now(),paid_on=CURRENT_DATE WHERE id=$1", [inv.id]);
-    const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.invoice(inv.organization, inv.number, euros(0), frDay(inv.due_on)), "/club/billing", `billing:${inv.id}:sent`, "administrative");
+    const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.invoice(inv.organization, inv.number, euros(0), frDay(inv.due_on)), "/settings/subscription", `billing:${inv.id}:sent`, "administrative");
     return { recipients, mollie: "free" };
   }
   await c.query("UPDATE billing_invoice SET state='sent',sent_at=now() WHERE id=$1", [inv.id]);
@@ -315,7 +315,7 @@ async function sendInvoice(c: PoolClient, inv: { id: string; organization_id: st
   } catch (e) {
     mollie = "error: " + (e instanceof Error ? e.message : String(e)).slice(0, 200);
   }
-  const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.invoice(inv.organization, inv.number, euros(inv.amount_cents), frDay(inv.due_on), link?.url ?? ""), "/club/billing", `billing:${inv.id}:sent`, "administrative");
+  const recipients = await notice(c, inv.organization_id, await presidencyOf(c, inv.organization_id), texts.invoice(inv.organization, inv.number, euros(inv.amount_cents), frDay(inv.due_on), link?.url ?? ""), "/settings/subscription", `billing:${inv.id}:sent`, "administrative");
   return { recipients, mollie };
 }
 
@@ -459,7 +459,7 @@ async function autoInvoices(c: PoolClient, today: string) {
       [today],
     )
   ).rows as { id: string; organization_id: string; organization: string; trial_ends_on: string }[];
-  for (const s of soon) n += await notice(c, s.organization_id, await presidencyOf(c, s.organization_id), texts.trial(s.organization, frDay(s.trial_ends_on)), "/club/billing", `billing:${s.id}:trial`, "administrative");
+  for (const s of soon) n += await notice(c, s.organization_id, await presidencyOf(c, s.organization_id), texts.trial(s.organization, frDay(s.trial_ends_on)), "/settings/subscription", `billing:${s.id}:trial`, "administrative");
   const due = (
     await c.query(
       `SELECT s.id,COALESCE((SELECT max(i.period_to) FROM billing_invoice i WHERE i.subscription_id=s.id AND i.state<>'cancelled'),s.trial_ends_on-1)::text AS covered_to

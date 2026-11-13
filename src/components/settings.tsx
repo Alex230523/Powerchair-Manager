@@ -45,6 +45,8 @@ import { Notifications } from "./notifications";
 import { SetupSettings } from "./setup-card";
 import { ClubAppearance } from "./club-appearance";
 import { DuesSettingsPanel } from "./dues-settings";
+import { AccountDeletion } from "./account-deletion";
+import { OrganizationBilling } from "./organization-billing";
 import { Badge, Button, Card, PageHeader, EmptyState, ExportButton } from "./ui";
 import { exportCopy } from "./export-copy";
 import { Icon } from "./icons";
@@ -386,11 +388,15 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {/* Wave 17 (O1): the first-connection tour, started again on demand. */}
           {shown && category === "account" && tutorialAudience(ws?.selected?.role) && <TutorialSettings locale={locale} />}
           {/* 20: the window after a new delivery, on or off. */}
+          {/* 12/11/2026: the platform's subscription, out of the menu. */}
+          {shown && category === "subscription" && <OrganizationBilling locale={locale} embedded />}
           {shown && category === "account" && (
             <Card title={newsCopy[locale].title} labelledBy="settings-news" headingId="settings-news">
               <NewsSetting locale={locale} />
             </Card>
           )}
+          {/* 12/11/2026: deleting one's account, after 30 days that can be cancelled. */}
+          {shown && category === "account" && <AccountDeletion locale={locale} />}
           {/* Notifications live in settings since wave 11, for every profile. */}
           {shown && category === "notifications" && <Notifications locale={locale} embedded />}
           {/* Dues and document reminders (wave 17, G3: out of the menu, here). */}

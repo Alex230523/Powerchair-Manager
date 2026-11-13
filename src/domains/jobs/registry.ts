@@ -1,4 +1,5 @@
 import { clubRequestTick } from "../independent/service";
+import { deletionTick } from "../account/deletion";
 import type { Pool } from "pg";
 import { processOne, recoverExpired } from "../notifications/worker";
 import { createTransport } from "../notifications/transport";
@@ -155,6 +156,8 @@ export const jobs = {
         billing: await billingTick(db),
         // 12/11/2026: the club requests never confirmed (7 days), the refused ones after a year.
         clubRequests: await clubRequestTick(db),
+        // 12/11/2026: the accounts whose 30 days are over are anonymised.
+        accountDeletions: await deletionTick(db),
         // Console, step 3b: the support accesses past their end are closed.
         borrows: await borrowTick(db),
       };

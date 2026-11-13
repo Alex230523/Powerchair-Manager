@@ -30,6 +30,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/classification` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/classification/texts` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/club` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
+| `/api/account/deletion` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/club/federation` | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/club/billing` (+ écriture) | connexion | oui | refusé | refusé | refusé | oui | refusé | refusé | oui | oui |
 | `/api/club/export/[token]` | ? | ? | ? | ? | ? | ? | ? | ? | ? | ? |
@@ -212,6 +213,7 @@ Notes :
 - `/api/calendar/season` : Planifier la saison : congés scolaires de référence, fermetures, créneaux de la saison (H9)
 - `/api/circulars` : Circulaires : reçues par les membres et arbitres ; rédaction, envoi, suivi et export par la compétence communication de la fédération
 - `/api/circulars/file` : Pièce jointe d'une circulaire : destinataires et communication de la fédération
+- `/api/account/deletion` : Supprimer son compte (12/11/2026) : 30 jours pour changer d'avis, l'adresse tapée pour confirmer, jamais seul à une présidence ; seulement son propre compte
 - `/api/club/federation` : Page Fédération du club (12/11/2026) : circulaires reçues, tournois, transferts, discipline (présidence et coachs), clubs affiliés ; jamais pour une fédération ni un club d'une autre fédération
 - `/api/club/billing` : Abonnement à la plateforme (05/11/2026) : la présidence lit sa formule et ses factures ; 12/11/2026 : la présidence d'un club sans fédération ajoute un code de réduction (POST, compteur user-code)
 - `/api/console` : Console de l'exploitant de la plateforme (05/11/2026) : comptages et états, organisations, supervision, opérateurs ; réservée aux comptes de platform_operator ou PFM_OPERATOR_EMAILS, jamais à un mandat de club

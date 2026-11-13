@@ -190,7 +190,8 @@ test("the owner bills a club, suspends it, and the president reads the invoice a
     expect(ublOps.type).toContain("xml");
     expect(ublOps.disposition).toContain(`${number}.xml`);
     expect(ublOps.body).toContain(`<cbc:ID>${number}</cbc:ID>`);
-    await presidentPage.goto("/fr/club/billing");
+    // 12/11/2026: the subscription lives in Réglages (the old address leads there).
+    await presidentPage.goto("/fr/settings/subscription");
     await expect(presidentPage.getByRole("rowheader", { name: number })).toBeVisible();
     await expect(presidentPage.getByText("À payer", { exact: true })).toBeVisible();
     await expect(presidentPage.getByRole("link", { name: /^Payer en ligne/ })).toHaveCount(0);
