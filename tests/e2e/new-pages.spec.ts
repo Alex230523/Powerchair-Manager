@@ -223,7 +223,8 @@ test("new club, federation and referee pages load and pass axe", async ({
     for (const name of ["Classification", "Bourse aux transferts", "Finances", "Déplacements", "Lieux", "Mes équipes", "Réglages"])
       await expect(page.locator("nav a .nav-label").filter({ hasText: new RegExp(`^${name}$`) })).toHaveCount(1);
     // 12: no « Plus » group; « Réglages » closes the menu.
-    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club"])
+    // 13/11/2026: the groups in the order of the day.
+    for (const name of ["Agenda", "Sport", "Personnes", "Communication", "Finances"])
       await expect(page.locator("nav summary").filter({ hasText: name })).toHaveCount(1);
     await expect(page.locator("nav summary").filter({ hasText: "Plus" })).toHaveCount(0);
     await page.goto("/fr/calendar");

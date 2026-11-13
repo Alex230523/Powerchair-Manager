@@ -135,7 +135,8 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await page.locator(".drawer-backdrop").click({ position: { x: 380, y: 400 } });
     await expect(sidebar).toBeHidden();
     await open.click();
-    await sidebar.locator("nav summary").filter({ hasText: "Équipes" }).click();
+    // 13/11/2026: « Joueurs » is under « Personnes ».
+    await sidebar.locator("nav summary").filter({ hasText: "Personnes" }).click();
     await sidebar.getByRole("link", { name: "Joueurs", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/players$/);
     await expect(sidebar).toBeHidden();
