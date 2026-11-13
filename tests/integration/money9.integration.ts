@@ -10,6 +10,7 @@ import { attestationFile, attestationSend, attestationSettings, attestationSetti
 import { fundraisingExecute, fundraisingCommand } from "../../src/domains/fundraising/service";
 import { fundingCommand } from "../../src/domains/funding/schema";
 import { fundingExecute } from "../../src/domains/funding/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 9: a grant allocated and partly spent, the available cash, granted but not
@@ -62,7 +63,7 @@ function png() {
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(rows)), chunk("IEND", Buffer.alloc(0))]);
 }
 const pay = (amount: number, label: string, direction: "in" | "out", extra: Record<string, unknown> = {}) =>
-  financeExecute(db, president, { action: "record", occurredOn: new Date().toISOString().slice(0, 10), label, direction, category: direction === "in" ? "subsidy" : "equipment", amountCents: amount, method: "transfer", counterparty: "", reference: "", notes: "", ...extra } as never, clubA);
+  financeExecute(db, president, { action: "record", occurredOn: brusselsDay(), label, direction, category: direction === "in" ? "subsidy" : "equipment", amountCents: amount, method: "transfer", counterparty: "", reference: "", notes: "", ...extra } as never, clubA);
 
 beforeAll(async () => {
   await root.query(`CREATE SCHEMA ${schema}`);
@@ -87,7 +88,7 @@ afterAll(async () => {
 });
 
 it("keeps a grant's allocation reserved until spent, and says what is available and what is still to receive", async () => {
-  const useBy = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
+  const useBy = brusselsDay(new Date(Date.now() + 45 * 86400000));
   const { id } = await allocationsExecute(db, president, { action: "create", sourceKind: "grant", grantId: grant, purpose: "equipment", label: "2 fauteuils Strike Force", amountCents: 300000, useBy }, clubA);
   await pay(200000, "Subside reçu", "in", { allocationId: id });
   await pay(50000, "Loyer", "out", { category: "venue" });
@@ -120,11 +121,11 @@ it("makes the attestation PDF with logo, company number and signature, sends it 
   const fee = (
     await db.query("INSERT INTO dues_receivable(organization_id,plan_id,season_id,profile_id,category,plan_snapshot,gross_cents,discount_cents,created_by) VALUES($1,$2,$3,$4,'Joueur','{}',20000,0,$5) RETURNING id", [clubA, plan, season, player, president.userId])
   ).rows[0].id;
-  await financeExecute(db, president, { action: "record", occurredOn: new Date().toISOString().slice(0, 10), label: "Cotisation 1", direction: "in", category: "dues", amountCents: 10000, method: "transfer", counterparty: "", reference: "", notes: "", receivableId: fee } as never, clubA);
+  await financeExecute(db, president, { action: "record", occurredOn: brusselsDay(), label: "Cotisation 1", direction: "in", category: "dues", amountCents: 10000, method: "transfer", counterparty: "", reference: "", notes: "", receivableId: fee } as never, clubA);
   // Half paid: nothing leaves, and no PDF.
   expect(await attestationTick(db)).toBe(0);
   await expect(attestationFile(db, president, player, season, "fr")).rejects.toMatchObject({ code: "NOT_PAID" });
-  await financeExecute(db, president, { action: "record", occurredOn: new Date().toISOString().slice(0, 10), label: "Cotisation 2", direction: "in", category: "dues", amountCents: 10000, method: "transfer", counterparty: "", reference: "", notes: "", receivableId: fee } as never, clubA);
+  await financeExecute(db, president, { action: "record", occurredOn: brusselsDay(), label: "Cotisation 2", direction: "in", category: "dues", amountCents: 10000, method: "transfer", counterparty: "", reference: "", notes: "", receivableId: fee } as never, clubA);
   expect(await attestationTick(db)).toBe(1);
   expect(await attestationTick(db)).toBe(0);
   const pdf = await attestationFile(db, president, player, season, "fr");

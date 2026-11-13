@@ -10,6 +10,7 @@ import { publicLive } from "../../src/domains/competitions/live-public";
 import { matchSheetPdf } from "../../src/domains/competitions/match-sheet";
 import { seasonOf } from "../../src/domains/finance/schema";
 import { brusselsToday } from "../../src/domains/people/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * A5: a match from the call-up to the announcement. The call-up at the
@@ -100,7 +101,7 @@ afterAll(async () => {
 });
 
 it("calls the team up when the match is created, with an answer due the day before", async () => {
-  const day = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  const day = brusselsDay(new Date(Date.now() + 5 * 86400000));
   match = (await matchExecute(db, coach, { action: "create", teamId: team, opponent: "Lions", home: true, kind: "league", competition: "D1", startsAt: `${day}T14:00`, venue: "Salle du club", calendarEventId: null, notes: "" } as never, clubA)).id as string;
   const v = await journeyView(db, coach, match);
   expect(v.manage).toBe(true);

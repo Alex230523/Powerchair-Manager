@@ -18,6 +18,7 @@ import { emailHash } from "../../src/domains/communication/hash";
 import { equipmentExecute, equipmentView } from "../../src/domains/equipment/service";
 import { calendarCopyWeek, calendarExecute } from "../../src/domains/calendar/service";
 import { peopleExportGrid, filterSchema } from "../../src/domains/people/service";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave9_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -77,7 +78,7 @@ async function profile(name: string, birth: string | null, person?: string, emai
     )
   ).rows[0].id as string;
 }
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 const transport = () =>
   createTransport({ MAIL_TRANSPORT: "local", PFM_MAIL_DIR: mailDir });
 async function drain() {

@@ -14,6 +14,7 @@ import {
   remindersView,
 } from "../../src/domains/reminders/service";
 import { unseal } from "../../src/domains/notifications/crypto";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave1_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -252,7 +253,7 @@ it("lists people not up to date and sends reminders once a day", async () => {
       category: "Cotisation",
       amountCents: 25000,
       maxInstallments: 4,
-      firstDue: new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10),
+      firstDue: brusselsDay(new Date(Date.now() - 20 * 86400000)),
     },
     club,
   );
@@ -266,7 +267,7 @@ it("lists people not up to date and sends reminders once a day", async () => {
       discountCents: 0,
       reason: "",
       installments: 2,
-      firstDue: new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10),
+      firstDue: brusselsDay(new Date(Date.now() - 20 * 86400000)),
     },
     club,
   );

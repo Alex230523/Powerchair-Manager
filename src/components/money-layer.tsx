@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/locale";
 import type { MoneyDeadline } from "@/domains/funding/service";
 import { sponsorsCopy } from "./sponsors-copy";
 import { Icon } from "./icons";
+import { brusselsDay } from "@/lib/today";
 
 /**
  * The calendar's "Échéances" layer (wave 15, C1 and C2): sponsor conditions,
@@ -18,7 +19,7 @@ export function useMoneyDeadlines(from: string, to: string, on: boolean, probe =
     // Probed once per page (a club only): rights do not change with the period.
     if (!probe) return;
     let cancelled = false;
-    const day = new Date().toISOString().slice(0, 10);
+    const day = brusselsDay();
     fetch(`/api/funding/deadlines?from=${day}&to=${day}`, { cache: "no-store" })
       .then(async (r) => {
         if (!r.ok) return;

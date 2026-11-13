@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { attendanceExecute, attendanceTick, attendanceView, commandSchema } from "../../src/domains/attendance/service";
 import { myUpcoming, playerSummaries } from "../../src/domains/attendance/rollcall";
 import { coachFocus } from "../../src/domains/dashboard/focus";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 13/11/2026, in two clubs: the coaches give their attendance at the
@@ -32,7 +33,7 @@ async function actor(org: string, role: string, grants: string[] = []) {
   return p;
 }
 const run = (p: Principal, cmd: unknown, org = clubA) => attendanceExecute(db, p, commandSchema.parse(cmd), org);
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 async function training(title: string, inDays = 3, kind = "training") {
   const start = new Date(Date.now() + inDays * 86400000);
   const series = (await db.query("INSERT INTO calendar_series(organization_id,interval_days,occurrences,created_by) VALUES($1,0,1,$2) RETURNING id", [clubA, president.userId])).rows[0].id;

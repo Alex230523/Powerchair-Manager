@@ -5,6 +5,7 @@ import { permissions } from "../access/policy";
 import { publish } from "../notifications/queue";
 import { isLocale, type Locale } from "../../lib/locale";
 import { seasonCheckCopy } from "./check-copy";
+import { brusselsDay } from "../../lib/today";
 
 /**
  * 8 (part 2): the start-of-season check. A check per club and season,
@@ -208,7 +209,7 @@ async function remind(c: PoolClient, org: string, checkId: string, profileId: st
       category: "administrative",
       resourceType: "automation",
       resourceId: `season-check:${checkId}`,
-      eventKey: `season-check:${checkId}:${profileId}:${u.id}:${new Date().toISOString().slice(0, 10)}`,
+      eventKey: `season-check:${checkId}:${profileId}:${u.id}:${brusselsDay()}`,
       locale,
       variables: { name: u.name, title: t.mailTitle.replace("{season}", season), message: t.mailText.replace("{season}", season), organization: u.club, url: `${base}/${locale}` },
     });

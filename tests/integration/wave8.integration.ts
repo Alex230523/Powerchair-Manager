@@ -16,6 +16,7 @@ import { absenceExecute, absencesView } from "../../src/domains/absences/service
 import { rolloverExecute, rolloverView } from "../../src/domains/seasons/rollover";
 import { attestationsView } from "../../src/domains/dues/attestation";
 import { governanceExecute } from "../../src/domains/club/governance";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave8_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -72,7 +73,7 @@ async function child(name: string, birth: string) {
 }
 const today = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 beforeAll(async () => {
   await root.query(`CREATE SCHEMA ${schema}`);

@@ -11,6 +11,7 @@ import { governanceExecute, governanceView } from "../../src/domains/club/govern
 import { dashboardView } from "../../src/domains/dashboard/service";
 import { publicForm, registrationExecute } from "../../src/domains/registrations/service";
 import { platformTemplate } from "../../src/domains/registrations/templates";
+import { brusselsDay } from "../../src/lib/today";
 
 const schema = "wave10_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -69,7 +70,7 @@ async function profile(name: string, birth: string | null, roles: string, person
 }
 const today = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Brussels" }).format(new Date());
-const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const inDays = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 async function session(offset: number, title: string, kind: "training" | "friendly", profiles: string[]) {
   await calendarExecute(

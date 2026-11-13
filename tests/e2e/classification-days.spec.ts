@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * Wave 17 (J4): a classification day from end to end. The federation writes
@@ -52,7 +53,7 @@ test("classification day: texts, invitation, registration, decision, publication
       ).rows[0].id;
       await db.query("INSERT INTO team_membership(organization_id,team_id,profile_id,role,starts_on) VALUES($1,$2,$3,'player',CURRENT_DATE-30)", [clubA, team, id]);
     }
-    const iso = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+    const iso = (days: number) => brusselsDay(new Date(Date.now() + days * 86400000));
     await page.goto("/fr");
     await switchTo(page, mandate.F);
     await page.setViewportSize({ width: 1280, height: 900 });

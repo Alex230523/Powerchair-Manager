@@ -20,6 +20,7 @@ import { Badge, Button, Card, EmptyState, PageHeader, Tabs } from "./ui";
 import { useData, usePost } from "./use-api";
 import { ClubRequestsCard, DiscountsCard } from "./console-independent";
 import { independentCopy } from "./independent-copy";
+import { brusselsDay } from "@/lib/today";
 
 type Home = Awaited<ReturnType<typeof consoleHome>>;
 type Organizations = Awaited<ReturnType<typeof consoleOrganizations>>;
@@ -516,7 +517,7 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
             </p>
             {data.canBill && (
               <p className="actions">
-                <Button type="button" variant="secondary" disabled={bill.busy} onClick={() => void bill.post({ action: "unsubscribe", id: data.subscription!.id, endedOn: new Date().toISOString().slice(0, 10) }, o.unsubscribed)}>
+                <Button type="button" variant="secondary" disabled={bill.busy} onClick={() => void bill.post({ action: "unsubscribe", id: data.subscription!.id, endedOn: brusselsDay() }, o.unsubscribed)}>
                   {o.unsubscribe}
                 </Button>
               </p>
@@ -548,7 +549,7 @@ function OrganizationView({ locale, id, back, day, when }: { locale: Locale; id:
               </label>
               <label>
                 {o.startedOn}
-                <input name="startedOn" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+                <input name="startedOn" type="date" required defaultValue={brusselsDay()} />
               </label>
               <label>
                 {o.note}

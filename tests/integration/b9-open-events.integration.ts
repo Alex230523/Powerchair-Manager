@@ -7,6 +7,7 @@ import { openEventCommand, openEventExport, openEventsExecute, openEventsView, o
 import { bankCommand } from "../../src/domains/bank/schema";
 import { bankExecute } from "../../src/domains/bank/service";
 import { formatReference } from "../../src/domains/bank/reference";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * B9: open events. A full event and a withdrawal that promotes the waiting
@@ -128,7 +129,7 @@ it("marks a paid registration paid by the bank reconciliation, and keeps the ima
   const r = await bankExecute(
     db,
     president,
-    bankCommand.parse({ action: "import", format: "csv", lines: [{ bookedOn: new Date().toISOString().slice(0, 10), amountCents: 1500, counterparty: "A. Peeters", communication: formatReference(ana.payment_reference) }] }),
+    bankCommand.parse({ action: "import", format: "csv", lines: [{ bookedOn: brusselsDay(), amountCents: 1500, counterparty: "A. Peeters", communication: formatReference(ana.payment_reference) }] }),
     clubA,
   );
   expect(r).toMatchObject({ created: 1, matched: 1 });
@@ -141,7 +142,7 @@ it("marks a paid registration paid by the bank reconciliation, and keeps the ima
   expect((detail.registrations as { full_name: string; consent_image: boolean }[]).find((x) => x.full_name === "Eli Novak")?.consent_image).toBe(false);
   expect(Buffer.from(await openEventExport(db, president, open)).subarray(0, 2).toString()).toBe("PK");
   // The same reference in another club's statement pays nothing there.
-  const other = await bankExecute(db, presidentB, bankCommand.parse({ action: "import", format: "csv", lines: [{ bookedOn: new Date().toISOString().slice(0, 10), amountCents: 1500, communication: formatReference(ana.payment_reference), bankRef: "x" }] }), clubB);
+  const other = await bankExecute(db, presidentB, bankCommand.parse({ action: "import", format: "csv", lines: [{ bookedOn: brusselsDay(), amountCents: 1500, communication: formatReference(ana.payment_reference), bankRef: "x" }] }), clubB);
   expect(other).toMatchObject({ matched: 0 });
 });
 

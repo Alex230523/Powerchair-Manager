@@ -37,7 +37,8 @@ export function databaseUrl(env: Record<string, string | undefined>): string {
  * refuses.
  */
 export const poolSettings = { connectionTimeoutMillis: 3000, query_timeout: 3000 } as const;
-export const sessionGuards = "SET statement_timeout = 5000; SET idle_in_transaction_session_timeout = 120000";
+// 13/11/2026: « aujourd'hui » est le jour de Bruxelles (CURRENT_DATE, ::date), comme la base par défaut (migration 0148).
+export const sessionGuards = "SET statement_timeout = 5000; SET idle_in_transaction_session_timeout = 120000; SET TIME ZONE 'Europe/Brussels'";
 export function guardPool<P extends Pool>(pool: P): P {
   pool.on("connect", (client) => {
     client.query(sessionGuards).catch(() => undefined);

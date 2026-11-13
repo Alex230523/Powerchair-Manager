@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * A6: the team page opens on its dashboard. What blocks is at the top and
@@ -37,7 +38,7 @@ test("the team page as a dashboard", async ({ page }) => {
     await page.goto("/fr");
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
-    const day = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+    const day = brusselsDay(new Date(Date.now() + 2 * 86400000));
     const created = await page.request.post("/api/calendar", {
       headers: { origin: "http://127.0.0.1:3100" },
       data: {

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { progressCommand, progressExecute, progressView } from "../../src/domains/progress/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 31: « Mon suivi ». An objective set then acquired, five at most; a
@@ -68,7 +69,7 @@ async function session(day: string, actual: string, match = false) {
   }
   return { event, match: null };
 }
-const ago = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+const ago = (n: number) => brusselsDay(new Date(Date.now() - n * 86400000));
 const run = (p: Principal, cmd: Record<string, unknown>, org = clubA) => progressExecute(db, p, progressCommand.parse(cmd), org) as Promise<{ id: string; told?: number }>;
 const goal = (title: string, extra: Record<string, unknown> = {}) => ({ action: "goalCreate", profileId: anaProfile, category: "driving", title, detail: "", ...extra });
 

@@ -1,3 +1,4 @@
+import { brusselsDay } from "@/lib/today";
 /** Wave 16 (I2): « Envoyer une invitation par email » on a new file; for a minor, the parent's address. */
 export const inviteCopy = {
   fr: {
@@ -32,7 +33,7 @@ export const inviteCopy = {
   },
 };
 
-export const isMinor = (birthDate: string, today = new Date().toISOString().slice(0, 10)) => {
+export const isMinor = (birthDate: string, today = brusselsDay()) => {
   if (!birthDate) return false;
   const [y, m, d] = birthDate.split("-").map(Number),
     [ty, tm, td] = today.split("-").map(Number);

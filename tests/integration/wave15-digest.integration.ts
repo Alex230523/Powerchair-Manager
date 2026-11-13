@@ -8,13 +8,14 @@ import { notificationExecute, notificationView } from "../../src/domains/notific
 import { allowed } from "../../src/domains/notifications/eligibility";
 import { digestData, digestTick, digestUnsubscribe, digestUnsubscribeInfo } from "../../src/domains/digest/service";
 import { brusselsClock } from "../../src/domains/digest/schema";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 15 (C7): the weekly digest under each person's rights, once a week, never empty, one club at a time. */
 const schema = "w15dg_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, president: Principal, presidentB: Principal, coach: Principal, coachProfile: string, presidentMandate: string, coachMandate: string;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 // Noon in Brussels, today: the tick sees the right day and a reached time.
 const noon = () => new Date(brusselsClock(new Date()).date + "T10:00:00Z");
 

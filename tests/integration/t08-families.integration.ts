@@ -6,6 +6,7 @@ import { execute, type Principal } from "../../src/domains/access/service";
 import { majorityTick, peopleExecute } from "../../src/domains/people/service";
 import { peopleCommand } from "../../src/domains/people/schema";
 import { myChecks, seasonCheckExecute, seasonCheckView, seasonCheckTick } from "../../src/domains/season-check/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 8: a player added with his representatives (required for a minor, asked
@@ -17,7 +18,7 @@ const schema = "t08_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, presidentA: Principal, presidentB: Principal;
-const joined = new Date().toISOString().slice(0, 10);
+const joined = brusselsDay();
 const born = (years: number) => {
   const d = new Date();
   d.setUTCFullYear(d.getUTCFullYear() - years);

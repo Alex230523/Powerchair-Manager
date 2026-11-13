@@ -8,6 +8,7 @@ import { taskCommand } from "../../src/domains/tasks/schema";
 import { calendarExecute, calendarFeed } from "../../src/domains/calendar/service";
 import { fundingTaskTick } from "../../src/domains/funding/service";
 import { clubAffiliationsExecute, ensureDues } from "../../src/domains/affiliations/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 2: a task for two people in both modes of completion, the reminders sent
@@ -22,7 +23,7 @@ const schema = "t02_" + randomUUID().replaceAll("-", ""),
   db = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema},public` });
 let clubA: string, clubB: string, president: Principal, presidentB: Principal, driver1: Principal, driver2: Principal, player: Principal;
 let d1: string, d2: string, playerProfile: string;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 const run = (p: Principal, body: Record<string, unknown>, org = clubA) => tasksExecute(db, p, taskCommand.parse(body), org);
 
 async function actor(org: string, role: string, name: string) {

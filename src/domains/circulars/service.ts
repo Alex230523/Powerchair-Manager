@@ -6,6 +6,7 @@ import { AccessError, account, active, audit, type Principal } from "../access/s
 import { fedCan } from "../access/policy";
 import { publish } from "../notifications/queue";
 import { circularAudiences } from "./schema";
+import { brusselsDay } from "../../lib/today";
 
 /**
  * 33: the federation's official circulars. Written by who holds the
@@ -179,7 +180,7 @@ async function tell(c: PoolClient, row: Row, r: { user_id: string; organization_
     category: "administrative",
     resourceType: "automation",
     resourceId: `circular:${row.id}`,
-    eventKey: `circular:${row.id}:${why}:${why === "remind" ? new Date().toISOString().slice(0, 10) : ""}:${u.id}`,
+    eventKey: `circular:${row.id}:${why}:${why === "remind" ? brusselsDay() : ""}:${u.id}`,
     locale,
     variables: { name: u.name, title: w[why].replace("{title}", row.title), message: row.ack_required ? w.ack : w.read, organization: fedName, url: `${process.env.BETTER_AUTH_URL ?? ""}/${locale}/circulars/${row.id}` },
   });

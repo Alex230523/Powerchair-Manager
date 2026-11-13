@@ -9,6 +9,7 @@ import { exerciseDetail, exerciseExecute, exercisesView, programPrint } from "..
 import { libraryExecute, libraryView } from "../../src/domains/exercises/library";
 import { calendarExecute } from "../../src/domains/calendar/service";
 import type { Drawing } from "../../src/domains/exercises/drawing";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 4: exercise and tactic sheets. The free objective kept; a tag created on
@@ -77,7 +78,7 @@ const drawing: Drawing = {
     },
   ],
 };
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 beforeAll(async () => {
   await root.query(`CREATE SCHEMA ${schema}`);

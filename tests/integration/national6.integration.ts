@@ -7,6 +7,7 @@ import { answerCommand, answerExecute, nationalCare, nationalCommand, nationalCo
 import { seal } from "../../src/domains/notifications/crypto";
 import { seasonOf } from "../../src/domains/finance/schema";
 import { brusselsToday } from "../../src/domains/people/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 6: national teams. Only the federation creates one; a player of another
@@ -43,7 +44,7 @@ async function player(org: string, name: string, birth: string, classification: 
 }
 const run = (p: Principal, cmd: Record<string, unknown>, org = fed) => nationalExecute(db, p, nationalCommand.parse(cmd), org) as Promise<Record<string, unknown>>;
 const answer = (p: Principal, cmd: Record<string, unknown>) => answerExecute(db, p, answerCommand.parse(cmd)) as Promise<Record<string, unknown>>;
-const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const day = (n: number) => brusselsDay(new Date(Date.now() + n * 86400000));
 
 beforeAll(async () => {
   await root.query(`CREATE SCHEMA ${schema}`);

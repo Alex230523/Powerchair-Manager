@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { clubStatistics } from "../../src/domains/statistics/club";
 import { attendanceView } from "../../src/domains/attendance/service";
+import { brusselsDay } from "../../src/lib/today";
 
 /** Wave 15 (2.6): the headcount per season and team colours behind the charts, one club at a time. */
 const schema = "w15ch_" + randomUUID().replaceAll("-", ""),
@@ -83,7 +84,7 @@ it("counts each season of the club by team, a player in two teams once in the to
 });
 
 it("gives the team colours to the monthly lines", async () => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = brusselsDay();
   const v = await attendanceView(db, president, today, today);
   expect(v.teams.map((t: { name: string; color: string | null }) => [t.name, t.color]).sort()).toEqual([
     ["Aigles", "amber"],

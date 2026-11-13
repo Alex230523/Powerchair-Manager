@@ -15,6 +15,7 @@ import { exportCopy } from "./export-copy";
 import { fill, statisticsCopy, type StatisticsCopy } from "./statistics-copy";
 import { reportCopy } from "./report-copy";
 import { HallOfFame } from "./hall-of-fame";
+import { brusselsDay } from "@/lib/today";
 
 /**
  * The statistics (wave 16, S1): two addresses, the « Club » tab here. The
@@ -610,7 +611,7 @@ function HeadcountCard({ locale, register }: { locale: Locale; register: Registe
             </ChartFrame>
           )}
           {data.view === "age" && <p className="muted small">{h.ageNote}</p>}
-          {current && <p className="muted small">{fill(h.currentNote, { date: shortDate(locale, data.historyStart ?? new Date().toISOString().slice(0, 10)) })}</p>}
+          {current && <p className="muted small">{fill(h.currentNote, { date: shortDate(locale, data.historyStart ?? brusselsDay()) })}</p>}
         </div>
       )}
     </ChartCard>

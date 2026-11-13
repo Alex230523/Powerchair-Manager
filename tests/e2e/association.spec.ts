@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "pg";
 import { prepareSignIn } from "../support/session";
+import { brusselsDay } from "../../src/lib/today";
 
 /**
  * 17 on a phone (390 px): an admission written in the register, the
@@ -43,7 +44,7 @@ test("the register and the assembly, on a phone", async ({ page }) => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
     await page.getByRole("tab", { name: "Assemblées et conseil" }).click();
-    const day = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const day = brusselsDay(new Date(Date.now() + 30 * 86400000));
     await page.getByLabel("Date et heure").fill(`${day}T19:00`);
     await page.getByLabel("Lieu", { exact: true }).fill("Local du club");
     await page.getByRole("button", { name: "Planifier", exact: true }).click();
