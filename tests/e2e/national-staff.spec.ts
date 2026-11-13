@@ -52,7 +52,8 @@ test("a coach on a national staff: the menu entry, his team, the gathering, the 
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // The menu entry, then the page.
+    // The menu entry (its group folds until opened), then the page.
+    await page.locator(".nav-group > summary").filter({ hasText: "Sélection nationale" }).click();
     await page.getByRole("link", { name: "Mon équipe nationale" }).first().click();
     await expect(page.getByRole("heading", { name: "Mon équipe nationale", level: 1 })).toBeVisible();
     const card = page.locator(".national-staff-team").filter({ hasText: `Belgique U18 ${stamp}` });
