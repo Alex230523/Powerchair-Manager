@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-12",
+  "roles": [
+    "all"
+  ],
+  "link": "/players",
+  "image": null,
+  "fr": {
+    "title": "Des champs de recherche plus légers",
+    "text": "Les champs de recherche des pages (joueurs, contacts, matériel, finances…) sont plus fins, avec une loupe, et les menus des filtres prennent la même forme."
+  },
+  "nl": {
+    "title": "Lichtere zoekvelden",
+    "text": "De zoekvelden van de pagina's (spelers, contacten, materiaal, financiën…) zijn fijner, met een vergrootglas, en de filtermenu's krijgen dezelfde vorm."
+  },
+  "en": {
+    "title": "Lighter search fields",
+    "text": "The search fields of the pages (players, contacts, equipment, finances…) are finer, with a magnifier, and the filter menus take the same shape."
+  }
+}

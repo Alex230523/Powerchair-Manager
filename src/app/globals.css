@@ -13958,3 +13958,54 @@ details.task-group[open]:has(> .task-group-tools) > summary {
 .registrations fieldset.question-card[data-drop="after"]::after {
   bottom: -9px;
 }
+
+/* 12/11/2026, previews only: the demo profile switch in the account menu. */
+.demo-switch {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.demo-switch label {
+  display: grid;
+  gap: 4px;
+}
+.demo-switch p {
+  margin: 0;
+}
+
+/*
+ * 12/11/2026: the search fields of the pages (not the main one), lighter: a
+ * pill with a magnifier and a quiet fill, a smaller text; the same height and
+ * border as every field (44 px to touch, the border readable at 3:1). The
+ * menus beside them in a filter bar take the same rounded shape.
+ */
+main input[type="search"] {
+  border-radius: var(--radius-pill);
+  padding-inline: 40px 14px;
+  font-size: var(--text-sm);
+  background-color: var(--surface-soft);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23777f8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px 50%;
+  background-size: 16px 16px;
+}
+main input[type="search"]:hover,
+main input[type="search"]:focus {
+  background-color: var(--surface);
+}
+main input[type="search"]::placeholder {
+  color: var(--muted);
+}
+main input[type="search"]::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+main :is(.toolbar-filters, .directory-filters) select {
+  border-radius: var(--radius-pill);
+  padding-inline: 16px 40px;
+  font-size: var(--text-sm);
+}
+main :is(.toolbar-filters, .directory-filters) label:not(.check) {
+  font-weight: 500;
+}
