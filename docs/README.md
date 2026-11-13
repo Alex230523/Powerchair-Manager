@@ -193,6 +193,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 07/11/2026 | [Sécurité : absence de journalisation et d'alertes](evolutions/2026-11-07-zzzzzzz-securite-journalisation-alertes.md) |
 | 12/11/2026 | [Un club sans fédération](evolutions/2026-11-12-club-independant.md) |
 | 12/11/2026 | [Des boutons plutôt que des textes soulignés](evolutions/2026-11-12-z-boutons-actions.md) |
+| 12/11/2026 | [Navigation : plus de sélecteur d'équipe en haut, une page Fédération](evolutions/2026-11-12-zz-navigation-federation.md) |
 
 ## Convention
 

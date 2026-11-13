@@ -78,44 +78,34 @@ test("the team chosen in the top bar follows the president; teams are created, c
     await page.locator(".profile-menu > summary").click();
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
 
-    // 1. Top bar: current season, "Équipe B" chosen once.
+    // 1. Top bar: the season only (12/11/2026: no team capsule; each page that needs it has its own team filter).
     await page.goto("/fr");
     await loaded(page, "/fr");
     const bar = page.locator(".scope-bar");
     await expect(bar.getByRole("combobox", { name: "Saison", exact: true })).toHaveValue(season);
-    await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe B" });
-    await expect(page).toHaveURL(/[?&]team=/);
-    // Wave 16 (B1): no chip under the bar; the team capsule is tinted instead.
-    await expect(page.locator(".scope-chip")).toHaveCount(0);
-    await expect(bar.locator(".capsule").filter({ has: page.getByRole("combobox", { name: "Équipe", exact: true }) })).toHaveAttribute("data-active", "");
-    await axe(page, "dashboard with a team");
-    // Players, then calendar: the local filter already holds the team.
-    await page.goto("/fr/players");
+    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveCount(0);
+    await axe(page, "dashboard");
+    // A team card's link opens the players with that team chosen in the page's own filter.
+    await page.goto(`/fr/players?team=${teamB}`);
     await loaded(page, "/fr/players");
     await expect(page.locator("#directory-team")).toHaveValue(teamB);
-    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveValue(teamB);
     await expect(page.locator("main")).toContainText("Yanis El Amrani");
     await expect(page.locator("main table")).not.toContainText("Emma Peeters");
     await axe(page, "players filtered");
+    // Another page is not filtered behind the person's back: its filter starts on every team.
     await page.goto("/fr/calendar");
     await loaded(page, "/fr/calendar");
+    await expect(page.locator("#calendar-team")).toHaveValue("");
+    await page.locator("#calendar-team").selectOption(teamB);
     await expect(page.locator("#calendar-team")).toHaveValue(teamB);
-    await expect(bar.getByRole("combobox", { name: "Équipe", exact: true })).toHaveValue(teamB);
+    await expect(page.getByRole("button", { name: "Appliquer à toute la plateforme", exact: true })).toHaveCount(0);
     await axe(page, "calendar filtered");
-    // A local change offers to apply it everywhere; the capsule then goes back to neutral.
-    await page.locator("#calendar-team").selectOption("");
-    await page.getByRole("button", { name: "Appliquer à toute la plateforme", exact: true }).click();
-    await expect(bar.locator(".capsule").filter({ has: page.getByRole("combobox", { name: "Équipe", exact: true }) })).not.toHaveAttribute("data-active", "");
-    await expect(page).not.toHaveURL(/[?&]team=/);
-    // Wave 15: the dues page follows the team chosen in the top bar (no whole-club note any more).
-    await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe A" });
     await page.goto("/fr/dues");
     await loaded(page, "/fr/dues");
     await expect(page.locator(".scope-note")).toHaveCount(0);
-    await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamA);
-    // Back to all teams through the capsule itself.
-    await bar.getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Toutes les équipes" });
     await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue("");
+    await page.locator("main").getByRole("combobox", { name: /^Équipe/ }).selectOption({ label: "Équipe A" });
+    await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamA);
 
     // 2. Mes équipes: one card per team, a new team with its colour.
     await page.goto("/fr/teams");

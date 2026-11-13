@@ -81,8 +81,8 @@ test("dues, trips and pots follow the team chosen in the top bar", async ({ page
     await expect(page.locator(".scope-note")).toHaveCount(0);
     await axe(page, "dues all teams");
 
-    // Équipe B in the top bar: the tiles and the table change, no team column, no note.
-    await page.getByRole("banner").getByRole("combobox", { name: "Équipe", exact: true }).selectOption({ label: "Équipe B" });
+    // Équipe B in the page's own filter (12/11/2026): the tiles and the table change, no team column, no note.
+    await page.locator("main").getByRole("combobox", { name: /^Équipe/ }).selectOption({ label: "Équipe B" });
     await expect(table.locator("tbody tr")).toHaveCount(1);
     await expect(table.locator("tbody tr")).toContainText("Lucas Janssens");
     await expect(due).toContainText("250,00");
@@ -90,9 +90,9 @@ test("dues, trips and pots follow the team chosen in the top bar", async ({ page
     await expect(page.locator(".scope-note")).toHaveCount(0);
     await expect(page.locator("main").getByRole("combobox", { name: /^Équipe/ })).toHaveValue(teamB);
     await axe(page, "dues team B");
-    // The home's money card gives the same figures for the team.
+    // The home's money card gives the whole club's figures: a page filter never follows the person elsewhere.
     await page.goto("/fr");
-    await expect(page.locator(".finance-card .collection-bar")).toContainText("250,00");
+    await expect(page.locator(".finance-card .collection-bar")).toContainText("500,00");
 
     // Trips: the form offers the team; the list keeps whole-club trips and the chosen team's.
     await page.goto("/fr/trips");

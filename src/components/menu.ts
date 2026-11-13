@@ -93,8 +93,8 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
               ...item("/transfers", "transfers", "handshake", affiliated),
               // 22: the tasks given to them (A1 sends reminders that lead here).
               ...item("/tasks", "tasks", "clipboardList"),
-              // 33: the federation's circulars, for every member of an affiliated club.
-              ...item("/circulars", "circulars", "megaphone", affiliated),
+              // 12/11/2026: the federation's page (its circulars, tournaments, transfers, clubs) replaces « Circulaires ».
+              ...item("/club/federation", "clubFederation", "landmark", affiliated),
             ],
           },
         ]
@@ -167,13 +167,11 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                 // Console, step 4 (05/11/2026): the platform's invoices, for the presidency.
                 ...item("/club/billing", "platformBilling", "landmark", president),
                 ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
-                // 34: the federation's sanctions, the club's appeals and fines.
-                ...item("/discipline", "discipline", "shield", affiliated),
                 ...item("/contacts", "contacts", "message", has("mandates.manage", "people.manage", "notifications.manage")),
                 // Wave 17 (O1): the club's tasks, by type.
                 ...item("/tasks", "tasks", "clipboardList"),
-                // 33: the federation's circulars, for every member of an affiliated club.
-                ...item("/circulars", "circulars", "megaphone", affiliated),
+                // 12/11/2026: the federation's page (circulars, tournaments, transfers, discipline, clubs).
+                ...item("/club/federation", "clubFederation", "landmark", affiliated),
               ],
             },
           ]
@@ -217,12 +215,10 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
                   ...item("/coaches", "coaches", "whistle", has("members.read", "mandates.manage")),
                   ...item("/contacts", "contacts", "message", role === "coach" || has("mandates.manage", "people.manage", "notifications.manage")),
                   ...item("/equipment", "equipment", "wheelchair", has("equipment.manage")),
-                  // 34: the sanctions of the club's players (the coaches see them).
-                  ...item("/discipline", "discipline", "shield", affiliated && role === "coach"),
                   // A1: everyone has a to-do (only one's own tasks unless one plans).
                   ...item("/tasks", "tasks", "clipboardList"),
-                  // 33: the federation's circulars, for every member of an affiliated club.
-                  ...item("/circulars", "circulars", "megaphone", affiliated),
+                  // 12/11/2026: the federation's page (circulars, tournaments, transfers, discipline, clubs).
+                  ...item("/club/federation", "clubFederation", "landmark", affiliated),
                 ],
               },
               {

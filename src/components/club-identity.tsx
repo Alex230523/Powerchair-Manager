@@ -111,6 +111,8 @@ const official = {
     legal: "Forme du club",
     legalHelp: "Le statut du club propose ses obligations selon la forme (Réglages, Club, Statut et obligations).",
     legalForms: { "": "Non précisée", asbl: "ASBL", de_facto: "Association de fait", other: "Autre" },
+    founded: "Année de création",
+    foundedHelp: "Affichée sur la page Fédération des clubs affiliés.",
   },
   nl: {
     title: "Voor officiële documenten",
@@ -126,6 +128,8 @@ const official = {
     legal: "Vorm van de club",
     legalHelp: "Het statuut van de club stelt de verplichtingen voor volgens de vorm (Instellingen, Club, Statuut en verplichtingen).",
     legalForms: { "": "Niet opgegeven", asbl: "VZW", de_facto: "Feitelijke vereniging", other: "Andere" },
+    founded: "Oprichtingsjaar",
+    foundedHelp: "Getoond op de federatiepagina van de aangesloten clubs.",
   },
   en: {
     title: "For official papers",
@@ -141,6 +145,8 @@ const official = {
     legal: "Legal form",
     legalHelp: "The club status proposes its obligations from the form (Settings, Club, Status and obligations).",
     legalForms: { "": "Not given", asbl: "Non-profit (ASBL)", de_facto: "Unincorporated association", other: "Other" },
+    founded: "Year founded",
+    foundedHelp: "Shown on the federation page of the affiliated clubs.",
   },
 };
 /** `only`: "identity" in Settings > Club (wave 15), "teams" in Gestion du club, which links to the identity. */
@@ -267,7 +273,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
           </div>
           {view.canEdit ? (
             <form
-              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.legal_form ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "") + (o.iban ?? "")}
+              key={o.name + o.contact_email + (o.federation_id ?? "") + (o.legal_form ?? "") + (o.founded_year ?? "") + (o.address ?? "") + (o.company_number ?? "") + (o.signatory ?? "") + (o.iban ?? "")}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -279,6 +285,7 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                     ? {
                         federationId: String(f.get("federation") ?? "") || null,
                         legalForm: String(f.get("legalForm") ?? "") || null,
+                        foundedYear: String(f.get("founded") ?? "").trim() ? Number(f.get("founded")) : null,
                         address: String(f.get("address") ?? "").trim(),
                         companyNumber: String(f.get("company") ?? "").trim(),
                         signatory: String(f.get("signatory") ?? "").trim(),
@@ -331,6 +338,15 @@ export function ClubIdentity({ locale, only }: { locale: Locale; only?: "identit
                           .replace("{name}", o.federation_request_name ?? "")
                           .replace("{day}", new Intl.DateTimeFormat(locale === "en" ? "en-GB" : `${locale}-BE`, { day: "numeric", month: "short", year: "numeric" }).format(new Date(o.federation_requested_at)))
                       : t.federationHelp}
+                  </span>
+                </label>
+              )}
+              {o.kind === "club" && (
+                <label htmlFor="club-founded">
+                  {official[locale].founded}
+                  <input id="club-founded" name="founded" type="number" inputMode="numeric" min={1850} max={2100} defaultValue={o.founded_year ?? ""} aria-describedby="club-founded-help" />
+                  <span className="muted small" id="club-founded-help">
+                    {official[locale].foundedHelp}
                   </span>
                 </label>
               )}

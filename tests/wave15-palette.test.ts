@@ -15,10 +15,10 @@ const ids = (c: PaletteContext) => paletteActions(c).map((a) => a.id);
 
 describe("palette actions", () => {
   it("offers each action only with its right and its module", () => {
-    expect(ids(president)).toEqual(["createEvent", "addPlayer", "importPlayers", "recordExpense", "mailTeam", "collectDues", "attendanceToday", "addTask", "changeSeason", "changeTeam"]);
+    expect(ids(president)).toEqual(["createEvent", "addPlayer", "importPlayers", "recordExpense", "mailTeam", "collectDues", "attendanceToday", "addTask", "changeSeason"]);
     expect(ids({ ...president, role: "coach", permissions: ["attendance.manage"], seasons: 1, teams: 1 })).toEqual(["attendanceToday"]);
     expect(ids({ ...president, disabled: ["finance", "dues", "communication"] })).not.toEqual(expect.arrayContaining(["recordExpense"]));
-    expect(ids({ ...president, disabled: ["finance", "dues", "communication"] })).toEqual(["createEvent", "addPlayer", "importPlayers", "attendanceToday", "addTask", "changeSeason", "changeTeam"]);
+    expect(ids({ ...president, disabled: ["finance", "dues", "communication"] })).toEqual(["createEvent", "addPlayer", "importPlayers", "attendanceToday", "addTask", "changeSeason"]);
     expect(ids({ ...president, kind: "federation" })).toEqual([]);
   });
   it("opens the same forms as the Créer menu of the home page", () => {

@@ -132,7 +132,7 @@ test("player listing, personal then sporting profile, former players and dedicat
     ).toBe(true);
     await page.screenshot({ path: "test-results/player-mobile.png" });
     for (const [url, title] of [
-      ["/en/coaches", "Coach management"],
+      ["/en/coaches", "Coaches"],
       ["/nl/funding", "Financiën"],
       ["/fr/settings", "Réglages"],
     ]) {

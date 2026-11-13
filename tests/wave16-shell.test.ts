@@ -12,8 +12,9 @@ describe("B1: no chip under the top bar", () => {
     expect(css).not.toMatch(/\.scope-chip|\.scope-clear/);
     for (const l of ["fr", "nl", "en"] as const) expect(shellCopy[l]).not.toHaveProperty("scopeClear");
   });
-  it("tints the team capsule when a team is chosen, and the season capsule outside the current season", () => {
-    expect(shell).toContain('data-active={scope.teamId ? "" : undefined}');
+  it("tints the season capsule outside the current season; no team capsule (12/11/2026)", () => {
+    expect(shell).not.toContain('data-active={scope.teamId ? "" : undefined}');
+    expect(shell).not.toContain("scope.setTeam(");
     expect(shell).toContain("scope.seasonId !== defaultSeasonId(scope.seasons)");
     expect(css).toContain(".capsule[data-active] { background: var(--accent-soft); border-color: var(--primary);");
   });

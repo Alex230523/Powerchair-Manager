@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-12",
+  "roles": [
+    "all"
+  ],
+  "link": "/club/federation",
+  "image": null,
+  "fr": {
+    "title": "Une page Fédération, et l'équipe choisie là où elle compte",
+    "text": "La nouvelle page Fédération rassemble les circulaires, les tournois, les transferts, la discipline du club et une carte par club affilié. Le choix d'une équipe quitte la barre du haut : les présences, le calendrier et les statistiques ont leur propre filtre. « Gestion des coachs » s'appelle maintenant « Coachs »."
+  },
+  "nl": {
+    "title": "Een federatiepagina, en het team gekozen waar het telt",
+    "text": "De nieuwe federatiepagina bundelt de omzendbrieven, de toernooien, de transfers, de tucht van de club en een kaart per aangesloten club. De keuze van een team verdwijnt uit de bovenbalk: aanwezigheden, kalender en statistieken hebben hun eigen filter. « Coaches beheren » heet nu « Coaches »."
+  },
+  "en": {
+    "title": "A Federation page, and the team chosen where it matters",
+    "text": "The new Federation page gathers the circulars, tournaments, transfers, the club's discipline and one card per affiliated club. Choosing a team leaves the top bar: attendance, the calendar and the statistics have their own filter. « Coach management » is now called « Coaches »."
+  }
+}

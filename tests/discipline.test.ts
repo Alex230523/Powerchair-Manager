@@ -45,9 +45,11 @@ describe("discipline", () => {
     expect(routes("federation", "federation_president")).toContain("/federation/discipline");
     expect(routes("federation", "federation_worker", ["federation.referees"])).not.toContain("/federation/discipline");
     expect(routes("federation", "federation_worker", ["federation.discipline"])).toContain("/federation/discipline");
-    expect(routes("club", "club_president")).toContain("/discipline");
-    expect(routes("club", "coach")).toContain("/discipline");
-    expect(routes("club", "player")).not.toContain("/discipline");
+    // 12/11/2026: a club reaches its discipline from the federation's page, out of the menu.
+    for (const role of ["club_president", "coach", "player"] as const) {
+      expect(routes("club", role)).not.toContain("/discipline");
+      expect(routes("club", role)).toContain("/club/federation");
+    }
   });
   it("has the same words in the three languages, without the banned vocabulary", () => {
     const keys = (o: object) => Object.keys(o).sort();

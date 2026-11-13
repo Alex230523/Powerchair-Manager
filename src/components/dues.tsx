@@ -4,7 +4,7 @@ import { useClubChildFilter } from "./child-switcher";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/locale";
-import { ApplyScope, useScope, useScopedTeam, useSeeded } from "./use-scope";
+import { useScope, useScopedTeam, useSeeded } from "./use-scope";
 import { Button, Badge, Card, EmptyState, ExportButton, PageHeader, StatCard, Toolbar, type Tone } from "./ui";
 import { Modal } from "./modal";
 import { Icon } from "./icons";
@@ -362,8 +362,8 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
   // The season chosen in the top bar (wave 12) seeds the season filter.
   const scope = useScope();
   const [filter, setFilter] = useSeeded(scope.seasonId ?? "");
-  // The team chosen in the top bar (wave 15): tiles, table and search follow it; a local choice can be applied everywhere.
-  const { team, setTeam, differs: teamDiffers, apply: applyTeam } = useScopedTeam();
+  // The page's team filter (12/11/2026, no team in the top bar any more): tiles, table and search follow it.
+  const { team, setTeam } = useScopedTeam();
   // ?state=late (from the dashboard and the sidebar counter) seeds the state filter.
   const urlState = useSyncExternalStore(
     () => () => {},
@@ -538,7 +538,6 @@ export function Dues({ locale, issueTeam }: { locale: Locale; /** A6: « Émettr
                         ))}
                       </select>
                     </label>
-                    <ApplyScope locale={locale} differs={teamDiffers} apply={applyTeam} />
                   </>
                 )}
                 <label>

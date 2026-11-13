@@ -48,7 +48,7 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     await switchTo(page, coachMandate);
 
     // 1. The tour: five steps that point at the screen, skippable, once.
-    const tour = page.getByRole("dialog", { name: "Votre équipe" });
+    const tour = page.getByRole("dialog", { name: "La saison" });
     await expect(tour).toBeVisible();
     await expect(tour).toContainText("Étape 1 sur 5");
     await expect(page.locator(".scope-bar")).toHaveAttribute("data-tour-target", "");
@@ -66,7 +66,7 @@ test("coach: first-connection tour, tasks by type, licence, course request; pres
     // Settings > My account starts it again.
     await page.goto("/fr/settings/account");
     await page.getByRole("button", { name: "Revoir la visite guidée" }).click();
-    await expect(page.getByRole("dialog", { name: "Votre équipe" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "La saison" })).toBeVisible();
     await page.locator(".first-steps").getByRole("button", { name: "Passer" }).click();
     await expect(page.locator(".first-steps")).toHaveCount(0);
 

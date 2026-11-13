@@ -38,6 +38,8 @@ export const identitySchema = z.object({
   federationId: z.uuid().nullable().optional(),
   /** Wave 16 (A): the club's legal form; the club status proposes its obligations from it. Omitted: unchanged. */
   legalForm: z.enum(["asbl", "de_facto", "other"]).nullable().optional(),
+  /** 12/11/2026: the year the club was founded (the federation's page). Omitted: unchanged. */
+  foundedYear: z.number().int().min(1850).max(2100).nullable().optional(),
 });
 export const logoSchema = z.object({
   action: z.literal("logo"),
@@ -78,7 +80,7 @@ export async function clubView(db: Pool, p: Principal) {
     const user = await account(c, p);
     const org = (
       await c.query(
-        "SELECT o.id,o.name,o.kind,o.federation_id,o.federation_request_id,o.federation_requested_at,(SELECT f.name FROM organization f WHERE f.id=o.federation_request_id) AS federation_request_name,o.legal_form,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
+        "SELECT o.id,o.name,o.kind,o.federation_id,o.federation_request_id,o.federation_requested_at,(SELECT f.name FROM organization f WHERE f.id=o.federation_request_id) AS federation_request_name,o.legal_form,o.founded_year,COALESCE(o.contact_email,'') AS contact_email,o.address,o.company_number,o.signatory,o.iban,o.theme_palette,o.theme_tint,extract(epoch FROM l.updated_at)::bigint::text AS logo_version FROM organization o LEFT JOIN organization_logo l ON l.organization_id=o.id WHERE o.id=$1",
         [a.organization_id],
       )
     ).rows[0];
@@ -152,6 +154,7 @@ export async function clubExecute(
           input.iban ?? null,
         ],
       );
+      if (input.foundedYear !== undefined && a.kind === "club") await c.query("UPDATE organization SET founded_year=$2 WHERE id=$1", [a.organization_id, input.foundedYear]);
       if (input.legalForm !== undefined && a.kind === "club") {
         const before = (await c.query("SELECT legal_form FROM organization WHERE id=$1", [a.organization_id])).rows[0]?.legal_form ?? null;
         if (before !== input.legalForm) {
