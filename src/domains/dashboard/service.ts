@@ -511,33 +511,7 @@ export async function computeFor(
   const status = president ? await clubStatus(c, org) : null;
 
   // The week asked for: events the actor may read, filtered like the calendar and the team in view.
-  let week: Dashboard["week"];
-  if (raw.week && /^\d{4}-\d{2}-\d{2}$/.test(raw.week) && !Number.isNaN(Date.parse(raw.week + "T00:00:00Z"))) {
-    const from = raw.week;
-    const rows = (
-      await c.query(
-        "SELECT e.*,t.name AS team_name,t.color AS team_color,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>($2::date)::timestamptz AND e.starts_at<($2::date+7)::timestamptz AND ($3::uuid IS NULL OR e.team_id=$3 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 200",
-        [org, from, teamId],
-      )
-    ).rows as (Event & { team_name: string | null; team_color: string | null; place_name: string | null })[];
-    const events: WeekEvent[] = [];
-    for (const e of rows)
-      if (await canRead(c, a, e))
-        events.push({
-          id: e.id,
-          title: e.title,
-          kind: e.kind,
-          status: e.status,
-          startsAt: new Date(e.starts_at).toISOString(),
-          endsAt: new Date(e.ends_at).toISOString(),
-          team: e.team_name,
-          teamColor: e.team_color ?? null,
-          place: e.place_name,
-        });
-    const end = new Date(from + "T00:00:00Z");
-    end.setUTCDate(end.getUTCDate() + 6);
-    week = { from, to: end.toISOString().slice(0, 10), events };
-  }
+  const week: Dashboard["week"] = raw.week ? await weekFor(c, a, org, raw.week, teamId) : undefined;
   // Getting started for players and parents (wave 15, C9): the calendar in their phone.
   const start =
     club && (a.role === "player" || a.role === "guardian")
@@ -595,6 +569,61 @@ export async function computeFor(
     ...(week ? { week } : {}),
     ...(focus ? { focus } : {}),
   };
+}
+
+/** The week asked for (a Monday): events the actor may read, filtered like the calendar and the team in view. */
+async function weekFor(c: PoolClient, a: Actor, org: string, from: string, teamId: string | null): Promise<Dashboard["week"]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || Number.isNaN(Date.parse(from + "T00:00:00Z"))) return undefined;
+  const rows = (
+    await c.query(
+      "SELECT e.*,t.name AS team_name,t.color AS team_color,COALESCE(pl.name,sv.name,NULLIF(e.free_location,'')) AS place_name FROM calendar_event e LEFT JOIN team t ON t.id=e.team_id LEFT JOIN calendar_place pl ON pl.id=e.place_id LEFT JOIN shared_venue sv ON sv.id=e.shared_venue_id WHERE e.organization_id=$1 AND e.ends_at>($2::date)::timestamptz AND e.starts_at<($2::date+7)::timestamptz AND ($3::uuid IS NULL OR e.team_id=$3 OR e.team_id IS NULL) ORDER BY e.starts_at,e.id LIMIT 200",
+      [org, from, teamId],
+    )
+  ).rows as (Event & { team_name: string | null; team_color: string | null; place_name: string | null })[];
+  const events: WeekEvent[] = [];
+  for (const e of rows)
+    if (await canRead(c, a, e))
+      events.push({
+        id: e.id,
+        title: e.title,
+        kind: e.kind,
+        status: e.status,
+        startsAt: new Date(e.starts_at).toISOString(),
+        endsAt: new Date(e.ends_at).toISOString(),
+        team: e.team_name,
+        teamColor: e.team_color ?? null,
+        place: e.place_name,
+      });
+  const end = new Date(from + "T00:00:00Z");
+  end.setUTCDate(end.getUTCDate() + 6);
+  return { from, to: end.toISOString().slice(0, 10), events };
+}
+
+/**
+ * 13/11/2026, responsiveness: the home's week alone (« ‹ semaine › »), without
+ * reading the whole dashboard again at each turn of a week.
+ */
+export async function dashboardWeek(db: Pool, p: Principal, raw: DashboardQuery & { week: string }) {
+  const c = await db.connect();
+  try {
+    await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    await c.query("SET LOCAL TIME ZONE 'Europe/Brussels'");
+    const user = (await account(c, p)) as DashboardUser;
+    const context = await active(c, p);
+    const a: Actor = { ...context, twoFactorEnabled: !!user.twoFactorEnabled };
+    const scope =
+      context.kind === "club"
+        ? await resolveScope(c, { organization_id: context.organization_id, role: a.role, user_id: user.id, team_id: a.team_id }, raw)
+        : { seasonId: null, teamId: null };
+    const week = await weekFor(c, a, context.organization_id, raw.week, scope.teamId);
+    await c.query("COMMIT");
+    return { week };
+  } catch (e) {
+    await c.query("ROLLBACK");
+    throw e;
+  } finally {
+    c.release();
+  }
 }
 
 /** 8: the minor players of a club whom no representative answers for. */

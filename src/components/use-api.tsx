@@ -1,6 +1,7 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/locale";
+import { apiPath } from "@/lib/shared-fetch";
 
 /** Error codes meaning "this profile cannot open the page" rather than a failure. */
 export const deniedCodes = [
@@ -19,6 +20,12 @@ export function useData<T>(url: string, failure: (code: string) => string) {
   const [data, setData] = useState<T | null>(null),
     [error, setError] = useState(""),
     [denied, setDenied] = useState(false);
+  // 13/11/2026: the message function is read through a ref: a screen passing a new arrow at each
+  // render (national teams, a player's progress) no longer reads its view again in a loop.
+  const fail = useRef(failure);
+  useEffect(() => {
+    fail.current = failure;
+  }, [failure]);
   const reload = useCallback(async () => {
     const r = await fetch(url, { cache: "no-store" });
     const v = await r.json();
@@ -36,12 +43,26 @@ export function useData<T>(url: string, failure: (code: string) => string) {
       .catch((e: Error) => {
         if (cancelled) return;
         if (deniedCodes.includes(e.message)) setDenied(true);
-        else setError(failure(e.message));
+        else setError(fail.current(e.message));
       });
+    // 13/11/2026: a change made elsewhere on the page (another card, the bell, the home) reads this view again;
+    // a change of this view itself is already followed by its own reload.
+    const changed = (e: Event) => {
+      const paths = (e as CustomEvent<{ paths: string[] }>).detail?.paths ?? [];
+      if (paths.every((x) => x === apiPath(url))) return;
+      fetch(url, { cache: "no-store" })
+        .then(async (r) => (r.ok ? await r.json() : null))
+        .then((v) => {
+          if (!cancelled && v) setData(v);
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener("pfm-changed", changed);
     return () => {
       cancelled = true;
+      window.removeEventListener("pfm-changed", changed);
     };
-  }, [url, failure]);
+  }, [url]);
   return { data, error, setError, denied, reload };
 }
 

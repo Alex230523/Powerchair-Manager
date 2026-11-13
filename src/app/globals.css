@@ -634,21 +634,55 @@ main p[role="status"] {
     transform: rotate(360deg);
   }
 }
+/* 13/11/2026: a row's actions are small buttons; a name opening its sheet (.name-link) stays a name. */
 .text-button {
   font: inherit;
-  background: none;
-  color: var(--primary);
-  border: 0;
-  text-decoration: underline;
-  text-underline-offset: 0.22em;
-  min-height: 2.25rem;
-  padding: 8px;
-  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
+  text-decoration: none;
+  min-height: 2rem;
+  padding: 4px 10px;
+  cursor: pointer;
 }
 .text-button:hover {
-  color: var(--primary-hover);
   background: var(--surface-soft);
+  border-color: var(--field-border);
+  color: var(--heading);
+  text-decoration: none;
+}
+.text-button:disabled,
+.text-button[aria-disabled="true"] {
+  background: var(--surface-soft);
+  color: var(--muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+.text-button.small {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+}
+.text-button.name-link {
+  background: none;
+  border-color: transparent;
+  color: var(--primary);
+  padding: 4px 2px;
+  text-align: start;
+  justify-content: flex-start;
+}
+.text-button.name-link:hover {
+  background: none;
+  color: var(--primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
 }
 .actions {
   display: flex;
@@ -5702,7 +5736,7 @@ input.narrow {
 }
 .data-grid .row-actions .text-button {
   min-height: 2rem;
-  padding-inline: 4px;
+  padding-inline: 8px;
 }
 .card.flush .card-body > .data-grid > .dg-columns {
   padding: 8px 12px 0;
@@ -6087,6 +6121,7 @@ input.narrow {
 .toolbar-check { align-self: flex-end; padding-bottom: 10px; white-space: nowrap; }
 .tag-cell .badge { margin: 1px 4px 1px 0; }
 .text-button.danger { color: var(--danger-ink); }
+.text-button.danger:hover { color: var(--danger-ink); border-color: var(--danger-ink); }
 .contact-table tr[data-archived] th, .contact-table tr[data-archived] td { color: var(--muted); }
 .tag-picker { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; }
 .tag-picker legend { padding: 0 4px; font-size: var(--text-xs); color: var(--muted); }
@@ -10143,47 +10178,6 @@ ul.task-page li {
   margin: 0;
   padding: 0;
 }
-/* 13/11/2026: the players, then the coaches, each under its title. */
-.call-group {
-  margin: var(--space-4) 0 var(--space-2);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: none;
-}
-/* « Mes prochaines séances »: one line per session, the three answers on the right. */
-.my-next {
-  margin-bottom: var(--card-gap);
-}
-.my-next-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-.my-next-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--border);
-}
-.my-next-row:first-child {
-  border-top: 0;
-}
-.my-next-what {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.my-next-choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
 .call-row {
   display: grid;
   grid-template-columns: auto minmax(8rem, 1fr) auto auto auto;
@@ -11557,21 +11551,6 @@ ul.task-page li {
   font-size: var(--text-lg);
   font-weight: 700;
 }
-/* 13/11/2026: « Ma présence », the coach's own answer under the session. */
-.focus-mine {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
-}
-.focus-mine-label {
-  font-weight: 600;
-  font-size: var(--text-sm);
-}
-.focus-mine .actions {
-  margin: 0;
-}
 .focus-sub {
   margin: var(--space-4) 0 var(--space-2);
   font-size: var(--text-sm);
@@ -11681,8 +11660,9 @@ ul.task-page li {
   min-width: 2.75rem;
 }
 .family-answer .text-button[aria-pressed="true"] {
-  font-weight: 700;
-  text-decoration: underline;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
 }
 .family-feed-url code,
 .authorization-text {
@@ -14031,13 +14011,9 @@ details.task-group[open]:has(> .task-group-tools) > summary {
   margin: 0;
 }
 
-/*
- * 12/11/2026: the search fields of the pages (not the main one), lighter: a
- * pill with a magnifier and a quiet fill, a smaller text; the same height and
- * border as every field (44 px to touch, the border readable at 3:1). The
- * menus beside them in a filter bar take the same rounded shape.
- */
-main input[type="search"] {
+/* 12/11/2026: the pages' search fields, a pill with a magnifier; the menus beside them rounded too. */
+/* 13/11/2026: :not() outranks the fields' rule (the magnifier ran over the text). */
+main input[type="search"]:not(.command-input input) {
   border-radius: var(--radius-pill);
   padding-inline: 40px 14px;
   font-size: var(--text-sm);
@@ -14047,8 +14023,8 @@ main input[type="search"] {
   background-position: 14px 50%;
   background-size: 16px 16px;
 }
-main input[type="search"]:hover,
-main input[type="search"]:focus {
+main input[type="search"]:not(.command-input input):hover,
+main input[type="search"]:not(.command-input input):focus {
   background-color: var(--surface);
 }
 main input[type="search"]::placeholder {
@@ -14057,7 +14033,7 @@ main input[type="search"]::placeholder {
 main input[type="search"]::-webkit-search-cancel-button {
   cursor: pointer;
 }
-main :is(.toolbar-filters, .directory-filters) select {
+main :is(.toolbar-filters, .directory-filters) select:not(.capsule select) {
   border-radius: var(--radius-pill);
   padding-inline: 16px 40px;
   font-size: var(--text-sm);

@@ -106,7 +106,6 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/funding/proof/[id]` (+ écriture) | connexion | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/funding/report` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/funding/report/proof` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
-| `/api/funding/tasks` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/fundraising` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
 | `/api/fundraising/public` | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable | introuvable |
 | `/api/governance` (+ écriture) | connexion | oui | oui | oui | oui | refusé | refusé | refusé | oui | refusé |
@@ -130,6 +129,7 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/matches/journey/sheet` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/matches/journey/tactic` | connexion | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/national` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
+| `/api/national/staff` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/national/care` | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/national/player` (+ écriture) | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide | invalide |
 | `/api/news` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
@@ -319,6 +319,7 @@ Une page se charge pour toute personne connectée ; ce qu'elle montre dépend de
 | `/federation/discipline` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/licenses` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/national` |  |  |  |  |  |  |  |  |  |   |
+| `/national` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/referees` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/team` |  |  |  |  |  |  |  |  |  |   |
 | `/federation/teams` |  |  |  |  |  |  |  |  |  |   |

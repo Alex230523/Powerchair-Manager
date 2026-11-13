@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { copy, isLocale } from "@/lib/locale";
 import { fontClass } from "../fonts";
 import "../globals.css";
+// 13/11/2026: the coaches' attendance and the national staff's page, apart (globals.css keeps its budget).
+import "../staff.css";
 import { paletteColor, sessionAppearance, sessionShell } from "@/lib/appearance";
 import { scriptNonce } from "@/lib/nonce";
 export const metadata: Metadata = {
