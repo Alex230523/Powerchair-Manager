@@ -374,7 +374,7 @@ export function TripsPage({ locale }: { locale: Locale }) {
             <Card as="li" key={x.id} className="trip-card" data={{ status: x.status }}>
               <div className="trip-card-head">
                 {/* 3: a click opens the trip's window; the full page is one link away. */}
-                <button type="button" className="text-button trip-open" onClick={() => setPreview(x.id)} aria-label={tt.preview.replace("{title}", x.title)}>
+                <button type="button" className="text-button name-link trip-open" onClick={() => setPreview(x.id)} aria-label={tt.preview.replace("{title}", x.title)}>
                   <strong>{x.title}</strong>
                 </button>
                 <Countdown locale={locale} c={x.countdown} />

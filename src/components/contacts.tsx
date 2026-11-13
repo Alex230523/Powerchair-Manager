@@ -161,7 +161,7 @@ export function Contacts({ locale, start }: { locale: Locale; start?: string }) 
                     sort: (x) => x.full_name,
                     cell: (x) => (
                       <>
-                        <button type="button" className="text-button contact-open" aria-label={fill(k.openOf, { name: x.full_name })} onClick={() => setSheet(x.id)}>
+                        <button type="button" className="text-button name-link contact-open" aria-label={fill(k.openOf, { name: x.full_name })} onClick={() => setSheet(x.id)}>
                           {x.full_name}
                         </button>
                         {x.role && <span className="muted small"> · {x.role}</span>}
