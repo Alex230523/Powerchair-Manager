@@ -993,7 +993,7 @@ export async function moneyDeadlinesIn(c: PoolClient, org: string, from: string,
     for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++)
       for (const o of await obligationRows(c, org, y))
         if (!o.done_on && o.due_on && o.due_on >= from && o.due_on <= to)
-          out.push({ id: "obligation:" + o.id, date: o.due_on, kind: "obligation", source: "accounts", title: o.title, href: "/settings/club#settings-obligations" });
+          out.push({ id: "obligation:" + o.id, date: o.due_on, kind: "obligation", source: "accounts", title: o.title, href: "/settings/organisation#settings-obligations" });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }

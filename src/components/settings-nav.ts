@@ -5,7 +5,7 @@ import type { IconName } from "./icons";
  * pages, the command palette and the tests share it. Visibility follows the
  * same rules as the panels it groups; the services still check every right.
  */
-export const settingsCategories = ["account", "notifications", "data", "club", "subscription", "members", "seasons", "activities", "documents", "money", "journals"] as const;
+export const settingsCategories = ["account", "notifications", "data", "club", "organisation", "members", "seasons", "subscription", "activities", "documents", "money", "journals"] as const;
 export type SettingsCategory = (typeof settingsCategories)[number];
 export const isSettingsCategory = (x: string): x is SettingsCategory => (settingsCategories as readonly string[]).includes(x);
 
@@ -14,6 +14,7 @@ export const categoryIcons: Record<SettingsCategory, IconName> = {
   notifications: "bell",
   data: "shield",
   club: "club",
+  organisation: "settings",
   subscription: "dues",
   members: "players",
   seasons: "calendar",
@@ -22,6 +23,18 @@ export const categoryIcons: Record<SettingsCategory, IconName> = {
   money: "funding",
   journals: "shield",
 };
+
+/**
+ * 13/11/2026: the settings' home in four parts, so that the categories no longer
+ * come in a row of twelve: you, the club, its activities and money, the control.
+ */
+export const settingsSections = [
+  { id: "you", categories: ["account", "notifications", "data"] },
+  { id: "club", categories: ["club", "organisation", "members", "seasons", "subscription"] },
+  { id: "activity", categories: ["activities", "documents", "money"] },
+  { id: "control", categories: ["journals"] },
+] as const satisfies readonly { id: string; categories: readonly SettingsCategory[] }[];
+export type SettingsSection = (typeof settingsSections)[number]["id"];
 
 export type SettingsAccess = {
   kind?: string | null;
@@ -35,13 +48,14 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
   const has = (p: string) => a.permissions.includes(p);
   const club = a.kind === "club";
   const admin = a.role === "club_president" || a.role === "federation_president";
-  const off = new Set(a.disabled ?? []);
   const shown: Record<SettingsCategory, boolean> = {
     account: true,
     notifications: true,
     // 12: « Mes données » for everyone; the club's personal data for audit.read or mandates.manage.
     data: true,
+    // 13/11/2026: « Club » was a long page; its identity stays here, how it runs goes to « Fonctionnement ».
     club: club && (admin || has("mandates.manage")),
+    organisation: club && (admin || has("mandates.manage")),
     // 12/11/2026: the platform's subscription, invoices, trial and discount code, for the presidency (out of the menu).
     subscription: admin,
     // The federation's presidency finds its welcome journeys (referees, staff) here too.
@@ -51,7 +65,9 @@ export function visibleCategories(a: SettingsAccess): SettingsCategory[] {
     activities: club && has("mandates.manage"),
     // 28: the parental authorizations' texts.
     documents: club && has("documents.manage"),
-    money: club && has("mandates.manage") && !off.has("dues"),
+    // 13/11/2026: the tax approval and the attestations' signature joined « Finances », shown even with dues off.
+    money: club && has("mandates.manage"),
+    // 13/11/2026: « Sécurité et confidentialité »: the journals, the club's personal data, the agreement, export and closure.
     journals: has("audit.read") || has("mandates.manage") || a.role === "club_president",
   };
   return settingsCategories.filter((c) => shown[c]);
@@ -72,16 +88,16 @@ export const settingsEntries = [
   { id: "templates", category: "notifications", anchor: "notif-templates" },
   { id: "queue", category: "notifications", anchor: "notif-queue" },
   { id: "reminders", category: "notifications", anchor: "settings-reminders" },
-  { id: "setup", category: "club", anchor: "settings-setup" },
+  { id: "setup", category: "organisation", anchor: "settings-setup" },
   { id: "identity", category: "club", anchor: "club-identity-title" },
-  { id: "obligations", category: "club", anchor: "settings-obligations" },
+  { id: "obligations", category: "organisation", anchor: "settings-obligations" },
   // 21: the agreement, the export, the closure, retention, the people's requests.
-  { id: "security", category: "club", anchor: "security" },
-  { id: "assemblyRules", category: "club", anchor: "settings-assembly-rules" },
-  { id: "tax", category: "club", anchor: "settings-tax" },
+  { id: "security", category: "journals", anchor: "security" },
+  { id: "assemblyRules", category: "organisation", anchor: "settings-assembly-rules" },
+  { id: "tax", category: "money", anchor: "settings-tax" },
   { id: "appearance", category: "club", anchor: "settings-appearance" },
   { id: "hallOfFame", category: "club", anchor: "settings-hall-of-fame" },
-  { id: "modules", category: "club", anchor: "settings-modules" },
+  { id: "modules", category: "organisation", anchor: "settings-modules" },
   { id: "coachRights", category: "members", anchor: "settings-access-title" },
   { id: "staffRoles", category: "members", anchor: "settings-roles" },
   { id: "rightProfiles", category: "members", anchor: "settings-profiles" },
@@ -98,8 +114,8 @@ export const settingsEntries = [
   { id: "rightsJournal", category: "journals", anchor: "journal-rights" },
   { id: "healthJournal", category: "journals", anchor: "journal-health" },
   { id: "myData", category: "data", anchor: "settings-my-data" },
-  { id: "privacy", category: "data", anchor: "settings-club-data" },
-  { id: "presidency", category: "club", anchor: "settings-presidency" },
+  { id: "privacy", category: "journals", anchor: "settings-club-data" },
+  { id: "presidency", category: "organisation", anchor: "settings-presidency" },
   { id: "seasons", category: "seasons", anchor: "settings-seasons" },
   { id: "seasonPlan", category: "seasons", anchor: "settings-season-plan" },
   { id: "rollover", category: "seasons", anchor: "settings-rollover" },
@@ -125,6 +141,22 @@ export function searchSettings(query: string, copy: SettingsEntryCopy, visible: 
   });
 }
 
+/**
+ * 13/11/2026: sections that left « Club » (and « Données personnelles »): an old
+ * link (a notification already sent, a bookmark) still lands on them.
+ */
+export const movedAnchors: Record<string, SettingsCategory> = {
+  "settings-setup": "organisation",
+  "settings-obligations": "organisation",
+  "settings-assembly-rules": "organisation",
+  "settings-modules": "organisation",
+  "settings-presidency": "organisation",
+  "settings-tax": "money",
+  "settings-attestation-sign": "money",
+  security: "journals",
+  "settings-club-data": "journals",
+};
+
 /** Anchors of the single settings page before wave 15, and where they live now. */
 export const legacyAnchors: Record<string, SettingsCategory> = {
   "settings-self": "account",
@@ -135,7 +167,7 @@ export const legacyAnchors: Record<string, SettingsCategory> = {
   "settings-presence": "activities",
   "settings-dues": "money",
   "settings-dues-title": "money",
-  "settings-modules": "club",
+  "settings-modules": "organisation",
   "journal-rights": "journals",
   "journal-health": "journals",
 };

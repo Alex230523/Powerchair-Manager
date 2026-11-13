@@ -361,7 +361,7 @@ export function ClubAffiliations({ locale }: { locale: Locale }) {
               <EmptyState title={data.fees.length ? t.noDues : t.none} />
             )}
             <p>
-              <Link href={`/${locale}/settings/club#settings-obligations`}>{t.statusLink} →</Link>
+              <Link href={`/${locale}/settings/organisation#settings-obligations`}>{t.statusLink} →</Link>
             </p>
           </Card>
           <Card title={t.definitions} id="affiliation-fees">

@@ -76,8 +76,8 @@ test("reserved funds, the attestation PDF and the signature", async ({ page }) =
     expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
     await noSideScroll(page);
 
-    // Réglages › Club: the signature card.
-    await page.goto("/fr/settings/club");
+    // Réglages › Finances (13/11/2026): the signature card.
+    await page.goto("/fr/settings/money");
     await expect(page.getByRole("heading", { name: "Signature des attestations" })).toBeVisible();
     await axe(page, "signature settings");
     await noSideScroll(page);

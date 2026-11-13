@@ -352,7 +352,8 @@ test("the sheet shows the first steps, the timeline and the duplicates; the club
     const presidentPage = await other.newPage();
     const president = await signIn(presidentPage, db, "Présidente Jumeau", `twin-${stamp}@example.test`);
     await mandate(presidentPage, db, president, clubA, "club_president");
-    await presidentPage.goto("/fr/settings/club");
+    // 13/11/2026: under « Sécurité et confidentialité ».
+    await presidentPage.goto("/fr/settings/journals");
     await expect(presidentPage.getByRole("heading", { name: "Doublons probables" })).toBeVisible();
     await presidentPage.getByLabel("Code d'identité de la personne").fill(personB.identity_code);
     await axe(presidentPage, "duplicates");

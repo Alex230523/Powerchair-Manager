@@ -51,11 +51,13 @@ describe("every moved block in Réglages, found by the search", () => {
   it("puts the panels where the entries say", () => {
     const s = readFileSync("src/components/settings.tsx", "utf8");
     expect(s).toContain('category === "data" && (');
-    expect(s).toContain('<Privacy locale={locale} embedded />');
+    // 13/11/2026: the club's personal data are under « Sécurité et confidentialité ».
+    expect(s).toContain('category === "journals" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />');
     expect(s).toContain('<People locale={locale} management embedded />');
     expect(s).toContain('<div id="settings-presidency">');
     // 04/11/2026: « Équipes du club » repeated the cards above it on « Mes équipes »: removed.
     expect(readFileSync("src/components/teams.tsx", "utf8")).not.toContain("<ClubIdentity");
-    expect(readFileSync("src/components/home.tsx", "utf8")).toContain('href("/settings/club")');
+    // 13/11/2026: the shortcut opens the settings' home, now in four parts.
+    expect(readFileSync("src/components/home.tsx", "utf8")).toContain('href("/settings")');
   });
 });

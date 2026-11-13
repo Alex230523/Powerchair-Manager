@@ -42,7 +42,8 @@ test("security and data: accept the agreement, ask the full export, send a reque
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    await page.goto("/fr/settings/club");
+    // 13/11/2026: under « Sécurité et confidentialité ».
+    await page.goto("/fr/settings/journals");
     await expect(page.getByRole("heading", { name: "Sécurité et données" })).toBeVisible();
     await expect(page.getByText(/doit être acceptée par la présidence avant d'inviter des membres/)).toBeVisible();
     await page.getByLabel("J'ai lu le contrat de sous-traitance et je l'accepte au nom du club.").check();

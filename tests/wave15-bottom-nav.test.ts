@@ -24,7 +24,8 @@ describe("bottom bar", () => {
     expect(routes(ws("guardian", []))).toEqual(["", "/family", "/calendar", "/dues"]);
   });
   it("keeps to the rights and the modules switched on", () => {
-    expect(routes(ws("coach", ["calendar.read"]))).toEqual(["", "/calendar"]);
+    // 13/11/2026: a coach takes his teams' roll whatever his rights: « Présences » is his.
+    expect(routes(ws("coach", ["calendar.read"]))).toEqual(["", "/calendar", "/attendance"]);
     expect(routes(ws("club_president", all, ["dues"]))).toEqual(["", "/calendar", "/players"]);
     expect(routes(ws("player", [], ["dues"]))).toEqual(["", "/calendar", "/players"]);
     expect(bottomNav(null)).toEqual([]);

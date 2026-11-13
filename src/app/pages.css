@@ -1,6 +1,6 @@
 /*
- * 13/11/2026: the coaches' attendance and the national staff's page, apart from
- * globals.css (its budget of 300 kB, review of 05/11/2026). Same tokens.
+ * 13/11/2026: the styles added since globals.css reached its budget of 300 kB
+ * (review of 05/11/2026). Same tokens; loaded after globals.css.
  */
 /* 13/11/2026: « Ma présence », the coach's own answer under the session. */
 .focus-mine {
@@ -105,4 +105,32 @@
 }
 .national-staff-care .button {
   margin: var(--space-1) 0 var(--space-2);
+}
+
+/* 13/11/2026: the settings' home in four parts, and the same parts in the side list. */
+.settings-section {
+  margin-top: var(--space-6);
+}
+.settings-section:first-of-type {
+  margin-top: var(--space-4);
+}
+.settings-section-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.settings-nav-section + .settings-nav-section {
+  margin-top: var(--space-3);
+}
+.settings-nav-title {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
