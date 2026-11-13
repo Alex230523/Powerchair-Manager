@@ -252,7 +252,7 @@ function Players({ locale, view, open }: { locale: Locale; view: View; open: (wh
               {shown.map((p) => (
                 <tr key={p.key}>
                   <th scope="row">
-                    <button type="button" className="text-button" aria-label={fill(t.openSheet, { name: p.full_name })} onClick={() => open({ key: p.key, name: p.full_name })}>
+                    <button type="button" className="text-button name-link" aria-label={fill(t.openSheet, { name: p.full_name })} onClick={() => open({ key: p.key, name: p.full_name })}>
                       {p.full_name}
                     </button>
                     {p.own && <span className="muted small"> · {t.ownPlayer}</span>}
