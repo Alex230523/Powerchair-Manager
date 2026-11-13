@@ -21,6 +21,15 @@ describe("access matrix", () => {
       expect([...apiRoutes[path].methods].sort(), path).toEqual(methods.sort());
     }
   });
+  // 13/11/2026: a route the audit calls has its expected answer for every role,
+  // so a change of rights fails the CI instead of passing unseen.
+  it("expects an answer from every role on every route the audit calls", () => {
+    const roles = ["anonymous", "president", "coach", "player", "parent", "federation", "referee", "federation_worker", "president_b", "federation_b"];
+    for (const [path, route] of Object.entries(apiRoutes)) {
+      if (route.skip) continue;
+      for (const method of route.methods) expect(Object.keys(route.expect?.[method] ?? {}).sort(), `${method} ${path}`).toEqual([...roles].sort());
+    }
+  });
   it("lists every page", () => {
     const found = routesUnder("src/app/[locale]", "page.tsx").map((p) => "/" + p).sort();
     expect(Object.keys(pages).sort()).toEqual(found);

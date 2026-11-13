@@ -198,6 +198,7 @@ Changements livrés hors du découpage en lots, par ordre chronologique.
 | 12/11/2026 | [Tâches : un tableau qu'on range à la souris, des modèles prêts, des automatismes vérifiés](evolutions/2026-11-12-zzzz-taches-tableau.md) |
 | 12/11/2026 | [Changer de profil de démo, et des champs de recherche plus fins](evolutions/2026-11-12-zzzzz-demo-recherche.md) |
 | 13/11/2026 | [Présences : les coachs donnent aussi la leur](evolutions/2026-11-13-presences-coachs.md) |
+| 13/11/2026 | [Vérification générale : appels, liens, sécurité, droits par profil](evolutions/2026-11-13-verification-generale.md) |
 
 ## Convention
 
