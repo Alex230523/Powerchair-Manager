@@ -56,7 +56,8 @@ test("a coach gives his attendance: from the home, from the attendance page, apa
       return register;
     }
     const tomorrow = await training("Entraînement de demain", 1, 26);
-    await training("Entraînement du jour", 2, -1);
+    // Started three hours ago, over an hour ago: in the roll call, no longer « next » on the home.
+    await training("Entraînement du jour", 2, -3);
     const mine = async (register: string) => (await db.query("SELECT response FROM attendance_invitation WHERE register_id=$1 AND profile_id=$2", [register, coach])).rows[0].response as string;
 
     await page.goto("/fr");
