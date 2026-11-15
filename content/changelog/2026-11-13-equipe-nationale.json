@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-13",
+  "roles": [
+    "coach",
+    "federation"
+  ],
+  "link": "/national",
+  "image": null,
+  "fr": {
+    "title": "Le staff national a sa page",
+    "text": "Coach, kiné ou accompagnant d'une équipe nationale ? « Mon équipe nationale » apparaît dans votre menu : vos joueurs, leurs réponses, les rassemblements et qui vient. Les consignes de soin s'affichent à la demande, seulement avec l'accord du joueur, et chaque lecture est notée."
+  },
+  "nl": {
+    "title": "De nationale staf heeft zijn pagina",
+    "text": "Coach, kinesist of begeleider van een nationale ploeg? « Mijn nationale ploeg » staat in uw menu: uw spelers, hun antwoorden, de samenkomsten en wie komt. De zorginstructies verschijnen op vraag, alleen met toestemming van de speler, en elke raadpleging wordt genoteerd."
+  },
+  "en": {
+    "title": "The national staff has its own page",
+    "text": "Coach, physio or companion of a national team? « My national team » is in your menu: your players, their answers, the gatherings and who comes. Care instructions show on demand, only with the player's agreement, and each reading is noted."
+  }
+}

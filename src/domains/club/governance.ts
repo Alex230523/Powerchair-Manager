@@ -318,7 +318,8 @@ export async function logSensitiveAccess(
     | "offline_book"
     | "trip_care"
     | "incident_health"
-    | "incident_care",
+    | "incident_care"
+    | "national_care",
   resourceId: string | null = null,
 ) {
   await c.query(

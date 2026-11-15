@@ -14065,3 +14065,50 @@ main :is(.toolbar-filters, .directory-filters) select {
 main :is(.toolbar-filters, .directory-filters) label:not(.check) {
   font-weight: 500;
 }
+
+/* 13/11/2026: « Mon équipe nationale », the national staff's page. */
+.national-staff-team {
+  margin-bottom: var(--card-gap);
+}
+.national-staff-team h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+.national-staff-list,
+.national-staff-gatherings,
+.national-staff-answers,
+.national-staff-care-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.national-staff-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+.national-staff-gatherings > li,
+.national-staff-care-list > li {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--border);
+}
+.national-staff-gatherings > li:first-child,
+.national-staff-care-list > li:first-child {
+  border-top: 0;
+}
+.national-staff-gatherings p {
+  margin: 2px 0 var(--space-1);
+}
+.national-staff-answers {
+  margin-top: var(--space-2);
+}
+.national-staff-care-list ul {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-3);
+  display: grid;
+  gap: var(--space-1);
+}
+.national-staff-care .button {
+  margin: var(--space-1) 0 var(--space-2);
+}

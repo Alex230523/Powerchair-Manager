@@ -31,6 +31,8 @@ export type Workspace = {
   };
   permissions: string[];
   fundraisingOpen?: boolean;
+  /** 13/11/2026: on the staff of a national team. */
+  nationalStaff?: boolean;
   avatarVersion?: string | null;
   seasons?: SeasonOption[];
   teams?: TeamOption[];
@@ -297,7 +299,9 @@ export function menuGroups(state: Workspace | null): NavGroup[] {
       const m = moduleOfPath(i.route);
       return !m || !off.has(m);
     });
-  const groups = club.map((g) => ({ ...g, items: shown(g.items) })).filter((g) => g.items.length > 0);
+  // 13/11/2026: the national staff (a club's coach, a federation account) finds its selection, whatever the profile.
+  const national: NavGroup[] = state?.nationalStaff ? [{ id: "national", label: "groupNational", icon: "medal", items: [{ route: "/national", label: "nationalStaff", icon: "medal" }] }] : [];
+  const groups = [...club.map((g) => ({ ...g, items: shown(g.items) })), ...national].filter((g) => g.items.length > 0);
   if (president) return groups;
   // 12: without a profile chosen, the registrations; « Réglages » is the shell's last entry (settingsItem).
   const admin: NavGroup = {

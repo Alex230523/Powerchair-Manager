@@ -68,7 +68,8 @@ import e65 from "../../../content/changelog/2026-11-12-federation.json";
 import e66 from "../../../content/changelog/2026-11-12-recherche.json";
 import e67 from "../../../content/changelog/2026-11-12-reglages.json";
 import e68 from "../../../content/changelog/2026-11-12-taches.json";
-import e69 from "../../../content/changelog/2026-11-13-presences-coachs.json";
+import e69 from "../../../content/changelog/2026-11-13-equipe-nationale.json";
+import e70 from "../../../content/changelog/2026-11-13-presences-coachs.json";
 
 export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-10-21-accueil-president", data: e0 },
@@ -140,5 +141,6 @@ export const rawEntries: { id: string; data: unknown }[] = [
   { id: "2026-11-12-recherche", data: e66 },
   { id: "2026-11-12-reglages", data: e67 },
   { id: "2026-11-12-taches", data: e68 },
-  { id: "2026-11-13-presences-coachs", data: e69 },
+  { id: "2026-11-13-equipe-nationale", data: e69 },
+  { id: "2026-11-13-presences-coachs", data: e70 },
 ];

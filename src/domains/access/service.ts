@@ -216,6 +216,8 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: unknown[];
     audit: unknown[];
     fundraisingOpen: boolean;
+    /** 13/11/2026: on the staff of a national team in use (« Sélection nationale » in the menu, whatever the profile). */
+    nationalStaff: boolean;
     /** Changes with every new photo: the menu refreshes its picture. */
     avatarVersion: string | null;
     /** Seasons and teams the top bar offers (wave 12), already filtered for the actor. */
@@ -244,6 +246,14 @@ async function readWorkspace(db: Db, p: Principal) {
     invitations: [],
     audit: [],
     fundraisingOpen: false,
+    nationalStaff: !!(
+      await db.query(
+        `SELECT 1 FROM national_team_staff st JOIN national_team t ON t.id=st.team_id AND NOT t.archived
+           LEFT JOIN club_person cp ON cp.id=st.profile_id LEFT JOIN person pe ON pe.id=cp.person_id
+          WHERE st.user_id=$1 OR pe.user_id=$1 LIMIT 1`,
+        [p.userId],
+      )
+    ).rowCount,
     seasons: [],
     teams: [],
   };

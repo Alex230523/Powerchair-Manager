@@ -8,6 +8,7 @@ import { unseal } from "../notifications/crypto";
 import { contactsFor } from "../communication/service";
 import { brusselsToday } from "../people/service";
 import { seasonOf } from "../finance/schema";
+import { logSensitiveAccess } from "../club/governance";
 import { answerCommand, nationalCommand, pf2Allowed, type AnswerCommand, type NationalCommand } from "./schema";
 export { answerCommand, nationalCommand };
 
@@ -377,30 +378,95 @@ export async function answerExecute(db: Pool, p: Principal, command: AnswerComma
   });
 }
 
-/** For the national staff (and the federation): the care instructions of the players who consented, for the period only. */
+/** 13/11/2026: who, among the staff, reads the care instructions (the mechanic does not). */
+export const careRoles = ["head_coach", "assistant", "physio", "companion"] as const;
+/** The staff lines of the account: by its own account, or by its club sheet. */
+const staffOf = `SELECT st.team_id,st.role FROM national_team_staff st LEFT JOIN club_person cp ON cp.id=st.profile_id LEFT JOIN person pe ON pe.id=cp.person_id
+                  WHERE st.user_id=$1 OR pe.user_id=$1`;
+
+/** 13/11/2026: does the account sit on the staff of a national team still in use (the menu shows « Sélection nationale »)? */
+export async function isNationalStaff(c: Pool | PoolClient, userId: string) {
+  return !!(await c.query(`SELECT 1 FROM (${staffOf}) s JOIN national_team t ON t.id=s.team_id WHERE NOT t.archived LIMIT 1`, [userId])).rowCount;
+}
+
+/**
+ * 13/11/2026: « Sélection nationale », the national staff's own page (the
+ * coach, the assistant, the physio, the mechanic, the companion). Read only:
+ * the teams they are on, the others of the staff, the players (sporting data,
+ * their answer, whether care instructions are shared), the gatherings with
+ * who comes. The care instructions themselves load on demand (nationalCare),
+ * journaled in the player's club.
+ */
+export async function nationalStaffView(db: Pool, p: Principal) {
+  const c = await db.connect();
+  try {
+    await account(c, p);
+    const mine = (await c.query(`SELECT team_id,array_agg(DISTINCT role) AS roles FROM (${staffOf}) s GROUP BY team_id`, [p.userId])).rows as { team_id: string; roles: string[] }[];
+    if (!mine.length) return { teams: [] };
+    const teams = (
+      await c.query("SELECT t.id,t.name,t.category,t.season,t.color,o.name AS federation FROM national_team t JOIN organization o ON o.id=t.federation_id WHERE t.id=ANY($1::uuid[]) AND NOT t.archived ORDER BY t.season DESC,t.name", [mine.map((m) => m.team_id)])
+    ).rows;
+    const out = [];
+    for (const t of teams) {
+      const roles = mine.find((m) => m.team_id === t.id)!.roles;
+      const staff = (await c.query("SELECT id,role,name FROM national_team_staff WHERE team_id=$1 ORDER BY role,name", [t.id])).rows;
+      const players = (
+        await c.query(
+          `SELECT ns.id,cp.full_name,o.name AS club,ns.status,ns.availability,ns.availability_note,COALESCE(sp.classification,'not_classified') AS classification,
+                  EXISTS(SELECT 1 FROM national_care_consent k WHERE k.selection_id=ns.id AND k.revoked_at IS NULL AND CURRENT_DATE BETWEEN k.starts_on AND k.ends_on) AS care_shared
+             FROM national_selection ns JOIN club_person cp ON cp.id=ns.profile_id JOIN organization o ON o.id=ns.club_id LEFT JOIN player_sport_profile sp ON sp.profile_id=ns.profile_id
+            WHERE ns.team_id=$1 AND ns.status<>'withdrawn' ORDER BY ns.status,cp.full_name`,
+          [t.id],
+        )
+      ).rows;
+      const gatherings = (
+        await c.query(
+          `SELECT g.id,g.kind,g.title,g.starts_at,g.ends_at,g.place,
+                  COALESCE((SELECT json_agg(json_build_object('name',cp.full_name,'response',COALESCE(a.response,'none')) ORDER BY cp.full_name)
+                              FROM national_selection ns JOIN club_person cp ON cp.id=ns.profile_id
+                              LEFT JOIN national_gathering_answer a ON a.gathering_id=g.id AND a.selection_id=ns.id
+                             WHERE ns.team_id=g.team_id AND ns.status IN ('selected','reserve','preselected') AND a.gathering_id IS NOT NULL),'[]') AS answers
+             FROM national_gathering g WHERE g.team_id=$1 AND g.ends_at>now()-interval '30 days' ORDER BY g.starts_at LIMIT 20`,
+          [t.id],
+        )
+      ).rows;
+      out.push({ ...t, roles, readsCare: roles.some((r) => (careRoles as readonly string[]).includes(r)), staff, players, gatherings });
+    }
+    return { teams: out };
+  } finally {
+    c.release();
+  }
+}
+
+/**
+ * For the national staff: the care instructions of the players who consented,
+ * for the period only. 13/11/2026: each reading is journaled in the player's
+ * club (« Accès aux données sensibles »), like a trip's care book.
+ */
 export async function nationalCare(db: Pool, p: Principal, teamId: string) {
   z.uuid().parse(teamId);
   const c = await db.connect();
   try {
     await account(c, p);
-    const staff = (
-      await c.query(
-        `SELECT 1 FROM national_team_staff st LEFT JOIN club_person cp ON cp.id=st.profile_id LEFT JOIN person pe ON pe.id=cp.person_id
-          WHERE st.team_id=$1 AND (st.user_id=$2 OR pe.user_id=$2) AND st.role IN ('head_coach','assistant','physio','companion')`,
-        [teamId, p.userId],
-      )
-    ).rowCount;
+    const staff = (await c.query(`SELECT 1 FROM (${staffOf}) s JOIN national_team t ON t.id=s.team_id WHERE s.team_id=$2 AND s.role=ANY($3::text[]) AND NOT t.archived`, [p.userId, teamId, careRoles])).rowCount;
     if (!staff) throw new AccessError("FORBIDDEN");
     const rows = (
       await c.query(
-        `SELECT ns.profile_id,cp.full_name,ci.id,ci.moment,ci.time,ci.ciphertext FROM national_selection ns JOIN club_person cp ON cp.id=ns.profile_id
+        `SELECT ns.profile_id,ns.club_id,cp.full_name,ci.id,ci.moment,ci.time,ci.ciphertext,k.starts_on::text AS shared_from,k.ends_on::text AS shared_until
+           FROM national_selection ns JOIN club_person cp ON cp.id=ns.profile_id
            JOIN national_care_consent k ON k.selection_id=ns.id AND k.revoked_at IS NULL AND CURRENT_DATE BETWEEN k.starts_on AND k.ends_on
            JOIN care_instruction ci ON ci.profile_id=ns.profile_id AND ci.active
-          WHERE ns.team_id=$1 AND ns.status<>'withdrawn' ORDER BY cp.full_name`,
+          WHERE ns.team_id=$1 AND ns.status<>'withdrawn' ORDER BY cp.full_name,ci.time NULLS LAST`,
         [teamId],
       )
     ).rows;
-    return rows.map(({ ciphertext, ...r }) => ({ ...r, ...unseal<{ title: string; details: string }>(ciphertext, "care:" + r.id) }));
+    const seen = new Set<string>();
+    for (const r of rows) {
+      if (seen.has(r.profile_id)) continue;
+      seen.add(r.profile_id);
+      await logSensitiveAccess(c, r.club_id, p.userId, r.profile_id, "national_care", teamId);
+    }
+    return rows.map(({ ciphertext, club_id: _club, ...r }) => ({ ...r, ...unseal<{ title: string; details: string }>(ciphertext, "care:" + r.id) }));
   } finally {
     c.release();
   }
