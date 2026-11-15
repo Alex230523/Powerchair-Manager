@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { FirstSteps } from "./first-steps";
 import { DemoSwitch } from "./demo-switch";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { dropShared, installChangeSignal, sharedFetch } from "@/lib/shared-fetch";
 import { labels } from "@/domains/access/policy";
 import type { Locale } from "@/lib/locale";
 import { authClient } from "@/lib/auth-client";
@@ -282,10 +283,13 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     panel = useRef<HTMLDivElement>(null),
     account = useRef<HTMLDetailsElement>(null);
   const panelId = useId();
+  // 13/11/2026: the workspace is read once and shared (not again on every page), again on a profile or preference event.
+  useEffect(() => installChangeSignal(), []);
   useEffect(() => {
     let cancelled = false;
-    const load = () => {
-      fetch("/api/workspace", { cache: "no-store" })
+    const load = (fresh = false) => {
+      if (fresh) dropShared();
+      sharedFetch("/api/workspace?brief=1", 30000)
         .then(async (r) => {
           // The session ended (or the sign-in did not hold): the visitor's bar, without the menu.
           if (!cancelled) setSignedOut(r.status === 401);
@@ -299,14 +303,15 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
         });
     };
     load();
-    window.addEventListener("pfm-workspace", load);
+    const again = () => load(true);
+    window.addEventListener("pfm-workspace", again);
     const sync = (e: StorageEvent) => {
       if (e.key === "pfm-context-event") window.location.reload();
     };
     window.addEventListener("storage", sync);
     return () => {
       cancelled = true;
-      window.removeEventListener("pfm-workspace", load);
+      window.removeEventListener("pfm-workspace", again);
       window.removeEventListener("storage", sync);
     };
   }, [path]);
@@ -320,7 +325,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
     let cancelled = false;
     const load = () => {
       if (club && !member)
-        fetch("/api/dashboard", { cache: "no-store" })
+        sharedFetch("/api/dashboard", 60000)
           .then(async (r) => (r.ok ? ((await r.json()) as { todos?: Todo[] }) : null))
           .then((d) => {
             if (!cancelled) setTodos(d?.todos ?? []);
@@ -328,7 +333,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           .catch(() => {
             if (!cancelled) setTodos([]);
           });
-      fetch("/api/notifications?brief=1", { cache: "no-store" })
+      sharedFetch("/api/notifications?brief=1", 60000)
         .then(async (r) => (r.ok ? ((await r.json()) as Brief) : null))
         .then((b) => {
           if (!cancelled) setBrief(b);
@@ -337,7 +342,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           if (!cancelled) setBrief(null);
         });
       // 20: « Nouveautés » for this profile's role.
-      fetch("/api/news", { cache: "no-store" })
+      sharedFetch("/api/news", 60000)
         .then(async (r) => (r.ok ? ((await r.json()) as { badges: string[] }) : null))
         .then((n) => {
           if (cancelled || !n) return setNews(null);
@@ -345,6 +350,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           const here = path.replace(new RegExp(`^/${locale}`), "") || "/";
           if (n.badges.includes(here)) {
             void fetch("/api/news", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "seen", route: here }) }).catch(() => undefined);
+            dropShared("/api/news");
             setNews({ badges: n.badges.filter((b) => b !== here) });
           } else setNews({ badges: n.badges });
         })
@@ -352,7 +358,7 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           if (!cancelled) setNews(null);
         });
       // 22: the tasks given to me, for the menu's counter and the phone's shortcut.
-      fetch("/api/tasks?count=mine", { cache: "no-store" })
+      sharedFetch("/api/tasks?count=mine", 60000)
         .then(async (r) => (r.ok ? ((await r.json()) as { open: number; late: number }) : { open: 0, late: 0 }))
         .then((c) => {
           if (!cancelled) setMyTasks(c);
@@ -361,11 +367,23 @@ export function AppShell({ locale, signedIn = true, children }: { locale: Locale
           if (!cancelled) setMyTasks({ open: 0, late: 0 });
         });
     };
+    // Counters: kept a minute between pages, read again after a change or back on the tab.
     load();
+    let seen = Date.now();
+    const back = () => {
+      if (document.visibilityState !== "visible" || Date.now() - seen < 60000) return;
+      seen = Date.now();
+      dropShared();
+      load();
+    };
     window.addEventListener("pfm-workspace", load);
+    window.addEventListener("pfm-changed", load);
+    document.addEventListener("visibilitychange", back);
     return () => {
       cancelled = true;
       window.removeEventListener("pfm-workspace", load);
+      window.removeEventListener("pfm-changed", load);
+      document.removeEventListener("visibilitychange", back);
     };
   }, [selectedId, club, member, path, locale]);
   // The drawer: Escape closes it, focus stays inside while it is open, and goes back to the menu button after.

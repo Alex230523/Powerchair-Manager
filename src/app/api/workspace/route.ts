@@ -31,7 +31,9 @@ function failure(e: unknown) {
 }
 export async function GET(request: Request) {
   try {
-    return Response.json(await workspace(getDb(), await principal(request)), {
+    // ?brief=1 (the menu): without the members, invitations and journal of the settings.
+    const brief = new URL(request.url).searchParams.get("brief") === "1";
+    return Response.json(await workspace(getDb(), await principal(request), { brief }), {
       headers,
     });
   } catch (e) {

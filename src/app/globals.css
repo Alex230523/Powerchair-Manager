@@ -10178,47 +10178,6 @@ ul.task-page li {
   margin: 0;
   padding: 0;
 }
-/* 13/11/2026: the players, then the coaches, each under its title. */
-.call-group {
-  margin: var(--space-4) 0 var(--space-2);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: none;
-}
-/* « Mes prochaines séances »: one line per session, the three answers on the right. */
-.my-next {
-  margin-bottom: var(--card-gap);
-}
-.my-next-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-.my-next-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--border);
-}
-.my-next-row:first-child {
-  border-top: 0;
-}
-.my-next-what {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.my-next-choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
 .call-row {
   display: grid;
   grid-template-columns: auto minmax(8rem, 1fr) auto auto auto;
@@ -11591,21 +11550,6 @@ ul.task-page li {
 .focus-title {
   font-size: var(--text-lg);
   font-weight: 700;
-}
-/* 13/11/2026: « Ma présence », the coach's own answer under the session. */
-.focus-mine {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
-}
-.focus-mine-label {
-  font-weight: 600;
-  font-size: var(--text-sm);
-}
-.focus-mine .actions {
-  margin: 0;
 }
 .focus-sub {
   margin: var(--space-4) 0 var(--space-2);
@@ -14067,13 +14011,9 @@ details.task-group[open]:has(> .task-group-tools) > summary {
   margin: 0;
 }
 
-/*
- * 12/11/2026: the search fields of the pages (not the main one), lighter: a
- * pill with a magnifier and a quiet fill, a smaller text; the same height and
- * border as every field (44 px to touch, the border readable at 3:1). The
- * menus beside them in a filter bar take the same rounded shape.
- */
-main input[type="search"] {
+/* 12/11/2026: the pages' search fields, a pill with a magnifier; the menus beside them rounded too. */
+/* 13/11/2026: :not() outranks the fields' rule (the magnifier ran over the text). */
+main input[type="search"]:not(.command-input input) {
   border-radius: var(--radius-pill);
   padding-inline: 40px 14px;
   font-size: var(--text-sm);
@@ -14083,8 +14023,8 @@ main input[type="search"] {
   background-position: 14px 50%;
   background-size: 16px 16px;
 }
-main input[type="search"]:hover,
-main input[type="search"]:focus {
+main input[type="search"]:not(.command-input input):hover,
+main input[type="search"]:not(.command-input input):focus {
   background-color: var(--surface);
 }
 main input[type="search"]::placeholder {
@@ -14093,58 +14033,11 @@ main input[type="search"]::placeholder {
 main input[type="search"]::-webkit-search-cancel-button {
   cursor: pointer;
 }
-main :is(.toolbar-filters, .directory-filters) select {
+main :is(.toolbar-filters, .directory-filters) select:not(.capsule select) {
   border-radius: var(--radius-pill);
   padding-inline: 16px 40px;
   font-size: var(--text-sm);
 }
 main :is(.toolbar-filters, .directory-filters) label:not(.check) {
   font-weight: 500;
-}
-
-/* 13/11/2026: the national staff's page. */
-.national-staff-team {
-  margin-bottom: var(--card-gap);
-}
-.national-staff-team h3 {
-  margin: var(--space-4) 0 var(--space-2);
-  font-size: var(--text-sm);
-}
-.national-staff-list,
-.national-staff-gatherings,
-.national-staff-answers,
-.national-staff-care-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-.national-staff-list {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-}
-.national-staff-gatherings > li,
-.national-staff-care-list > li {
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--border);
-}
-.national-staff-gatherings > li:first-child,
-.national-staff-care-list > li:first-child {
-  border-top: 0;
-}
-.national-staff-gatherings p {
-  margin: 2px 0 var(--space-1);
-}
-.national-staff-answers {
-  margin-top: var(--space-2);
-}
-.national-staff-care-list ul {
-  list-style: none;
-  margin: var(--space-1) 0 0;
-  padding-inline-start: var(--space-3);
-  display: grid;
-  gap: var(--space-1);
-}
-.national-staff-care .button {
-  margin: var(--space-1) 0 var(--space-2);
 }

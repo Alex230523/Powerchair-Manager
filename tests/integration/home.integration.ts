@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
-import { dashboardView } from "../../src/domains/dashboard/service";
+import { dashboardView, dashboardWeek } from "../../src/domains/dashboard/service";
 import { duesExecute, duesView } from "../../src/domains/dues/service";
 import { duesTotals } from "../../src/domains/dues/schema";
 import { financeExecute } from "../../src/domains/finance/service";
@@ -154,4 +154,7 @@ it("lists the events of the week asked for, under the calendar's visibility and 
   expect((await dashboardView(db, presidentB, { week: monday })).week?.events).toEqual([]);
   // A parent without any link to the team only sees the club-wide session.
   expect((await dashboardView(db, parentA, { week: monday })).week?.events.map((e) => e.title)).toEqual(["Jeudi club"]);
+  // 13/11/2026: the week alone (the home's ‹ semaine ›) gives the same events under the same rules.
+  for (const p of [presidentA, presidentB, parentA]) expect((await dashboardWeek(db, p, { week: monday })).week).toEqual((await dashboardView(db, p, { week: monday })).week);
+  expect((await dashboardWeek(db, presidentA, { week: "lundi" })).week).toBeUndefined();
 });
