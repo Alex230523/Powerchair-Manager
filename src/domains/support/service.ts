@@ -195,7 +195,7 @@ export async function supportOperatorExecute(db: Pool, p: Principal, command: Su
       const d = (await c.query("SELECT d.id,d.organization_id,d.status FROM data_request d WHERE d.id=$1 FOR UPDATE", [command.requestId])).rows[0] as { id: string; organization_id: string; status: string } | undefined;
       if (!d) throw new AccessError("NOT_FOUND", 404);
       if (!["received", "in_progress"].includes(d.status)) throw new AccessError("REQUEST_STATE", 409);
-      const recipients = await notice(c, d.organization_id, await presidencyOf(c, d.organization_id), privacyWords.manual, "/settings/club#security", `privacy:${d.id}:manual:${Date.now()}`, "administrative");
+      const recipients = await notice(c, d.organization_id, await presidencyOf(c, d.organization_id), privacyWords.manual, "/settings/journals#security", `privacy:${d.id}:manual:${Date.now()}`, "administrative");
       await c.query("INSERT INTO data_request_notice(request_id,step,operator_id,recipients) VALUES($1,'manual',$2,$3)", [d.id, o.userId, recipients]);
       await journal("privacy.remind", d.organization_id, { requestId: d.id, recipients });
       await audit(c, d.organization_id, o.userId, "platform.privacy_remind", d.id);
@@ -253,7 +253,7 @@ export async function privacyTick(db: Pool) {
     for (const d of due) {
       await c.query("BEGIN");
       try {
-        const recipients = await notice(c, d.organization_id, await presidencyOf(c, d.organization_id), privacyWords[d.step], "/settings/club#security", `privacy:${d.id}:${d.step}`, "administrative");
+        const recipients = await notice(c, d.organization_id, await presidencyOf(c, d.organization_id), privacyWords[d.step], "/settings/journals#security", `privacy:${d.id}:${d.step}`, "administrative");
         await c.query("INSERT INTO data_request_notice(request_id,step,recipients) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", [d.id, d.step, recipients]);
         await c.query("COMMIT");
         sent++;

@@ -78,7 +78,7 @@ export function AccountDeletion({ locale }: { locale: Locale }) {
         <>
           <p className="notice">{fill(t.sole, { names: data.sole.map((o) => o.name).join(", ") })}</p>
           <p>
-            <Link className="button secondary" href={`/${locale}/settings/club#settings-presidency`}>
+            <Link className="button secondary" href={`/${locale}/settings/organisation#settings-presidency`}>
               {t.handover}
             </Link>
           </p>

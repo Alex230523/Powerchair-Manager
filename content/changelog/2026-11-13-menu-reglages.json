@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-13",
+  "roles": [
+    "all"
+  ],
+  "link": "/settings",
+  "image": null,
+  "fr": {
+    "title": "Un menu et des réglages mieux rangés",
+    "text": "Le menu suit votre journée : Agenda, Sport, Personnes, Communication, Finances, Club, Fédération. Les réglages tiennent en quatre parties : Vous, Le club, Activités et argent, Contrôle. « Club » est devenu « Identité et apparence » et « Fonctionnement »."
+  },
+  "nl": {
+    "title": "Een beter geordend menu en instellingen",
+    "text": "Het menu volgt uw dag: Agenda, Sport, Mensen, Communicatie, Financiën, Club, Federatie. De instellingen staan in vier delen: U, De club, Activiteiten en geld, Controle. « Club » werd « Identiteit en uitstraling » en « Werking »."
+  },
+  "en": {
+    "title": "A tidier menu and settings",
+    "text": "The menu follows your day: Agenda, Sport, People, Communication, Finances, Club, Federation. The settings come in four parts: You, The club, Activities and money, Control. « Club » became « Identity and appearance » and « How the club runs »."
+  }
+}

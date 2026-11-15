@@ -36,8 +36,8 @@ test("presidency handover from the club", async ({ page }) => {
     await Promise.all([page.waitForEvent("load"), page.getByRole("combobox", { name: "Profil actif", exact: true }).selectOption(mandate)]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // 1. Settings > Club (12): hand over to Marie; the outgoing president would keep « Coach ».
-    await page.goto("/fr/settings/club");
+    // 1. Settings > Fonctionnement (12, 13/11/2026): hand over to Marie; the outgoing president would keep « Coach ».
+    await page.goto("/fr/settings/organisation");
     const card = page.locator(".card, section, article").filter({ has: page.getByRole("heading", { name: "Transmettre la présidence" }) }).last();
     await card.getByRole("combobox", { name: "Choisir une personne du club" }).selectOption({ label: `Marie Membre · g1-member-${stamp}@example.test` });
     await card.getByRole("radio", { name: "Coach" }).check();

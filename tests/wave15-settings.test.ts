@@ -20,12 +20,14 @@ describe("settings categories", () => {
       expect(visibleCategories({ kind: "club", role, permissions: ["calendar.read", "people.read"] })).toEqual(["account", "notifications", "data"]);
   });
   it("follows the rights, not the role name: a member trusted with mandates sees the club categories", () => {
-    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["mandates.manage"] })).toEqual(["account", "notifications", "data", "club", "members", "seasons", "activities", "money", "journals"]);
+    // 13/11/2026: « Club » split into its identity and « Fonctionnement ».
+    expect(visibleCategories({ kind: "club", role: "coach", permissions: ["mandates.manage"] })).toEqual(["account", "notifications", "data", "club", "organisation", "members", "seasons", "activities", "money", "journals"]);
     expect(visibleCategories({ kind: "club", role: "coach", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "journals"]);
   });
-  it("hides Money when the dues module is off, and the club categories outside a club", () => {
-    expect(visibleCategories({ kind: "club", role: "club_president", permissions: all, disabled: ["dues"] })).not.toContain("money");
-    expect(visibleCategories({ kind: "federation", role: "federation_president", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "subscription", "members", "journals"]);
+  it("keeps Money with the dues module off (13/11/2026), hides the club categories outside a club", () => {
+    // 13/11/2026: « Finances » holds the tax approval too: it stays with the dues switched off (its dues panels hide themselves).
+    expect(visibleCategories({ kind: "club", role: "club_president", permissions: all, disabled: ["dues"] })).toContain("money");
+    expect(visibleCategories({ kind: "federation", role: "federation_president", permissions: ["audit.read"] })).toEqual(["account", "notifications", "data", "members", "subscription", "journals"]);
     // 12/11/2026: the subscription for the presidency only.
     expect(visibleCategories({ kind: "club", role: "club_president", permissions: all })).toContain("subscription");
     expect(visibleCategories({ kind: "club", role: "coach", permissions: ["mandates.manage"] })).not.toContain("subscription");

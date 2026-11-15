@@ -51,10 +51,11 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.goto("/fr/settings");
     await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
     const cards = page.locator(".settings-grid > li");
-    // 12/11/2026: « Abonnement à la plateforme » for the presidency.
-    await expect(cards).toHaveCount(11);
-    for (const name of ["Mon compte", "Notifications et résumé", "Données personnelles", "Club", "Abonnement à la plateforme", "Membres et droits", "Saisons et équipes", "Activités", "Documents", "Finances", "Journaux et confidentialité"])
+    // 12/11/2026: « Abonnement à la plateforme » for the presidency; 13/11/2026: « Club » split in two, four parts.
+    await expect(cards).toHaveCount(12);
+    for (const name of ["Mon compte", "Notifications et résumé", "Mes données personnelles", "Identité et apparence", "Fonctionnement", "Membres et droits", "Saisons et équipes", "Abonnement à la plateforme", "Activités", "Documents", "Finances", "Sécurité et confidentialité"])
       await expect(cards.getByRole("link", { name: new RegExp(`^${name}`) })).toBeVisible();
+    for (const part of ["Vous", "Le club", "Activités et argent", "Contrôle"]) await expect(page.getByRole("heading", { name: part, exact: true, level: 2 })).toBeVisible();
     await axe(page, "settings home");
 
     // The search: accents do not matter, Enter opens the sub-page at the setting.
@@ -90,13 +91,13 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.getByLabel("Entraînements · Joueurs · Suffisant à partir de", { exact: true }).fill("4");
     await page.getByRole("button", { name: "Enregistrer les seuils", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Seuils enregistrés." })).toBeVisible();
-    await nav.getByRole("link", { name: "Club" }).click();
+    await nav.getByRole("link", { name: "Identité et apparence" }).click();
     await expect(page).toHaveURL("/fr/settings/club");
     await expect(page.getByRole("heading", { name: "Identité du club", exact: true })).toBeVisible();
     await axe(page, "settings club");
 
     // Every category passes axe.
-    for (const c of ["account", "notifications", "members", "money", "journals"]) {
+    for (const c of ["account", "notifications", "organisation", "members", "money", "journals"]) {
       await page.goto(`/fr/settings/${c}`);
       await expect(page.locator("main h1")).toBeVisible();
       await expect(page.getByText(/^Chargement/)).toHaveCount(0, { timeout: 15000 });
@@ -115,6 +116,9 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     await page.goto("/fr/privacy");
     await expect(page).toHaveURL("/fr/settings/data");
     await expect(page.getByRole("heading", { name: "Mes données", exact: true })).toBeVisible();
+    // 13/11/2026: an old link to a section that moved out of « Club » lands on its new category.
+    await page.goto("/fr/settings/club#settings-obligations");
+    await expect(page).toHaveURL("/fr/settings/organisation#settings-obligations");
     // Ctrl+K finds a setting.
     await page.keyboard.press("Control+k");
     await page.getByRole("combobox", { name: /Rechercher un joueur/ }).fill("Barèmes");
@@ -124,7 +128,7 @@ test("settings home, search, sub-pages, old addresses, unsaved changes and right
     // Phone: the home is the list of categories, a sub-page has a back link and no side column.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/fr/settings");
-    await expect(cards).toHaveCount(11);
+    await expect(cards).toHaveCount(12);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
     await page.locator("main").getByRole("link", { name: /^Finances/ }).click();
     await expect(page).toHaveURL("/fr/settings/money");

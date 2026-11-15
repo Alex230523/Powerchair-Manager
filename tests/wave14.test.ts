@@ -17,22 +17,28 @@ const all = ["people.read", "teams.manage", "members.read", "mandates.manage", "
 
 describe("president menu (wave 14)", () => {
   const groups = menuGroups(base("club_president", all));
-  it("has the five groups in order, no Plus (12), and no Mon espace entry", () => {
-    expect(groups.map((g) => g.id)).toEqual(["teams", "activities", "communication", "money", "clubGroup"]);
+  // 13/11/2026: the menu in the order of the day: Agenda, Sport, Personnes, Communication, Finances, Club, Fédération.
+  it("has the seven groups in order, no Plus (12), and no Mon espace entry", () => {
+    expect(groups.map((g) => g.id)).toEqual(["agenda", "sport", "people", "communication", "money", "clubGroup", "federationGroup"]);
     expect(groups.flatMap((g) => g.items.map((i) => i.route))).not.toContain("/access");
     expect(groups.flatMap((g) => g.items.map((i) => i.route))).not.toContain("/notifications");
   });
   it("places each page where the design says", () => {
     const routes = Object.fromEntries(groups.map((g) => [g.id, g.items.map((i) => i.route)]));
-    // Wave 16 (E2): the exercise sheets after the attendance.
-    expect(routes.teams).toEqual(["/teams", "/players", "/coaches", "/registrations", "/attendance", "/exercises", "/classification", "/transfers", "/statistics"]);
-    expect(routes.activities).toEqual(["/calendar", "/events", "/matches", "/trips", "/venues", "/tournaments"]);
-    expect(routes.communication).toEqual(["/communication", "/documents"]);
+    expect(routes.agenda).toEqual(["/calendar", "/tasks", "/trips", "/events", "/venues"]);
+    // Wave 16 (E2): the exercise sheets after the matches and tournaments.
+    expect(routes.sport).toEqual(["/teams", "/attendance", "/matches", "/tournaments", "/exercises", "/statistics"]);
+    expect(routes.people).toEqual(["/players", "/coaches", "/registrations", "/contacts"]);
+    expect(routes.communication).toEqual(["/communication", "/documents", "/club/public"]);
     // A2: « Subsides & sponsors » has its own entry.
     expect(routes.money).toEqual(["/funding", "/dues", "/funding/grants-sponsors", "/fundraising"]);
     // 12: « Gestion du club » went to Réglages; Réglages is the menu's last entry, apart.
-    // 12/11/2026: « Fédération » replaces « Circulaires » and « Discipline ».
-    expect(routes.clubGroup).toEqual(["/club/public", "/club/association", "/equipment", "/contacts", "/tasks", "/club/federation"]);
+    expect(routes.clubGroup).toEqual(["/club/association", "/equipment"]);
+    // 12/11/2026: « Fédération » replaces « Circulaires » and « Discipline »; the classification and the transfers beside it.
+    expect(routes.federationGroup).toEqual(["/club/federation", "/classification", "/transfers"]);
+    // Each page once.
+    const flat = Object.values(routes).flat();
+    expect(new Set(flat).size).toBe(flat.length);
   });
   it("respects switched-off modules and missing rights", () => {
     const off = menuGroups(base("club_president", all, { disabled_modules: ["trips", "equipment", "fundraising"] }));
@@ -43,7 +49,7 @@ describe("president menu (wave 14)", () => {
     expect(routes).not.toContain("/offline-book");
     const few = menuGroups(base("club_president", ["people.read"]));
     // Wave 17 (O1): a president always plans the club's tasks.
-    expect(few.map((g) => g.id)).toEqual(["teams", "activities", "communication", "clubGroup"]);
+    expect(few.map((g) => g.id)).toEqual(["agenda", "sport", "people", "communication", "clubGroup", "federationGroup"]);
   });
   it("labels every group and item in the three languages", () => {
     for (const locale of ["fr", "nl", "en"] as const)
@@ -54,15 +60,17 @@ describe("president menu (wave 14)", () => {
   });
 });
 
-describe("other roles keep the wave 10 menu", () => {
+describe("other roles", () => {
+  // 13/11/2026: a coach has the president's order, with the entries of his rights.
   it("a coach sees the modules of their rights (Réglages apart, 12)", () => {
     const groups = menuGroups(base("coach", ["calendar.read", "people.read", "attendance.manage"]));
-    expect(groups.map((g) => g.id)).toEqual(["players", "life", "management"]);
+    expect(groups.map((g) => g.id)).toEqual(["agenda", "sport", "people", "communication", "federationGroup"]);
     expect(groups.flatMap((g) => g.items.map((i) => i.route))).not.toContain("/access");
   });
-  it("a player only has Mon espace (and Réglages, apart, 12)", () => {
+  // 13/11/2026: a player's ten entries in three groups.
+  it("a player has Mon espace, Au club and Compétitions (and Réglages, apart, 12)", () => {
     const groups = menuGroups(base("player", []));
-    expect(groups.map((g) => g.id)).toEqual(["mine"]);
+    expect(groups.map((g) => g.id)).toEqual(["mine", "atClub", "competitions"]);
   });
 });
 

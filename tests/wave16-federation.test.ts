@@ -19,7 +19,8 @@ describe("federation space", () => {
     const routes = menuGroups(federation("federation_president"))
       .flatMap((g) => g.items)
       .map((i) => i.route);
-    const order = ["/federation/clubs", "/federation/teams", "/tournaments", "/federation/referees", "/federation/licenses", "/federation/courses"];
+    // 13/11/2026: in groups: Agenda, Clubs et licences, Compétitions, Formation, Administration.
+    const order = ["/calendar", "/federation/clubs", "/federation/teams", "/federation/licenses", "/tournaments", "/federation/referees", "/federation/courses", "/funding"];
     expect(order.map((r) => routes.indexOf(r))).toEqual([...order.map((r) => routes.indexOf(r))].sort((a, b) => a - b));
     expect(order.every((r) => routes.includes(r))).toBe(true);
     // A referee keeps their own space.

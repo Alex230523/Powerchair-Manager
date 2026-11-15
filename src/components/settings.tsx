@@ -60,7 +60,7 @@ import { seasonPlanCopy } from "./season-plan-copy";
 import { seasonScheduleCopy } from "./season-schedule-copy";
 import { TaxApproval } from "./tax-approval";
 import { settingsHubCopy } from "./settings-hub-copy";
-import { categoryIcons, legacyAnchors, searchSettings, visibleCategories, type SettingsCategory } from "./settings-nav";
+import { categoryIcons, legacyAnchors, movedAnchors, searchSettings, settingsSections, visibleCategories, type SettingsCategory } from "./settings-nav";
 
 type Member = {
   id: string;
@@ -169,6 +169,13 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
     if (category) return;
     const id = window.location.hash.slice(1);
     if (legacyAnchors[id]) router.replace(`/${locale}/settings/${legacyAnchors[id]}#${id}`);
+  }, [category, locale, router]);
+  // 13/11/2026: a section that moved to another category (an old link, a notification already sent).
+  useEffect(() => {
+    if (!category) return;
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    const to = movedAnchors[id];
+    if (to && to !== category) router.replace(`/${locale}/settings/${to}#${id}`);
   }, [category, locale, router]);
   // A search result (or an old anchor) points at a setting: scroll to it once its panel is drawn.
   useEffect(() => {
@@ -345,16 +352,28 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
               ))}
           </div>
         </div>
-        <ul className="settings-grid" aria-label={h.categoriesLabel}>
-          {visible.map((c) => (
-            <li key={c}>
-              <Card href={href(c)} title={h.categories[c].title} icon={categoryIcons[c]} headingId={`settings-cat-${c}`} className="settings-card">
-                <p className="muted">{h.categories[c].text}</p>
-                {badges[c] && <Badge tone="warning">{badges[c]}</Badge>}
-              </Card>
-            </li>
-          ))}
-        </ul>
+        {/* 13/11/2026: four parts (you, the club, activities and money, control) instead of a row of twelve. */}
+        {settingsSections.map((section) => {
+          const cats = section.categories.filter((c) => visible.includes(c));
+          if (!cats.length) return null;
+          return (
+            <section key={section.id} className="settings-section" aria-labelledby={`settings-section-${section.id}`}>
+              <h2 id={`settings-section-${section.id}`} className="settings-section-title">
+                {h.sections[section.id]}
+              </h2>
+              <ul className="settings-grid" aria-label={h.sections[section.id]}>
+                {cats.map((c) => (
+                  <li key={c}>
+                    <Card href={href(c)} title={h.categories[c].title} icon={categoryIcons[c]} headingId={`settings-cat-${c}`} className="settings-card">
+                      <p className="muted">{h.categories[c].text}</p>
+                      {badges[c] && <Badge tone="warning">{badges[c]}</Badge>}
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </main>
     );
   }
@@ -370,17 +389,28 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
       {message && <p role="status">{message}</p>}
       <div className="settings-layout">
         <nav className="settings-nav" aria-label={h.categoriesLabel}>
-          <ul>
-            {visible.map((c) => (
-              <li key={c}>
-                <Link href={href(c)} aria-current={c === category ? "page" : undefined}>
-                  <Icon name={categoryIcons[c]} size={18} />
-                  <span>{h.categories[c].title}</span>
-                  {badges[c] && <span className="sr-only"> · {badges[c]}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {settingsSections.map((section) => {
+            const cats = section.categories.filter((c) => visible.includes(c));
+            if (!cats.length) return null;
+            return (
+              <div key={section.id} className="settings-nav-section">
+                <p className="settings-nav-title" id={`settings-nav-${section.id}`}>
+                  {h.sections[section.id]}
+                </p>
+                <ul aria-labelledby={`settings-nav-${section.id}`}>
+                  {cats.map((c) => (
+                    <li key={c}>
+                      <Link href={href(c)} aria-current={c === category ? "page" : undefined}>
+                        <Icon name={categoryIcons[c]} size={18} />
+                        <span>{h.categories[c].title}</span>
+                        {badges[c] && <span className="sr-only"> · {badges[c]}</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
         <div className="settings-content" onChange={markDirty} onInput={markDirty} onClickCapture={markClean} onSubmitCapture={markClean}>
           {!shown && <EmptyState icon="lock" title={h.notAvailable} action={<Link href={`/${locale}/settings`}>{h.back}</Link>} />}
@@ -403,21 +433,21 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           {shown && category === "notifications" && ws?.selected?.kind === "club" && <Reminders locale={locale} embedded initial={remindersKind} />}
           {/* B7: the catalogue of automations (president and notifications.manage; the panel hides itself otherwise). */}
           {shown && category === "notifications" && ws?.selected?.kind === "club" && <Automations locale={locale} />}
-          {shown && category === "club" && gov?.can.modules && <SetupSettings locale={locale} />}
+          {shown && category === "organisation" && gov?.can.modules && <SetupSettings locale={locale} />}
           {shown && category === "club" && <ClubIdentity locale={locale} only="identity" />}
-          {shown && category === "club" && <ClubObligations locale={locale} />}
+          {shown && category === "organisation" && <ClubObligations locale={locale} />}
           {/* 21: « Sécurité et données »: the agreement, the export, the closure, retention, the requests. */}
-          {shown && category === "club" && <ClubSecurity locale={locale} />}
+          {shown && category === "journals" && ws?.selected?.kind === "club" && <ClubSecurity locale={locale} />}
           {/* 17: the statutes' rules for the assembly and the register. */}
-          {shown && category === "club" && <AssociationRules locale={locale} />}
-          {shown && category === "club" && <TaxApproval locale={locale} />}
+          {shown && category === "organisation" && <AssociationRules locale={locale} />}
+          {shown && category === "money" && <TaxApproval locale={locale} />}
           {/* 9: the signatory and the signature of the mutual attestations (administrators only). */}
-          {shown && category === "club" && gov && !gov.disabled.includes("dues") && <AttestationSignature locale={locale} />}
+          {shown && category === "money" && gov && !gov.disabled.includes("dues") && <AttestationSignature locale={locale} />}
           {shown && category === "club" && <ClubAppearance locale={locale} />}
           {shown && category === "club" && <HallOfFameSettings locale={locale} />}
-          {shown && category === "club" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
+          {shown && category === "organisation" && gov?.can.modules && <ModulesPanel locale={locale} gov={gov} busy={busy} post={post} />}
           {/* Wave 17 (G1): the president hands over the presidency (12: under Club). */}
-          {shown && category === "club" && ws?.selected?.role === "club_president" && (
+          {shown && category === "organisation" && ws?.selected?.role === "club_president" && (
             <div id="settings-presidency">
               <PresidencyHandover locale={locale} />
             </div>
@@ -438,7 +468,7 @@ export function Settings({ locale, category, remindersKind }: { locale: Locale; 
           )}
           {/* 21: a request about one's data, sent to the club that holds it. */}
           {shown && category === "data" && <MyDataRequests locale={locale} />}
-          {shown && category === "data" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />}
+          {shown && category === "journals" && ws?.selected?.kind === "club" && (own.has("audit.read") || own.has("mandates.manage")) && <Privacy locale={locale} embedded />}
           {/* 12: seasons, teams and the season's passage (the former « Gestion du club »). */}
           {shown && category === "seasons" && <People locale={locale} management embedded />}
           {/* 8: the start-of-season check, launched and followed here. */}

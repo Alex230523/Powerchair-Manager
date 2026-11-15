@@ -51,13 +51,14 @@ test("getting started of a new club", async ({ page }) => {
     await expect(setup).toContainText("1 sur 9");
     await expect(setup.getByRole("link", { name: /^Commencer/ })).toHaveCount(8);
 
-    // 3. Hidden, then shown again from Settings > Club.
+    // 3. Hidden, then shown again from Settings > Fonctionnement.
     await setup.getByRole("button", { name: "Masquer" }).click();
     await expect(setup).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(setup).toHaveCount(0);
-    await page.goto("/fr/settings/club");
+    // 13/11/2026: in Réglages › Fonctionnement.
+    await page.goto("/fr/settings/organisation");
     const again = page.getByRole("region", { name: "Bien démarrer" });
     await expect(again).toContainText("La carte est masquée sur l’accueil.");
     await again.getByRole("button", { name: "Afficher à nouveau sur l’accueil" }).click();

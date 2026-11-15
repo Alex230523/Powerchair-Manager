@@ -1,5 +1,5 @@
 import type { Locale } from "../lib/locale";
-import type { SettingsCategory, SettingsEntryCopy } from "./settings-nav";
+import type { SettingsCategory, SettingsEntryCopy, SettingsSection } from "./settings-nav";
 
 /** Texts of the settings home and its sub-pages (wave 15, C13). */
 type Copy = {
@@ -37,6 +37,8 @@ type Copy = {
   rolloverText: string;
   rolloverLink: string;
   categories: Record<SettingsCategory, { title: string; text: string }>;
+  /** 13/11/2026: the four parts of the settings' home. */
+  sections: Record<SettingsSection, string>;
   entries: SettingsEntryCopy;
 };
 
@@ -77,16 +79,18 @@ const fr: Copy = {
   categories: {
     account: { title: "Mon compte", text: "Photo de profil, langue, thème et rôle de coach." },
     notifications: { title: "Notifications et résumé", text: "Ce que vous recevez, par email ou dans l’application." },
-    data: { title: "Données personnelles", text: "Mes données ; pour le club : registre, demandes, conservation." },
-    club: { title: "Club", text: "Nom, logo et contact du club, modules activés, transmission de la présidence." },
+    data: { title: "Mes données personnelles", text: "Télécharger vos données, demander une correction ou un effacement." },
+    club: { title: "Identité et apparence", text: "Nom, logo, couleurs et contact du club, son palmarès." },
+    organisation: { title: "Fonctionnement", text: "Premiers pas, modules activés, obligations de l'année, règles des statuts, transmission de la présidence." },
     subscription: { title: "Abonnement à la plateforme", text: "Votre formule, vos factures, l'essai gratuit et un code de réduction." },
     members: { title: "Membres et droits", text: "Ce que chaque coach peut voir et gérer, profils de droits." },
     seasons: { title: "Saisons et équipes", text: "Saisons, équipes, coachs par équipe, passage de saison." },
     activities: { title: "Activités", text: "Effectif attendu aux entraînements et aux matchs." },
     documents: { title: "Documents", text: "Autorisations parentales signées en ligne : textes, validité, demandes." },
-    money: { title: "Finances", text: "Barèmes de cotisation, alerte de saison lancée, rappels automatiques." },
-    journals: { title: "Journaux et confidentialité", text: "Qui a changé quels droits, qui a lu des données de santé." },
+    money: { title: "Finances", text: "Barèmes de cotisation, exercice comptable, attestations fiscales et mutuelles." },
+    journals: { title: "Sécurité et confidentialité", text: "Données personnelles du club, sauvegarde et fermeture, qui a changé quels droits, qui a lu des données de santé." },
   },
+  sections: { you: "Vous", club: "Le club", activity: "Activités et argent", control: "Contrôle" },
   entries: {
     photo: { title: "Photo de profil", keywords: "avatar image portrait" },
     language: { title: "Langue", keywords: "français néerlandais anglais langue emails" },
@@ -172,16 +176,18 @@ const nl: Copy = {
   categories: {
     account: { title: "Mijn account", text: "Profielfoto, taal, thema en coachrol." },
     notifications: { title: "Meldingen en overzicht", text: "Wat je ontvangt, per e-mail of in de applicatie." },
-    club: { title: "Club", text: "Naam, logo en contact van de club, actieve modules." },
+    club: { title: "Identiteit en uitstraling", text: "Naam, logo, kleuren en contact van de club, haar erelijst." },
+    organisation: { title: "Werking", text: "Eerste stappen, actieve modules, verplichtingen van het jaar, regels van de statuten, overdracht van het voorzitterschap." },
     subscription: { title: "Abonnement op het platform", text: "Uw formule, uw facturen, de gratis proefperiode en een kortingscode." },
-    data: { title: "Persoonsgegevens", text: "Mijn gegevens; voor de club: register, verzoeken, bewaring." },
+    data: { title: "Mijn persoonsgegevens", text: "Uw gegevens downloaden, een correctie of verwijdering vragen." },
     seasons: { title: "Seizoenen en teams", text: "Seizoenen, teams, coaches per team, seizoensovergang." },
     members: { title: "Leden en rechten", text: "Wat elke coach mag zien en beheren, rechtenprofielen." },
     activities: { title: "Activiteiten", text: "Verwachte bezetting op trainingen en wedstrijden." },
     documents: { title: "Documenten", text: "Ouderlijke toestemmingen online ondertekend: teksten, geldigheid, aanvragen." },
-    money: { title: "Financiën", text: "Lidgeldtarieven, waarschuwing bij gestart seizoen, automatische herinneringen." },
-    journals: { title: "Logboeken en privacy", text: "Wie welke rechten wijzigde, wie gezondheidsgegevens las." },
+    money: { title: "Financiën", text: "Lidgeldtarieven, boekjaar, fiscale attesten en attesten voor het ziekenfonds." },
+    journals: { title: "Veiligheid en privacy", text: "Persoonsgegevens van de club, back-up en sluiting, wie welke rechten wijzigde, wie gezondheidsgegevens las." },
   },
+  sections: { you: "U", club: "De club", activity: "Activiteiten en geld", control: "Controle" },
   entries: {
     photo: { title: "Profielfoto", keywords: "avatar foto portret" },
     language: { title: "Taal", keywords: "frans nederlands engels taal e-mails" },
@@ -267,16 +273,18 @@ const en: Copy = {
   categories: {
     account: { title: "My account", text: "Profile photo, language, theme and coach role." },
     notifications: { title: "Notifications and digest", text: "What you receive, by email or in the application." },
-    club: { title: "Club", text: "Club name, logo and contact, enabled modules." },
+    club: { title: "Identity and appearance", text: "Club name, logo, colours and contact, its honours." },
+    organisation: { title: "How the club runs", text: "First steps, enabled modules, the year's obligations, the statutes' rules, handing over the presidency." },
     subscription: { title: "Platform subscription", text: "Your plan, your invoices, the free trial and a discount code." },
-    data: { title: "Personal data", text: "My data; for the club: register, requests, retention." },
+    data: { title: "My personal data", text: "Download your data, ask for a correction or an erasure." },
     members: { title: "Members and rights", text: "What each coach may see and manage, rights profiles." },
     seasons: { title: "Seasons and teams", text: "Seasons, teams, coaches per team, season rollover." },
     activities: { title: "Activities", text: "Expected attendance at trainings and matches." },
     documents: { title: "Documents", text: "Parental authorizations signed online: texts, validity, requests." },
-    money: { title: "Finances", text: "Membership rates, season-started warning, automatic reminders." },
-    journals: { title: "Logs and privacy", text: "Who changed which rights, who read health data." },
+    money: { title: "Finances", text: "Membership rates, financial year, tax and health insurance attestations." },
+    journals: { title: "Security and privacy", text: "The club's personal data, backup and closure, who changed which rights, who read health data." },
   },
+  sections: { you: "You", club: "The club", activity: "Activities and money", control: "Control" },
   entries: {
     photo: { title: "Profile photo", keywords: "avatar picture portrait" },
     language: { title: "Language", keywords: "french dutch english language emails" },

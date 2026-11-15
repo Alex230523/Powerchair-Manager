@@ -487,7 +487,7 @@ export async function consoleExecute(db: Pool, p: Principal, command: ConsoleCom
         nl: { title: "Waarschijnlijke dubbels in uw ledenlijst", message: `${n} persoon/personen van uw club bestaan waarschijnlijk in een andere club onder een andere identiteit (zelfde naam, zelfde geboortedatum). Koppel in Veiligheid en gegevens elke fiche aan de identiteitscode van de persoon.` },
         en: { title: "Probable duplicates in your directory", message: `${n} person(s) of your club probably exist in another club under another identity (same name, same birth date). In Security and data, link each profile to the person's identity code.` },
       };
-      const recipients = await notice(c, org.id, await presidencyOf(c, org.id), text, "/settings/club#security", `duplicates:${org.id}:${Date.now()}`, "administrative");
+      const recipients = await notice(c, org.id, await presidencyOf(c, org.id), text, "/settings/journals#security", `duplicates:${org.id}:${Date.now()}`, "administrative");
       await c.query("INSERT INTO platform_action(operator_id,organization_id,kind,payload) VALUES($1,$2,'duplicates.notify',$3)", [o.userId, org.id, JSON.stringify({ count: n, recipients })]);
       await audit(c, org.id, o.userId, "platform.duplicates_notify", org.id, { count: n });
       return { ok: true as const, recipients, count: n };

@@ -53,7 +53,8 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     // Wide screen: the drawer buttons stay hidden.
     await expect(page.getByRole("button", { name: "Ouvrir le menu", exact: true })).toBeHidden();
     await expect(sidebar.getByRole("button", { name: "Fermer le menu", exact: true })).toBeHidden();
-    for (const name of ["Équipes", "Activités", "Communication", "Finances", "Club"]) await expect(sidebar.locator("nav summary").filter({ hasText: name })).toBeVisible();
+    // 13/11/2026: the groups in the order of the day.
+    for (const name of ["Agenda", "Sport", "Personnes", "Communication", "Finances", "Club"]) await expect(sidebar.locator("nav summary").filter({ hasText: name }).first()).toBeVisible();
     // 12: no « Plus »; « Réglages » is the last entry of the menu.
     await expect(sidebar.locator("nav summary").filter({ hasText: "Plus" })).toHaveCount(0);
     await expect(sidebar.locator("nav .nav-settings").getByRole("link", { name: "Réglages", exact: true })).toBeVisible();
@@ -134,7 +135,8 @@ test("sidebar, account menu, search, bell and mobile drawer", async ({ page }) =
     await page.locator(".drawer-backdrop").click({ position: { x: 380, y: 400 } });
     await expect(sidebar).toBeHidden();
     await open.click();
-    await sidebar.locator("nav summary").filter({ hasText: "Équipes" }).click();
+    // 13/11/2026: « Joueurs » is under « Personnes ».
+    await sidebar.locator("nav summary").filter({ hasText: "Personnes" }).click();
     await sidebar.getByRole("link", { name: "Joueurs", exact: true }).click();
     await expect(page).toHaveURL(/\/fr\/players$/);
     await expect(sidebar).toBeHidden();

@@ -78,7 +78,7 @@ export type Board = { squares: Square[]; also: Square[] };
 const boardMeta: Record<"documents" | "moneyTasks" | "clubStatus", { href: string; tone: Tone }> = {
   documents: { href: "/documents", tone: "danger" },
   moneyTasks: { href: "/tasks", tone: "warning" },
-  clubStatus: { href: "/settings/club#settings-obligations", tone: "warning" },
+  clubStatus: { href: "/settings/organisation#settings-obligations", tone: "warning" },
 };
 /** The president's six squares, always in this order when available. */
 export const presidentSquares: BoardKey[] = ["documents", "registersToClose", "registrationsReview", "duesLate", "moneyTasks", "clubStatus"];

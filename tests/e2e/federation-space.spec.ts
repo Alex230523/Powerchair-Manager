@@ -33,7 +33,8 @@ test("federation space: clubs and presidents, teams, referees", async ({ page })
     // The group is folded on the home page: the links are there, in this order (once the menu has loaded).
     await expect(page.locator(".sidebar nav a", { hasText: "Clubs et présidents" })).toHaveCount(1);
     const links = (await page.locator(".sidebar nav a .nav-label").allTextContents()).map((x) => x.trim());
-    const order = ["Clubs et présidents", "Équipes", "Tournois", "Arbitres et désignations", "Licences et classifications", "Formations des coachs"].map((l) => links.indexOf(l));
+    // 13/11/2026: in groups: Agenda, Clubs et licences, Compétitions, Formation, Administration.
+    const order = ["Calendrier", "Clubs et présidents", "Équipes", "Licences et classifications", "Tournois", "Arbitres et désignations", "Formations des coachs"].map((l) => links.indexOf(l));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((x, y) => x - y));
 

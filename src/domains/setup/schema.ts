@@ -14,7 +14,7 @@ export const setupLinks: Record<SetupStep, string> = {
   coach: "/access#access-invite",
   players: "/players?import=1",
   dues: "/settings/money#settings-dues-title",
-  modules: "/settings/club#settings-modules",
+  modules: "/settings/organisation#settings-modules",
   presence: "/settings/activities#settings-presence",
   palette: "/settings/club#settings-appearance",
 };

@@ -353,7 +353,7 @@ export async function dataRequestCreate(db: Pool, p: Principal, input: { organiz
         resourceId: `data_request:${id}`,
         eventKey: `data_request:${id}:${u.id}`,
         locale,
-        variables: { name: u.name, title: words[locale].title, message: words[locale].message, organization: member.name, url: `${process.env.BETTER_AUTH_URL ?? ""}/${locale}/settings/club#security` },
+        variables: { name: u.name, title: words[locale].title, message: words[locale].message, organization: member.name, url: `${process.env.BETTER_AUTH_URL ?? ""}/${locale}/settings/journals#security` },
       });
     }
     await audit(c, member.id, p.userId, "privacy.request_received", id);

@@ -35,7 +35,8 @@ test("president's home: squares turn green, club status, two columns at 900 px",
     await page.locator("form").filter({ has: page.locator("#club-legal-form") }).getByRole("button", { name: "Enregistrer" }).click();
     await expect(page.getByText("Enregistré.").first()).toBeVisible();
     const panel = page.locator(".obligations-card");
-    await page.reload();
+    // 13/11/2026: the obligations live in Réglages › Fonctionnement.
+    await page.goto("/fr/settings/organisation");
     await expect(panel.getByRole("row").filter({ hasText: "Assemblée générale tenue" })).toBeVisible();
     await expect(panel.getByRole("row")).toHaveCount(10);
     await axe(page, "obligations");
