@@ -296,7 +296,7 @@ export function Equipment({ locale }: { locale: Locale }) {
                           return (
                             <tr key={c.id}>
                               <th scope="row">
-                                <button type="button" className="text-button chair-open" onClick={() => setOpen(c.id)}>
+                                <button type="button" className="text-button name-link chair-open" onClick={() => setOpen(c.id)}>
                                   {c.name}
                                 </button>
                                 <LoanBadge locale={locale} view={view} chairId={c.id} />

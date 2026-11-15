@@ -199,12 +199,12 @@ export function TeamBoard({ locale, data }: { locale: Locale; data: Detail }) {
                   <Link href={`/${locale}/coaches/${m.profile_id}`}>{m.full_name}</Link>
                   <span className="team-board-contacts">
                     {m.email && (
-                      <a className="text-button" href={`mailto:${m.email}`} aria-label={fill(t.email, { name: m.full_name })}>
+                      <a className="text-button name-link" href={`mailto:${m.email}`} aria-label={fill(t.email, { name: m.full_name })}>
                         {m.email}
                       </a>
                     )}
                     {m.phone && (
-                      <a className="text-button" href={`tel:${m.phone.replace(/[^\d+]/g, "")}`} aria-label={fill(t.phone, { name: m.full_name })}>
+                      <a className="text-button name-link" href={`tel:${m.phone.replace(/[^\d+]/g, "")}`} aria-label={fill(t.phone, { name: m.full_name })}>
                         {m.phone}
                       </a>
                     )}

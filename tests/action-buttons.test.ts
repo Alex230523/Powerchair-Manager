@@ -33,4 +33,16 @@ describe("ways onward are buttons", () => {
     expect(css).toMatch(/\.card-link-row \.button \{\s*width: 100%;/);
     expect(css).not.toMatch(/\.team-card-foot a \{/);
   });
+  // 13/11/2026: the actions of a row (Modifier, Retirer, Monter…) are small buttons too.
+  it("draws a row's actions as small bordered buttons, a name that opens its sheet as a name", () => {
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const rule = css.match(/\n\.text-button \{([^}]*)\}/)![1];
+    expect(rule).toMatch(/border: 1px solid var\(--border-strong\);/);
+    expect(rule).toMatch(/text-decoration: none;/);
+    expect(rule).not.toMatch(/underline/);
+    expect(css).toMatch(/\.text-button\.name-link \{[^}]*background: none;/);
+    // A name-link holds a name or a title, never an action word of the copy (t.edit, t.remove…).
+    for (const [f, s] of files)
+      for (const m of s.matchAll(/className="text-button name-link[^"]*"[^>]*>\s*([^<]*)/g)) expect(m[1].trim(), f).not.toMatch(/^\{\w+\.(edit|remove|delete|cancel|withdraw|up|down|move|open|close|details|preview|send|add)\w*\}/);
+  });
 });

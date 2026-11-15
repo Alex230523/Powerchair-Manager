@@ -348,7 +348,7 @@ function SeasonView({ locale }: { locale: Locale }) {
                   .filter((v) => v.manage && !v.register && v.status === "scheduled")
                   .map((v) => (
                     <li key={v.id}>
-                      <button type="button" className="text-button" onClick={() => { setSelected(v.id); setMessage(""); }}>
+                      <button type="button" className="text-button name-link" onClick={() => { setSelected(v.id); setMessage(""); }}>
                         {v.title} · {date(v.starts_at)} · {t.noRegister}
                       </button>
                     </li>

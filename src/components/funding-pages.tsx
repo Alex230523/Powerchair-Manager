@@ -243,7 +243,7 @@ export function Partners({ locale, start = {} }: { locale: Locale; start?: Partn
                       sort: (x) => x.name,
                       cell: (x) => (
                         <>
-                          <button type="button" className="text-button partner-open" onClick={() => setSheet(x.id)}>
+                          <button type="button" className="text-button name-link partner-open" onClick={() => setSheet(x.id)}>
                             {x.name}<span className="sr-only"> · {sp.open}</span>
                           </button>
                           <span className="muted small"> · {p.kinds[x.kind as keyof typeof p.kinds]}</span>

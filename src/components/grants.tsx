@@ -206,7 +206,7 @@ export function Grants({ locale, start = {} }: { locale: Locale; start?: GrantsS
                 sort: (x) => label(x),
                 cell: (x) => (
                   <>
-                    <button type="button" className="text-button grant-open" onClick={() => setSheet(x.id)}>
+                    <button type="button" className="text-button name-link grant-open" onClick={() => setSheet(x.id)}>
                       {label(x)}<span className="sr-only"> · {c.open}</span>
                     </button>
                     {(x.purpose || x.season_name) && <span className="muted small grant-purpose">{[x.purpose, x.season_name].filter(Boolean).join(" · ")}</span>}
@@ -709,7 +709,7 @@ function FunderFacts({
           <ul className="plain-list">
             {others.map((x) => (
               <li key={x.id}>
-                <button type="button" className="text-button" onClick={() => openGrant(x.id)}>{label(x)}</button>
+                <button type="button" className="text-button name-link" onClick={() => openGrant(x.id)}>{label(x)}</button>
                 <span className="muted small"> · {[x.season_name, t.grants.statuses[x.status]].filter(Boolean).join(" · ")}</span>
               </li>
             ))}

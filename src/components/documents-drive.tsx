@@ -242,7 +242,7 @@ export function DocumentsDrive({ locale, onDetails }: { locale: Locale; onDetail
                 {i === crumbs.length - 1 ? (
                   <span aria-current="page">{c.label}</span>
                 ) : (
-                  <button type="button" className="text-button" onClick={() => setPlace(c.to)}>
+                  <button type="button" className="text-button name-link" onClick={() => setPlace(c.to)}>
                     {c.label}
                   </button>
                 )}

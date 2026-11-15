@@ -203,7 +203,7 @@ function HomeView({ locale, data, open, when }: { locale: Locale; data: Home; op
                   </p>
                   <p className="console-orgs">
                     {x.organizations.map((org) => (
-                      <button key={org.id} type="button" className="text-button" onClick={() => open(org.id)}>
+                      <button key={org.id} type="button" className="text-button name-link" onClick={() => open(org.id)}>
                         {org.name}
                       </button>
                     ))}
@@ -299,7 +299,7 @@ function OrganizationsView({ locale, open, day }: { locale: Locale; open: (id: s
                   {data.organizations.map((r) => (
                     <tr key={r.id}>
                       <th scope="row">
-                        <button type="button" className="text-button" onClick={() => open(r.id)}>
+                        <button type="button" className="text-button name-link" onClick={() => open(r.id)}>
                           {r.name}
                         </button>{" "}
                         <Badge tone={r.kind === "federation" ? "info" : "neutral"}>{r.kind === "federation" ? o.federation : o.club}</Badge>
@@ -1250,7 +1250,7 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
             {data.subscriptions.map((su) => (
               <li key={su.id} className="console-plan">
                 <span>
-                  <button type="button" className="text-button" onClick={() => open(su.organization_id)}>
+                  <button type="button" className="text-button name-link" onClick={() => open(su.organization_id)}>
                     {su.organization}
                   </button>{" "}
                   · {su.plan} · {money(su.amount_cents)} {b.periods[su.period].toLowerCase()} · {su.ended_on ? fill(b.ended, { day: day(su.ended_on) }) : su.last_invoiced_to ? fill(b.lastInvoiced, { day: day(su.last_invoiced_to) }) : b.neverInvoiced}
@@ -1371,7 +1371,7 @@ function BillingView({ locale, day, open }: { locale: Locale; day: (iso: string)
                   <tr key={i.id}>
                     <th scope="row">{i.number}</th>
                     <td>
-                      <button type="button" className="text-button" onClick={() => open(i.organization_id)}>
+                      <button type="button" className="text-button name-link" onClick={() => open(i.organization_id)}>
                         {i.organization}
                       </button>
                     </td>
@@ -1726,7 +1726,7 @@ function SupportView({ locale, when, day, open }: { locale: Locale; when: (iso: 
                 {data.tickets.map((k) => (
                   <tr key={k.id}>
                     <th scope="row">
-                      <button type="button" className="text-button" onClick={() => setTicket(k.id)}>
+                      <button type="button" className="text-button name-link" onClick={() => setTicket(k.id)}>
                         {k.subject}
                         <span className="sr-only"> : {s.open}</span>
                       </button>
@@ -1758,7 +1758,7 @@ function SupportView({ locale, when, day, open }: { locale: Locale; when: (iso: 
             {data.privacy.map((d) => (
               <li key={d.id} className="console-plan">
                 <span>
-                  <button type="button" className="text-button" onClick={() => open(d.organization_id)}>
+                  <button type="button" className="text-button name-link" onClick={() => open(d.organization_id)}>
                     {d.organization}
                   </button>{" "}
                   · {t.supervision.dataRequestKinds[d.kind] ?? d.kind} · {t.supervision.dataRequestStates[d.status] ?? d.status} ·{" "}
@@ -1872,7 +1872,7 @@ function TicketView({ locale, id, back, when, templates, open }: { locale: Local
             <>
               {" "}
               ·{" "}
-              <button type="button" className="text-button" onClick={() => open(k.organization_id!)}>
+              <button type="button" className="text-button name-link" onClick={() => open(k.organization_id!)}>
                 {k.organization}
               </button>
             </>

@@ -310,7 +310,7 @@ export function EventList({
                     <span className="planner-row-time">{isAllDay(local(e)) ? t.allDay : `${time(e.starts_at)}-${time(e.ends_at)}`}</span>
                     <span className="planner-dot" {...colorAttrs(e, colorBy)} aria-hidden="true" />
                     <span className="planner-row-main">
-                      <button type="button" className="text-button planner-row-title" data-event="" aria-label={eventName(locale, e)} onClick={() => onSelect(e.id)}>
+                      <button type="button" className="text-button name-link planner-row-title" data-event="" aria-label={eventName(locale, e)} onClick={() => onSelect(e.id)}>
                         {e.title}
                       </button>
                       <span className="muted small">{[kindName(locale, e), e.team_name, e.place_name].filter(Boolean).join(" · ")}</span>
