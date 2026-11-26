@@ -19,19 +19,16 @@ import {
 import { publish } from "../notifications/queue";
 import {
   clubCommand,
-  federationCommand,
   refereeCommand,
   fromOurSide,
-  officialKinds,
   playerTotals,
   teamRecord,
   formOf,
   type ClubCommand,
-  type FederationCommand,
   type RefereeCommand,
   type StatRow,
 } from "./schema";
-export { clubCommand, federationCommand, refereeCommand };
+export { clubCommand, refereeCommand };
 import { byTournamentDay, friendlyCommand, type FriendlyCommand } from "./schema";
 import { friendlyContext, friendlyExecute, matchEvent, proposeScore, tournamentMatches, upcomingDetails } from "./friendly";
 export { friendlyCommand };
@@ -510,109 +507,6 @@ const matchLabel = (r: {
   r.home
     ? `${r.club} (${r.team}) · ${r.opponent}`
     : `${r.opponent} · ${r.club} (${r.team})`;
-
-/** Official matches of affiliated clubs, referees and their availability. */
-export async function designationsView(db: Pool, p: Principal) {
-  return federationScope(db, p, false, async (s) => {
-    if (s.role === "referee") throw new AccessError("FORBIDDEN");
-    const matches = (
-      await s.c.query(
-        `SELECT m.id,o.name AS club,t.name AS team,m.opponent,m.home,m.kind,m.competition,m.starts_at,(m.starts_at AT TIME ZONE 'Europe/Brussels')::date::text AS day,m.venue,m.status,
-                (SELECT json_build_object('home_score',r.home_score,'away_score',r.away_score,'incidents',r.incidents) FROM match_report r WHERE r.match_id=m.id) AS report,
-                COALESCE((SELECT json_agg(json_build_object('referee_id',a.referee_id,'name',u.name,'role',a.role,'status',a.status)) FROM referee_assignment a JOIN "user" u ON u.id=a.referee_id WHERE a.match_id=m.id AND a.status<>'withdrawn'),'[]') AS referees
-           FROM match m JOIN organization o ON o.id=m.organization_id JOIN team t ON t.id=m.team_id
-          WHERE o.federation_id=$1 AND m.kind=ANY($2) AND m.status IN ('scheduled','played','postponed') AND m.starts_at>=now()-interval '60 days'
-          ORDER BY m.starts_at LIMIT 300`,
-        [s.fed, officialKinds],
-      )
-    ).rows;
-    const referees = (
-      await s.c.query(
-        `SELECT DISTINCT u.id,u.name FROM role_assignment r JOIN "user" u ON u.id=r.user_id JOIN organization_membership m ON m.organization_id=r.organization_id AND m.user_id=r.user_id
-          WHERE r.organization_id=$1 AND r.role='referee' AND r.revoked_at IS NULL AND (r.valid_until IS NULL OR r.valid_until>now()) AND m.active AND u.active ORDER BY u.name`,
-        [s.fed],
-      )
-    ).rows as { id: string; name: string }[];
-    const availability = (
-      await s.c.query(
-        "SELECT user_id,day::text,available,note FROM referee_availability WHERE federation_id=$1 AND day>=CURRENT_DATE-1",
-        [s.fed],
-      )
-    ).rows;
-    return {
-      organization_id: s.fed,
-      can: { manage: s.manage },
-      matches,
-      referees,
-      availability,
-    };
-  });
-}
-
-export async function designationExecute(
-  db: Pool,
-  p: Principal,
-  command: FederationCommand,
-  expected: string,
-) {
-  return federationScope(
-    db,
-    p,
-    true,
-    async (s) => {
-      if (s.role === "referee" || !s.manage) throw new AccessError("FORBIDDEN");
-      const match = (
-        await s.c.query(
-          "SELECT m.id,m.home,m.opponent,o.name AS club,t.name AS team FROM match m JOIN organization o ON o.id=m.organization_id JOIN team t ON t.id=m.team_id WHERE m.id=$1 AND o.federation_id=$2 AND m.kind=ANY($3)",
-          [command.matchId, s.fed, officialKinds],
-        )
-      ).rows[0];
-      if (!match) throw new AccessError("NOT_FOUND", 404);
-      if (command.action === "assign") {
-        const referee = await s.c.query(
-          "SELECT 1 FROM role_assignment WHERE organization_id=$1 AND user_id=$2 AND role='referee' AND revoked_at IS NULL",
-          [s.fed, command.refereeId],
-        );
-        if (!referee.rowCount) throw new AccessError("NOT_FOUND", 404);
-        await s.c.query(
-          "INSERT INTO referee_assignment(match_id,federation_id,referee_id,role,assigned_by) VALUES($1,$2,$3,$4,$5) ON CONFLICT(match_id,referee_id) DO UPDATE SET role=EXCLUDED.role,status='proposed',assigned_by=EXCLUDED.assigned_by,assigned_at=now(),answered_at=NULL",
-          [command.matchId, s.fed, command.refereeId, command.role, s.userId],
-        );
-        await notify(s.c, {
-          organizationId: s.fed,
-          userIds: [command.refereeId],
-          matchId: command.matchId,
-          match: matchLabel(match),
-          status: "proposed",
-          path: "/referee",
-        });
-      } else {
-        const changed = await s.c.query(
-          "UPDATE referee_assignment SET status='withdrawn',answered_at=now() WHERE match_id=$1 AND referee_id=$2 AND federation_id=$3 AND status<>'withdrawn' RETURNING 1",
-          [command.matchId, command.refereeId, s.fed],
-        );
-        if (!changed.rowCount) throw new AccessError("NOT_FOUND", 404);
-        await notify(s.c, {
-          organizationId: s.fed,
-          userIds: [command.refereeId],
-          matchId: command.matchId,
-          match: matchLabel(match),
-          status: "withdrawn",
-          path: "/referee",
-        });
-      }
-      await audit(
-        s.c,
-        s.fed,
-        s.userId,
-        "referee." + command.action,
-        command.matchId,
-      );
-      return { ok: true as const };
-    },
-    expected,
-  );
-}
 
 /** The referee's own space: availability, designations, reports. */
 export async function refereeView(db: Pool, p: Principal) {

@@ -54,7 +54,6 @@ Lecture (GET) : « oui » accès, « connexion » il faut se connecter, « refus
 | `/api/billing/mollie` | · | · | · | · | · | · | · | · | · | · |
 | `/api/cron/[job]` | · | · | · | · | · | · | · | · | · | · |
 | `/api/dashboard` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
-| `/api/designations` (+ écriture) | connexion | refusé | refusé | refusé | refusé | oui | refusé | oui | refusé | oui |
 | `/api/discipline` (+ écriture) | connexion | oui | oui | refusé | refusé | oui | refusé | oui | oui | oui |
 | `/api/documents` (+ écriture) | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |
 | `/api/documents/drive` | connexion | oui | oui | oui | oui | oui | oui | oui | oui | oui |

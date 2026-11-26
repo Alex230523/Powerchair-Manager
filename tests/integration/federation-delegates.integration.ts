@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { execute, type Principal } from "../../src/domains/access/service";
 import { staffRolesExecute, staffRolesView } from "../../src/domains/access/staff-roles";
-import { designationsView, refereeView } from "../../src/domains/competitions/service";
+import { refereeView } from "../../src/domains/competitions/service";
+import { refereeingView } from "../../src/domains/referees/service";
 import { federationAffiliationsView } from "../../src/domains/affiliations/service";
 import { federationClubsView } from "../../src/domains/federation/clubs";
 import { federationFocus } from "../../src/domains/dashboard/focus";
@@ -78,7 +79,7 @@ it("lets a referees delegate appoint but not see the finances, and keeps his ref
   const id = (await roles(president, { action: "appoint", userId: referee.userId, roleIds: [await roleId("referees-lead")] }, fed)).id as string;
   expect((await db.query("SELECT grants FROM role_assignment WHERE id=$1", [id])).rows[0].grants).toEqual(["federation.referees"]);
   delegate = await as(referee, id);
-  expect((await designationsView(db, delegate)).can.manage).toBe(true);
+  expect((await refereeingView(db, delegate)).can.manage).toBe(true);
   await expect(federationAffiliationsView(db, delegate)).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(federationClubsView(db, delegate)).rejects.toMatchObject({ code: "FORBIDDEN" });
   // His referee profile still opens his own space.
