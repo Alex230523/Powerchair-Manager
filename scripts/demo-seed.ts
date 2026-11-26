@@ -51,11 +51,8 @@ import {
   type methods,
 } from "../src/domains/finance/schema";
 import { coachExecute, coursesExecute } from "../src/domains/coaches/service";
-import {
-  matchExecute,
-  designationExecute,
-  refereeExecute,
-} from "../src/domains/competitions/service";
+import { matchExecute, refereeExecute } from "../src/domains/competitions/service";
+import { refereeingExecute } from "../src/domains/referees/service";
 import {
   clubLicensesExecute,
   federationLicensesExecute,
@@ -1404,10 +1401,11 @@ try {
     [played, true],
     [upcomingMatch, null],
   ] as const) {
-    await designationExecute(
+    // 26/11/2026: through « Couvrir les matchs » (/api/refereeing).
+    await refereeingExecute(
       db,
       fed,
-      { action: "assign", matchId, refereeId: refUser, role: "main" },
+      { action: "designate", target: { kind: "match", id: matchId }, refereeId: refUser, role: "main" },
       federation,
     );
     if (accept)
