@@ -140,21 +140,6 @@ export const refereeCommand = z.discriminatedUnion("action", [
 ]);
 export type RefereeCommand = z.infer<typeof refereeCommand>;
 
-export const federationCommand = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("assign"),
-    matchId: id,
-    refereeId: z.string().min(1).max(200),
-    role: z.enum(["main", "assistant", "table"]),
-  }),
-  z.object({
-    action: z.literal("withdraw"),
-    matchId: id,
-    refereeId: z.string().min(1).max(200),
-  }),
-]);
-export type FederationCommand = z.infer<typeof federationCommand>;
-
 /** Matches that the federation follows (and designates referees for). */
 export const officialKinds = ["league", "cup"] as const;
 

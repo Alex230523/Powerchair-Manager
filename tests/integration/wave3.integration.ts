@@ -7,12 +7,11 @@ import {
   matchesView,
   matchDetail,
   matchExecute,
-  designationsView,
-  designationExecute,
   refereeView,
   refereeExecute,
 } from "../../src/domains/competitions/service";
 import { playerProfileView } from "../../src/domains/player-profile/service";
+import { refereeingExecute, refereeingView } from "../../src/domains/referees/service";
 
 const schema = "wave3_" + randomUUID().replaceAll("-", ""),
   root = new Pool({ connectionString: process.env.DATABASE_URL }),
@@ -278,15 +277,16 @@ it("lets the federation designate a referee who accepts and reports the official
     fixture({ opponent: "Amical", kind: "friendly" }),
     club,
   );
-  const designations = await designationsView(db, fedPresident);
-  expect(designations.matches.map((m) => m.opponent)).toContain("Officiel");
-  expect(designations.matches.map((m) => m.opponent)).not.toContain("Amical");
-  await designationExecute(
+  // 26/11/2026: designations go through « Couvrir les matchs » (/api/refereeing), the old /api/designations is gone.
+  const designations = await refereeingView(db, fedPresident);
+  expect(designations.matches.map((m) => m.label).join(" ")).toContain("Officiel");
+  expect(designations.matches.map((m) => m.label).join(" ")).not.toContain("Amical");
+  await refereeingExecute(
     db,
     fedPresident,
     {
-      action: "assign",
-      matchId: official.id,
+      action: "designate",
+      target: { kind: "match", id: official.id },
       refereeId: referee.userId,
       role: "main",
     },
@@ -335,9 +335,8 @@ it("lets the federation designate a referee who accepts and reports the official
   ]);
   const mine = await refereeView(db, referee);
   expect(mine.assignments[0]).toMatchObject({ status: "accepted" });
-  await expect(designationsView(db, referee)).rejects.toMatchObject({
-    code: "FORBIDDEN",
-  });
+  // The referee reads his own desk, never the federation's.
+  expect((await refereeingView(db, referee)).can.manage).toBe(false);
   await expect(
     refereeExecute(
       db,
